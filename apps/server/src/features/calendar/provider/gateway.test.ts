@@ -31,20 +31,13 @@ test("gateway paginates calendars and scopes provider credentials", async () => 
   expect(calendars).toHaveLength(2);
   expect(calendars[1]!.permissions.write).toBe(false);
 });
-test("Calendar credentials reject a different account and Mail-only keys", async () => {
+test("Calendar credentials reject a different account", async () => {
   const env = { CALENDAR_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64") },
     context = { connectionId: "a", userId: "u", purpose: "refresh_token" as const };
   const secret = await encryptCalendarSecret(env, "refresh", context);
   expect(await decryptCalendarSecret(env, secret, context)).toBe("refresh");
   await expect(
     decryptCalendarSecret(env, secret, { ...context, connectionId: "b" }),
-  ).rejects.toThrow();
-  await expect(
-    encryptCalendarSecret(
-      { GMAIL_TOKEN_ENCRYPTION_KEY: env.CALENDAR_TOKEN_ENCRYPTION_KEY },
-      "refresh",
-      context,
-    ),
   ).rejects.toThrow();
 });
 

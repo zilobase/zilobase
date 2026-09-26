@@ -38,7 +38,6 @@ export type DatabaseAutomationCompilationContext = {
   allowHttpWebhookDomains?: Set<string>;
   capabilities?: Partial<DatabaseAutomationCapabilities>;
   dataSourceIds: Set<string>;
-  gmailConnectionIds?: Set<string>;
   invalidWebhookActionIds?: Set<string>;
   parentDatabaseId: string;
   propertiesByDataSource: Map<string, Map<string, AutomationPropertyMetadata>>;
@@ -50,7 +49,6 @@ export type DatabaseAutomationCompilationContext = {
 };
 
 export type DatabaseAutomationCapabilities = {
-  gmail: boolean;
   notifications: boolean;
   schedules: boolean;
   slack: boolean;
@@ -72,7 +70,6 @@ export type DatabaseAutomationCompilationResult = {
 };
 
 const defaultCapabilities: DatabaseAutomationCapabilities = {
-  gmail: false,
   notifications: false,
   schedules: false,
   slack: false,
@@ -366,8 +363,6 @@ export function compileDatabaseAutomationDefinition(
       validateEditPagesAction(action, actionPath);
     } else if (action.type === "send_notification") {
       validateNotificationAction(action, actionPath);
-    } else if (action.type === "send_gmail") {
-      validateGmailAction(action, actionPath);
     } else if (action.type === "send_webhook") {
       validateWebhookAction(action, actionPath);
     } else if (action.type === "send_slack") {
@@ -470,22 +465,6 @@ export function compileDatabaseAutomationDefinition(
     });
     if (!capabilities.notifications)
       addError("capability_disabled", "Notifications are not enabled", actionPath);
-  }
-
-  function validateGmailAction(
-    action: Extract<DatabaseAutomationDefinition["actions"][number], { type: "send_gmail" }>,
-    actionPath: Array<string | number>,
-  ) {
-    addDependency("gmail_connection", action.connectionId, `actions.${action.id}.connectionId`);
-    if (context.gmailConnectionIds && !context.gmailConnectionIds.has(action.connectionId)) {
-      addError(
-        "gmail_connection_not_owned",
-        "Choose a connected Gmail account that you own in this workspace",
-        [...actionPath, "connectionId"],
-      );
-    }
-    if (!capabilities.gmail)
-      addError("capability_disabled", "Gmail actions are not enabled", actionPath);
   }
 
   function validateWebhookAction(

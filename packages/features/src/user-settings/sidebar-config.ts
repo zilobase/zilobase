@@ -10,17 +10,6 @@ export const libraryViewIds = [
   "trash",
 ] as const;
 
-export const mailViewIds = [
-  "inbox",
-  "unread",
-  "starred",
-  "sent",
-  "drafts",
-  "archive",
-  "spam",
-  "trash",
-] as const;
-
 export const sidebarSectionIds = ["recents", "favorites", "private", "shared"] as const;
 export const sidebarSectionLimits = [5, 10, 15, 20, 50, 100] as const;
 export const sidebarSectionSorts = ["lastEdited", "alphabetical"] as const;
@@ -34,7 +23,6 @@ export const sidebarTabIconIds = [
   "calendar",
   "sparkles",
   "database",
-  "mail",
 ] as const;
 export const sidebarSectionKinds = [
   "favorites",
@@ -49,7 +37,6 @@ export const sidebarSectionKinds = [
 ] as const;
 
 export type LibraryView = (typeof libraryViewIds)[number];
-export type MailView = (typeof mailViewIds)[number];
 export type SidebarSectionId = (typeof sidebarSectionIds)[number];
 export type SidebarSectionKind = (typeof sidebarSectionKinds)[number];
 export type SidebarSectionLimit = (typeof sidebarSectionLimits)[number];
@@ -61,10 +48,9 @@ export type SidebarShortcut = {
   id: string;
   label?: string;
   target:
-    | { action: "composeMail" | "createPage" | "createDatabase" | "createChat"; type: "action" }
+    | { action: "createPage" | "createDatabase" | "createChat"; type: "action" }
     | { route: "ai" | "meetings" | "tasks" | "trash" | "settings"; type: "route" }
     | { type: "library"; view: LibraryView }
-    | { type: "mail"; view: MailView }
     | { pageId: string; type: "page" }
     | { databaseId: string; type: "database"; viewId?: string };
 };
@@ -130,19 +116,6 @@ const defaultAiSections: SidebarSection[] = [
   { id: "default-ai-chats", kind: "aiChats", limit: 50, sort: "lastEdited" },
 ];
 
-const defaultMailComposeShortcut: SidebarShortcut = {
-  id: "default-mail-compose",
-  target: { action: "composeMail", type: "action" },
-};
-
-const defaultMailShortcuts: SidebarShortcut[] = [
-  defaultMailComposeShortcut,
-  ...mailViewIds.map((view) => ({
-    id: `default-mail-${view}`,
-    target: { type: "mail" as const, view },
-  })),
-];
-
 export const defaultSidebarWorkspaceLayout: SidebarWorkspaceLayout = {
   tabs: [
     {
@@ -158,13 +131,6 @@ export const defaultSidebarWorkspaceLayout: SidebarWorkspaceLayout = {
       name: "AI",
       sections: defaultAiSections,
       shortcuts: defaultAiShortcuts,
-    },
-    {
-      icon: "mail",
-      id: "mail",
-      name: "Mail",
-      sections: [],
-      shortcuts: defaultMailShortcuts,
     },
     { icon: "calendar", id: "calendar", name: "Calendar", sections: [], shortcuts: [] },
   ],
@@ -245,23 +211,10 @@ export function normalizeSidebarWorkspaceLayout(value: unknown): SidebarWorkspac
         shortcuts: configuredAi.shortcuts.filter(isAiShortcut),
       }
     : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[1]!;
-  const configuredMail = tabs.find((tab) => tab.id === "mail");
-  const mail = configuredMail
-    ? {
-        ...configuredMail,
-        icon: "mail",
-        id: "mail",
-        name: "Mail",
-        sections: [],
-        shortcuts: ensureMailComposeShortcut(configuredMail.shortcuts.filter(isMailShortcut)),
-      }
-    : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[2]!;
-
   return {
     tabs: [
       home,
       ai,
-      mail,
       { icon: "calendar", id: "calendar", name: "Calendar", sections: [], shortcuts: [] },
       ...tabs.filter((tab) => !isFixedSidebarTabId(tab.id)).map(normalizeWorkspaceTab),
     ].slice(0, 8),
@@ -310,12 +263,7 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
 
   if (
     target.type === "action" &&
-    isIncluded(target.action, [
-      "composeMail",
-      "createPage",
-      "createDatabase",
-      "createChat",
-    ] as const)
+    isIncluded(target.action, ["createPage", "createDatabase", "createChat"] as const)
   ) {
     normalizedTarget = { action: target.action, type: "action" };
   } else if (target.type === "route" && target.route === "trash") {
@@ -327,8 +275,6 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
     normalizedTarget = { route: target.route, type: "route" };
   } else if (target.type === "library" && isIncluded(target.view, libraryViewIds)) {
     normalizedTarget = { type: "library", view: target.view };
-  } else if (target.type === "mail" && isIncluded(target.view, mailViewIds)) {
-    normalizedTarget = { type: "mail", view: target.view };
   } else if (target.type === "page" && isSafeId(target.pageId)) {
     normalizedTarget = { pageId: target.pageId, type: "page" };
   } else if (target.type === "database" && isSafeId(target.databaseId)) {
@@ -352,19 +298,11 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
 }
 
 export function isFixedSidebarTabId(tabId: string) {
-  return tabId === "home" || tabId === "ai" || tabId === "mail" || tabId === "calendar";
+  return tabId === "home" || tabId === "ai" || tabId === "calendar";
 }
 
 export function isStaticSidebarTabId(tabId: string) {
-  return tabId === "ai" || tabId === "mail" || tabId === "calendar";
-}
-
-export function isRequiredSidebarShortcut(tabId: string, shortcut: SidebarShortcut) {
-  return (
-    tabId === "mail" &&
-    shortcut.target.type === "action" &&
-    shortcut.target.action === "composeMail"
-  );
+  return tabId === "ai" || tabId === "calendar";
 }
 
 function isAiShortcut(shortcut: SidebarShortcut) {
@@ -375,29 +313,14 @@ function isAiShortcut(shortcut: SidebarShortcut) {
   );
 }
 
-function isMailShortcut(shortcut: SidebarShortcut) {
-  const target = shortcut.target;
-  return target.type === "mail" || (target.type === "action" && target.action === "composeMail");
-}
-
-function ensureMailComposeShortcut(shortcuts: SidebarShortcut[]) {
-  return shortcuts.some((shortcut) => isRequiredSidebarShortcut("mail", shortcut))
-    ? shortcuts
-    : [
-        { ...defaultMailComposeShortcut, target: { ...defaultMailComposeShortcut.target } },
-        ...shortcuts,
-      ].slice(0, 24);
-}
-
 function normalizeWorkspaceTab(tab: SidebarTab): SidebarTab {
   return {
     ...tab,
     sections: tab.sections.filter((section) => section.kind !== "aiChats"),
     shortcuts: tab.shortcuts.filter((shortcut) => {
       const target = shortcut.target;
-      if (target.type === "mail") return false;
       if (target.type === "action") {
-        return target.action !== "composeMail" && target.action !== "createChat";
+        return target.action !== "createChat";
       }
       return target.type !== "route" || target.route !== "ai";
     }),

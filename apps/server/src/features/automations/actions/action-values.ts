@@ -20,10 +20,7 @@ import { AutomationActionError } from "../execution/action-error";
 import { type ExecutionContext, loadProperties } from "../execution/execution-context";
 export function resolveRichText(
   context: ExecutionContext,
-  richText: Extract<
-    DatabaseAutomationAction,
-    { type: "send_notification" | "send_gmail" }
-  >["message"],
+  richText: Extract<DatabaseAutomationAction, { type: "send_notification" }>["message"],
   options: { label?: string; maxLength?: number } = {},
 ) {
   const message = richText.parts

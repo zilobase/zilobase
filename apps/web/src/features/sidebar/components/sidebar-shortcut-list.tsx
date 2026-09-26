@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { mailViewIds, type MailView, type SidebarShortcut } from "@zilobase/features/user-settings";
+import { type SidebarShortcut } from "@zilobase/features/user-settings";
 
 import {
   SidebarGroup,
@@ -53,13 +53,7 @@ export function SidebarShortcutList({
               shortcut.label || page?.name || database?.name || getShortcutLabel(shortcut);
             const activate = () => {
               if (target.type === "action") {
-                if (target.action === "composeMail") {
-                  const requestedView = location.search.view;
-                  const view = mailViewIds.includes(requestedView as MailView)
-                    ? (requestedView as MailView)
-                    : "inbox";
-                  void navigate({ search: { compose: true, view }, to: "/mail" });
-                } else if (target.action === "createPage") void onCreatePage();
+                if (target.action === "createPage") void onCreatePage();
                 else if (target.action === "createDatabase") void onCreateDatabase();
                 else void onCreateChat();
               } else if (target.type === "page") {
@@ -72,8 +66,6 @@ export function SidebarShortcutList({
                 });
               } else if (target.type === "library") {
                 void navigate({ search: { view: target.view }, to: "/recents" });
-              } else if (target.type === "mail") {
-                void navigate({ search: { view: target.view }, to: "/mail" });
               } else if (target.route === "meetings") {
                 void navigate({ search: { view: "meetings" }, to: "/recents" });
               } else if (target.route === "trash") {

@@ -20,10 +20,6 @@
         "class_name": "MeetingCollaborationRoom",
       },
       {
-        "name": "MAIL_NOTIFICATION_ROOM",
-        "class_name": "MailNotificationRoom",
-      },
-      {
         "name": "NAVIGATION_NOTIFICATION_ROOM",
         "class_name": "NavigationNotificationRoom",
       },
@@ -35,7 +31,6 @@
       "new_sqlite_classes": [
         "CalendarNotificationRoom",
         "DatabaseCollaborationRoom",
-        "MailNotificationRoom",
         "MeetingCollaborationRoom",
         "NavigationNotificationRoom",
         "PageCollaborationRoom",

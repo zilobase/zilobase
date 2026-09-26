@@ -1,10 +1,9 @@
 import { getRuntimePorts } from "./context";
-import type { CalendarNotificationEvent, MailNotificationEvent, RuntimeEnv } from "./contracts";
+import type { CalendarNotificationEvent, RuntimeEnv } from "./contracts";
 
 export { getRuntimePorts, runWithRuntimePorts } from "./context";
 export type {
   OutboundEmailMessage,
-  MailNotificationEvent,
   CalendarNotificationEvent,
   MeetingRecorderRuntimeInput,
   MeetingRecorderRuntimeState,
@@ -27,16 +26,8 @@ export function getMeetingAudioWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("meeting-audio", request);
 }
 
-export function getMailRealtimeWebSocketUrl(request: Request) {
-  return requireRuntimePort("urls").getCollabUrl("mail", request);
-}
-
 export function getNavigationRealtimeWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("navigation", request);
-}
-
-export async function publishMailNotification(event: MailNotificationEvent) {
-  await requireRuntimePort("fanout").publish(`mail:${event.userId}`, event);
 }
 
 export function getDatabaseUrl(env: RuntimeEnv) {

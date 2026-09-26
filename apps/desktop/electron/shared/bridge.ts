@@ -103,7 +103,7 @@ export interface ZilobaseDesktopBridge {
     setOwner(owner: string | null): Promise<void>;
     startBrowser(): Promise<{ status: "success" }>;
     cancelBrowser(): Promise<void>;
-    openMailUrl(authorizationUrl: string): Promise<void>;
+    openAuthorizationUrl(authorizationUrl: string): Promise<void>;
   };
   readonly server: {
     initialize(): Promise<DesktopServer>;

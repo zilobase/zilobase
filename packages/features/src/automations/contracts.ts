@@ -586,20 +586,6 @@ export const databaseAutomationActionSchema = z.discriminatedUnion("type", [
   z
     .object({
       ...actionIdShape,
-      bcc: z.array(automationValueExpressionSchema).max(100),
-      cc: z.array(automationValueExpressionSchema).max(100),
-      connectionId: stableIdSchema,
-      displayName: automationValueExpressionSchema.optional(),
-      message: automationRichTextExpressionSchema,
-      replyTo: automationValueExpressionSchema.optional(),
-      subject: automationRichTextExpressionSchema,
-      to: z.array(automationValueExpressionSchema).min(1).max(100),
-      type: z.literal("send_gmail"),
-    })
-    .strict(),
-  z
-    .object({
-      ...actionIdShape,
       headers: z
         .array(
           z
@@ -768,7 +754,6 @@ export const databaseAutomationDependencyTypeSchema = z.enum([
   "option",
   "user",
   "group",
-  "gmail_connection",
   "slack_connection",
   "secret",
 ]);
@@ -902,7 +887,7 @@ export const databaseAutomationDeliverySchema = z
     destinationHash: stableIdSchema,
     errorCode: z.string().max(200).nullable(),
     errorSummary: z.string().max(2_000).nullable(),
-    kind: z.enum(["notification", "gmail", "webhook", "slack"]),
+    kind: z.enum(["notification", "webhook", "slack"]),
     nextAttemptAt: timestampSchema.nullable(),
     providerReference: z.string().max(1_000).nullable(),
     responseStatus: z.number().int().min(100).max(599).nullable(),
@@ -925,7 +910,6 @@ export const databaseAutomationCatalogSchema = z
             "add_page",
             "edit_pages",
             "send_notification",
-            "send_gmail",
             "send_webhook",
             "send_slack",
           ]),
@@ -961,15 +945,6 @@ export const databaseAutomationCatalogSchema = z
               })
               .strict(),
           ),
-        })
-        .strict(),
-    ),
-    gmailConnections: z.array(
-      z
-        .object({
-          email: z.string().email(),
-          id: stableIdSchema,
-          status: z.enum(["connected", "reconnect_required"]),
         })
         .strict(),
     ),
@@ -1029,7 +1004,6 @@ export const databaseAutomationActionTypeSchema = z.enum([
   "add_page",
   "edit_pages",
   "send_notification",
-  "send_gmail",
   "send_webhook",
   "send_slack",
 ]);

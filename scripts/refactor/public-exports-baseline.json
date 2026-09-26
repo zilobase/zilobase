@@ -1,9 +1,5 @@
 {
   "@zilobase/server:.:types": {
-    "advancePendingMailIndexes": {
-      "value": true,
-      "type": false
-    },
     "AI_JOB_HANDLERS": {
       "value": true,
       "type": false
@@ -200,10 +196,6 @@
       "value": true,
       "type": false
     },
-    "drainMailDatabaseSyncOutbox": {
-      "value": true,
-      "type": false
-    },
     "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
@@ -293,10 +285,6 @@
       "type": false
     },
     "getDatabaseUrl": {
-      "value": true,
-      "type": false
-    },
-    "getMailRealtimeWebSocketUrl": {
       "value": true,
       "type": false
     },
@@ -399,10 +387,6 @@
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
     },
     "materializePageContentFromYjs": {
       "value": true,
@@ -533,10 +517,6 @@
       "type": true
     },
     "removeUserTeamspacePrincipals": {
-      "value": true,
-      "type": false
-    },
-    "renewGmailWatches": {
       "value": true,
       "type": false
     },
@@ -670,10 +650,6 @@
     }
   },
   "@zilobase/server:.:default": {
-    "advancePendingMailIndexes": {
-      "value": true,
-      "type": false
-    },
     "AI_JOB_HANDLERS": {
       "value": true,
       "type": false
@@ -870,10 +846,6 @@
       "value": true,
       "type": false
     },
-    "drainMailDatabaseSyncOutbox": {
-      "value": true,
-      "type": false
-    },
     "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
@@ -963,10 +935,6 @@
       "type": false
     },
     "getDatabaseUrl": {
-      "value": true,
-      "type": false
-    },
-    "getMailRealtimeWebSocketUrl": {
       "value": true,
       "type": false
     },
@@ -1069,10 +1037,6 @@
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
     },
     "materializePageContentFromYjs": {
       "value": true,
@@ -1203,10 +1167,6 @@
       "type": true
     },
     "removeUserTeamspacePrincipals": {
-      "value": true,
-      "type": false
-    },
-    "renewGmailWatches": {
       "value": true,
       "type": false
     },
@@ -1340,10 +1300,6 @@
     }
   },
   "@zilobase/server:./adapter-api:types": {
-    "advancePendingMailIndexes": {
-      "value": true,
-      "type": false
-    },
     "AI_JOB_HANDLERS": {
       "value": true,
       "type": false
@@ -1540,10 +1496,6 @@
       "value": true,
       "type": false
     },
-    "drainMailDatabaseSyncOutbox": {
-      "value": true,
-      "type": false
-    },
     "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
@@ -1633,10 +1585,6 @@
       "type": false
     },
     "getDatabaseUrl": {
-      "value": true,
-      "type": false
-    },
-    "getMailRealtimeWebSocketUrl": {
       "value": true,
       "type": false
     },
@@ -1739,10 +1687,6 @@
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
     },
     "materializePageContentFromYjs": {
       "value": true,
@@ -1873,10 +1817,6 @@
       "type": true
     },
     "removeUserTeamspacePrincipals": {
-      "value": true,
-      "type": false
-    },
-    "renewGmailWatches": {
       "value": true,
       "type": false
     },
@@ -2010,10 +1950,6 @@
     }
   },
   "@zilobase/server:./adapter-api:default": {
-    "advancePendingMailIndexes": {
-      "value": true,
-      "type": false
-    },
     "AI_JOB_HANDLERS": {
       "value": true,
       "type": false
@@ -2210,10 +2146,6 @@
       "value": true,
       "type": false
     },
-    "drainMailDatabaseSyncOutbox": {
-      "value": true,
-      "type": false
-    },
     "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
@@ -2303,10 +2235,6 @@
       "type": false
     },
     "getDatabaseUrl": {
-      "value": true,
-      "type": false
-    },
-    "getMailRealtimeWebSocketUrl": {
       "value": true,
       "type": false
     },
@@ -2409,10 +2337,6 @@
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
     },
     "materializePageContentFromYjs": {
       "value": true,
@@ -2546,10 +2470,6 @@
       "value": true,
       "type": false
     },
-    "renewGmailWatches": {
-      "value": true,
-      "type": false
-    },
     "replaceMeetingSummary": {
       "value": true,
       "type": false
@@ -2680,10 +2600,6 @@
     }
   },
   "@zilobase/server:./node-adapter-api:types": {
-    "advancePendingMailIndexes": {
-      "value": true,
-      "type": false
-    },
     "AI_JOB_HANDLERS": {
       "value": true,
       "type": false
@@ -2892,10 +2808,6 @@
       "value": true,
       "type": false
     },
-    "drainMailDatabaseSyncOutbox": {
-      "value": true,
-      "type": false
-    },
     "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
@@ -2985,10 +2897,6 @@
       "type": false
     },
     "getDatabaseUrl": {
-      "value": true,
-      "type": false
-    },
-    "getMailRealtimeWebSocketUrl": {
       "value": true,
       "type": false
     },
@@ -3091,10 +2999,6 @@
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
     },
     "materializePageContentFromYjs": {
       "value": true,
@@ -3233,10 +3137,6 @@
       "type": true
     },
     "removeUserTeamspacePrincipals": {
-      "value": true,
-      "type": false
-    },
-    "renewGmailWatches": {
       "value": true,
       "type": false
     },
@@ -3374,10 +3274,6 @@
     }
   },
   "@zilobase/server:./node-adapter-api:default": {
-    "advancePendingMailIndexes": {
-      "value": true,
-      "type": false
-    },
     "AI_JOB_HANDLERS": {
       "value": true,
       "type": false
@@ -3586,10 +3482,6 @@
       "value": true,
       "type": false
     },
-    "drainMailDatabaseSyncOutbox": {
-      "value": true,
-      "type": false
-    },
     "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
@@ -3679,10 +3571,6 @@
       "type": false
     },
     "getDatabaseUrl": {
-      "value": true,
-      "type": false
-    },
-    "getMailRealtimeWebSocketUrl": {
       "value": true,
       "type": false
     },
@@ -3785,10 +3673,6 @@
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
     },
     "materializePageContentFromYjs": {
       "value": true,
@@ -3927,10 +3811,6 @@
       "type": true
     },
     "removeUserTeamspacePrincipals": {
-      "value": true,
-      "type": false
-    },
-    "renewGmailWatches": {
       "value": true,
       "type": false
     },
@@ -4072,10 +3952,6 @@
       "value": true,
       "type": false
     },
-    "createMailRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createMeetingAudioTicket": {
       "value": true,
       "type": false
@@ -4097,22 +3973,6 @@
       "type": true
     },
     "DatabaseRealtimeTicketClaims": {
-      "value": false,
-      "type": true
-    },
-    "MAIL_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "MAIL_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
-    },
-    "MailRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -4173,10 +4033,6 @@
       "type": true
     },
     "verifyDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyMailRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -4194,10 +4050,6 @@
       "value": true,
       "type": false
     },
-    "createMailRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createMeetingAudioTicket": {
       "value": true,
       "type": false
@@ -4219,22 +4071,6 @@
       "type": true
     },
     "DatabaseRealtimeTicketClaims": {
-      "value": false,
-      "type": true
-    },
-    "MAIL_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "MAIL_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "MailNotificationEvent": {
-      "value": false,
-      "type": true
-    },
-    "MailRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -4295,10 +4131,6 @@
       "type": true
     },
     "verifyDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyMailRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -4431,10 +4263,6 @@
     "SignUpInput": {
       "value": false,
       "type": true
-    },
-    "VerifyEmailOtpInput": {
-      "value": false,
-      "type": true
     }
   },
   "@zilobase/features:./auth:default": {
@@ -4467,10 +4295,6 @@
       "type": true
     },
     "SignUpInput": {
-      "value": false,
-      "type": true
-    },
-    "VerifyEmailOtpInput": {
       "value": false,
       "type": true
     }
@@ -7779,814 +7603,6 @@
       "type": false
     }
   },
-  "@zilobase/features:./mail:types": {
-    "createMailViewFromTemplate": {
-      "value": true,
-      "type": false
-    },
-    "defaultMailHoverActions": {
-      "value": true,
-      "type": false
-    },
-    "evaluateMailFilterCondition": {
-      "value": true,
-      "type": false
-    },
-    "evaluateMailFilterExpression": {
-      "value": true,
-      "type": false
-    },
-    "indexedMailViewQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "invalidateMailListQueries": {
-      "value": true,
-      "type": false
-    },
-    "MailActionRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailAddress": {
-      "value": false,
-      "type": true
-    },
-    "mailApiBasePath": {
-      "value": true,
-      "type": false
-    },
-    "MailAttachmentMetadata": {
-      "value": false,
-      "type": true
-    },
-    "MailBatchModifyRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailBatchMutationResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailComposeAttachment": {
-      "value": false,
-      "type": true
-    },
-    "MailComposeRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailConnection": {
-      "value": false,
-      "type": true
-    },
-    "mailConnectionQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailConnectionStatus": {
-      "value": false,
-      "type": true
-    },
-    "mailConnectionStatuses": {
-      "value": true,
-      "type": false
-    },
-    "MailCustomPropertyType": {
-      "value": false,
-      "type": true
-    },
-    "mailCustomPropertyTypes": {
-      "value": true,
-      "type": false
-    },
-    "MailDatabaseFieldMapping": {
-      "value": false,
-      "type": true
-    },
-    "MailDatabaseSyncConfig": {
-      "value": false,
-      "type": true
-    },
-    "mailDatabaseSyncStatusQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailDatabaseSyncViewStatus": {
-      "value": false,
-      "type": true
-    },
-    "MailDraftResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterCondition": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterExpression": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterGroup": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterNode": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterOperator": {
-      "value": false,
-      "type": true
-    },
-    "mailFilterOperators": {
-      "value": true,
-      "type": false
-    },
-    "MailFilterRecord": {
-      "value": false,
-      "type": true
-    },
-    "mailFilterRecordFromThreadSummary": {
-      "value": true,
-      "type": false
-    },
-    "MailFilterValue": {
-      "value": false,
-      "type": true
-    },
-    "MailGroupConfig": {
-      "value": false,
-      "type": true
-    },
-    "mailGroupsQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailHoverAction": {
-      "value": false,
-      "type": true
-    },
-    "MailHoverActionKind": {
-      "value": false,
-      "type": true
-    },
-    "MailIndexedThread": {
-      "value": false,
-      "type": true
-    },
-    "MailIndexProgress": {
-      "value": false,
-      "type": true
-    },
-    "MailIndexStatus": {
-      "value": false,
-      "type": true
-    },
-    "mailKeys": {
-      "value": true,
-      "type": false
-    },
-    "MailLabelRecord": {
-      "value": false,
-      "type": true
-    },
-    "mailLabelsQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailLabelWriteRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailMessageMutationResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailMessageRecord": {
-      "value": false,
-      "type": true
-    },
-    "MailModifyRequest": {
-      "value": false,
-      "type": true
-    },
-    "mailOrganizationContractVersion": {
-      "value": true,
-      "type": false
-    },
-    "MailPersistedView": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertiesBootstrap": {
-      "value": false,
-      "type": true
-    },
-    "mailPropertiesQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailPropertyDefinition": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertyOption": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertyWorkspaceMember": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertyWriteInput": {
-      "value": false,
-      "type": true
-    },
-    "MailQueryGroup": {
-      "value": false,
-      "type": true
-    },
-    "mailQuickFilterCatalog": {
-      "value": true,
-      "type": false
-    },
-    "MailQuickFilterDefinition": {
-      "value": false,
-      "type": true
-    },
-    "MailReminder": {
-      "value": false,
-      "type": true
-    },
-    "mailRemindersQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailScope": {
-      "value": false,
-      "type": true
-    },
-    "MailSendResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailSyncRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailSyncResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailSystemAction": {
-      "value": false,
-      "type": true
-    },
-    "MailSystemFolderId": {
-      "value": false,
-      "type": true
-    },
-    "mailSystemFolderIds": {
-      "value": true,
-      "type": false
-    },
-    "MailSystemProperty": {
-      "value": false,
-      "type": true
-    },
-    "mailSystemPropertyCatalog": {
-      "value": true,
-      "type": false
-    },
-    "MailThreadMutationResponse": {
-      "value": false,
-      "type": true
-    },
-    "mailThreadPropertiesQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailThreadPropertyValue": {
-      "value": false,
-      "type": true
-    },
-    "MailThreadPropertyValuesResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailThreadSummary": {
-      "value": false,
-      "type": true
-    },
-    "MailUnsubscribeResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailView": {
-      "value": false,
-      "type": true
-    },
-    "MailViewConfig": {
-      "value": false,
-      "type": true
-    },
-    "MailViewCreateInput": {
-      "value": false,
-      "type": true
-    },
-    "MailViewGroupsResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailViewQueryResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailViewReorderInput": {
-      "value": false,
-      "type": true
-    },
-    "MailViewsBootstrap": {
-      "value": false,
-      "type": true
-    },
-    "mailViewsQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailViewTemplate": {
-      "value": false,
-      "type": true
-    },
-    "MailViewTemplateId": {
-      "value": false,
-      "type": true
-    },
-    "mailViewTemplateIds": {
-      "value": true,
-      "type": false
-    },
-    "mailViewTemplates": {
-      "value": true,
-      "type": false
-    },
-    "MailViewUpdateInput": {
-      "value": false,
-      "type": true
-    },
-    "MailWorkspaceConnection": {
-      "value": false,
-      "type": true
-    },
-    "maxMailFilterConditions": {
-      "value": true,
-      "type": false
-    },
-    "maxMailFilterDepth": {
-      "value": true,
-      "type": false
-    },
-    "normalizeMailFilterExpression": {
-      "value": true,
-      "type": false
-    },
-    "normalizeMailViewConfig": {
-      "value": true,
-      "type": false
-    }
-  },
-  "@zilobase/features:./mail:default": {
-    "createMailViewFromTemplate": {
-      "value": true,
-      "type": false
-    },
-    "defaultMailHoverActions": {
-      "value": true,
-      "type": false
-    },
-    "evaluateMailFilterCondition": {
-      "value": true,
-      "type": false
-    },
-    "evaluateMailFilterExpression": {
-      "value": true,
-      "type": false
-    },
-    "indexedMailViewQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "invalidateMailListQueries": {
-      "value": true,
-      "type": false
-    },
-    "MailActionRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailAddress": {
-      "value": false,
-      "type": true
-    },
-    "mailApiBasePath": {
-      "value": true,
-      "type": false
-    },
-    "MailAttachmentMetadata": {
-      "value": false,
-      "type": true
-    },
-    "MailBatchModifyRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailBatchMutationResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailComposeAttachment": {
-      "value": false,
-      "type": true
-    },
-    "MailComposeRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailConnection": {
-      "value": false,
-      "type": true
-    },
-    "mailConnectionQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailConnectionStatus": {
-      "value": false,
-      "type": true
-    },
-    "mailConnectionStatuses": {
-      "value": true,
-      "type": false
-    },
-    "MailCustomPropertyType": {
-      "value": false,
-      "type": true
-    },
-    "mailCustomPropertyTypes": {
-      "value": true,
-      "type": false
-    },
-    "MailDatabaseFieldMapping": {
-      "value": false,
-      "type": true
-    },
-    "MailDatabaseSyncConfig": {
-      "value": false,
-      "type": true
-    },
-    "mailDatabaseSyncStatusQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailDatabaseSyncViewStatus": {
-      "value": false,
-      "type": true
-    },
-    "MailDraftResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterCondition": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterExpression": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterGroup": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterNode": {
-      "value": false,
-      "type": true
-    },
-    "MailFilterOperator": {
-      "value": false,
-      "type": true
-    },
-    "mailFilterOperators": {
-      "value": true,
-      "type": false
-    },
-    "MailFilterRecord": {
-      "value": false,
-      "type": true
-    },
-    "mailFilterRecordFromThreadSummary": {
-      "value": true,
-      "type": false
-    },
-    "MailFilterValue": {
-      "value": false,
-      "type": true
-    },
-    "MailGroupConfig": {
-      "value": false,
-      "type": true
-    },
-    "mailGroupsQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailHoverAction": {
-      "value": false,
-      "type": true
-    },
-    "MailHoverActionKind": {
-      "value": false,
-      "type": true
-    },
-    "MailIndexedThread": {
-      "value": false,
-      "type": true
-    },
-    "MailIndexProgress": {
-      "value": false,
-      "type": true
-    },
-    "MailIndexStatus": {
-      "value": false,
-      "type": true
-    },
-    "mailKeys": {
-      "value": true,
-      "type": false
-    },
-    "MailLabelRecord": {
-      "value": false,
-      "type": true
-    },
-    "mailLabelsQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailLabelWriteRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailMessageMutationResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailMessageRecord": {
-      "value": false,
-      "type": true
-    },
-    "MailModifyRequest": {
-      "value": false,
-      "type": true
-    },
-    "mailOrganizationContractVersion": {
-      "value": true,
-      "type": false
-    },
-    "MailPersistedView": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertiesBootstrap": {
-      "value": false,
-      "type": true
-    },
-    "mailPropertiesQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailPropertyDefinition": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertyOption": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertyWorkspaceMember": {
-      "value": false,
-      "type": true
-    },
-    "MailPropertyWriteInput": {
-      "value": false,
-      "type": true
-    },
-    "MailQueryGroup": {
-      "value": false,
-      "type": true
-    },
-    "mailQuickFilterCatalog": {
-      "value": true,
-      "type": false
-    },
-    "MailQuickFilterDefinition": {
-      "value": false,
-      "type": true
-    },
-    "MailReminder": {
-      "value": false,
-      "type": true
-    },
-    "mailRemindersQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailScope": {
-      "value": false,
-      "type": true
-    },
-    "MailSendResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailSyncRequest": {
-      "value": false,
-      "type": true
-    },
-    "MailSyncResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailSystemAction": {
-      "value": false,
-      "type": true
-    },
-    "MailSystemFolderId": {
-      "value": false,
-      "type": true
-    },
-    "mailSystemFolderIds": {
-      "value": true,
-      "type": false
-    },
-    "MailSystemProperty": {
-      "value": false,
-      "type": true
-    },
-    "mailSystemPropertyCatalog": {
-      "value": true,
-      "type": false
-    },
-    "MailThreadMutationResponse": {
-      "value": false,
-      "type": true
-    },
-    "mailThreadPropertiesQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailThreadPropertyValue": {
-      "value": false,
-      "type": true
-    },
-    "MailThreadPropertyValuesResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailThreadSummary": {
-      "value": false,
-      "type": true
-    },
-    "MailUnsubscribeResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailView": {
-      "value": false,
-      "type": true
-    },
-    "MailViewConfig": {
-      "value": false,
-      "type": true
-    },
-    "MailViewCreateInput": {
-      "value": false,
-      "type": true
-    },
-    "MailViewGroupsResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailViewQueryResponse": {
-      "value": false,
-      "type": true
-    },
-    "MailViewReorderInput": {
-      "value": false,
-      "type": true
-    },
-    "MailViewsBootstrap": {
-      "value": false,
-      "type": true
-    },
-    "mailViewsQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "MailViewTemplate": {
-      "value": false,
-      "type": true
-    },
-    "MailViewTemplateId": {
-      "value": false,
-      "type": true
-    },
-    "mailViewTemplateIds": {
-      "value": true,
-      "type": false
-    },
-    "mailViewTemplates": {
-      "value": true,
-      "type": false
-    },
-    "MailViewUpdateInput": {
-      "value": false,
-      "type": true
-    },
-    "MailWorkspaceConnection": {
-      "value": false,
-      "type": true
-    },
-    "maxMailFilterConditions": {
-      "value": true,
-      "type": false
-    },
-    "maxMailFilterDepth": {
-      "value": true,
-      "type": false
-    },
-    "normalizeMailFilterExpression": {
-      "value": true,
-      "type": false
-    },
-    "normalizeMailViewConfig": {
-      "value": true,
-      "type": false
-    }
-  },
-  "@zilobase/features:./mail/react:types": {
-    "useIndexedMailView": {
-      "value": true,
-      "type": false
-    },
-    "useMailGroups": {
-      "value": true,
-      "type": false
-    },
-    "useMailProperties": {
-      "value": true,
-      "type": false
-    },
-    "useMailReminders": {
-      "value": true,
-      "type": false
-    },
-    "useMailThreadProperties": {
-      "value": true,
-      "type": false
-    },
-    "useMailViews": {
-      "value": true,
-      "type": false
-    }
-  },
-  "@zilobase/features:./mail/react:default": {
-    "useIndexedMailView": {
-      "value": true,
-      "type": false
-    },
-    "useMailGroups": {
-      "value": true,
-      "type": false
-    },
-    "useMailProperties": {
-      "value": true,
-      "type": false
-    },
-    "useMailReminders": {
-      "value": true,
-      "type": false
-    },
-    "useMailThreadProperties": {
-      "value": true,
-      "type": false
-    },
-    "useMailViews": {
-      "value": true,
-      "type": false
-    }
-  },
   "@zilobase/features:./workspaces:types": {
     "AcceptWorkspaceInvitationResponse": {
       "value": false,
@@ -8980,14 +7996,6 @@
       "value": true,
       "type": false
     },
-    "MailView": {
-      "value": false,
-      "type": true
-    },
-    "mailViewIds": {
-      "value": true,
-      "type": false
-    },
     "normalizeSidebarConfig": {
       "value": true,
       "type": false
@@ -9106,14 +8114,6 @@
       "value": true,
       "type": false
     },
-    "MailView": {
-      "value": false,
-      "type": true
-    },
-    "mailViewIds": {
-      "value": true,
-      "type": false
-    },
     "normalizeSidebarConfig": {
       "value": true,
       "type": false
@@ -9228,14 +8228,6 @@
       "value": true,
       "type": false
     },
-    "MailView": {
-      "value": false,
-      "type": true
-    },
-    "mailViewIds": {
-      "value": true,
-      "type": false
-    },
     "normalizeSidebarConfig": {
       "value": true,
       "type": false
@@ -9343,14 +8335,6 @@
       "type": true
     },
     "libraryViewIds": {
-      "value": true,
-      "type": false
-    },
-    "MailView": {
-      "value": false,
-      "type": true
-    },
-    "mailViewIds": {
       "value": true,
       "type": false
     },

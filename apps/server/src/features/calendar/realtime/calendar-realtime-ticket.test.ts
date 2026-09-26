@@ -60,17 +60,3 @@ test("calendar realtime tickets reject tampering and the wrong signing key", asy
     /Invalid calendar realtime ticket/,
   );
 });
-
-test("Calendar rejects Mail tickets even under a shared host secret", async () => {
-  const { createMailRealtimeTicket } = await import("../../mail/realtime/mail-realtime-ticket");
-  const { ticket } = await createMailRealtimeTicket(
-    {
-      bindingId: "binding-1",
-      connectionId: "account-1",
-      userId: "user-1",
-      workspaceId: "workspace-1",
-    },
-    env,
-  );
-  await assert.rejects(verifyCalendarRealtimeTicket(ticket, env));
-});

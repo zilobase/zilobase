@@ -89,7 +89,7 @@ export function register({ assert, loadModule, test }) {
     );
   });
 
-  test("mail and calendar tabs stay hidden until their server environment is configured", async () => {
+  test("calendar tab stays hidden until its server environment is configured", async () => {
     const { hideUnconfiguredIntegrationTabs, restoreUnconfiguredIntegrationTabs } =
       await loadModule("/src/features/sidebar/model/sidebar-layout-model.ts");
     const layout = {
@@ -99,19 +99,14 @@ export function register({ assert, loadModule, test }) {
           id: "home",
           name: "Home",
           sections: [],
-          shortcuts: [
-            { id: "compose", target: { action: "composeMail", type: "action" } },
-            { id: "inbox", target: { type: "mail", view: "inbox" } },
-            { id: "tasks", target: { route: "tasks", type: "route" } },
-          ],
+          shortcuts: [{ id: "tasks", target: { route: "tasks", type: "route" } }],
         },
-        { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
         { icon: "calendar", id: "calendar", name: "Calendar", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: ["tasks"],
     };
 
-    const hidden = hideUnconfiguredIntegrationTabs(layout, { mail: false, calendar: false });
+    const hidden = hideUnconfiguredIntegrationTabs(layout, { calendar: false });
     assert.deepEqual(
       hidden.tabs.map((tab) => tab.id),
       ["home"],
@@ -120,19 +115,10 @@ export function register({ assert, loadModule, test }) {
       { id: "tasks", target: { route: "tasks", type: "route" } },
     ]);
 
-    const mailOnly = hideUnconfiguredIntegrationTabs(layout, { mail: true, calendar: false });
-    assert.deepEqual(
-      mailOnly.tabs.map((tab) => tab.id),
-      ["home", "mail"],
-    );
-
-    const restored = restoreUnconfiguredIntegrationTabs(layout, hidden, {
-      mail: false,
-      calendar: false,
-    });
+    const restored = restoreUnconfiguredIntegrationTabs(layout, hidden, { calendar: false });
     assert.deepEqual(
       restored.tabs.map((tab) => tab.id),
-      ["home", "mail", "calendar"],
+      ["home", "calendar"],
     );
   });
 }

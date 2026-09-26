@@ -8,8 +8,6 @@ import { drainAgentRuns } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseAutomationEventWindows } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseAutomationRuns } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseRealtimeOutbox } from "@zilobase/server/node-adapter-api";
-import { advancePendingMailSyncs } from "@zilobase/server/node-adapter-api";
-import { drainMailDatabaseSyncOutbox } from "@zilobase/server/node-adapter-api";
 import { drainInProductNotificationOutbox } from "@zilobase/server/node-adapter-api";
 import { drainNavigationRealtimeOutbox } from "@zilobase/server/node-adapter-api";
 import { type RuntimeEnv } from "@zilobase/server/node-adapter-api";
@@ -22,8 +20,6 @@ import {
   calendarProviderCalendar,
   databaseRealtimeOutbox,
   inProductNotificationOutbox,
-  mailDatabaseSyncOutbox,
-  mailIndexState,
   navigationRealtimeOutbox,
 } from "@zilobase/server/node-adapter-api";
 import { runWithRuntimePorts } from "../capabilities";
@@ -36,7 +32,7 @@ import {
 import { boundedErrorCode } from "@zilobase/server/node-adapter-api";
 
 const CHANNEL = "zilobase_background_v1";
-const LANES: BackgroundLane[] = ["fast", "automation", "ai", "mail", "calendar"];
+const LANES: BackgroundLane[] = ["fast", "automation", "ai", "calendar"];
 
 export type NodeBackgroundCoordinator = ReturnType<typeof createNodeBackgroundCoordinator>;
 
@@ -130,18 +126,6 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
               limit: concurrency,
               workerId: `${workerId}:ai`,
             });
-          } else if (lane === "mail") {
-            await settleLaneOperations(lane, [
-              { name: "mail_index", run: () => advancePendingMailSyncs(env, concurrency) },
-              {
-                name: "mail_database_sync",
-                run: () =>
-                  drainMailDatabaseSyncOutbox(env, {
-                    limit: concurrency,
-                    workerId: `${workerId}:mail`,
-                  }),
-              },
-            ]);
           } else if (lane === "calendar") {
             await settleLaneOperations(lane, [
               { name: "calendar_sync", run: () => advancePendingCalendars(env) },
@@ -346,7 +330,7 @@ function parseSignal(payload: string | undefined) {
 }
 
 function laneConcurrency(env: RuntimeEnv, lane: BackgroundLane) {
-  const defaults = { ai: 2, automation: 4, calendar: 2, fast: 8, mail: 2 };
+  const defaults = { ai: 2, automation: 4, calendar: 2, fast: 8 };
   const key = `ZILOBASE_BACKGROUND_${lane.toUpperCase()}_CONCURRENCY`;
   const value = Number(env[key]);
   return Number.isInteger(value) ? Math.max(1, Math.min(value, 50)) : defaults[lane];
@@ -374,24 +358,6 @@ async function nextLaneDueAt(lane: BackgroundLane) {
           .from(aiJob)
           .where(eq(aiJob.status, "queued"))
       )[0]?.value ?? null
-    );
-  }
-  if (lane === "mail") {
-    const values = await Promise.all([
-      db
-        .select({ value: min(mailIndexState.nextAttemptAt) })
-        .from(mailIndexState)
-        .where(inArray(mailIndexState.status, ["pending", "backfilling", "syncing", "error"])),
-      db
-        .select({ value: min(mailDatabaseSyncOutbox.nextAttemptAt) })
-        .from(mailDatabaseSyncOutbox)
-        .where(inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"])),
-    ]);
-    return (
-      values
-        .flatMap((rows) => rows.map((row) => row.value))
-        .filter((value): value is Date => Boolean(value))
-        .sort((left, right) => left.getTime() - right.getTime())[0] ?? null
     );
   }
   if (lane === "calendar") {

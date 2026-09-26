@@ -15,11 +15,9 @@ const packages = [
   "packages/tiptap-comment-extension",
 ];
 const intentionalExportBreaks = new Set([
-  "advancePendingMailIndexes",
   "getConfiguredImageStorageMode",
   "getRuntimeAdapter",
-  "MailSyncRequest",
-  "MailSyncResponse",
+  "isRequiredSidebarShortcut",
   "runWithRuntimeAdapter",
   "ServerRuntimeAdapter",
   "setRuntimeAdapter",

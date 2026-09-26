@@ -16,10 +16,8 @@ export const authenticatedSessionMiddleware = createMiddleware<AppBindings>(asyn
     c.req.path.startsWith("/.well-known/") ||
     c.req.path === "/desktop" ||
     c.req.path === "/api/instance/bootstrap" ||
-    c.req.path === "/mail/oauth/google/callback" ||
     c.req.path === "/calendar/oauth/google/callback" ||
     c.req.path === "/calendar/google/webhook" ||
-    c.req.path === "/mail/google/pubsub" ||
     c.req.path.startsWith("/api/auth/")
   ) {
     await next();

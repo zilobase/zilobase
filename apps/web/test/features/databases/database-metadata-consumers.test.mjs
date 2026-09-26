@@ -20,7 +20,6 @@ export function register({ assert, readSource, readWorkspace, test }) {
       "/src/features/sidebar/commands/use-navigation-item-actions.ts",
       "/src/features/databases/setup/components/database-setup-card.tsx",
       "/src/features/databases/views/view-settings/components/data-source-settings.tsx",
-      "/src/features/mail/database-sync/mail-database-sync-panel.tsx",
     ];
 
     for (const path of paths) {

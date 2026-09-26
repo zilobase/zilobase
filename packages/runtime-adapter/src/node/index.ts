@@ -6,7 +6,6 @@ export {
   createNodeRealtimeBus,
   getRealtimeRedisUrl,
   databaseRealtimeChannel,
-  mailRealtimeChannel,
   navigationRealtimeChannel,
   calendarRealtimeChannel,
   type NodeRealtimeBus,
@@ -42,5 +41,4 @@ export {
 export { attachNodeDatabaseRealtimeRuntime } from "./features/database-realtime/database-realtime-runtime";
 export { attachNodeMeetingAudioRuntime } from "./features/meeting-audio/meeting-audio-runtime";
 export { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/calendar-realtime-runtime";
-export { attachNodeMailRealtimeRuntime } from "./features/mail-realtime/mail-realtime-runtime";
 export { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";

@@ -17,8 +17,6 @@ test("the combined Node runtime sends discovery, probes, and desktop auth to the
     "/desktop",
     "/desktop/authorize",
     "/page-layouts/resolve",
-    "/mail/oauth/google/callback",
-    "/mail/google/pubsub",
     "/page-guest-invitations/invite-1",
     "/automation-slack/oauth/callback",
   ]) {

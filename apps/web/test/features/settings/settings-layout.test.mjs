@@ -1,10 +1,8 @@
 export function register({ assert, readSource, test }) {
-  test("Calendar and Mail settings share the canonical settings layout", async () => {
-    const [calendarPage, calendarPreferences, mailPage, mailConnection] = await Promise.all([
+  test("Calendar settings use the canonical settings layout", async () => {
+    const [calendarPage, calendarPreferences] = await Promise.all([
       readSource("/src/features/settings/screens/calendar.tsx"),
       readSource("/src/features/calendar/preferences/calendar-settings.tsx"),
-      readSource("/src/features/settings/screens/mail.tsx"),
-      readSource("/src/features/workspaces/settings/workspace-mail-connection.tsx"),
     ]);
 
     assert.match(calendarPage, /<SettingsPage/);
@@ -12,9 +10,6 @@ export function register({ assert, readSource, test }) {
     assert.match(calendarPage, /<SettingsRow/);
     assert.match(calendarPreferences, /<SettingsSectionLayout/);
     assert.match(calendarPreferences, /<SettingsRow/);
-    assert.match(mailPage, /<SettingsPage/);
-    assert.match(mailConnection, /<SettingsSectionLayout/);
-    assert.match(mailConnection, /<SettingsRow/);
   });
 
   test("edition settings receive the same host layout components", async () => {

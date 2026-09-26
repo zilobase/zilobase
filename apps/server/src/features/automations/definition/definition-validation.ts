@@ -6,7 +6,6 @@ export async function validateDatabaseAutomation(input: {
   databaseId: string;
   dataSourceId: string;
   definition: unknown;
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
@@ -16,7 +15,6 @@ export async function validateDatabaseAutomation(input: {
     allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     databaseId: input.databaseId,
     definition: input.definition,
-    gmailEnabled: input.gmailEnabled,
     slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     management,

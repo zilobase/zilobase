@@ -7,7 +7,7 @@ export function buildAgentConnectionTool(input: { profileId: string; authorUserI
     description:
       "Show a Connect account card in the agent conversation when authentication is missing. The human must connect and Save connector permissions before using them.",
     inputSchema: z.object({
-      provider: z.enum(["gmail", "github", "linear", "figma"]),
+      provider: z.enum(["github", "linear", "figma"]),
     }),
     execute: async ({ provider }) => {
       await appendConversationMessage({

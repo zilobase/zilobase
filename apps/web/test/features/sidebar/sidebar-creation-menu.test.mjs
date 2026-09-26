@@ -81,8 +81,6 @@ export function register({ readSource, assert, test }) {
     assert.match(sidebarTabsSource, /activationConstraint: \{ distance: 4 \}/);
     assert.match(sidebarCustomizeSource, /activeTabSettings=/);
     assert.doesNotMatch(sidebarCustomizeSource, /managed by Zilobase|<StaticTabContents/);
-    assert.match(sidebarCustomizeSource, /tabId === "mail"[\s\S]*mailViewIds\.map/);
-    assert.match(sidebarCustomizeSource, /Compose is required/);
     assert.match(sidebarCustomizeSource, /isFixedSidebarTabId\(current\.tabs\[from\]!\.id\)/);
     assert.match(sidebarSource, /<SidebarCustomizePanel\s+activeTabId=\{activeTabId\}/);
     assert.doesNotMatch(sidebarSource, /<SidebarCustomizePanel\s+activeTabId=\{activeTab\.id\}/);
@@ -193,15 +191,11 @@ export function register({ readSource, assert, test }) {
     assert.match(sidebarSource, /setActiveThreadId\(null\)/);
     assert.match(
       sidebarSource,
-      /tabId === "mail"[\s\S]*search: \{ view: "inbox" \}[\s\S]*to: "\/mail"/,
-    );
-    assert.match(
-      sidebarSource,
       /tabId === "ai"[\s\S]*activeThreadId \?\? undefined[\s\S]*to: "\/ai"/,
     );
     assert.match(
       sidebarSource,
-      /staticTabId\s*=\s*pathname === "\/mail"\s*\?\s*"mail"\s*:\s*pathname === "\/ai"\s*\?\s*"ai"\s*:\s*pathname === "\/calendar"\s*\?\s*"calendar"\s*:\s*null/,
+      /staticTabId\s*=\s*pathname === "\/ai"\s*\?\s*"ai"\s*:\s*pathname === "\/calendar"\s*\?\s*"calendar"\s*:\s*null/,
     );
     assert.match(
       sidebarSource,

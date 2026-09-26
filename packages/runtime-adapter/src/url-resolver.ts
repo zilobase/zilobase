@@ -4,7 +4,6 @@ const endpoints: Record<RealtimeEndpoint, { env?: string; path: string }> = {
   calendar: { path: "/calendar-realtime" },
   collaboration: { env: "COLLABORATION_WEBSOCKET_URL", path: "/collaboration" },
   database: { env: "DATABASE_REALTIME_WEBSOCKET_URL", path: "/database-collaboration" },
-  mail: { path: "/mail-realtime" },
   "meeting-audio": { env: "MEETING_AUDIO_WEBSOCKET_URL", path: "/meeting-audio" },
   "meeting-collaboration": {
     env: "MEETING_COLLABORATION_WEBSOCKET_URL",

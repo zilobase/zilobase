@@ -115,9 +115,9 @@ export function buildSettingsTools(
     }),
     connectAccount: tool({
       description:
-        "Show an inline Connect button when an account such as Gmail or GitHub needs authentication. The user clicks the button and completes sign-in; never give credentials in chat.",
+        "Show an inline Connect button when an external account needs authentication. The user clicks the button and completes sign-in; never give credentials in chat.",
       inputSchema: z.object({
-        provider: z.enum(["gmail", "github", "linear", "figma"]),
+        provider: z.enum(["github", "linear", "figma"]),
       }),
       execute: async ({ provider }) => ({
         type: "connector-setup" as const,

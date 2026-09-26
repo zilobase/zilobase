@@ -12,7 +12,6 @@ import {
 } from "@/features/settings";
 import { TeamspacesSettingsPage } from "@/features/teamspaces";
 import { TeamSettingsPage } from "@/features/workspaces";
-import MailSettingsPage from "@/features/settings/screens/mail";
 import CalendarSettingsPage from "@/features/settings/screens/calendar";
 import WorkspaceSettingsPage from "./workspace-settings";
 
@@ -42,8 +41,6 @@ export function SettingsSectionContent({ section }: { section: SettingsSection }
       return <TeamSettingsPage />;
     case "teamspaces":
       return <TeamspacesSettingsPage />;
-    case "mail":
-      return <MailSettingsPage />;
     case "calendar":
       return <CalendarSettingsPage />;
     case "profile":

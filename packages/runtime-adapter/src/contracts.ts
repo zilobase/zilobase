@@ -16,9 +16,7 @@ export type BackgroundTaskKind =
   | "automation.run"
   | "agent.run"
   | "ai.job"
-  | "mail.index"
   | "calendar.sync"
-  | "mail.database_sync"
   | "realtime.database"
   | "realtime.navigation"
   | "notification.publish";
@@ -86,14 +84,6 @@ export type OutboundEmailMessage = {
   subject: string;
   text: string;
   to: string;
-};
-
-export type MailNotificationEvent = {
-  bindingId: string;
-  connectionId: string;
-  revision: number;
-  userId: string;
-  workspaceId: string;
 };
 
 export type MeetingRecorderRuntimeInput = {

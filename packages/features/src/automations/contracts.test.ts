@@ -376,7 +376,6 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       canManage: true,
       dataSourceId: "source-1",
       dataSources: [{ id: "source-1", name: "Tasks", properties: [] }],
-      gmailConnections: [{ email: "ada@example.com", id: "gmail-1", status: "connected" }],
       slackConnections: [
         { id: "slack-1", status: "connected", teamId: "team-1", teamName: "Example" },
       ],
@@ -485,29 +484,6 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
     }).kind,
     "webhook",
   );
-});
-
-test("automation catalogs expose only opaque Gmail connection metadata", () => {
-  const result = databaseAutomationCatalogSchema.safeParse({
-    actions: [{ available: true, reason: null, type: "send_gmail" }],
-    canManage: true,
-    dataSourceId: "source-1",
-    dataSources: [],
-    gmailConnections: [
-      {
-        email: "ada@example.com",
-        id: "gmail-1",
-        refreshTokenCiphertext: "must-not-leak",
-        status: "connected",
-      },
-    ],
-    slackConnections: [],
-    manageUnavailableReason: null,
-    properties: [],
-    users: [],
-    views: [],
-  });
-  assert.equal(result.success, false);
 });
 
 test("webhook header values use a write-only secret contract", () => {

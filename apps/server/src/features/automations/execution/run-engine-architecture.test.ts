@@ -20,7 +20,6 @@ const readRunEngine = () =>
     "./execution-context.ts",
     "./action-executor.ts",
     "../actions/action-values.ts",
-    "../actions/gmail-action.ts",
     "../actions/slack-action.ts",
     "../actions/webhook-action.ts",
   );
@@ -62,21 +61,6 @@ test("scheduled runs use the pinned occurrence without requiring a trigger page"
   expect(source).toContain('"AUTOMATION_SCHEDULE_MISSING"');
   expect(source).toMatch(/const row = scheduled\s+\? null/);
   expect(source).toContain("Scheduled automations have no trigger page");
-});
-
-test("Gmail delivery reuses owned connections, stable receipts, and reconnect handling", async () => {
-  const [engine, service] = await Promise.all([readRunEngine(), readAutomationService()]);
-  expect(engine).toContain("sendGmailComposition");
-  expect(engine).toContain('kind: "gmail"');
-  expect(engine).toContain('status === "succeeded"');
-  expect(engine).toContain('status: "reconnect_required"');
-  expect(engine).toContain('status: "retrying"');
-  expect(engine).toContain("error.retryable");
-  expect(engine).toContain("`${context.run.id}:${action.id}`");
-  expect(service).toContain("assertProtectedDefinitionOwner");
-  expect(service).toContain("protectedLifecycleResponse");
-  expect(service).toContain('"AUTOMATION_PROTECTED_CONFIGURATION"');
-  expect(service).toContain("transfersProtectedOwnership");
 });
 
 test("webhook delivery encrypts headers, pins egress, and reuses stable retry IDs", async () => {

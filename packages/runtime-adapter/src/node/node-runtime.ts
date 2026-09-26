@@ -10,7 +10,6 @@ import { attachNodeCollaborationRuntime } from "./features/collaboration/collabo
 import { attachNodeDatabaseRealtimeRuntime } from "./features/database-realtime/database-realtime-runtime";
 import { attachNodeMeetingAudioRuntime } from "./features/meeting-audio/meeting-audio-runtime";
 import { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/calendar-realtime-runtime";
-import { attachNodeMailRealtimeRuntime } from "./features/mail-realtime/mail-realtime-runtime";
 import {
   createDbClientForUrl,
   runWithDbEnv,
@@ -148,7 +147,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     databaseRealtime: ReturnType<typeof attachNodeDatabaseRealtimeRuntime>;
     meetingAudio: ReturnType<typeof attachNodeMeetingAudioRuntime>;
     calendarRealtime: ReturnType<typeof attachNodeCalendarRealtimeRuntime>;
-    mailRealtime: ReturnType<typeof attachNodeMailRealtimeRuntime>;
     navigationRealtime: ReturnType<typeof attachNodeNavigationRealtimeRuntime>;
     backgroundCoordinator: NodeBackgroundCoordinator | null;
     backgroundAdminServer: ReturnType<typeof createBackgroundAdminServer> | null;
@@ -160,7 +158,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const kind = channel.slice(0, separator);
     if (kind === "db") return state.databaseRealtime.publishMutation(payload as never);
     if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
-    if (kind === "mail") return state.mailRealtime.publishNotification(payload as never);
     if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
     if (kind === "notification") return;
     if (kind === "page") {
@@ -187,7 +184,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       editionExtension,
       passthroughPaths: [
         "/database-collaboration",
-        "/mail-realtime",
         "/calendar-realtime",
         "/meeting-audio",
         "/navigation-realtime",
@@ -200,7 +196,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     });
     const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
-    const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
     const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
     const backgroundCoordinator = createBackgroundCoordinator(env, ports);
     backgroundCoordinatorRef = backgroundCoordinator;
@@ -216,7 +211,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       calendarRealtime,
       collaboration,
       databaseRealtime,
-      mailRealtime,
       meetingAudio,
       navigationRealtime,
     };
@@ -263,7 +257,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       await started?.databaseRealtime.destroy();
       await started?.meetingAudio.destroy();
       await started?.calendarRealtime.destroy();
-      await started?.mailRealtime.destroy();
       await started?.navigationRealtime.destroy();
       await started?.collaboration.destroy();
       await realtimeBus.close();

@@ -9,14 +9,6 @@ export type { DatabaseMutationEventV2 } from "../features/databases/realtime/out
 export type { MeetingLifecycleAction } from "../features/meetings/contracts/meeting-types";
 export type { MeetingStatus };
 export {
-  createMailRealtimeTicket,
-  MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
-  MAIL_REALTIME_PROTOCOL,
-  verifyMailRealtimeTicket,
-  type MailRealtimeTicketClaims,
-} from "../features/mail/realtime/mail-realtime-ticket";
-export type { MailNotificationEvent } from "@zilobase/runtime-adapter/capabilities";
-export {
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
   NAVIGATION_REALTIME_PROTOCOL,
   createNavigationRealtimeTicket,

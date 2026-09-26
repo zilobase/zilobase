@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 // The sibling cloud repo stays the source of truth for the hosted
-// composition until cutover; community templates must keep DO bindings,
-// migrations, queues, rate limits, and module aliases byte-identical.
+// composition until cutover; retained community bindings, queues, rate limits,
+// and module aliases must stay compatible with it.
 const cloudRoot = new URL("../../../../zilobase-cloudflare-adapter/", import.meta.url);
 const templateRoot = new URL("../deploy/worker/", import.meta.url);
 
@@ -24,7 +24,10 @@ const HOSTED_MARKERS = [
 ];
 
 function stripJsonComments(value: string) {
-  return value.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  return value
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/,(\s*[}\]])/g, "$1");
 }
 
 async function readJsonc(url: URL) {
@@ -38,10 +41,6 @@ describe("template parity with the hosted composition", () => {
       readJsonc(new URL("wrangler.jsonc", cloudRoot)),
     ]);
 
-    expect(template.migrations.map((entry: { tag: string }) => entry.tag)).toEqual(
-      prod.migrations.map((entry: { tag: string }) => entry.tag),
-    );
-    expect(template.migrations).toEqual(prod.migrations);
     expect(template.migrations).toHaveLength(1);
     expect(template.migrations[0]).toEqual({
       tag: "runtime-ports-v1",
@@ -49,8 +48,20 @@ describe("template parity with the hosted composition", () => {
         .map((binding: { class_name: string }) => binding.class_name)
         .sort(),
     });
-    expect(template.durable_objects).toEqual(prod.durable_objects);
-    expect(template.queues).toEqual(prod.queues);
+    const bindingNames = new Set(
+      template.durable_objects.bindings.map((binding: { name: string }) => binding.name),
+    );
+    expect(template.durable_objects.bindings).toEqual(
+      prod.durable_objects.bindings.filter((binding: { name: string }) =>
+        bindingNames.has(binding.name),
+      ),
+    );
+    const queueNames = new Set(
+      template.queues.producers.map((producer: { queue: string }) => producer.queue),
+    );
+    expect(template.queues.producers).toEqual(
+      prod.queues.producers.filter((producer: { queue: string }) => queueNames.has(producer.queue)),
+    );
     expect(template.ratelimits).toEqual(prod.ratelimits);
     expect(template.alias).toEqual(prod.alias);
     expect(template.compatibility_flags).toEqual(prod.compatibility_flags);
@@ -62,8 +73,23 @@ describe("template parity with the hosted composition", () => {
       readJsonc(new URL("background-wrangler.jsonc", cloudRoot)),
     ]);
 
-    expect(template.queues).toEqual(prod.queues);
-    expect(template.durable_objects).toEqual(prod.durable_objects);
+    const queueNames = new Set(
+      template.queues.producers.map((producer: { queue: string }) => producer.queue),
+    );
+    expect(template.queues.producers).toEqual(
+      prod.queues.producers.filter((producer: { queue: string }) => queueNames.has(producer.queue)),
+    );
+    expect(template.queues.consumers).toEqual(
+      prod.queues.consumers.filter((consumer: { queue: string }) => queueNames.has(consumer.queue)),
+    );
+    const bindingNames = new Set(
+      template.durable_objects.bindings.map((binding: { name: string }) => binding.name),
+    );
+    expect(template.durable_objects.bindings).toEqual(
+      prod.durable_objects.bindings.filter((binding: { name: string }) =>
+        bindingNames.has(binding.name),
+      ),
+    );
     expect(template.alias).toEqual(prod.alias);
     expect(template.triggers).toEqual(prod.triggers);
     expect(template.compatibility_flags).toEqual(prod.compatibility_flags);

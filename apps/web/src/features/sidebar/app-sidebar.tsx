@@ -90,7 +90,6 @@ import {
 } from "./model/sidebar-layout-model";
 import { readActiveSidebarTab, writeActiveSidebarTab } from "./model/sidebar-persistence";
 import { useIntegrationAvailability } from "./model/use-integration-availability";
-import { WorkspaceMailNavigation } from "./components/workspace-mail-navigation";
 import { NotificationCenter } from "@/features/notifications";
 
 const sidebarNavigationIcons: SidebarNavigationIcons<React.ReactNode> = {
@@ -196,13 +195,11 @@ export function AppSidebar({
   const selectNavigationTab = React.useCallback(
     (tabId: string) => {
       selectTab(tabId);
-      if (tabId === "mail") {
-        void navigate({ search: { view: "inbox" }, to: "/mail" });
-      } else if (tabId === "calendar") {
+      if (tabId === "calendar") {
         void navigate({ to: "/calendar" });
       } else if (tabId === "ai") {
         void navigate({ search: { thread: activeThreadId ?? undefined }, to: "/ai" });
-      } else if (pathname === "/mail" || pathname === "/ai" || pathname === "/calendar") {
+      } else if (pathname === "/ai" || pathname === "/calendar") {
         void navigate({ search: { view: "recents" }, to: "/recents" });
       }
     },
@@ -210,23 +207,12 @@ export function AppSidebar({
   );
   React.useEffect(() => {
     if (customizing) return;
-    const staticTabId =
-      pathname === "/mail"
-        ? "mail"
-        : pathname === "/ai"
-          ? "ai"
-          : pathname === "/calendar"
-            ? "calendar"
-            : null;
+    const staticTabId = pathname === "/ai" ? "ai" : pathname === "/calendar" ? "calendar" : null;
     if (staticTabId && layout.tabs.some((tab) => tab.id === staticTabId)) {
       setActiveTabId(staticTabId);
       return;
     }
-    if (
-      integrations.settled &&
-      ((pathname === "/mail" && !integrations.mail) ||
-        (pathname === "/calendar" && !integrations.calendar))
-    ) {
+    if (integrations.settled && pathname === "/calendar" && !integrations.calendar) {
       void navigate({ search: { view: "recents" }, to: "/recents" });
     }
     if (!staticTabId && isStaticSidebarTabId(activeTabId)) {
@@ -241,7 +227,6 @@ export function AppSidebar({
     activeTabId,
     customizing,
     integrations.calendar,
-    integrations.mail,
     integrations.settled,
     layout.tabs,
     navigate,
@@ -559,7 +544,7 @@ export function AppSidebar({
         />
       ) : (
         <>
-          {activeTab.id !== "mail" && activeTab.id !== "calendar" && (
+          {activeTab.id !== "calendar" && (
             <div className="shrink-0 pt-3" data-sidebar="shortcuts">
               <SidebarShortcutList
                 databases={navigation?.databases ?? []}
@@ -577,9 +562,7 @@ export function AppSidebar({
             className="block overflow-x-hidden overflow-y-auto overscroll-y-contain"
             aria-label="Sidebar sections"
           >
-            {activeTab.id === "mail" ? (
-              <WorkspaceMailNavigation workspaceId={workspaceId} />
-            ) : activeTab.id === "calendar" ? (
+            {activeTab.id === "calendar" ? (
               workspaceId ? (
                 <React.Suspense fallback={null}>
                   <CalendarAccountsSidebar key={workspaceId} workspaceId={workspaceId} />

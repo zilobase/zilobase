@@ -1,8 +1,4 @@
-export function isSettingsSectionAvailable(
-  section: string,
-  availability: { mail: boolean; calendar: boolean },
-) {
-  if (section === "mail") return availability.mail;
+export function isSettingsSectionAvailable(section: string, availability: { calendar: boolean }) {
   if (section === "calendar") return availability.calendar;
   return true;
 }

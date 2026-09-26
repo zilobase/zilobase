@@ -12,14 +12,7 @@ import {
   ListIcon,
   ListChecksIcon,
   LockIcon,
-  MailIcon,
-  MailPlusIcon,
-  InboxIcon,
-  MailCheckIcon,
-  ArchiveIcon,
-  BanIcon,
   FilePenLineIcon,
-  SendIcon,
   SettingsIcon,
   SparklesIcon,
   StarIcon,
@@ -29,7 +22,6 @@ import {
 
 import type {
   LibraryView,
-  MailView,
   SidebarShortcut,
   SidebarTabIconId,
 } from "@zilobase/features/user-settings";
@@ -55,21 +47,9 @@ const sidebarTabIcons = {
   folder: FolderIcon,
   home: HomeIcon,
   list: ListIcon,
-  mail: MailIcon,
   sparkles: SparklesIcon,
   star: StarIcon,
 } satisfies Record<SidebarTabIconId, typeof HomeIcon>;
-
-export const mailViewIcons = {
-  archive: ArchiveIcon,
-  drafts: FilePenLineIcon,
-  inbox: InboxIcon,
-  sent: SendIcon,
-  spam: BanIcon,
-  starred: StarIcon,
-  trash: Trash2Icon,
-  unread: MailCheckIcon,
-} satisfies Record<MailView, typeof MailIcon>;
 
 export function SidebarTabIcon({ value }: { value: string }) {
   const Icon = sidebarTabIcons[value as SidebarTabIconId];
@@ -89,18 +69,15 @@ export function SidebarShortcutIcon({ shortcut }: { shortcut: SidebarShortcut })
 
 function getDefaultShortcutIcon(target: SidebarShortcut["target"]) {
   if (target.type === "action") {
-    return target.action === "composeMail"
-      ? MailPlusIcon
-      : target.action === "createPage"
-        ? FileIcon
-        : target.action === "createDatabase"
-          ? DatabaseIcon
-          : BotIcon;
+    return target.action === "createPage"
+      ? FileIcon
+      : target.action === "createDatabase"
+        ? DatabaseIcon
+        : BotIcon;
   }
   if (target.type === "page") return FileIcon;
   if (target.type === "database") return DatabaseIcon;
   if (target.type === "library") return libraryViewIcons[target.view];
-  if (target.type === "mail") return mailViewIcons[target.view];
   return {
     ai: SparklesIcon,
     meetings: CalendarDaysIcon,

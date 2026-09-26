@@ -20,6 +20,9 @@ export function register({ assert, loadModule, test }) {
     assert.equal(validCalendarInvalidation(event, scope), true);
     assert.equal(validCalendarInvalidation({ ...event, bindingId: "other" }, scope), false);
     assert.equal(validCalendarInvalidation({ ...event, revision: -1 }, scope), false);
-    assert.equal(validCalendarInvalidation({ ...event, type: "mail.invalidate" }, scope), false);
+    assert.equal(
+      validCalendarInvalidation({ ...event, type: "navigation.invalidate" }, scope),
+      false,
+    );
   });
 }

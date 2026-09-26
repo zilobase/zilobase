@@ -30,11 +30,8 @@ export {
   databaseRealtimeOutbox,
   inProductNotificationOutbox,
   calendarProviderCalendar,
-  mailDatabaseSyncOutbox,
-  mailIndexState,
   navigationRealtimeOutbox,
 } from "../infrastructure/database/schema";
-export { recordMailMetric } from "../features/mail/mail-metrics";
 export { isBlockedAddress } from "../features/automations/actions/webhook-egress";
 export {
   CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX,
@@ -43,13 +40,6 @@ export {
   verifyCalendarRealtimeTicket,
   type CalendarRealtimeTicketClaims,
 } from "../features/calendar/realtime/calendar-realtime-ticket";
-export {
-  MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
-  MAIL_REALTIME_PROTOCOL,
-  createMailRealtimeTicket,
-  verifyMailRealtimeTicket,
-  type MailRealtimeTicketClaims,
-} from "../features/mail/realtime/mail-realtime-ticket";
 export {
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
   NAVIGATION_REALTIME_PROTOCOL,

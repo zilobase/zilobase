@@ -133,14 +133,6 @@
       "types": "./src/notifications/index.ts",
       "default": "./src/notifications/index.ts"
     },
-    "./mail": {
-      "types": "./src/mail/index.ts",
-      "default": "./src/mail/index.ts"
-    },
-    "./mail/react": {
-      "types": "./src/mail/react.ts",
-      "default": "./src/mail/react.ts"
-    },
     "./workspaces": {
       "types": "./src/workspaces/index.ts",
       "default": "./src/workspaces/index.ts"
@@ -206,10 +198,6 @@
       "types": "./src/databases/realtime/room-protocol.ts",
       "default": "./src/databases/realtime/room-protocol.ts"
     },
-    "./mail/query-contracts": {
-      "types": "./src/mail/query-contracts.ts",
-      "default": "./src/mail/query-contracts.ts"
-    },
     "./meetings/contracts": {
       "types": "./src/meetings/contracts.ts",
       "default": "./src/meetings/contracts.ts"
@@ -233,18 +221,6 @@
     "./workspaces/contracts": {
       "types": "./src/workspaces/contracts.ts",
       "default": "./src/workspaces/contracts.ts"
-    },
-    "./mail/contracts": {
-      "types": "./src/mail/contracts.ts",
-      "default": "./src/mail/contracts.ts"
-    },
-    "./mail/organization": {
-      "types": "./src/mail/organization.ts",
-      "default": "./src/mail/organization.ts"
-    },
-    "./mail/predicate": {
-      "types": "./src/mail/predicate.ts",
-      "default": "./src/mail/predicate.ts"
     },
     "./ai-chat/react": {
       "types": "./src/ai-chat/react.ts",

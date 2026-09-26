@@ -157,10 +157,6 @@ export function databaseRealtimeChannel(databaseId: string) {
   return `zilobase:realtime:database:${databaseId}`;
 }
 
-export function mailRealtimeChannel(bindingId: string) {
-  return `zilobase:realtime:mail:${bindingId}`;
-}
-
 export function navigationRealtimeChannel(workspaceId: string) {
   return `zilobase:realtime:navigation:${workspaceId}`;
 }

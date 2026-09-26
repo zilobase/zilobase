@@ -37,7 +37,6 @@ const queueLanes: Record<string, BackgroundLane> = {
   "zilobase-automation-runs": "automation",
   "zilobase-background-fast": "fast",
   "zilobase-calendar-jobs": "calendar",
-  "zilobase-mail-jobs": "mail",
 };
 
 export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(

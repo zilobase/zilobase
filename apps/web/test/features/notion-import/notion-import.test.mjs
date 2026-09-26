@@ -1,9 +1,6 @@
 import { parseHTML } from "linkedom";
 
 function installDomParser() {
-  const { document, window } = parseHTML("<!doctype html><html><body></body></html>");
-  globalThis.document = document;
-  globalThis.window = window;
   globalThis.DOMParser = class DOMParser {
     parseFromString(html, type) {
       if (type !== "text/html") {

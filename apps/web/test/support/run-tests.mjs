@@ -77,7 +77,6 @@ async function loadModule(path) {
     },
     entryPoints: [sourcePath],
     external:
-      sourcePath.endsWith("mail-cache-query.ts") ||
       sourcePath.includes("/features/calendar/") ||
       sourcePath.includes("/shared/components/calendar/") ||
       sourcePath.includes("/features/src/calendar-layout/")

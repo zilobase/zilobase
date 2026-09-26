@@ -45,18 +45,12 @@ import {
   PageDatabasePicker,
   type PageDatabasePickerOption,
 } from "@/features/databases/components/page-database-picker";
-import {
-  libraryViewIcons,
-  mailViewIcons,
-  SidebarShortcutIcon,
-  SidebarTabIcon,
-} from "./sidebar-layout-icons";
+import { libraryViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "./sidebar-layout-icons";
 import {
   getSectionLabel,
   getShortcutLabel,
   hasShortcutTarget,
   libraryViewLabels,
-  mailViewLabels,
   moveArrayItem,
   moveLayoutEntry,
   sidebarSectionLabels,
@@ -95,10 +89,8 @@ import type { Page, PageDatabase, PageDatabaseView } from "@zilobase/features/pa
 import {
   cloneSidebarWorkspaceLayout,
   isFixedSidebarTabId,
-  isRequiredSidebarShortcut,
   isStaticSidebarTabId,
   libraryViewIds,
-  mailViewIds,
   sidebarSectionKinds,
   sidebarSectionLimits,
   sidebarSectionSorts,
@@ -377,7 +369,7 @@ export function SidebarCustomizePanel({
             </div>
           </SortableContext>
 
-          {activeTab.id !== "mail" && activeTab.id !== "calendar" ? (
+          {activeTab.id !== "calendar" ? (
             <>
               <div className="my-2 h-px bg-stroke-default" />
               <AddSectionMenu
@@ -533,19 +525,6 @@ function AddShortcutMenu({
           <BotIcon />
           New AI chat
         </DropDrawerItem>
-      </>
-    ) : tabId === "mail" ? (
-      <>
-        <DropDrawerLabel>Mail folders</DropDrawerLabel>
-        {mailViewIds.map((view) => {
-          const Icon = mailViewIcons[view];
-          return (
-            <DropDrawerItem key={view} onSelect={() => onAdd({ type: "mail", view })}>
-              <Icon />
-              {mailViewLabels[view]}
-            </DropDrawerItem>
-          );
-        })}
       </>
     ) : (
       <>
@@ -724,7 +703,6 @@ function EntryMenu({
   sourceTabId: string;
 }) {
   const tab = layout.tabs.find((entry) => entry.id === sourceTabId)!;
-  const required = shortcut ? isRequiredSidebarShortcut(sourceTabId, shortcut) : false;
   const setRowMenuOpen = React.useContext(EditableRowMenuContext);
   const [iconPickerOpen, setIconPickerOpen] = React.useState(false);
   return (
@@ -838,7 +816,6 @@ function EntryMenu({
         ) : null}
         <DropDrawerSeparator />
         <DropDrawerItem
-          disabled={required}
           variant="destructive"
           onSelect={() =>
             onChange((current) =>
@@ -851,7 +828,7 @@ function EntryMenu({
           }
         >
           <Trash2Icon />
-          {required ? "Compose is required" : "Remove"}
+          Remove
         </DropDrawerItem>
       </DropDrawerContent>
     </DropDrawer>

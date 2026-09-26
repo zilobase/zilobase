@@ -188,7 +188,7 @@ describe("agent model continuation", () => {
       await processAgentRun(env, work);
       const options = state.generate.mock.calls[0]![0];
       await expect(
-        options.tools.connectAccount.execute({ provider: "gmail" }),
+        options.tools.connectAccount.execute({ provider: "github" }),
       ).resolves.toMatchObject({ status: "connection_required" });
       expect(state.conversation).toHaveBeenCalledWith({
         profileId: "agent",
@@ -198,7 +198,7 @@ describe("agent model continuation", () => {
         parts: [
           {
             type: "data-connector-setup",
-            data: { provider: "gmail", scope: "agent" },
+            data: { provider: "github", scope: "agent" },
           },
         ],
       });

@@ -47,7 +47,7 @@ describe("agent configuration dirty state", () => {
         {
           ...saved,
           instructions: "Autosaved",
-          connectors: [{ connectionId: "gmail", alwaysAllowEnabled: false, tools: [] }],
+          connectors: [{ connectionId: "github", alwaysAllowEnabled: false, tools: [] }],
         },
         saved,
       ),

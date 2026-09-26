@@ -223,7 +223,7 @@ function AppLayoutContent({
     const query = search.toString();
     router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`);
   }, [hash, pathname, router.history, searchStr]);
-  const isMailPage = pathname === "/mail" || pathname === "/calendar";
+  const isFullPanePage = pathname === "/calendar";
   const pageId = useRoutePageId(pathname);
   const databaseId = getDatabaseId(pathname);
   const agentId = pathname.match(/^\/agents\/([^/]+)$/)?.[1] ?? null;
@@ -560,7 +560,7 @@ function AppLayoutContent({
                 )
               }
               header={
-                embeddedMobileViewer || isMailPage ? undefined : (
+                embeddedMobileViewer || isFullPanePage ? undefined : (
                   <AppHeader
                     agentId={agentId}
                     auxiliarySidePanePageId={aiSettingsPageId}
@@ -636,7 +636,7 @@ function AppLayoutContent({
       {chatSidebarOpen && !isMobile && chatPresentationMode === "floating" ? (
         <FloatingWidget aria-label="Floating Ask AI chat">{chatPanel}</FloatingWidget>
       ) : null}
-      {chatSidebarOpen || isAiPage || Boolean(agentId) || isMailPage ? null : (
+      {chatSidebarOpen || isAiPage || Boolean(agentId) || isFullPanePage ? null : (
         <ChatSidebarTrigger
           adjacentSidebarOpen={
             utilitySidebarOpen ||

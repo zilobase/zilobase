@@ -49,7 +49,7 @@ export function register({ readSource, assert, test }) {
 
     assert.match(
       layoutSource,
-      /chatSidebarOpen \|\| isAiPage \|\| Boolean\(agentId\) \|\| isMailPage \? null/,
+      /chatSidebarOpen \|\| isAiPage \|\| Boolean\(agentId\) \|\| isFullPanePage \? null/,
     );
     assert.match(sidePaneSource, /data-page-scroll-viewport/);
     assert.match(chatbotSource, /\[data-ai-scroll-shell\], \[data-page-scroll-viewport\]/);

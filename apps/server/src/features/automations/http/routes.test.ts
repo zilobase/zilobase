@@ -113,13 +113,6 @@ describe("database automation routes", () => {
     expect((await app().request("/database-1/automations")).status).toBe(400);
   });
 
-  it("forwards Gmail as an available automation action", async () => {
-    mocks.catalog.mockResolvedValue({ actions: [], canManage: true, dataSourceId: "source-1" });
-    const response = await app().request("/database-1/automation-catalog?dataSourceId=source-1");
-    expect(response.status).toBe(200);
-    expect(mocks.catalog).toHaveBeenCalledWith(expect.objectContaining({ gmailEnabled: true }));
-  });
-
   it("stores webhook header values through the protected secret route", async () => {
     mocks.createSecret.mockResolvedValue({ id: "secret-1", purpose: "webhook_header" });
     const response = await app().request(

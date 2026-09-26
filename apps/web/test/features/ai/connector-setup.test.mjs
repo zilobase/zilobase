@@ -1,28 +1,4 @@
 export function register({ assert, loadModule, test }) {
-  test("connector setup preserves Gmail scope, configuration and connected precedence", async () => {
-    const { describeConnectorSetup } = await loadModule(
-      "/src/features/ai/settings/model/connector-setup.ts",
-    );
-    const input = { provider: "gmail", scope: "personal" };
-    assert.equal(describeConnectorSetup(input).unavailable, false);
-    assert.equal(
-      describeConnectorSetup({
-        ...input,
-        gmail: { status: "disconnected", providerConfigured: false },
-      }).unavailable,
-      true,
-    );
-    const delegated = describeConnectorSetup({ ...input, scope: "agent" });
-    assert.equal(delegated.unavailable, true);
-    assert.match(delegated.description, /Delegated Gmail access is not supported/);
-    const connected = describeConnectorSetup({
-      ...input,
-      scope: "agent",
-      gmail: { status: "connected" },
-    });
-    assert.equal(connected.description, "Connected");
-    assert.equal(connected.unavailable, true);
-  });
   test("connector setup distinguishes catalog identity from approved server endpoint identity", async () => {
     const { describeConnectorSetup } = await loadModule(
       "/src/features/ai/settings/model/connector-setup.ts",

@@ -44,7 +44,7 @@ export function register({ assert, loadModule, test }) {
     });
   });
 
-  test("sidebar normalization enforces locked Home, AI, Mail, and Calendar tabs with payload caps", async () => {
+  test("sidebar normalization enforces locked Home, AI, and Calendar tabs with payload caps", async () => {
     const { normalizeSidebarConfig } = await loadModule(configPath);
     const tabs = Array.from({ length: 12 }, (_, index) => ({
       icon: index === 0 ? "<script>" : "star",
@@ -73,11 +73,8 @@ export function register({ assert, loadModule, test }) {
     assert.equal(config.defaultLayout.tabs[1].id, "ai");
     assert.equal(config.defaultLayout.tabs[1].name, "AI");
     assert.equal(config.defaultLayout.tabs[1].icon, "sparkles");
-    assert.equal(config.defaultLayout.tabs[2].id, "mail");
-    assert.equal(config.defaultLayout.tabs[2].name, "Mail");
-    assert.equal(config.defaultLayout.tabs[2].icon, "mail");
-    assert.equal(config.defaultLayout.tabs[3].id, "calendar");
-    assert.equal(config.defaultLayout.tabs[3].name, "Calendar");
+    assert.equal(config.defaultLayout.tabs[2].id, "calendar");
+    assert.equal(config.defaultLayout.tabs[2].name, "Calendar");
   });
 
   test("shared pages and teamspaces are independent sidebar sections", async () => {
@@ -124,13 +121,11 @@ export function register({ assert, loadModule, test }) {
     assert.equal(resolveSidebarWorkspaceLayout(config, "workspace-1").tabs[0].name, "Home");
   });
 
-  test("AI and Mail keep scoped customization while workspace tabs reject service navigation", async () => {
+  test("AI keeps scoped customization while workspace tabs reject service navigation", async () => {
     const { normalizeSidebarWorkspaceLayout } = await loadModule(configPath);
     const serviceShortcuts = [
       { id: "ask-ai", target: { route: "ai", type: "route" } },
       { id: "new-chat", target: { action: "createChat", type: "action" } },
-      { id: "compose", target: { action: "composeMail", type: "action" } },
-      { id: "inbox", target: { type: "mail", view: "inbox" } },
     ];
     const layout = normalizeSidebarWorkspaceLayout({
       tabs: [
@@ -155,17 +150,6 @@ export function register({ assert, loadModule, test }) {
           ],
         },
         {
-          icon: "circle",
-          id: "mail",
-          name: "Renamed Mail",
-          sections: [{ id: "mail-pages", kind: "recents", limit: 10, sort: "lastEdited" }],
-          shortcuts: [
-            { id: "mail-inbox", label: "Primary", target: { type: "mail", view: "inbox" } },
-            { id: "mail-compose", target: { action: "composeMail", type: "action" } },
-            { id: "mail-tasks", target: { route: "tasks", type: "route" } },
-          ],
-        },
-        {
           icon: "star",
           id: "custom",
           name: "Custom",
@@ -176,7 +160,7 @@ export function register({ assert, loadModule, test }) {
       taskDatabaseIds: [],
     });
 
-    const [home, ai, mail, calendar, custom] = layout.tabs;
+    const [home, ai, calendar, custom] = layout.tabs;
     assert.deepEqual(home.shortcuts, []);
     assert.deepEqual(home.sections, []);
     assert.deepEqual(custom.shortcuts, []);
@@ -199,13 +183,6 @@ export function register({ assert, loadModule, test }) {
       sections: [],
       shortcuts: [],
     });
-    assert.equal(mail.name, "Mail");
-    assert.deepEqual(
-      mail.shortcuts.map((shortcut) => shortcut.id),
-      ["mail-inbox", "mail-compose"],
-    );
-    assert.equal(mail.shortcuts[0].label, "Primary");
-    assert.deepEqual(mail.sections, []);
   });
 
   test("Calendar is restored once in saved layouts and remains a fixed route tab", async () => {
@@ -225,9 +202,9 @@ export function register({ assert, loadModule, test }) {
     });
     assert.deepEqual(
       layout.tabs.map((tab) => tab.id),
-      ["home", "ai", "mail", "calendar"],
+      ["home", "ai", "calendar"],
     );
-    assert.deepEqual(layout.tabs[3], {
+    assert.deepEqual(layout.tabs[2], {
       id: "calendar",
       name: "Calendar",
       icon: "calendar",
@@ -239,48 +216,21 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isStaticSidebarTabId("calendar"), true);
   });
 
-  test("Mail restores Compose when customization attempts to remove it", async () => {
-    const { normalizeSidebarWorkspaceLayout } = await loadModule(configPath);
-    const layout = normalizeSidebarWorkspaceLayout({
-      tabs: [
-        { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [] },
-        {
-          icon: "mail",
-          id: "mail",
-          name: "Mail",
-          sections: [],
-          shortcuts: [{ id: "only-inbox", target: { type: "mail", view: "inbox" } }],
-        },
-      ],
-      taskDatabaseIds: [],
-    });
-    const mail = layout.tabs.find((tab) => tab.id === "mail");
-
-    assert.deepEqual(
-      mail.shortcuts.map((shortcut) => shortcut.target),
-      [
-        { action: "composeMail", type: "action" },
-        { type: "mail", view: "inbox" },
-      ],
-    );
-  });
-
   test("custom tab icons retain safe SVG icons and reject executable markup", async () => {
     const { normalizeSidebarWorkspaceLayout } = await loadModule(configPath);
     const makeLayout = (icon) => ({
       tabs: [
         { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [] },
         { icon: "sparkles", id: "ai", name: "AI", sections: [], shortcuts: [] },
-        { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
         { icon, id: "custom", name: "Custom", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: [],
     });
     const safeSvg = '<svg viewBox="0 0 24 24"><path d="M1 1h2v2z" /></svg>';
 
-    assert.equal(normalizeSidebarWorkspaceLayout(makeLayout(safeSvg)).tabs[4].icon, safeSvg);
+    assert.equal(normalizeSidebarWorkspaceLayout(makeLayout(safeSvg)).tabs[3].icon, safeSvg);
     assert.equal(
-      normalizeSidebarWorkspaceLayout(makeLayout('<svg onload="alert(1)"></svg>')).tabs[4].icon,
+      normalizeSidebarWorkspaceLayout(makeLayout('<svg onload="alert(1)"></svg>')).tabs[3].icon,
       "circle",
     );
   });

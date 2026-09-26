@@ -7,7 +7,6 @@ import {
   BotIcon,
   Layers3Icon,
   LockIcon,
-  MailIcon,
   CalendarIcon,
   Maximize2,
   UsersIcon,
@@ -33,8 +32,8 @@ import {
 } from "@/shared/ui/breadcrumb";
 import { Separator } from "@/shared/ui/separator";
 import { SidebarTrigger } from "@/shared/ui/sidebar";
-import { libraryViewIcons, mailViewIcons } from "@/features/sidebar";
-import { libraryViewLabels, mailViewLabels } from "@/features/sidebar";
+import { libraryViewIcons } from "@/features/sidebar";
+import { libraryViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useAiAgentProfile } from "@zilobase/features/ai-chat/react";
 import { useDatabaseBootstrap, useDatabaseRecords } from "@zilobase/features/databases/react";
@@ -44,9 +43,7 @@ import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import {
   defaultUserSettings,
   libraryViewIds,
-  mailViewIds,
   type LibraryView,
-  type MailView,
 } from "@zilobase/features/user-settings";
 import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-settings/react";
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "../icons/page-icon";
@@ -446,37 +443,6 @@ function AppBreadcrumbs({ pathname }: { pathname: string }) {
             <BreadcrumbPage className="gap-1.5">
               <LibraryViewIcon aria-hidden="true" className="size-4 shrink-0" />
               <span className="line-clamp-1">{libraryViewLabels[libraryView]}</span>
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-    );
-  }
-
-  if (pathname === "/mail") {
-    const requestedView = location.search.view;
-    const mailView = mailViewIds.includes(requestedView as MailView)
-      ? (requestedView as MailView)
-      : "inbox";
-    const MailViewIcon = mailViewIcons[mailView];
-
-    return (
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              className="gap-1.5"
-              render={<Link search={{ view: "inbox" }} to="/mail" />}
-            >
-              <MailIcon aria-hidden="true" className="size-4 shrink-0" />
-              <span className="line-clamp-1">Mail</span>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSlash />
-          <BreadcrumbItem>
-            <BreadcrumbPage className="gap-1.5">
-              <MailViewIcon aria-hidden="true" className="size-4 shrink-0" />
-              <span className="line-clamp-1">{mailViewLabels[mailView]}</span>
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>

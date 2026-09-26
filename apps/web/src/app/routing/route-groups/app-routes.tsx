@@ -4,7 +4,6 @@ import {
   validateCalendarSearch,
   validateAiSearch,
   validateLibrarySearch,
-  validateMailSearch,
 } from "../search-validators";
 
 export const appRoutes = [
@@ -35,12 +34,6 @@ export const appRoutes = [
     path: "/recents",
     validateSearch: validateLibrarySearch,
     component: lazyRouteComponent(() => import("@/features/library/screens/recents")),
-  }),
-  createRoute({
-    getParentRoute: () => appRoute,
-    path: "/mail",
-    validateSearch: validateMailSearch,
-    component: lazyRouteComponent(() => import("@/features/mail/screens/mail")),
   }),
   createRoute({
     getParentRoute: () => appRoute,

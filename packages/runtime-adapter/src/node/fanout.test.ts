@@ -8,14 +8,14 @@ describe("node fanout port", () => {
     const subscribe = vi.fn(async () => unsubscribe);
     const publishLocal = vi.fn(async () => undefined);
     const fanout = createNodeFanout({ subscribe } as never, publishLocal);
-    const payload = { type: "mail.invalidate" };
+    const payload = { type: "database.invalidate" };
 
-    await fanout.publish("mail:binding-1", payload);
+    await fanout.publish("database:source-1", payload);
     const handler = vi.fn();
-    expect(await fanout.subscribe("mail:binding-1", handler)).toBe(unsubscribe);
+    expect(await fanout.subscribe("database:source-1", handler)).toBe(unsubscribe);
 
     expect(publishLocal).toHaveBeenCalledOnce();
-    expect(publishLocal).toHaveBeenCalledWith("mail:binding-1", payload);
-    expect(subscribe).toHaveBeenCalledWith("mail:binding-1", handler);
+    expect(publishLocal).toHaveBeenCalledWith("database:source-1", payload);
+    expect(subscribe).toHaveBeenCalledWith("database:source-1", handler);
   });
 });

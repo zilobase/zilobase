@@ -2,11 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 
 const fake = vi.hoisted(() => ({
   rows: [] as unknown[][],
-  advance: vi.fn(async (): Promise<{ outcome: "completed" | "noop" }> => ({
-    outcome: "completed",
-  })),
   publish: vi.fn(async () => undefined),
-  mail: vi.fn(async () => undefined),
   database: vi.fn(async () => undefined),
   navigation: vi.fn(async () => undefined),
   notification: vi.fn(async () => undefined),
@@ -31,12 +27,6 @@ vi.mock("../../features/automations/triggers/event-evaluator", () => ({
 }));
 vi.mock("../../features/automations/execution/run-engine", () => ({
   processDatabaseAutomationRun: vi.fn(),
-}));
-vi.mock("../../features/mail/sync/mail-sync-coordinator", () => ({
-  processMailSyncTask: fake.advance,
-}));
-vi.mock("../../features/mail/database-sync/mail-database-sync-worker", () => ({
-  drainMailDatabaseSyncOutbox: fake.mail,
 }));
 vi.mock("../../features/databases/realtime/outbox", () => ({
   drainDatabaseRealtimeOutbox: fake.database,
@@ -70,18 +60,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test("mail indexing delegates account state and retry policy to the coordinator", async () => {
-  fake.advance.mockResolvedValueOnce({ outcome: "noop" });
-  expect(await run("mail.index")).toEqual({ outcome: "noop" });
-  expect(fake.advance).toHaveBeenCalledWith({}, "resource");
-});
-
-test.each([
-  "realtime.database",
-  "realtime.navigation",
-  "mail.database_sync",
-  "notification.publish",
-] as const)(
+test.each(["realtime.database", "realtime.navigation", "notification.publish"] as const)(
   "%s retries at the persisted deadline and completes after its outbox row disappears",
   async (kind) => {
     fake.rows = [[{ nextAttemptAt: new Date("2026-01-01T00:01:00.000Z"), status: "pending" }]];
@@ -90,13 +69,8 @@ test.each([
   },
 );
 
-test("published notifications finish while retrying mail work retains its worker identity", async () => {
+test("published notifications finish", async () => {
   fake.rows = [[{ status: "published" }]];
   expect(await run("notification.publish")).toEqual({ outcome: "completed" });
   expect(fake.notification).toHaveBeenCalledWith({}, { limit: 1, outboxId: "resource" });
-  await run("mail.database_sync");
-  expect(fake.mail).toHaveBeenCalledWith(
-    {},
-    { limit: 1, outboxId: "resource", workerId: "worker" },
-  );
 });

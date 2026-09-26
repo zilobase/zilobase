@@ -61,19 +61,6 @@ export function validateLibrarySearch(search: Record<string, unknown>): {
     : {};
 }
 
-export function validateMailSearch(search: Record<string, unknown>): {
-  compose?: boolean;
-  view: string;
-} {
-  return {
-    ...(search.compose === true || search.compose === "true" ? { compose: true } : {}),
-    view:
-      typeof search.view === "string" && search.view.trim() && search.view.length <= 200
-        ? search.view.trim()
-        : "inbox",
-  };
-}
-
 export function validateAiSearch(search: Record<string, unknown>) {
   return {
     thread:

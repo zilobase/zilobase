@@ -29,7 +29,6 @@ import {
 } from "../actions/action-values";
 import { executeWebhookAction } from "../actions/webhook-action";
 import { executeSlackAction } from "../actions/slack-action";
-import { executeGmailAction } from "../actions/gmail-action";
 export async function executeAction(
   context: ExecutionContext,
   action: DatabaseAutomationAction,
@@ -168,9 +167,6 @@ export async function executeAction(
       env,
     });
     return { deliveredRecipients: notifications.length };
-  }
-  if (action.type === "send_gmail") {
-    return executeGmailAction(context, action, env);
   }
   if (action.type === "send_webhook") {
     return executeWebhookAction(context, action, env);

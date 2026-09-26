@@ -11,7 +11,6 @@ export type WorkerJobsEnv = WorkerEnvBindings & {
   AI_JOBS?: BackgroundQueue;
   AUTOMATION_RUNS?: BackgroundQueue;
   CALENDAR_JOBS?: BackgroundQueue;
-  MAIL_JOBS?: BackgroundQueue;
 };
 
 export function createWorkerJobs(
@@ -45,5 +44,5 @@ function queueForLane(env: WorkerJobsEnv, lane: BackgroundLane) {
   if (lane === "automation") return env.AUTOMATION_RUNS;
   if (lane === "ai") return env.AI_JOBS;
   if (lane === "calendar") return env.CALENDAR_JOBS;
-  return env.MAIL_JOBS;
+  throw new Error(`Unsupported background lane: ${lane satisfies never}`);
 }

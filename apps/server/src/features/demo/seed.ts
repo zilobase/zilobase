@@ -894,14 +894,14 @@ function buildDemoSidebarConfig() {
       { id: "demo-trash", target: { route: "trash", type: "route" } },
     ],
   };
-  const mail = {
-    icon: "mail",
-    id: "mail",
-    name: "Mail",
+  const calendar = {
+    icon: "calendar",
+    id: "calendar",
+    name: "Calendar",
     sections: [],
-    shortcuts: [{ id: "demo-mail-compose", target: { action: "composeMail", type: "action" } }],
+    shortcuts: [],
   };
-  const layout = { tabs: [home, mail], taskDatabaseIds: [DEMO_IDS.database] };
+  const layout = { tabs: [home, calendar], taskDatabaseIds: [DEMO_IDS.database] };
   return {
     defaultLayout: layout,
     libraryView: "recents",

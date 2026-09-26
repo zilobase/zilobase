@@ -17,14 +17,6 @@ import { drainDatabaseAutomationRuns } from "../../features/automations/executio
 import { scanDueDatabaseAutomationSchedules } from "../../features/automations/triggers/scheduler";
 import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/outbox";
 import { expireTemporaryMemberships } from "../../features/memberships";
-import { renewGmailWatches } from "../../features/mail/sync/gmail-watch";
-import {
-  advancePendingMailSyncs,
-  pollMailSyncSafety,
-} from "../../features/mail/sync/mail-sync-coordinator";
-import { advanceDueMailReminders } from "../../features/mail/organization/mail-reminders";
-import { drainMailDatabaseSyncOutbox } from "../../features/mail/database-sync/mail-database-sync-worker";
-import { cleanupExpiredGmailSendOperations } from "../../features/mail/compose/mail-compose";
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
 import { drainNavigationRealtimeOutbox } from "../../features/workspaces/navigation-realtime/outbox";
 import type { RuntimeEnv } from "../../shared/config/config";
@@ -40,9 +32,6 @@ export const BACKGROUND_MAINTENANCE_TASKS = {
   "automation.schedules": 60_000,
   "background.reconcile": 60_000,
   "background.snapshot": 60_000,
-  "gmail.send_receipt_cleanup": 60 * 60_000,
-  "gmail.watch_renewal": 5 * 60_000,
-  "mail.index_recovery": 60_000,
   "calendar.sync_recovery": 60_000,
   "membership.expiry": 60_000,
 } as const;
@@ -185,7 +174,6 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
       drainDatabaseRealtimeOutbox(env, { limit: 100 }),
       drainNavigationRealtimeOutbox(env, { limit: 100 }),
       drainInProductNotificationOutbox(env, { limit: 100 }),
-      drainMailDatabaseSyncOutbox(env, { limit: 20, workerId: `${workerId}:mail` }),
     ]);
   },
   "automation.schedules": async (env) => {
@@ -201,14 +189,6 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
       drainCalendarOutbox(),
     ]);
   },
-  "mail.index_recovery": async (env) => {
-    await advancePendingMailSyncs(env);
-    await pollMailSyncSafety(env);
-    await advanceDueMailReminders(env);
-  },
-  "gmail.watch_renewal": async (env) => {
-    await renewGmailWatches(env);
-  },
   "ai.cleanup": async (env) => {
     await cleanupExpiredAiAgentData(env);
   },
@@ -219,9 +199,6 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
     )
       ? 60_000
       : undefined;
-  },
-  "gmail.send_receipt_cleanup": async () => {
-    await cleanupExpiredGmailSendOperations();
   },
   "background.snapshot": async (env) => {
     const snapshot = await getBackgroundOperationalSnapshot(env);

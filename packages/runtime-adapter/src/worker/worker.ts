@@ -38,11 +38,6 @@ import {
   routeMeetingAudioRequest,
   type MeetingAudioRouteEnv,
 } from "./features/meeting-audio/security";
-import { MailNotificationRoom } from "./features/mail-realtime/mail-notification-room";
-import {
-  routeMailRealtimeRequest,
-  type MailRealtimeRouteEnv,
-} from "./features/mail-realtime/security";
 import { NavigationNotificationRoom } from "./features/navigation-realtime/navigation-notification-room";
 import {
   routeNavigationRealtimeRequest,
@@ -60,7 +55,6 @@ export type { CollaborationRouteEnv } from "./features/collaboration/security";
 export {
   DatabaseCollaborationRoom,
   MeetingCollaborationRoom,
-  MailNotificationRoom,
   CalendarNotificationRoom,
   NavigationNotificationRoom,
   PageCollaborationRoom,
@@ -400,10 +394,6 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
               request,
               env as unknown as CalendarRealtimeRouteEnv,
             );
-          if (pathname === "/mail-realtime") {
-            return routeMailRealtimeRequest(request, env as unknown as MailRealtimeRouteEnv);
-          }
-
           if (pathname === "/navigation-realtime") {
             return routeNavigationRealtimeRequest(
               request,

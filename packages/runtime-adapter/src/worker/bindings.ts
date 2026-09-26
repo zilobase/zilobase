@@ -2,7 +2,6 @@ import type {
   BackgroundTaskV1,
   CalendarNotificationEvent,
   DatabaseMutationEventV2,
-  MailNotificationEvent,
   MeetingRecorderRuntimeState,
   MeetingTranscriptYjsSegment,
 } from "@zilobase/server/adapter-api";
@@ -20,7 +19,6 @@ export type WorkerEnvBindings = Record<string, unknown> & {
   AI_JOBS?: BackgroundQueue;
   AUTOMATION_RUNS?: BackgroundQueue;
   CALENDAR_JOBS?: BackgroundQueue;
-  MAIL_JOBS?: BackgroundQueue;
   EMAIL?: CloudflareBindings["EMAIL"];
   ZILOBASE_DEV_EMAIL_SINK_URL?: string;
   HYPERDRIVE?: WorkerHyperdriveBinding;
@@ -72,12 +70,6 @@ export type WorkerEnvBindings = Record<string, unknown> & {
     getByName(name: string): {
       fetch(request: Request): Promise<Response>;
       publishNotification(event: CalendarNotificationEvent): Promise<void>;
-    };
-  };
-  MAIL_NOTIFICATION_ROOM?: {
-    getByName(name: string): {
-      fetch(request: Request): Promise<Response>;
-      publishNotification(event: MailNotificationEvent): Promise<void>;
     };
   };
   NAVIGATION_NOTIFICATION_ROOM?: {

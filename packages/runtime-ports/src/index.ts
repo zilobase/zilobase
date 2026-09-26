@@ -2,7 +2,7 @@ export type RuntimeKind = "node" | "worker";
 export type RuntimeEnv = Record<string, unknown>;
 export type Unsubscribe = () => void | Promise<void>;
 
-export type BackgroundLane = "ai" | "automation" | "calendar" | "fast" | "mail";
+export type BackgroundLane = "ai" | "automation" | "calendar" | "fast";
 
 export type BackgroundTask = {
   availableAt: string;
@@ -155,7 +155,6 @@ export type RealtimeEndpoint =
   | "calendar"
   | "collaboration"
   | "database"
-  | "mail"
   | "meeting-audio"
   | "meeting-collaboration"
   | "navigation";
@@ -326,7 +325,6 @@ export type RuntimeRoomKind =
   | "calendar"
   | "chat-agent"
   | "database"
-  | "mail"
   | "meeting"
   | "meeting-audio"
   | "navigation"

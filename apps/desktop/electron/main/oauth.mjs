@@ -248,7 +248,7 @@ export function registerOAuthHandlers(handle, focusWindow) {
     activeAttempt?.rejectCallback(desktopError("cancelled", "Browser sign-in was cancelled."));
     activeAttempt?.server.close();
   });
-  handle("desktop:auth:open-mail-url", async ({ authorizationUrl }) => {
+  handle("desktop:auth:open-authorization-url", async ({ authorizationUrl }) => {
     let url;
     try {
       url = new URL(authorizationUrl);

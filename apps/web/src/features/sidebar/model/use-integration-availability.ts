@@ -3,21 +3,17 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "@/platform/network/api";
 
-function integrationAvailabilityQueryOptions(
-  integration: "calendar" | "mail",
-  workspaceId: string | null,
-) {
+function integrationAvailabilityQueryOptions(workspaceId: string | null) {
   const enabled = Boolean(workspaceId);
-  const resource = integration === "mail" ? "mail/connection" : "calendar/sources";
 
   return queryOptions({
     enabled,
     queryFn: ({ signal }) =>
       apiFetch<{ providerConfigured?: boolean }>(
-        `/workspaces/${encodeURIComponent(workspaceId!)}/${resource}`,
+        `/workspaces/${encodeURIComponent(workspaceId!)}/calendar/sources`,
         { signal },
       ),
-    queryKey: ["integrations", integration, workspaceId] as const,
+    queryKey: ["integrations", "calendar", workspaceId] as const,
     retry: false,
     staleTime: 60_000,
   });
@@ -25,14 +21,9 @@ function integrationAvailabilityQueryOptions(
 
 export function useIntegrationAvailability(workspaceId: string | null) {
   const enabled = Boolean(workspaceId);
-  const mail = useQuery(integrationAvailabilityQueryOptions("mail", workspaceId));
-  const calendar = useQuery(integrationAvailabilityQueryOptions("calendar", workspaceId));
+  const calendar = useQuery(integrationAvailabilityQueryOptions(workspaceId));
 
-  const mailConfigured = mail.data?.providerConfigured === true;
   const calendarConfigured = calendar.data?.providerConfigured === true;
-  const settled = (!enabled || mail.isFetched) && (!enabled || calendar.isFetched);
-  return useMemo(
-    () => ({ calendar: calendarConfigured, mail: mailConfigured, settled }),
-    [calendarConfigured, mailConfigured, settled],
-  );
+  const settled = !enabled || calendar.isFetched;
+  return useMemo(() => ({ calendar: calendarConfigured, settled }), [calendarConfigured, settled]);
 }

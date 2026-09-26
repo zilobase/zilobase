@@ -4,7 +4,6 @@ import { runAiJobById } from "../../features/ai/jobs/ai-jobs";
 import { processAgentRun } from "../../features/ai/execution/agent-run-service";
 import { processDatabaseAutomationEventWindow } from "../../features/automations/triggers/event-evaluator";
 import { processDatabaseAutomationRun } from "../../features/automations/execution/run-engine";
-import { processMailIndexTask, processMailDatabaseSyncTask } from "../../features/mail/background";
 import { processDatabaseRealtimeTask } from "../../features/databases/realtime/background";
 import { processNavigationRealtimeTask } from "../../features/workspaces/navigation-realtime/background";
 import { processNotificationTask } from "../../features/notifications/background";
@@ -92,8 +91,6 @@ async function processBackgroundTaskInner(input: {
         workerId,
       }),
     "calendar.sync": () => processCalendarSyncTask(env, task.resourceId),
-    "mail.index": () => processMailIndexTask(env, task.resourceId),
-    "mail.database_sync": () => processMailDatabaseSyncTask(env, task.resourceId, workerId),
     "realtime.database": () => processDatabaseRealtimeTask(env, task.resourceId),
     "realtime.navigation": () => processNavigationRealtimeTask(env, task.resourceId),
     "notification.publish": () => processNotificationTask(env, task.resourceId),

@@ -24,7 +24,6 @@ export const NOTION_ACTION_OPTIONS: Array<{ label: string; type: ActionType }> =
   { label: "Add page to", type: "add_page" },
   { label: "Edit pages in", type: "edit_pages" },
   { label: "Send notification to", type: "send_notification" },
-  { label: "Send mail to", type: "send_gmail" },
   { label: "Send webhook", type: "send_webhook" },
   { label: "Send Slack notification to", type: "send_slack" },
   { label: "Define variables", type: "define_variables" },
@@ -41,8 +40,6 @@ export function createNotionActionDraft(
 ): NotionActionDraft {
   const id = crypto.randomUUID();
   const firstUserId = catalog?.users[0]?.id ?? "";
-  const firstGmailId =
-    catalog?.gmailConnections.find(({ status }) => status === "connected")?.id ?? "";
   const firstSlackId =
     catalog?.slackConnections.find(({ status }) => status === "connected")?.id ?? "";
   const operation = defaultOperation();
@@ -66,41 +63,28 @@ export function createNotionActionDraft(
                 recipients: [{ type: "selected_user", userId: firstUserId }],
                 type,
               }
-            : type === "send_gmail"
+            : type === "send_webhook"
               ? {
-                  bcc: [],
-                  cc: [],
-                  connectionId: firstGmailId,
+                  headers: [],
                   id,
-                  message: textExpression(""),
-                  subject: textExpression(""),
-                  to: [{ type: "literal", value: "" }],
+                  payloadFields: [],
+                  selectedPropertyIds: [],
                   type,
+                  url: "https://",
                 }
-              : type === "send_webhook"
+              : type === "send_slack"
                 ? {
-                    headers: [],
+                    channelId: "",
+                    connectionId: firstSlackId,
                     id,
-                    payloadFields: [],
-                    selectedPropertyIds: [],
+                    message: { parts: [{ text: "", type: "text" }] },
                     type,
-                    url: "https://",
                   }
-                : type === "send_slack"
-                  ? {
-                      channelId: "",
-                      connectionId: firstSlackId,
-                      id,
-                      message: { parts: [{ text: "", type: "text" }] },
-                      type,
-                    }
-                  : {
-                      id,
-                      type: "define_variables",
-                      variables: [
-                        { expression: { type: "literal", value: "" }, name: "Variable 1" },
-                      ],
-                    };
+                : {
+                    id,
+                    type: "define_variables",
+                    variables: [{ expression: { type: "literal", value: "" }, name: "Variable 1" }],
+                  };
   return { action, webhookHeaders: [] };
 }
 

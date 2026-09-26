@@ -376,7 +376,7 @@ async function prepareAgentMessage(input: Parameters<typeof submitAgentConversat
     output: Output.object({
       schema: z.object({
         intent: z.enum(["configure", "run", "configure_and_run", "clarify"]),
-        connector: z.enum(["gmail", "github", "linear", "figma"]).nullable(),
+        connector: z.enum(["github", "linear", "figma"]).nullable(),
       }),
     }),
     system:

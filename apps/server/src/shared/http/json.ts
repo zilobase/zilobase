@@ -2,7 +2,7 @@ import { validator } from "hono/validator";
 import type { ZodType } from "zod";
 
 export const JSON_CONTENT_TYPE = "application/json";
-/** Covers mail compose attachments (20 MiB binary, base64-encoded) plus envelope. */
+/** Maximum JSON request size accepted by legacy Zod-backed routes. */
 export const JSON_BODY_LIMIT_BYTES = 32 * 1024 * 1024;
 
 export function hasJsonContentType(contentType: string | undefined) {

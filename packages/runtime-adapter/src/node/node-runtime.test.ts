@@ -47,10 +47,6 @@ const mocks = vi.hoisted(() => {
       destroy: vi.fn(async () => undefined),
       publishMutation: vi.fn(async () => undefined),
     },
-    mailRealtime: {
-      destroy: vi.fn(async () => undefined),
-      publishNotification: vi.fn(async () => undefined),
-    },
     meetingAudio: { destroy: vi.fn(async () => undefined) },
     migrate: vi.fn(async () => undefined),
     navigationRealtime: {
@@ -75,9 +71,6 @@ vi.mock("./features/meeting-audio/meeting-audio-runtime", () => ({
 }));
 vi.mock("./features/calendar-realtime/calendar-realtime-runtime", () => ({
   attachNodeCalendarRealtimeRuntime: vi.fn(() => mocks.calendarRealtime),
-}));
-vi.mock("./features/mail-realtime/mail-realtime-runtime", () => ({
-  attachNodeMailRealtimeRuntime: vi.fn(() => mocks.mailRealtime),
 }));
 vi.mock("./features/navigation-realtime/navigation-realtime-runtime", () => ({
   attachNodeNavigationRealtimeRuntime: vi.fn(() => mocks.navigationRealtime),
@@ -249,11 +242,9 @@ describe("Node runtime lifecycle", () => {
 
     await runtime.start();
     await ports!.fanout.publish("db:database", { id: "db" });
-    await ports!.fanout.publish("mail:user", { id: "mail" });
     await ports!.fanout.publish("navigation:workspace", { id: "nav" });
     await ports!.jobs.dispatch([]);
     expect(mocks.databaseRealtime.publishMutation).toHaveBeenCalled();
-    expect(mocks.mailRealtime.publishNotification).toHaveBeenCalled();
     expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
     expect(mocks.publishBackground).toHaveBeenCalled();
 

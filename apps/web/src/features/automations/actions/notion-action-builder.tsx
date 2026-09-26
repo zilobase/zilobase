@@ -181,8 +181,6 @@ export function NotionActionEditor({
               onChange={patch}
               scheduled={scheduled}
             />
-          ) : action.type === "send_gmail" ? (
-            <GmailEditor action={action} catalog={catalog} onChange={patch} scheduled={scheduled} />
           ) : action.type === "send_webhook" ? (
             <WebhookEditor catalog={catalog} draft={draft} onChange={onChange} />
           ) : (
@@ -940,86 +938,6 @@ function RecipientValueEditor({
   );
 }
 
-function GmailEditor({
-  action,
-  catalog,
-  onChange,
-  scheduled,
-}: {
-  action: Extract<DatabaseAutomationAction, { type: "send_gmail" }>;
-  catalog?: DatabaseAutomationCatalog;
-  onChange: (action: DatabaseAutomationAction) => void;
-  scheduled: boolean;
-}) {
-  return (
-    <>
-      <BuilderSelect
-        ariaLabel="Send mail from"
-        onValueChange={(connectionId) => onChange({ ...action, connectionId })}
-        options={(catalog?.gmailConnections ?? [])
-          .filter(({ status }) => status === "connected")
-          .map(({ email, id }) => ({ label: email, value: id }))}
-        value={action.connectionId}
-      />
-      <ExpressionListEditor
-        addLabel="Add To recipient"
-        ariaLabel="To"
-        catalog={catalog}
-        min={1}
-        onChange={(to) => onChange({ ...action, to })}
-        scheduled={scheduled}
-        value={action.to}
-      />
-      <ExpressionListEditor
-        addLabel="Add CC recipient"
-        ariaLabel="CC"
-        catalog={catalog}
-        onChange={(cc) => onChange({ ...action, cc })}
-        scheduled={scheduled}
-        value={action.cc}
-      />
-      <ExpressionListEditor
-        addLabel="Add BCC recipient"
-        ariaLabel="BCC"
-        catalog={catalog}
-        onChange={(bcc) => onChange({ ...action, bcc })}
-        scheduled={scheduled}
-        value={action.bcc}
-      />
-      <RichTextEditor
-        ariaLabel="Email subject"
-        catalog={catalog}
-        onChange={(subject) => onChange({ ...action, subject })}
-        scheduled={scheduled}
-        value={action.subject}
-      />
-      <RichTextEditor
-        ariaLabel="Email message"
-        catalog={catalog}
-        onChange={(message) => onChange({ ...action, message })}
-        scheduled={scheduled}
-        value={action.message}
-      />
-      <OptionalExpressionEditor
-        ariaLabel="Send with display name"
-        catalog={catalog}
-        onChange={(displayName) =>
-          onChange(displayName ? { ...action, displayName } : omit(action, "displayName"))
-        }
-        scheduled={scheduled}
-        value={action.displayName}
-      />
-      <OptionalExpressionEditor
-        ariaLabel="Send replies to"
-        catalog={catalog}
-        onChange={(replyTo) => onChange(replyTo ? { ...action, replyTo } : omit(action, "replyTo"))}
-        scheduled={scheduled}
-        value={action.replyTo}
-      />
-    </>
-  );
-}
-
 function WebhookEditor({
   catalog,
   draft,
@@ -1196,103 +1114,6 @@ function SlackEditor({
         </p>
       ) : null}
     </>
-  );
-}
-
-function ExpressionListEditor({
-  addLabel,
-  ariaLabel,
-  catalog,
-  min = 0,
-  onChange,
-  scheduled,
-  value,
-}: {
-  addLabel: string;
-  ariaLabel: string;
-  catalog?: DatabaseAutomationCatalog;
-  min?: number;
-  onChange: (value: AutomationValueExpression[]) => void;
-  scheduled: boolean;
-  value: AutomationValueExpression[];
-}) {
-  return (
-    <div className="grid gap-2 rounded-md border p-2">
-      <span className="text-xs font-medium">{ariaLabel}</span>
-      {value.map((expression, index) => (
-        <div className="flex gap-2" key={index}>
-          <ExpressionEditor
-            ariaLabel={`${ariaLabel} ${index + 1}`}
-            catalog={catalog}
-            onChange={(next) => onChange(replaceAt(value, index, next))}
-            scheduled={scheduled}
-            value={expression}
-          />
-          {value.length > min ? (
-            <Button
-              aria-label={`Remove ${ariaLabel} ${index + 1}`}
-              onClick={() => onChange(removeAt(value, index))}
-              size="icon"
-              variant="ghost"
-            >
-              <Trash2 />
-            </Button>
-          ) : null}
-        </div>
-      ))}
-      <Button
-        onClick={() => onChange([...value, { type: "literal", value: "" }])}
-        size="sm"
-        variant="outline"
-      >
-        <Plus />
-        {addLabel}
-      </Button>
-    </div>
-  );
-}
-
-function OptionalExpressionEditor({
-  ariaLabel,
-  catalog,
-  onChange,
-  scheduled,
-  value,
-}: {
-  ariaLabel: string;
-  catalog?: DatabaseAutomationCatalog;
-  onChange: (value?: AutomationValueExpression) => void;
-  scheduled: boolean;
-  value?: AutomationValueExpression;
-}) {
-  return (
-    <div className="grid gap-2 rounded-md border p-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium">{ariaLabel}</span>
-        {value ? (
-          <Button onClick={() => onChange(undefined)} size="sm" variant="ghost">
-            Remove
-          </Button>
-        ) : (
-          <Button
-            onClick={() => onChange({ type: "literal", value: "" })}
-            size="sm"
-            variant="ghost"
-          >
-            Add
-          </Button>
-        )}
-      </div>
-      {value ? (
-        <ExpressionEditor
-          ariaLabel={ariaLabel}
-          catalog={catalog}
-          onChange={onChange}
-          scheduled={scheduled}
-          value={value}
-        />
-      ) : null}
-    </div>
   );
 }
 

@@ -39,7 +39,7 @@ export function useCalendarAccounts(workspaceId: string) {
         `${base}/connections/google/start`,
         { method: "POST", body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }) },
       );
-      if (isDesktopApp()) await desktopBridge().auth.openMailUrl(authorizationUrl);
+      if (isDesktopApp()) await desktopBridge().auth.openAuthorizationUrl(authorizationUrl);
       else window.location.assign(authorizationUrl);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),

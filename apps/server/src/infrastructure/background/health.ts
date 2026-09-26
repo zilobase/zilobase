@@ -28,18 +28,6 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
       union all select 'ai', lease_expires_at from ai_job where status = 'running'
       union all select 'calendar', coalesce(dirty_at, current_timestamp) from calendar_provider_calendar
         where dirty_at is not null or page_token is not null
-      union all select 'mail', next_attempt_at from mail_database_sync_outbox where status in ('pending', 'retry')
-      union all select 'mail', lease_expires_at from mail_database_sync_outbox where status = 'processing'
-      union all
-        select 'mail', coalesce(s.updated_at, a.updated_at)
-        from gmail_account a
-        left join mail_index_state s on s.gmail_account_id = a.id
-        where a.status = 'connected'
-          and (
-            s.gmail_account_id is null
-            or s.status <> 'ready'
-            or s.desired_history_id is distinct from coalesce(s.applied_history_id, s.history_id)
-          )
     )
     select lane, count(*) filter (where due_at <= current_timestamp)::integer as ready_count,
       min(due_at) filter (where due_at <= current_timestamp) as oldest_due_at
@@ -54,7 +42,6 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
       union all select lease_expires_at from database_automation_run where status = 'running'
       union all select lease_expires_at from ai_agent_run where status = 'running'
       union all select lease_expires_at from ai_job where status = 'running'
-      union all select lease_expires_at from mail_database_sync_outbox where status = 'processing'
     )
     select
       count(*) filter (where expires_at > current_timestamp)::integer as active_count,
@@ -71,7 +58,7 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
     })
     .from(backgroundMaintenanceTask);
   const byLane = new Map(result.rows.map((row) => [row.lane, row]));
-  const lanes = (["fast", "automation", "ai", "mail", "calendar"] as const).map((lane) => {
+  const lanes = (["fast", "automation", "ai", "calendar"] as const).map((lane) => {
     const row = byLane.get(lane);
     const rawOldestDueAt = row?.oldest_due_at as Date | string | null | undefined;
     const oldestDueAt = rawOldestDueAt ? new Date(rawOldestDueAt) : null;

@@ -20,8 +20,6 @@ import {
   databaseView,
   dataSource,
   automationSecret,
-  gmailAccount,
-  gmailWorkspaceConnection,
   pageProperty,
   slackConnection,
   member,
@@ -128,7 +126,6 @@ export async function loadCompilationContext(input: {
   allowHttpWebhookDomains?: Set<string>;
   databaseId: string;
   definition: unknown;
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   management: Awaited<ReturnType<typeof requireManagementContext>>;
@@ -181,28 +178,22 @@ export async function loadCompilationContext(input: {
     }
     if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
   }
-  const [propertiesByDataSource, views, users, gmailConnections, secrets, slackConnections] =
-    await Promise.all([
-      loadProperties([...targetIds]),
-      loadViews(input.databaseId, input.management.source.id),
-      loadWorkspaceUsers(input.management.source.workspaceId),
-      loadOwnedGmailConnections(input.management.source.workspaceId, input.userId),
-      loadOwnedAutomationSecrets(input.management.source.workspaceId, input.userId),
-      loadOwnedSlackConnections(input.management.source.workspaceId, input.userId),
-    ]);
+  const [propertiesByDataSource, views, users, secrets, slackConnections] = await Promise.all([
+    loadProperties([...targetIds]),
+    loadViews(input.databaseId, input.management.source.id),
+    loadWorkspaceUsers(input.management.source.workspaceId),
+    loadOwnedAutomationSecrets(input.management.source.workspaceId, input.userId),
+    loadOwnedSlackConnections(input.management.source.workspaceId, input.userId),
+  ]);
   return {
     allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     capabilities: {
-      gmail: input.gmailEnabled !== false,
       notifications: true,
       schedules: true,
       slack: input.slackEnabled !== false,
       webhooks: input.webhooksEnabled !== false,
     },
     dataSourceIds: targetIds,
-    gmailConnectionIds: new Set(
-      gmailConnections.filter(({ status }) => status === "connected").map(({ id }) => id),
-    ),
     invalidWebhookActionIds,
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
@@ -317,32 +308,6 @@ function getAutomationPropertyIcon(config: unknown) {
   return typeof icon === "string" ? icon : "";
 }
 
-export async function loadOwnedGmailConnections(workspaceId: string, userId: string) {
-  return db
-    .select({ email: gmailAccount.email, id: gmailAccount.id, status: gmailAccount.status })
-    .from(gmailWorkspaceConnection)
-    .innerJoin(
-      gmailAccount,
-      and(
-        eq(gmailAccount.id, gmailWorkspaceConnection.gmailAccountId),
-        eq(gmailAccount.userId, userId),
-      ),
-    )
-    .where(
-      and(
-        eq(gmailWorkspaceConnection.workspaceId, workspaceId),
-        eq(gmailWorkspaceConnection.userId, userId),
-      ),
-    )
-    .then((connections) =>
-      connections.flatMap((connection) =>
-        connection.status === "connected" || connection.status === "reconnect_required"
-          ? [{ ...connection, status: connection.status as "connected" | "reconnect_required" }]
-          : [],
-      ),
-    );
-}
-
 export async function loadOwnedAutomationSecrets(workspaceId: string, userId: string) {
   return db
     .select({ id: automationSecret.id })
@@ -387,12 +352,7 @@ export async function getLifecycleAutomation(input: {
 
 export function containsProtectedConnectorAction(definition: unknown) {
   const parsed = databaseAutomationDefinitionSchema.safeParse(definition);
-  return (
-    parsed.success &&
-    parsed.data.actions.some(
-      (action) => action.type === "send_gmail" || action.type === "send_slack",
-    )
-  );
+  return parsed.success && parsed.data.actions.some((action) => action.type === "send_slack");
 }
 
 export function definitionForDuplicate(

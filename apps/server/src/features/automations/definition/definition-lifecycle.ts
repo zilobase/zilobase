@@ -49,7 +49,6 @@ export async function createDatabaseAutomation(input: {
   duplicatedFromId?: string;
   editionExtension?: ZilobaseEditionExtension;
   initialStatus?: "active" | "paused";
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
@@ -63,7 +62,6 @@ export async function createDatabaseAutomation(input: {
     allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     databaseId: input.databaseId,
     definition: input.body.definition,
-    gmailEnabled: input.gmailEnabled,
     slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     management,
@@ -222,7 +220,6 @@ export async function updateDatabaseAutomation(input: {
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   expectedVersion: number;
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
@@ -238,7 +235,6 @@ export async function updateDatabaseAutomation(input: {
     allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     databaseId: input.databaseId,
     definition: input.body.definition,
-    gmailEnabled: input.gmailEnabled,
     slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     management,
@@ -338,7 +334,6 @@ export async function setDatabaseAutomationPaused(input: {
   automationId: string;
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   paused: boolean;
@@ -352,7 +347,6 @@ export async function setDatabaseAutomationPaused(input: {
       databaseId: input.databaseId,
       dataSourceId: current.dataSourceId,
       definition: current.definition,
-      gmailEnabled: input.gmailEnabled,
       slackEnabled: input.slackEnabled,
       webhooksEnabled: input.webhooksEnabled,
       userId: input.userId,
@@ -397,7 +391,6 @@ export async function duplicateDatabaseAutomation(input: {
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   idempotencyKey: string;
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
@@ -421,7 +414,6 @@ export async function duplicateDatabaseAutomation(input: {
     duplicatedFromId: source.id,
     editionExtension: input.editionExtension,
     initialStatus: "paused",
-    gmailEnabled: input.gmailEnabled,
     slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     userId: input.userId,

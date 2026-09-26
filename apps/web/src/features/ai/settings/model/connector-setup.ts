@@ -10,7 +10,6 @@ type SetupInput = {
   approved?: McpApprovedServer[];
   catalog?: McpServerCatalogEntry[];
   connections?: McpConnectionSummary[];
-  gmail?: { status: string; providerConfigured?: boolean };
 };
 
 export function describeConnectorSetup(input: SetupInput) {
@@ -21,10 +20,7 @@ export function describeConnectorSetup(input: SetupInput) {
       ? connection.endpointUrl === (entry && "endpointUrl" in entry ? entry.endpointUrl : undefined)
       : connection.catalogId === input.provider,
   );
-  const status =
-    input.provider === "gmail"
-      ? gmailStatus(input.scope, input.gmail)
-      : mcpStatus(input.provider, entry, existing);
+  const status = mcpStatus(input.provider, entry, existing);
   return { approvedId, existing, ...status };
 }
 
@@ -36,21 +32,6 @@ function connectorEntry(input: SetupInput, approvedId: string | null) {
 
 function availableApprovedEntry(entry: McpApprovedServer | undefined) {
   return entry && { ...entry, available: true, availabilityReason: null };
-}
-
-function gmailStatus(scope: string, gmail: SetupInput["gmail"]) {
-  const connected = gmail?.status === "connected";
-  const unavailable = scope !== "personal" || gmail?.providerConfigured === false;
-  const reason =
-    scope !== "personal"
-      ? "Gmail is currently available to personal Ask AI. Delegated Gmail access is not supported."
-      : "Connection unavailable on this server.";
-  return {
-    connected,
-    unavailable,
-    label: "Gmail",
-    description: statusDescription(connected, unavailable, reason),
-  };
 }
 
 function mcpStatus(

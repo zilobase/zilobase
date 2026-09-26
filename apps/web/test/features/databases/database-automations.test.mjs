@@ -249,7 +249,6 @@ export function register({ assert, readSource, test }) {
       "Add page to",
       "Edit pages in",
       "Send notification to",
-      "Send mail to",
       "Send webhook",
       "Send Slack notification to",
       "Define variables",
@@ -286,25 +285,6 @@ export function register({ assert, readSource, test }) {
     }
     assert.match(actions, /recipients\.length >= 20/);
     assert.match(actions, /catalog\?\.users/);
-  });
-
-  test("builder exposes protected Gmail fields and dynamic recipient sources", async () => {
-    const actions = await readNotionActions();
-    for (const behavior of [
-      "Send mail to",
-      "Send mail from",
-      "Add To recipient",
-      "Add CC recipient",
-      "Add BCC recipient",
-      "Email subject",
-      "Email message",
-      "Send with display name",
-      "Send replies to",
-    ])
-      assert.match(actions, new RegExp(behavior));
-    assert.match(actions, /selected_person/);
-    assert.match(actions, /trigger_property/);
-    assert.match(actions, /page_creator/);
   });
 
   test("builder stores webhook headers separately from definitions", async () => {

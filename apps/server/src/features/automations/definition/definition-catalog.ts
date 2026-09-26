@@ -11,7 +11,6 @@ import {
   requireManagementContext,
   loadProperties,
   loadAutomationTargetCatalog,
-  loadOwnedGmailConnections,
   loadOwnedSlackConnections,
   loadViews,
   loadWorkspaceUsers,
@@ -20,26 +19,21 @@ import {
 export async function getDatabaseAutomationCatalog(input: {
   databaseId: string;
   dataSourceId: string;
-  gmailEnabled?: boolean;
   slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
 }) {
   try {
     const management = await requireManagementContext(input);
-    const [properties, views, users, gmailConnections, slackConnections, dataSources] =
-      await Promise.all([
-        loadProperties([input.dataSourceId]),
-        loadViews(input.databaseId, input.dataSourceId),
-        loadWorkspaceUsers(management.source.workspaceId),
-        input.gmailEnabled === false
-          ? Promise.resolve([])
-          : loadOwnedGmailConnections(management.source.workspaceId, input.userId),
-        input.slackEnabled === false
-          ? Promise.resolve([])
-          : loadOwnedSlackConnections(management.source.workspaceId, input.userId),
-        loadAutomationTargetCatalog(management.source.workspaceId, input.userId),
-      ]);
+    const [properties, views, users, slackConnections, dataSources] = await Promise.all([
+      loadProperties([input.dataSourceId]),
+      loadViews(input.databaseId, input.dataSourceId),
+      loadWorkspaceUsers(management.source.workspaceId),
+      input.slackEnabled === false
+        ? Promise.resolve([])
+        : loadOwnedSlackConnections(management.source.workspaceId, input.userId),
+      loadAutomationTargetCatalog(management.source.workspaceId, input.userId),
+    ]);
     return {
       actions: [
         { available: true, reason: null, type: "define_variables" as const },
@@ -47,15 +41,6 @@ export async function getDatabaseAutomationCatalog(input: {
         { available: true, reason: null, type: "add_page" as const },
         { available: true, reason: null, type: "edit_pages" as const },
         { available: true, reason: null, type: "send_notification" as const },
-        {
-          available: gmailConnections.some((connection) => connection.status === "connected"),
-          reason: gmailConnections.some((connection) => connection.status === "connected")
-            ? null
-            : gmailConnections.length
-              ? "Reconnect Gmail to use this action"
-              : "Connect Gmail to use this action",
-          type: "send_gmail" as const,
-        },
         {
           available: input.webhooksEnabled !== false,
           reason:
@@ -82,7 +67,6 @@ export async function getDatabaseAutomationCatalog(input: {
       canManage: true,
       dataSourceId: management.source.id,
       dataSources,
-      gmailConnections,
       slackConnections,
       manageUnavailableReason: null,
       properties: [...(properties.get(input.dataSourceId)?.values() ?? [])].map((property) => ({
@@ -107,7 +91,6 @@ export async function getDatabaseAutomationCatalog(input: {
       canManage: false,
       dataSourceId: input.dataSourceId,
       dataSources: [],
-      gmailConnections: [],
       slackConnections: [],
       manageUnavailableReason: error.message,
       properties: [],

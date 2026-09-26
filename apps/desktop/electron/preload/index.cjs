@@ -25,7 +25,8 @@ const bridge = {
     setOwner: (owner) => call("desktop:auth:set-owner", { owner }),
     startBrowser: invoke("desktop:auth:start-browser"),
     cancelBrowser: invoke("desktop:auth:cancel-browser"),
-    openMailUrl: (authorizationUrl) => call("desktop:auth:open-mail-url", { authorizationUrl }),
+    openAuthorizationUrl: (authorizationUrl) =>
+      call("desktop:auth:open-authorization-url", { authorizationUrl }),
   },
   server: {
     initialize: invoke("desktop:server:initialize"),

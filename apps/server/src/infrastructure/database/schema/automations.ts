@@ -128,7 +128,7 @@ export const databaseAutomationDependency = pgTable(
     index("database_automation_dependency_lookup_idx").on(table.dependencyType, table.dependencyId),
     check(
       "database_automation_dependency_type_check",
-      sql`${table.dependencyType} in ('data_source', 'database', 'view', 'property', 'option', 'user', 'group', 'gmail_connection', 'slack_connection', 'secret')`,
+      sql`${table.dependencyType} in ('data_source', 'database', 'view', 'property', 'option', 'user', 'group', 'slack_connection', 'secret')`,
     ),
   ],
 );
@@ -310,7 +310,7 @@ export const databaseAutomationDelivery = pgTable(
     index("database_automation_delivery_ready_idx").on(table.status, table.nextAttemptAt),
     check(
       "database_automation_delivery_kind_check",
-      sql`${table.kind} in ('notification', 'gmail', 'webhook', 'slack')`,
+      sql`${table.kind} in ('notification', 'webhook', 'slack')`,
     ),
     check(
       "database_automation_delivery_status_check",

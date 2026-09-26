@@ -30,30 +30,6 @@ export {
 } from "./schema/workspaces";
 export { pageSettings } from "./schema/user-settings";
 export { instanceSettings } from "./schema/instance";
-export {
-  gmailAccount,
-  gmailOauthAttempt,
-  gmailSendOperation,
-  gmailWorkspaceConnection,
-} from "./schema/mail-connections";
-export {
-  mailView,
-  mailProperty,
-  mailThreadPropertyValue,
-  mailReminder,
-} from "./schema/mail-organization";
-export {
-  mailDatabaseSyncRecord,
-  mailDatabaseSyncOutbox,
-  mailIndexState,
-  mailMailboxChange,
-  mailDraft,
-  mailHydrationRequest,
-  mailThreadIndex,
-  mailMessage,
-  mailLabel,
-  gmailApiBudget,
-} from "./schema/mail-sync";
 export { slackOauthAttempt, slackConnection } from "./schema/slack-connections";
 export {
   page,

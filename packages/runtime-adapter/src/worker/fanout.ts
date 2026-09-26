@@ -20,12 +20,6 @@ export function createWorkerFanout(env: WorkerEnvBindings): FanoutBus {
         await namespace.getByName(id).publishNotification(payload as never);
         return;
       }
-      if (kind === "mail") {
-        const namespace = env.MAIL_NOTIFICATION_ROOM;
-        if (!namespace) throw new Error("MAIL_NOTIFICATION_ROOM binding is required");
-        await namespace.getByName(id).publishNotification(payload as never);
-        return;
-      }
       if (kind === "navigation") {
         const namespace = env.NAVIGATION_NOTIFICATION_ROOM;
         if (!namespace) throw new Error("NAVIGATION_NOTIFICATION_ROOM binding is required");

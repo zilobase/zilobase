@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@zilobase/server/node-adapter-api", () => ({
   AI_JOB_HANDLERS: {},
-  advancePendingMailSyncs: vi.fn(),
   boundedErrorCode: () => "Error",
   createDbClientForUrl: mocks.client,
   db: {
@@ -20,7 +19,6 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   drainDatabaseAutomationRuns: vi.fn(),
   drainDatabaseRealtimeOutbox: mocks.realtime,
   drainInProductNotificationOutbox: vi.fn(),
-  drainMailDatabaseSyncOutbox: vi.fn(),
   drainNavigationRealtimeOutbox: vi.fn(),
   runAiJobBatch: vi.fn(),
   runDueBackgroundMaintenance: mocks.maintenance,

@@ -54,11 +54,6 @@ export const settingsRoutes = [
   }),
   createRoute({
     getParentRoute: () => appRoute,
-    path: "/settings/mail",
-    component: lazyRouteComponent(() => import("@/features/settings/screens/mail")),
-  }),
-  createRoute({
-    getParentRoute: () => appRoute,
     path: "/settings/calendar",
     component: lazyRouteComponent(() => import("@/features/settings/screens/calendar")),
   }),
