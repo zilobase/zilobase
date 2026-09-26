@@ -98,28 +98,6 @@ verification, and invitations use SMTP normally.
 After bootstrap, registration defaults to invite-only. The pinned workspace
 owner can switch registration mode under **Settings → Team**.
 
-## Workspace Mail
-
-Mail is workspace-scoped and is included in the web client and API. Apply every
-database migration before enabling it; the workspace rollout migration removes
-the former unscoped credential table and cannot be rolled back by an older
-application image without restoring the matching database backup.
-
-The bundled Node server runs Gmail watch renewal, full-mailbox indexing, and the
-database-sync outbox in its maintenance loop. Custom runtime adapters
-must schedule the exported `renewGmailWatches`, `advancePendingMailIndexes`, and
-`drainMailDatabaseSyncOutbox` functions at least once per minute. Every Node
-deployment uses the shared realtime broker so workspace/binding-
-scoped mail events reach the correct realtime room.
-
-Monitor the non-PII `mail.watch_health`, `mail.index`, `mail.database_sync`,
-`mail.webhook_rejection`, `mail.quota_failure`, `mail.cursor_reset`, and
-`mail.socket_state` events. A paused database-sync job indicates that its
-same-workspace destination or mapping needs attention; restoring access lets a
-new source update enqueue the thread again. Full configuration, recovery, and
-the staging acceptance checklist are in
-[Gmail deployment and verification](../mail/gmail-deployment.md).
-
 ## Destructive actions
 
 Normal `docker compose down` preserves data. `down --volumes` permanently

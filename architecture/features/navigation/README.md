@@ -18,7 +18,7 @@ The [page duplication model](../../../apps/web/src/features/sidebar/model/page-d
 
 ## Authorization and persistence
 
-Navigation reflects accessible content and user sidebar preferences. [Sidebar configuration](../../../packages/features/src/user-settings/sidebar-config.ts) normalizes Home, AI, Mail and Calendar as fixed tabs, including existing saved layouts. Calendar is a static route tab with account controls instead of customizable shortcuts and sections. The [application sidebar](../../../apps/web/src/features/sidebar/app-sidebar.tsx) filters Calendar by its independent feature flag and keeps selection synchronized with the Calendar route, restoring the saved workspace tab when leaving it. Page graph/hierarchy ownership stays with page modules; sidebar visibility is not a server authorization decision.
+Navigation reflects accessible content and user sidebar preferences. [Sidebar configuration](../../../packages/features/src/user-settings/sidebar-config.ts) normalizes Home, AI and Calendar as fixed tabs, including existing saved layouts. Calendar is a static route tab with account controls instead of customizable shortcuts and sections. The [application sidebar](../../../apps/web/src/features/sidebar/app-sidebar.tsx) filters Calendar by its independent feature flag and keeps selection synchronized with the Calendar route, restoring the saved workspace tab when leaving it. Page graph/hierarchy ownership stays with page modules; sidebar visibility is not a server authorization decision.
 
 ## Side effects, failures and recovery
 

@@ -18,7 +18,7 @@ Definitions/revisions, runs, step runs, receipts and secrets live in Postgres. E
 
 ## Side effects, failures and recovery
 
-External actions can send Gmail/Slack messages or webhooks. Retries must reuse delivery identities and receipts. Leases, revision pinning, permission denial and provider reconnect states are part of the execution interface.
+External actions can send Slack messages or webhooks. Retries must reuse delivery identities and receipts. Leases, revision pinning, permission denial and provider reconnect states are part of the execution interface.
 
 ## Focused guides
 
@@ -39,7 +39,7 @@ The server keeps transport in `http/routes.ts` and `http/slack-routes.ts`. Slack
 - [Compilation](../../../apps/server/src/features/automations/compilation): pure definition compilation and reference traversal.
 - [Triggers](../../../apps/server/src/features/automations/triggers): transaction-bound fact capture, event-window evaluation, trigger matching and scheduled occurrence materialization.
 - [Execution](../../../apps/server/src/features/automations/execution): run claiming, pinned context loading and action dispatch.
-- [Actions](../../../apps/server/src/features/automations/actions): expression values, internal mutations, Gmail/Slack/webhook outcomes, Slack credentials, secret encryption and pinned webhook egress.
+- [Actions](../../../apps/server/src/features/automations/actions): expression values, internal mutations, Slack/webhook outcomes, Slack credentials, secret encryption and pinned webhook egress.
 - [History](../../../apps/server/src/features/automations/history): authorized run/step reads, audit exports, retention cleanup and aggregate health.
 
 Background composition imports the run engine, event evaluator, scheduler and history maintenance through those concrete entrypoints; mutation owners use trigger fact capture inside their transactions. The public server adapter aggregate preserves all existing exported names. Moving a file does not change its transaction, lease or authorization boundary.
@@ -48,7 +48,7 @@ The web manager remains the feature's entrypoint and composition owner. [Definit
 
 The shared package keeps contracts and pure schedule calculation at `automations`. React query options, hooks and query tests live behind the explicit [React entrypoint](../../../packages/features/src/automations/react/index.ts). Package subpaths are `./automations` and `./automations/react`; the duplicate `./databases/automations*` aliases are removed. Database test discovery includes nested automation tests; server tests remain adjacent to their owning capabilities and web tests remain under the feature test root.
 
-Moving the compiler exposed its action-dispatch callback at the existing complexity gate. The compiler now delegates edit-pages, notification, Gmail, webhook and Slack validation to local named validators. They share the compilation state deliberately: reference availability is checked before each action and the completed-action set advances afterward. Error order, paths, dependencies, capabilities and the resulting definition hash remain unchanged; existing compiler scenarios cover these outcomes.
+Moving the compiler exposed its action-dispatch callback at the existing complexity gate. The compiler delegates edit-pages, notification, webhook and Slack validation to local named validators. They share the compilation state deliberately: reference availability is checked before each action and the completed-action set advances afterward. Error order, paths, dependencies, capabilities and the resulting definition hash remain unchanged; existing compiler scenarios cover these outcomes.
 
 [Slack OAuth behavior tests](../../../apps/server/src/features/automations/actions/slack-oauth.test.ts) exercise single-use attempt consumption before token exchange, grant rejection and owner-scoped credential encryption. They use real secret encryption and controlled database/provider operations, with no external OAuth requests.
 

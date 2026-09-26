@@ -20,7 +20,7 @@ Canonical data declarations live in each feature's contracts module. Query modul
 
 Query option factories keep each key beside its fetcher and forward TanStack Query's cancellation signal through provider transports when the request lifetime is owned entirely by observers. Session, workspace-list, page-detail and page-navigation queries are also awaited imperatively by router guards, so they intentionally do not consume an observer-owned signal; detaching the last React observer must not cancel the router's shared promise. Mutation lifecycle callbacks return their cache invalidation promises when callers must remain pending until server-backed views converge; explicitly best-effort realtime, navigation and already-committed embed refreshes retain fire-and-forget handling with local failure policy.
 
-Server mail code imports the published contracts, organization and predicate modules directly, so pure mail operations do not load React Query through the mail entrypoint. Authentication client declarations live in shared/auth-client; the React provider re-exports their type.
+Authentication client declarations live in shared/auth-client; the React provider re-exports their type.
 
 Web TypeScript and Vite resolve shared feature subpaths through the package export map. They no longer assume every subpath names a directory with index.ts; explicit contract and React entrypoints resolve consistently in typechecking and production builds.
 

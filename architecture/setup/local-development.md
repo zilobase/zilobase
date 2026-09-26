@@ -24,6 +24,6 @@ those URLs is reported instead of being treated as the process just started.
 
 Command definitions remain in [package scripts](../../package.json); consult them for the current invocation. [Architecture index](../README.md).
 
-Mail flags are operator-owned in the development environment. The Gmail config checker accepts `--profile=node` to inspect effective configuration. Generated development state is not migrated between layouts; reset `.dev/local` when its schema changes.
+Generated development state is not migrated between layouts; reset `.dev/local` when its schema changes.
 
 `ZILOBASE_DEV_PUBLIC_ORIGIN` selects an HTTPS same-origin tunnel profile for OAuth/push canaries. The tunnel targets Vite; `VITE_BACKEND_PROXY_TARGET` stays loopback so proxy traffic cannot loop. Desktop inherits the public API origin.

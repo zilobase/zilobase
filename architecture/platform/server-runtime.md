@@ -2,7 +2,7 @@
 
 ## Interface and flow
 
-Hono app creation installs request context, CORS, secure headers, request IDs, JSON body limits, optional JSON compression (self-hosted Node), method-not-allowed handling, Server-Timing, session middleware and the demo write guard before feature route composition. Node entrypoints attach static assets and websocket handlers around that application. The Node HTTP server sends a request to Hono only when [isNodeApiPath](../../packages/runtime-adapter/src/node/api-routing.ts) matches, including `/mail`, `/page-guest-invitations` and `/automation-slack`.
+Hono app creation installs request context, CORS, secure headers, request IDs, JSON body limits, optional JSON compression (self-hosted Node), method-not-allowed handling, Server-Timing, session middleware and the demo write guard before feature route composition. Node entrypoints attach static assets and websocket handlers around that application. The Node HTTP server sends a request to Hono only when [isNodeApiPath](../../packages/runtime-adapter/src/node/api-routing.ts) matches, including `/calendar`, `/page-guest-invitations` and `/automation-slack` API prefixes.
 
 Start at the [entrypoint](../../apps/server/src/entrypoints/serverful.ts); follow the [node runtime factory](../../packages/runtime-adapter/src/node/node-runtime.ts) and [worker factory](../../packages/runtime-adapter/src/worker/worker.ts).
 
@@ -34,8 +34,8 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 ```
 
 `node/features/` mirrors `worker/features/` by feature name
-(`calendar-realtime`, `collaboration`, `database-realtime`, `mail-realtime`,
-`meeting-audio`, `navigation-realtime`). Shared mechanism stays flat on both
+(`calendar-realtime`, `collaboration`, `database-realtime`, `meeting-audio`,
+`navigation-realtime`). Shared mechanism stays flat on both
 sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
 `jobs`, `scheduler`, `fanout`, `limits`, `telemetry`, `mailer`,
 `outbound-fetch`, `image-storage`); only the factory entrypoints
@@ -72,8 +72,8 @@ invocations. Lookup outside an explicit async scope fails; there is no
 process-global port object. `ServerRuntimeAdapter`, its ambient context, and
 Worker adapter factories have been removed.
 
-Object storage, mail delivery, webhook egress, and MCP egress now require an
-explicit runtime provider. The Node side owns S3, SMTP/console mail, and pinned
+Object storage, email delivery, webhook egress, and MCP egress require an
+explicit runtime provider. The Node side owns S3, SMTP/console email, and pinned
 network transports; the Worker side owns R2, Email bindings, and Worker fetch
 options. Server features no longer select S3 versus R2 or SMTP versus Email.
 
@@ -99,7 +99,7 @@ against `RoomPorts`. Runtime adapters provide Node and Worker `RoomHost` and
 controller in unit tests. Feature-room migrations must reuse this kernel
 instead of adding another crossws or Durable Object implementation.
 
-Calendar, mail, and navigation notification sockets now share one expiring
+Calendar and navigation notification sockets share one expiring
 notification controller. Node's crossws runtime and Worker Durable Objects both
 adapt peers into the same controller for ping/pong, expiry pruning, validation,
 recipient selection, and broadcast; authentication and wire-specific payload
@@ -138,11 +138,11 @@ SMTP, pinned network transports, and resident Hocuspocus; Workers map
 Hyperdrive, R2, Email, Worker fetch options, and named Durable Objects. The
 hosted repository composes `createWorker` directly and no longer constructs a
 `createWorkerAdapter`. URL and storage helpers are thin port lookups, and
-calendar/mail/navigation/in-product publication uses `FanoutBus` channels.
+Calendar, navigation and in-product notification publication uses `FanoutBus` channels.
 
 Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenticates before parsing required JSON objects, including the existing array acceptance. JSON schema routes can use [hono/validator](../../apps/server/src/shared/http/json.ts) so a missing `Content-Type: application/json` is 400 rather than an empty object. Migrated JSON POST routes decode with [parseJsonBody](../../apps/server/src/shared/http/schema-json.ts). Feature routes retain operation-specific validation and authorization.
 
-`app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB so mail compose can carry base64 attachments; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.
+`app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.
 
 Worker entrypoints apply the same database-unavailable classification before
 returning upgrade or application responses. PostgreSQL protocol failures,

@@ -2,7 +2,7 @@
 
 ## Interface and flow
 
-Page collaboration, database mutation events, mail updates and workspace navigation invalidations have separate attachment modules. Their tickets, events and recovery are owned by the corresponding feature implementations.
+Page collaboration, database mutation events, Calendar updates and workspace navigation invalidations have separate attachment modules. Their tickets, events and recovery are owned by the corresponding feature implementations.
 
 Node and Cloudflare are alternative deployment topologies. Every Node role
 (`all`, `api`, and `worker`) requires one configured Redis/Valkey realtime bus.

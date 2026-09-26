@@ -23,14 +23,14 @@ See [tests or test configuration](../../apps/server/src/test-support) and [testi
 
 ## Schema ownership
 
-The stable [schema aggregate](../../apps/server/src/infrastructure/database/schema.ts) explicitly exports the existing 108 tables. Domain declarations live under [schema/](../../apps/server/src/infrastructure/database/schema); feature code, Drizzle configuration and external adapters continue to consume the aggregate. Schema modules import the specific declaration they reference, never the aggregate, so the declaration graph remains acyclic.
+The stable [schema aggregate](../../apps/server/src/infrastructure/database/schema.ts) explicitly exports the application tables. Domain declarations live under [schema/](../../apps/server/src/infrastructure/database/schema); feature code, Drizzle configuration and external adapters continue to consume the aggregate. Schema modules import the specific declaration they reference, never the aggregate, so the declaration graph remains acyclic.
 
 - Authentication and workspaces own identity, membership and teamspace tables.
 - Pages, page properties and placements are separate from database/data-source declarations. Placements refer to database rows without introducing a pages/databases initialization cycle.
 - Databases own a required fractional row-order key, a durable versioned mutation journal, and idempotent command receipts. The realtime outbox tracks delivery attempts by referencing committed journal events.
-- Mail connections, organization and synchronization own their respective tables; meetings and notifications own theirs.
+- Calendar, meetings and notifications own their respective tables.
 - AI agents, MCP, conversations, execution, files and settings retain separate persistence responsibilities.
 - Navigation, images, search, background work, instance settings and user settings own their focused tables.
 - Column builders hold binary/search column types and timestamp defaults. Soft-delete columns depend on authentication's user declaration and reuse timestamp builders.
 
-All table names, indexes, constraints, defaults and foreign keys remain unchanged. No migration was produced. The existing declarative-schema coverage and clone exclusions follow only the moved schema declarations; application runtime coverage and all thresholds remain unchanged. Mail uniqueness tests inspect Drizzle index metadata through the aggregate rather than searching schema source text.
+Declarative-schema coverage and clone exclusions follow the schema declarations; application runtime coverage protects the aggregate and migration boundaries.

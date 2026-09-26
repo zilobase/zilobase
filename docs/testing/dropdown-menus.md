@@ -9,7 +9,7 @@ the available viewport. Mobile DropDrawer menus retain their larger touch target
 Most locations below inherit changes through shared components; they do not need
 individual source edits. Explicit migrations are the sidebar section options,
 View Settings viewport scrolling, database select/status option picker, linked data-source picker, and native
-select/status property-value control used by mail and automation controls.
+select/status property-value controls used by automations.
 
 ## Page and control checklist
 
@@ -31,8 +31,6 @@ select/status property-value control used by mail and automation controls.
 | Library / Recents                   | Create-agent menu.                                                                                                                                                                                                  |
 | AI conversations                    | Chat history actions, prompt-input attachment/options menus, code-block selects.                                                                                                                                    |
 | AI agent settings                   | Agent options, sharing roles, saved instructions, MCP connections and workspace MCP policy selectors.                                                                                                               |
-| Mail: conversation/message          | Message actions, viewer menus and hover-action menus.                                                                                                                                                               |
-| Mail: View Settings                 | Group, Filter, Properties, Database panels and their option lists; database-sync selectors and property-value controls.                                                                                             |
 | Notifications                       | Notification center options.                                                                                                                                                                                        |
 | Settings: Preferences               | Preference selectors.                                                                                                                                                                                               |
 | Settings: API keys                  | Key-related selectors.                                                                                                                                                                                              |
@@ -117,7 +115,6 @@ Every direct shared-menu consumer found in the web application is listed below.
 - [features/databases/schema/editors/database-property-select.tsx](../../apps/web/src/features/databases/schema/editors/database-property-select.tsx) — menu popover
 - [features/databases/schema/formula/view/database-formula-dialog.tsx](../../apps/web/src/features/databases/schema/formula/view/database-formula-dialog.tsx) — select
 - [features/databases/schema/shared/property-type-picker.tsx](../../apps/web/src/features/databases/schema/shared/property-type-picker.tsx) — dropdrawer
-- [features/databases/schema/shared/property-value-control.tsx](../../apps/web/src/features/databases/schema/shared/property-value-control.tsx) — select
 - [features/databases/views/components/database-condition-editor.tsx](../../apps/web/src/features/databases/views/components/database-condition-editor.tsx) — select
 - [features/databases/views/components/database-filter-control.tsx](../../apps/web/src/features/databases/views/components/database-filter-control.tsx) — dropdrawer
 - [features/databases/views/components/database-filter-menu.tsx](../../apps/web/src/features/databases/views/components/database-filter-menu.tsx) — dropdrawer
@@ -152,17 +149,6 @@ Every direct shared-menu consumer found in the web application is listed below.
 ### Library
 
 - [features/library/screens/recents.tsx](../../apps/web/src/features/library/screens/recents.tsx) — dropdown-menu
-
-### Mail
-
-- [features/mail/database-sync/mail-database-sync-panel.tsx](../../apps/web/src/features/mail/database-sync/mail-database-sync-panel.tsx) — select
-- [features/mail/messages/mail-actions.tsx](../../apps/web/src/features/mail/messages/mail-actions.tsx) — dropdown-menu
-- [features/mail/messages/mail-conversation-viewer.tsx](../../apps/web/src/features/mail/messages/mail-conversation-viewer.tsx) — dropdown-menu
-- [features/mail/messages/mail-hover-actions-panel.tsx](../../apps/web/src/features/mail/messages/mail-hover-actions-panel.tsx) — dropdrawer, select
-- [features/mail/organization/mail-filter-editor.tsx](../../apps/web/src/features/mail/organization/mail-filter-editor.tsx) — dropdrawer, select
-- [features/mail/organization/mail-group-editor.tsx](../../apps/web/src/features/mail/organization/mail-group-editor.tsx) — select
-- [features/mail/organization/mail-properties-panel.tsx](../../apps/web/src/features/mail/organization/mail-properties-panel.tsx) — dropdrawer
-- [features/mail/organization/mail-view-settings-menu.tsx](../../apps/web/src/features/mail/organization/mail-view-settings-menu.tsx) — dropdrawer
 
 ### Notifications
 

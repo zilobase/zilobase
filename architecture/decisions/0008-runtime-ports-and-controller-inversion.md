@@ -19,7 +19,7 @@ modules implement those ports and contain mechanism only. Composition roots
 combine the server application, deployment policy, and providers.
 
 The port set covers room hosts and state, fanout, scheduling, jobs, database
-scope, object storage, mail, outbound fetch, realtime URLs, HTTP hosting,
+scope, object storage, email delivery, outbound fetch, realtime URLs, HTTP hosting,
 request scope, rate limits, meeting state, telemetry, lifecycle, and
 environment access. Ports are required rather than optional; configuration is
 validated when providers are constructed. Hosted versus community behavior is

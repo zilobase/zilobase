@@ -20,4 +20,4 @@ External AI connectors use the [MCP connection configuration](../features/ai/exe
 
 Command definitions remain in [package scripts](../../package.json); consult them for the current invocation. [Architecture index](../README.md).
 
-Calendar and Mail are always available. Google sync still needs the provider credentials in the server environment. Notion import and the web clipper stay off unless `VITE_FEATURE_NOTION_IMPORT` or `VITE_FEATURE_WEB_CLIPPER` is true.
+Calendar is always available. Google sync still needs the provider credentials in the server environment. Notion import and the web clipper stay off unless `VITE_FEATURE_NOTION_IMPORT` or `VITE_FEATURE_WEB_CLIPPER` is true.

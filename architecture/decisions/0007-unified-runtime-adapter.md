@@ -4,7 +4,7 @@ Status: superseded by [ADR 0008](0008-runtime-ports-and-controller-inversion.md)
 
 ## Context
 
-Zilobase ran two runtimes from two repositories: the Node runtime in the public `zilobase` repo (`apps/server/src/app/node/`, `infrastructure/node/`) and the Cloudflare Workers runtime in the private adapter repo (`runtime/`, `features/`, `worker.ts`). The Workers runtime imported deep server internals, the Node runtime hard-wired Zilobase policy (edition registry, production asserts, Redis/RTC singletons) at construction, and community self-hosting on Workers required copying hosted code that mixed credentials, hostnames, and telemetry with mechanism. Any drift between the two realtime paths (collaboration, database, meeting audio, calendar, mail, navigation) risked silent behavior divergence.
+Zilobase ran two runtimes from two repositories: the Node runtime in the public `zilobase` repo (`apps/server/src/app/node/`, `infrastructure/node/`) and the Cloudflare Workers runtime in the private adapter repo (`runtime/`, `features/`, `worker.ts`). The Workers runtime imported deep server internals, the Node runtime hard-wired Zilobase policy (edition registry, production asserts, Redis/RTC singletons) at construction, and community self-hosting on Workers required copying hosted code that mixed credentials, hostnames, and telemetry with mechanism. Any drift between the two realtime paths (collaboration, database, meeting audio, Calendar, navigation) risked silent behavior divergence.
 
 ## Decision
 

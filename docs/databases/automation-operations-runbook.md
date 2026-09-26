@@ -8,9 +8,9 @@ capability or render automation entry points. Compose and Helm deployments set
 `DATABASE_AUTOMATIONS_ENABLED=false` and
 `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` explicitly.
 
-Management UI access is controlled by `DATABASE_AUTOMATIONS_ENABLED`. Gmail actions are available with Mail. Webhook and Slack actions have independent `AUTOMATION_WEBHOOKS_ENABLED` and `AUTOMATION_SLACK_ENABLED` gates. `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` is the global execution kill switch: event capture continues for diagnosis, while event evaluation, schedule materialization, and run claiming stop. Re-enabling execution drains the existing durable backlog through normal leases and receipts.
+Management UI access is controlled by `DATABASE_AUTOMATIONS_ENABLED`. Webhook and Slack actions have independent `AUTOMATION_WEBHOOKS_ENABLED` and `AUTOMATION_SLACK_ENABLED` gates. `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` is the global execution kill switch: event capture continues for diagnosis, while event evaluation, schedule materialization, and run claiming stop. Re-enabling execution drains the existing durable backlog through normal leases and receipts.
 
-Roll out in this order: dark capture, internal actions, schedules, Gmail, webhooks, Slack, hosted canary, self-hosted opt-in, then general availability. Roll back by disabling the affected connector first, then the execution kill switch if internal actions are also unsafe. Do not roll back migration `0073`–`0075` while definitions or runs remain; disabling capabilities is schema-compatible and rollback-safe.
+Roll out in this order: dark capture, internal actions, schedules, webhooks, Slack, hosted canary, self-hosted opt-in, then general availability. Roll back by disabling the affected connector first, then the execution kill switch if internal actions are also unsafe. Do not roll back migration `0073`–`0075` while definitions or runs remain; disabling capabilities is schema-compatible and rollback-safe.
 
 ## Required configuration
 
@@ -19,7 +19,6 @@ Roll out in this order: dark capture, internal actions, schedules, Gmail, webhoo
 - Retention: `DATABASE_AUTOMATION_STEP_RETENTION_DAYS` defaults to 7 (range 1–90); `DATABASE_AUTOMATION_RUN_RETENTION_DAYS` defaults to 30 (range 1–365).
 - Webhooks: `AUTOMATION_SECRET_ENCRYPTION_KEY`; self-hosted HTTP additionally requires exact `AUTOMATION_WEBHOOK_HTTP_DOMAINS` entries.
 - Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, and the automation encryption key.
-- Gmail: the existing Gmail client and token-encryption configuration.
 
 ## Metrics and alerts
 

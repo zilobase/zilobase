@@ -1,6 +1,6 @@
 # Calendar v1 deployment and acceptance
 
-Calendar is a private Google Calendar client scoped to the signed-in user and selected workspace. It has independent rollout, OAuth credentials, storage and realtime protocols from Mail. The implementation is on `zilobase-calendar` in core and the cloud adapter. General availability remains disabled until the live acceptance checklist below passes.
+Calendar is a private Google Calendar client scoped to the signed-in user and selected workspace. It has dedicated rollout, OAuth credentials, storage and realtime protocols. The implementation is on `zilobase-calendar` in core and the cloud adapter. General availability remains disabled until the live acceptance checklist below passes.
 
 ## Configure an isolated pilot
 
@@ -17,11 +17,11 @@ uses `https://api.zilobase.com/calendar/oauth/google/callback`. These server-sid
 flows do not require authorized JavaScript origins. Desktop uses the same Google
 callbacks; its application handoff is not a Google redirect URI.
 
-Mail and Calendar are included in the local API, background runner, and web client. Restart those processes after changing Google credentials.
+Calendar is included in the local API, background runner, and web client. Restart those processes after changing Google credentials.
 
 1. Apply the normal additive database migrations (`npm run db:migrate`), including Calendar migrations 0087–0089. Take the normal database backup first. Do not undo migrations to disable rollout.
 2. Enable the Google Calendar API in a dedicated Google OAuth project/client. Register the exact canonical API origin plus `/calendar/oauth/google/callback` as an authorized redirect URI. Desktop uses the same web callback and then the existing `zilobase://open` handoff. Configure the normal canonical API/web origins for the deployment.
-3. Set server `CALENDAR_GOOGLE_CLIENT_ID`, `CALENDAR_GOOGLE_CLIENT_SECRET`, and `CALENDAR_TOKEN_ENCRYPTION_KEY`. The encryption key must be an independent base64-encoded 32-byte random key; keep it stable and in the deployment secret store. Mail credentials are not fallbacks. Back up the key securely; replacing it requires account reconnection.
+3. Set server `CALENDAR_GOOGLE_CLIENT_ID`, `CALENDAR_GOOGLE_CLIENT_SECRET`, and `CALENDAR_TOKEN_ENCRYPTION_KEY`. The encryption key must be a base64-encoded 32-byte random key; keep it stable and in the deployment secret store. Back up the key securely; replacing it requires account reconnection.
 4. Set `CALENDAR_WEBHOOK_URL` to the publicly reachable HTTPS API origin plus `/calendar/google/webhook`. Preserve Google's `X-Goog-*` headers through the proxy. This endpoint authenticates channel secrets/resource identity; it does not use the user's browser session.
 5. Build the web client. Calendar is included.
 6. Keep the existing background maintenance runner active. `calendar.sync_recovery` runs every minute under the existing durable maintenance lease and advances sync, maintains watches and drains notification receipts. Every Node role requires the shared Redis/Valkey bus for `/calendar-realtime`, including a single `all` process. Proxies must support WebSocket upgrade and at least the 20-second heartbeat interval.
@@ -44,7 +44,7 @@ npm run test:calendar:browser
 
 The integration runner creates, migrates and drops a disposable PostgreSQL database using the local Node development profile. It never runs the fixture against the application database. Browser acceptance uses an isolated fixture server and mocked provider transport with real IndexedDB, route interactions and sockets. It saves twelve theme screenshots and verifies that cached day/week/month navigation with 1,000 occurrences stays below 100 ms. These tests do not establish live Google acceptance.
 
-Run `npm run build` and `npm test` in the cloud adapter against the matching core checkout. The adapter suite includes real durable-object/socket tests. The audit base is the original core branch point (`415caa0c`), pinned because local `main` can move independently; inherited findings in older Mail/clipper work must not be mistaken for Calendar regressions. No audit thresholds are relaxed.
+Run `npm run build` and `npm test` in the cloud adapter against the matching core checkout. The adapter suite includes real durable-object/socket tests. The audit base is the original core branch point (`415caa0c`), pinned because local `main` can move independently. No audit thresholds are relaxed.
 
 ## Live acceptance — required before general availability
 
@@ -61,7 +61,7 @@ Use disposable calendars, two explicitly authorized Google accounts, and consent
 | External changes | Edit/delete in Google; verify watch invalidation and local convergence. Disable push and verify provider recovery polling catches the change.                                                                     |
 | Recovery         | Expire tickets, interrupt sockets, suspend/resume the device, use multiple tabs, and lose connectivity. Cached periods remain readable and offline feedback remains explicit without a routine sync-status strip. |
 | Reminders        | Navigate away from Calendar; one reminder appears across open tabs. Test permission denial, edited/cancelled events, wake-up and disconnect. No closed-app delivery is promised.                                  |
-| Disable          | Disable Calendar independently and confirm Mail continues working. Re-enable the pilot and verify reconnection/cache recovery.                                                                                    |
+| Disable          | Disable Calendar and confirm the rest of the workspace continues working. Re-enable the pilot and verify reconnection/cache recovery.                                                                             |
 
 Current automated acceptance is not a substitute for these live rows. No production deployment or live invitation delivery is part of the local implementation verification.
 
@@ -81,7 +81,7 @@ Server metrics are structured `calendar.*` records containing only a numeric val
 
 Investigate growing sync lag, watch expiry, and repeated throttling. Reconnect revoked accounts through settings. Leave ambiguous operation receipts intact: status reconciliation checks provider markers/ETags and deterministic IDs; do not generate replacement operation IDs to force a retry. Following-series edits resume their saved steps. Cached canonical data remains stale during expired-token recovery until a complete replacement generation commits.
 
-Preserve data and encryption keys if Calendar has to be taken out of a deployment. Disconnect an account to stop watches and remove the binding/cache; the account is removed only after its final binding is deleted. Existing short-lived realtime tickets expire; invalidation packets contain revision metadata only. Mail OAuth configuration remains independent.
+Preserve data and encryption keys if Calendar has to be taken out of a deployment. Disconnect an account to stop watches and remove the binding/cache; the account is removed only after its final binding is deleted. Existing short-lived realtime tickets expire; invalidation packets contain revision metadata only.
 
 ## Supported boundaries
 

@@ -4,7 +4,7 @@
 
 [Run steps](../../../apps/server/src/features/automations/execution/run-step.ts) owns receipt acquisition, action execution, step output/failure persistence and durable retry dispatch. Step receipts use a stable run/action identity. A succeeded receipt can restore the output rather than repeat the action. Retrying work retains its revision and idempotency identity. Updating a definition after a run is queued must not change that run's instructions.
 
-Internal mutations recheck data-source access and preserve automation origin. External Gmail, Slack and webhook actions have distinct connection ownership, credential and retry behavior. Webhooks use pinned egress; [the runbook](../../../docs/databases/automation-operations-runbook.md) and [threat model](../../../docs/databases/automation-threat-model.md) describe operations and security constraints.
+Internal mutations recheck data-source access and preserve automation origin. External Slack and webhook actions have distinct connection ownership, credential and retry behavior. Webhooks use pinned egress; [the runbook](../../../docs/databases/automation-operations-runbook.md) and [threat model](../../../docs/databases/automation-threat-model.md) describe operations and security constraints.
 
 A lost lease must not let an old worker complete another worker's claim. Terminal failure updates run and automation state; skipped work differs from failed work. Preserve scheduled occurrence context, workspace concurrency and step receipts when changing implementation shape.
 

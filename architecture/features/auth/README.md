@@ -39,4 +39,4 @@ The opt-in [provider integration test](../../../apps/server/src/features/auth/oa
 
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
 
-Google identity-token verification is shared at `shared/security/google-id-token.ts` for Mail and Calendar. Calendar callback paths bypass ordinary session middleware and enforce single-use OAuth state independently.
+Google identity-token verification for Calendar lives at `shared/security/google-id-token.ts`. Calendar callback paths bypass ordinary session middleware and enforce single-use OAuth state independently.

@@ -22,6 +22,6 @@ The web [composition root](../apps/web/src/app) selects providers, routes and ed
 
 [Database context](../apps/server/src/infrastructure/database/index.ts) scopes Drizzle access to a request or explicit background invocation. Streaming work needs an independent context when it outlives request middleware. [Runtime context](../packages/runtime-adapter/src/context.ts) supplies runtime-dependent capabilities only inside an explicit request or background scope; ambient process fallback is not supported.
 
-Realtime is not a single protocol: page collaboration uses Yjs/Hocuspocus, while database, navigation and mail modules have their own events and recovery. Durable background records and outboxes coordinate work whose lifetime exceeds an HTTP request.
+Realtime is not a single protocol: page collaboration uses Yjs/Hocuspocus, while database, navigation and Calendar modules have their own events and recovery. Durable background records and outboxes coordinate work whose lifetime exceeds an HTTP request.
 
 Start with the [repository map](repository-map.md), then follow a [feature guide](README.md). Setup commands and operational procedures remain in the linked runbooks.

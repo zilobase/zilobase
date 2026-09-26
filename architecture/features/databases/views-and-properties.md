@@ -26,7 +26,7 @@ Server [property operations](../../../apps/server/src/features/databases/schema)
 
 Keep serialized values, query keys, mutation origin and view defaults stable. [Database web tests](../../../apps/web/test/features/databases) exercise filtering/sorting, property values, model derivation, selection, column widths and named views. They follow the concrete owners above. Shared mutation tests cover serial ordering and move-conflict invalidation, while server tests cover authoritative operations. Some UI assertions still inspect source and require behavioral coverage before substantive refactoring. Run web tests, typecheck, build, and architecture checks for responsibility moves; preserve schema and migration history.
 
-Mail currently reuses the concrete condition editor, menu-option contract, property catalog and shared property controls through documented database paths. These consumers do not import the aggregate database screen. Reassess shared ownership only if the behaviors actually diverge.
+Automations reuse the concrete condition editor, menu-option contract, property catalog and shared property controls through documented database paths. These consumers do not import the aggregate database screen. Reassess shared ownership only if the behaviors actually diverge.
 
 ## Configuration and command boundary
 
