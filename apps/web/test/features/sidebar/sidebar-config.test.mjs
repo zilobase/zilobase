@@ -216,6 +216,32 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isStaticSidebarTabId("calendar"), true);
   });
 
+  test("retired Mail tabs are discarded from saved layouts", async () => {
+    const { normalizeSidebarConfig } = await loadModule(configPath);
+    const savedLayout = {
+      tabs: [
+        { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
+        { icon: "star", id: "custom", name: "Custom", sections: [], shortcuts: [] },
+      ],
+      taskDatabaseIds: [],
+    };
+    const config = normalizeSidebarConfig({
+      defaultLayout: savedLayout,
+      libraryView: "recents",
+      version: 3,
+      workspaceLayouts: { workspace: savedLayout },
+    });
+
+    assert.deepEqual(
+      config.defaultLayout.tabs.map((tab) => tab.id),
+      ["home", "ai", "calendar", "custom"],
+    );
+    assert.deepEqual(
+      config.workspaceLayouts.workspace.tabs.map((tab) => tab.id),
+      ["home", "ai", "calendar", "custom"],
+    );
+  });
+
   test("custom tab icons retain safe SVG icons and reject executable markup", async () => {
     const { normalizeSidebarWorkspaceLayout } = await loadModule(configPath);
     const makeLayout = (icon) => ({

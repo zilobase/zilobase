@@ -193,7 +193,7 @@ export function withSidebarWorkspaceLayout(
 export function normalizeSidebarWorkspaceLayout(value: unknown): SidebarWorkspaceLayout {
   const layout = isRecord(value) ? value : {};
   const configuredTabs = Array.isArray(layout.tabs)
-    ? layout.tabs.map(normalizeSidebarTab).filter(Boolean).slice(0, 8)
+    ? layout.tabs.map(normalizeSidebarTab).filter(isSupportedSidebarTab).slice(0, 8)
     : [];
   const tabs = uniqueById(configuredTabs);
   const configuredHome = tabs.find((tab) => tab.id === "home");
@@ -254,6 +254,11 @@ function normalizeSidebarTab(value: unknown): SidebarTab | null {
     sections: uniqueById(sections),
     shortcuts: uniqueById(shortcuts),
   };
+}
+
+function isSupportedSidebarTab(tab: SidebarTab | null): tab is SidebarTab {
+  // Keep this tombstone so layouts saved before the feature was removed cannot revive its tab.
+  return tab !== null && tab.id !== "mail";
 }
 
 function normalizeShortcut(value: unknown): SidebarShortcut | null {
