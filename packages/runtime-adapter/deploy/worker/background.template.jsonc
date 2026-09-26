@@ -21,10 +21,6 @@
       "CALENDAR_GOOGLE_CLIENT_ID",
       "CALENDAR_GOOGLE_CLIENT_SECRET",
       "CALENDAR_TOKEN_ENCRYPTION_KEY",
-      "GMAIL_GOOGLE_CLIENT_ID",
-      "GMAIL_GOOGLE_CLIENT_SECRET",
-      "GMAIL_TOKEN_ENCRYPTION_KEY",
-      "GMAIL_PUBSUB_TOPIC",
       "AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
       "OPENAI_API_KEY",
       "AUTOMATION_SECRET_ENCRYPTION_KEY",
@@ -48,7 +44,6 @@
       { "binding": "BACKGROUND_FAST", "queue": "zilobase-background-fast" },
       { "binding": "AUTOMATION_RUNS", "queue": "zilobase-automation-runs" },
       { "binding": "AI_JOBS", "queue": "zilobase-ai-jobs" },
-      { "binding": "MAIL_JOBS", "queue": "zilobase-mail-jobs" },
       { "binding": "CALENDAR_JOBS", "queue": "zilobase-calendar-jobs" },
     ],
     "consumers": [
@@ -75,14 +70,6 @@
         "max_concurrency": 10,
         "max_retries": 5,
         "dead_letter_queue": "zilobase-ai-jobs-dlq",
-      },
-      {
-        "queue": "zilobase-mail-jobs",
-        "max_batch_size": 5,
-        "max_batch_timeout": 1,
-        "max_concurrency": 10,
-        "max_retries": 8,
-        "dead_letter_queue": "zilobase-mail-jobs-dlq",
       },
       {
         "queue": "zilobase-calendar-jobs",
@@ -114,11 +101,6 @@
       {
         "name": "CALENDAR_NOTIFICATION_ROOM",
         "class_name": "CalendarNotificationRoom",
-        "script_name": "zilobase-server",
-      },
-      {
-        "name": "MAIL_NOTIFICATION_ROOM",
-        "class_name": "MailNotificationRoom",
         "script_name": "zilobase-server",
       },
       {

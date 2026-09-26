@@ -6,7 +6,6 @@
     "development",
     "debug",
     "realtime",
-    "gmail",
     "image",
     "existingSecret",
     "config",
@@ -36,27 +35,6 @@
         "secretKey": { "type": "string", "minLength": 1 },
         "networkCIDR": { "type": "string", "minLength": 3 },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
-      }
-    },
-    "gmail": {
-      "type": "object",
-      "required": [
-        "enabled",
-        "googleClientId",
-        "pubsubTopic",
-        "pubsubPushAudience",
-        "pubsubServiceAccountEmail",
-        "pubsubSubscription",
-        "networkCIDR"
-      ],
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "googleClientId": { "type": "string" },
-        "pubsubTopic": { "type": "string" },
-        "pubsubPushAudience": { "type": "string" },
-        "pubsubServiceAccountEmail": { "type": "string" },
-        "pubsubSubscription": { "type": "string" },
-        "networkCIDR": { "type": "string", "minLength": 3 }
       }
     },
     "existingSecret": { "type": "string", "minLength": 1 },
@@ -116,24 +94,6 @@
               "externalUrl": { "pattern": "^https://" },
               "s3Endpoint": { "pattern": "^https://" },
               "s3PublicEndpoint": { "pattern": "^https://" }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": { "properties": { "gmail": { "properties": { "enabled": { "const": true } } } } },
-      "then": {
-        "properties": {
-          "gmail": {
-            "properties": {
-              "googleClientId": { "pattern": "^[A-Za-z0-9._-]+\\.apps\\.googleusercontent\\.com$" },
-              "pubsubTopic": { "pattern": "^projects/.+/topics/.+$" },
-              "pubsubPushAudience": { "pattern": "^https://.+/mail/google/pubsub$" },
-              "pubsubServiceAccountEmail": {
-                "pattern": "^[^@]+@[^@]+\\.iam\\.gserviceaccount\\.com$"
-              },
-              "pubsubSubscription": { "pattern": "^projects/.+/subscriptions/.+$" }
             }
           }
         }

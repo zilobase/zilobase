@@ -38,8 +38,4 @@ spec:
         - { protocol: TCP, port: {{ .Values.config.smtpPort }} }
     - to: [{ ipBlock: { cidr: {{ .Values.realtime.networkCIDR | quote }} } }]
       ports: [{ protocol: TCP, port: {{ .Values.realtime.port }} }]
-    {{- if .Values.gmail.enabled }}
-    - to: [{ ipBlock: { cidr: {{ .Values.gmail.networkCIDR | quote }} } }]
-      ports: [{ protocol: TCP, port: 443 }]
-    {{- end }}
 {{- end }}

@@ -149,11 +149,11 @@ test("an already responding provider readiness URL blocks startup", async () => 
   try {
     await assert.rejects(
       assertDevelopmentProviderIdle({
-        id: "enterprise",
+        id: "external-provider",
         readiness: [`http://127.0.0.1:${port}/ready`],
       }),
       new RegExp(
-        `Development provider enterprise is already responding at http://127\\.0\\.0\\.1:${port}/ready`,
+        `Development provider external-provider is already responding at http://127\\.0\\.0\\.1:${port}/ready`,
       ),
     );
   } finally {
@@ -175,7 +175,7 @@ test("an idle provider readiness URL does not block startup", async () => {
   });
   await new Promise((resolve) => server.close(resolve));
   await assertDevelopmentProviderIdle({
-    id: "enterprise",
+    id: "external-provider",
     readiness: [`http://127.0.0.1:${port}/ready`],
   });
 });
@@ -370,10 +370,10 @@ test("database reset runs drop and create outside a shared transaction", () => {
   );
 });
 
-test("public mail development uses one origin without proxying back into its tunnel", () => {
+test("public development uses one origin without proxying back into its tunnel", () => {
   for (const profile of Object.values(localProfiles)) {
     const env = applyPublicDevelopmentOrigin(
-      { ZILOBASE_DEV_PUBLIC_ORIGIN: "https://mail-dev.example.com" },
+      { ZILOBASE_DEV_PUBLIC_ORIGIN: "https://public-dev.example.com" },
       profile,
     );
     assert.equal(env.BETTER_AUTH_URL, env.CLIENT_URL);
@@ -381,7 +381,7 @@ test("public mail development uses one origin without proxying back into its tun
     assert.equal(env.VITE_BACKEND_PROXY_TARGET, `http://${profile.apiHost}:${profile.apiPort}`);
     assert.equal(
       env.NAVIGATION_REALTIME_WEBSOCKET_URL,
-      "wss://mail-dev.example.com/navigation-realtime",
+      "wss://public-dev.example.com/navigation-realtime",
     );
   }
   assert.throws(
@@ -394,7 +394,7 @@ test("public mail development uses one origin without proxying back into its tun
   );
 });
 
-test("mail readiness uses launcher origins rather than obsolete generated hostnames", () => {
+test("readiness uses launcher origins rather than obsolete generated hostnames", () => {
   for (const name of ["node"]) {
     const env = { BETTER_AUTH_URL: "http://obsolete.zilobase.localhost:3000" };
     const profile = effectiveProfile(name, env);

@@ -43,8 +43,8 @@ const writeWorkerEnvFile = (file, names) =>
   );
 await writeWorkerEnvFile(workerStackEnvFile, [
   ...new Set([
-    ...requiredRuntimeSecretNames({ mailEnabled: true, calendarEnabled: true }),
-    ...requiredBackgroundRuntimeSecretNames({ mailEnabled: true, calendarEnabled: true }),
+    ...requiredRuntimeSecretNames({ calendarEnabled: true }),
+    ...requiredBackgroundRuntimeSecretNames({ calendarEnabled: true }),
   ]),
 ]);
 stackEnv.ZILOBASE_WRANGLER_ENV_FILE = workerStackEnvFile;

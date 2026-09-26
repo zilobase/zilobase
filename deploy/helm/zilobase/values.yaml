@@ -13,15 +13,6 @@ realtime:
   networkCIDR: 10.0.0.0/8
   port: 6379
 
-gmail:
-  enabled: false
-  googleClientId: ""
-  pubsubTopic: ""
-  pubsubPushAudience: ""
-  pubsubServiceAccountEmail: ""
-  pubsubSubscription: ""
-  networkCIDR: 0.0.0.0/0
-
 mcp:
   enabled: false
   customServersEnabled: false
@@ -48,8 +39,6 @@ secretKeys:
   s3AccessKeyId: S3_ACCESS_KEY_ID
   s3SecretAccessKey: S3_SECRET_ACCESS_KEY
   smtpPassword: SMTP_PASSWORD
-  gmailGoogleClientSecret: GMAIL_GOOGLE_CLIENT_SECRET
-  gmailTokenEncryptionKey: GMAIL_TOKEN_ENCRYPTION_KEY
   mcpCredentialEncryptionKeys: MCP_CREDENTIAL_ENCRYPTION_KEYS
 
 config:

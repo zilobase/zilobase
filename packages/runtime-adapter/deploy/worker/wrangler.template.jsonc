@@ -28,13 +28,6 @@
       "CALENDAR_GOOGLE_CLIENT_ID",
       "CALENDAR_GOOGLE_CLIENT_SECRET",
       "CALENDAR_TOKEN_ENCRYPTION_KEY",
-      "GMAIL_GOOGLE_CLIENT_ID",
-      "GMAIL_GOOGLE_CLIENT_SECRET",
-      "GMAIL_TOKEN_ENCRYPTION_KEY",
-      "GMAIL_PUBSUB_TOPIC",
-      "GMAIL_PUBSUB_PUSH_AUDIENCE",
-      "GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL",
-      "GMAIL_PUBSUB_SUBSCRIPTION",
       "AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
       "OPENAI_API_KEY",
       "AUTOMATION_SECRET_ENCRYPTION_KEY",
@@ -75,10 +68,6 @@
         "class_name": "MeetingCollaborationRoom",
       },
       {
-        "name": "MAIL_NOTIFICATION_ROOM",
-        "class_name": "MailNotificationRoom",
-      },
-      {
         "name": "NAVIGATION_NOTIFICATION_ROOM",
         "class_name": "NavigationNotificationRoom",
       },
@@ -91,7 +80,6 @@
         "CalendarNotificationRoom",
         "ChatAgent",
         "DatabaseCollaborationRoom",
-        "MailNotificationRoom",
         "MeetingCollaborationRoom",
         "NavigationNotificationRoom",
         "PageCollaborationRoom",
@@ -111,10 +99,6 @@
       {
         "binding": "AUTOMATION_RUNS",
         "queue": "zilobase-automation-runs",
-      },
-      {
-        "binding": "MAIL_JOBS",
-        "queue": "zilobase-mail-jobs",
       },
       {
         "binding": "CALENDAR_JOBS",

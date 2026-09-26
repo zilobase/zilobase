@@ -9,7 +9,6 @@ import {
   PageCollaborationRoom,
   MeetingCollaborationRoom,
   DatabaseCollaborationRoom,
-  MailNotificationRoom,
   CalendarNotificationRoom,
   NavigationNotificationRoom,
 } from "@zilobase/runtime-adapter/worker";
@@ -19,7 +18,6 @@ export {
   PageCollaborationRoom,
   MeetingCollaborationRoom,
   DatabaseCollaborationRoom,
-  MailNotificationRoom,
   CalendarNotificationRoom,
   NavigationNotificationRoom,
 };
