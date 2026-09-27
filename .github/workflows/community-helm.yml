@@ -58,6 +58,10 @@ jobs:
           grep -q "kind: PodDisruptionBudget" <<<"$ha_rendered"
           rendered=$(helm template community deploy/helm/zilobase)
           grep -q "name: REALTIME_REDIS_URL" <<<"$rendered"
+          grep -q 'secretKeyRef: { name: "zilobase", key: "REALTIME_REDIS_URL" }' <<<"$rendered"
+          dedicated=$(helm template community deploy/helm/zilobase \
+            --set realtime.existingSecret=community-realtime)
+          grep -q 'secretKeyRef: { name: "community-realtime", key: "REALTIME_REDIS_URL" }' <<<"$dedicated"
           test "$(grep -c 'ZILOBASE_EDITION_MIGRATIONS_DIR' <<<"$rendered")" -eq 0
           test "$(grep -c 'name: inspector' <<<"$rendered")" -eq 0
           debug=$(helm template community deploy/helm/zilobase \
@@ -91,12 +95,15 @@ jobs:
               ghcr.io/zilobase/zilobase:community-helm-ci \
               "ghcr.io/zilobase/zilobase@$digest"
           done
-      - name: Start external PostgreSQL and TLS MinIO
+      - name: Start external PostgreSQL, TLS MinIO, and Valkey
         shell: bash
         run: |
           set -euo pipefail
           postgres_password=$(openssl rand -hex 24)
           minio_password=$(openssl rand -hex 32)
+          docker run -d --name community-helm-valkey --network kind \
+            valkey/valkey:8-alpine valkey-server --save "" --appendonly no
+          until docker exec community-helm-valkey valkey-cli ping 2>/dev/null | grep -q PONG; do sleep 1; done
           docker run -d --name community-helm-postgres --network kind \
             -e POSTGRES_DB=zilobase \
             -e POSTGRES_PASSWORD="$postgres_password" \
@@ -134,9 +141,11 @@ jobs:
 
           postgres_ip=$(docker inspect community-helm-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
           minio_ip=$(docker inspect community-helm-minio --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+          valkey_ip=$(docker inspect community-helm-valkey --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
           node_ip=$(docker inspect community-helm-control-plane --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
           echo "POSTGRES_IP=$postgres_ip" >> "$GITHUB_ENV"
           echo "MINIO_IP=$minio_ip" >> "$GITHUB_ENV"
+          echo "VALKEY_IP=$valkey_ip" >> "$GITHUB_ENV"
           echo "NODE_IP=$node_ip" >> "$GITHUB_ENV"
 
           kubectl create namespace external
@@ -153,6 +162,12 @@ jobs:
             'metadata: { name: minio, namespace: external }' \
             'spec:' \
             '  ports: [{ name: https, protocol: TCP, port: 443, targetPort: 443 }]' | kubectl apply -f -
+          printf '%s\n' \
+            'apiVersion: v1' \
+            'kind: Service' \
+            'metadata: { name: valkey, namespace: external }' \
+            'spec:' \
+            '  ports: [{ name: redis, protocol: TCP, port: 6379, targetPort: 6379 }]' | kubectl apply -f -
           printf '%s\n' \
             'apiVersion: discovery.k8s.io/v1' \
             'kind: EndpointSlice' \
@@ -173,6 +188,16 @@ jobs:
             'addressType: IPv4' \
             "endpoints: [{ addresses: [\"$minio_ip\"] }]" \
             'ports: [{ name: https, protocol: TCP, port: 443 }]' | kubectl apply -f -
+          printf '%s\n' \
+            'apiVersion: discovery.k8s.io/v1' \
+            'kind: EndpointSlice' \
+            'metadata:' \
+            '  name: valkey-external' \
+            '  namespace: external' \
+            '  labels: { kubernetes.io/service-name: valkey }' \
+            'addressType: IPv4' \
+            "endpoints: [{ addresses: [\"$valkey_ip\"] }]" \
+            'ports: [{ name: redis, protocol: TCP, port: 6379 }]' | kubectl apply -f -
 
           kubectl -n community create secret generic zilobase \
             --from-literal="DATABASE_URL=postgresql://zilobase:$postgres_password@postgres.external.svc.cluster.local:5432/zilobase" \
@@ -180,6 +205,8 @@ jobs:
             --from-literal="ZILOBASE_BOOTSTRAP_TOKEN=$(openssl rand -hex 32)" \
             --from-literal="S3_ACCESS_KEY_ID=zilobase" \
             --from-literal="S3_SECRET_ACCESS_KEY=$minio_password"
+          kubectl -n community create secret generic community-realtime \
+            --from-literal="REALTIME_REDIS_URL=redis://valkey.external.svc.cluster.local:6379"
           kubectl -n community create configmap zilobase-test-ca \
             --from-file=ca.crt="$RUNNER_TEMP/community-minio-tls/rustfs_cert.pem"
       - name: Install and smoke Community chart
@@ -198,10 +225,15 @@ jobs:
             --set "networkPolicy.postgresCIDR=$POSTGRES_IP/32" \
             --set "networkPolicy.s3CIDR=$MINIO_IP/32" \
             --set networkPolicy.smtpCIDR=192.0.2.10/32 \
+            --set "realtime.existingSecret=community-realtime" \
+            --set realtime.secretKey=REALTIME_REDIS_URL \
+            --set "realtime.networkCIDR=$VALKEY_IP/32" \
             --set trustedCa.configMapName=zilobase-test-ca \
             --timeout 5m --wait
           pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
-          kubectl -n community cp scripts/selfhost/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
+          for module in test-community-helm.mjs api-conformance.mjs cookie-jar.mjs; do
+            kubectl -n community cp "scripts/selfhost/$module" "$pod:/tmp/$module"
+          done
           kubectl -n community get secret zilobase -o json | kubectl -n community exec -i "$pod" -- \
             node --input-type=module -e 'let s="";for await(const c of process.stdin)s+=c;const j=JSON.parse(s);process.env.ZILOBASE_BOOTSTRAP_TOKEN=Buffer.from(j.data.ZILOBASE_BOOTSTRAP_TOKEN,"base64").toString();process.argv[2]="seed";await import("file:///tmp/test-community-helm.mjs")'
           kubectl -n community cp "$pod:/tmp/zilobase-community-helm-state.json" "$RUNNER_TEMP/zilobase-community-helm-state.json"
@@ -258,7 +290,9 @@ jobs:
             --set "networkPolicy.s3CIDR=$restored_minio_ip/32" \
             --timeout 5m --wait
           pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
-          kubectl -n community cp scripts/selfhost/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
+          for module in test-community-helm.mjs api-conformance.mjs cookie-jar.mjs; do
+            kubectl -n community cp "scripts/selfhost/$module" "$pod:/tmp/$module"
+          done
           kubectl -n community cp "$RUNNER_TEMP/zilobase-community-helm-state.json" "$pod:/tmp/zilobase-community-helm-state.json"
           kubectl -n community exec "$pod" -- node /tmp/test-community-helm.mjs verify
       - name: Diagnostics

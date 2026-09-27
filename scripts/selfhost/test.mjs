@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { CookieJar } from "./cookie-jar.mjs";
+import { CookieJar, createApiClient } from "./api-conformance.mjs";
 
 import assert from "node:assert/strict";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createWriteStream } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import net from "node:net";
@@ -12,7 +12,6 @@ import path from "node:path";
 import process from "node:process";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import WebSocket from "ws";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const projectName =
@@ -35,6 +34,7 @@ const minioPort = Number(process.env.MINIO_DEV_API_PORT || (await getFreePort())
 const mailpitPort = Number(process.env.MAILPIT_DEV_UI_PORT || (await getFreePort()));
 const serverOrigin = `http://127.0.0.1:${httpPort}`;
 const mailpitOrigin = `http://127.0.0.1:${mailpitPort}`;
+const api = createApiClient({ internalOrigin: serverOrigin });
 let resetCompleted = false;
 
 try {
@@ -57,121 +57,39 @@ try {
 
   const ready = await fetch(`${serverOrigin}/ready`);
   assert.equal(ready.status, 200);
-  const initialDiscovery = await json(`${serverOrigin}/.well-known/zilobase`);
+  const initialDiscovery = await api.getJson("/.well-known/zilobase");
   assert.equal(initialDiscovery.apiOrigin, serverOrigin);
 
-  const bootstrap = await requestJson(`${serverOrigin}/api/instance/bootstrap`, {
-    body: {
-      email: ownerEmail,
-      name: "Self-host Test Owner",
-      password,
-      workspaceName: "Self-host Test Workspace",
-    },
-    headers: { "x-zilobase-bootstrap-token": bootstrapToken },
-    method: "POST",
+  const bootstrap = await api.bootstrapInstance({
+    bootstrapToken,
+    email: ownerEmail,
+    name: "Self-host Test Owner",
+    password,
+    workspaceName: "Self-host Test Workspace",
   });
-  assert.equal(bootstrap.response.status, 201);
   assert.equal(bootstrap.data.registrationMode, "invite-only");
 
   const jar = new CookieJar();
-  const signIn = await requestJson(`${serverOrigin}/api/auth/sign-in/email`, {
-    body: { email: ownerEmail, password },
-    jar,
-    method: "POST",
-  });
-  assert.equal(signIn.response.status, 200);
+  await api.signIn({ email: ownerEmail, jar, password });
 
   console.info("Exchanging a browser consent code through PKCE...");
-  const verifier = secret(48);
-  const state = secret(32);
-  const redirectUri = "http://127.0.0.1:43123/oauth/callback";
-  const authorization = new URLSearchParams({
-    client_id: "zilobase-desktop",
-    code_challenge: createHash("sha256").update(verifier, "ascii").digest("base64url"),
-    code_challenge_method: "S256",
-    redirect_uri: redirectUri,
-    response_type: "code",
-    state,
-  });
-  const consentPage = await fetch(`${serverOrigin}/desktop/authorize?${authorization}`, {
-    headers: { cookie: jar.header() },
-  });
-  assert.equal(consentPage.status, 200);
-  const consentHtml = await consentPage.text();
-  const consentToken = consentHtml.match(/name="consent_token" value="([A-Za-z0-9._-]+)"/)?.[1];
-  assert.ok(consentToken);
-  authorization.set("consent_token", consentToken);
-  authorization.set("decision", "allow");
-  const consent = await requestForm(`${serverOrigin}/desktop/authorize/consent`, authorization, {
-    jar,
-    origin: "null",
-    redirect: "manual",
-  });
-  assert.equal(consent.status, 303);
-  const callback = new URL(consent.headers.get("location"));
-  assert.equal(callback.origin, "http://127.0.0.1:43123");
-  assert.equal(callback.searchParams.get("state"), state);
-  assert.equal(callback.searchParams.get("iss"), serverOrigin);
-  const code = callback.searchParams.get("code");
-  assert.ok(code);
-
-  const tokenResponse = await requestForm(
-    `${serverOrigin}/api/auth/desktop/token`,
-    new URLSearchParams({
-      client_id: "zilobase-desktop",
-      code,
-      code_verifier: verifier,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-    }),
-  );
-  assert.equal(tokenResponse.status, 200);
-  const desktopSession = await tokenResponse.json();
+  const desktopSession = await api.createDesktopSession(jar, { checkReplay: true });
   assert.equal(desktopSession.instance_id, initialDiscovery.instanceId);
-  assert.equal(desktopSession.issuer, serverOrigin);
-  assert.equal(desktopSession.token_type, "Bearer");
-
-  const replay = await requestForm(
-    `${serverOrigin}/api/auth/desktop/token`,
-    new URLSearchParams({
-      client_id: "zilobase-desktop",
-      code,
-      code_verifier: verifier,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-    }),
-  );
-  assert.equal(replay.status, 400);
-  assert.deepEqual(await replay.json(), { error: "invalid_grant" });
 
   console.info("Checking page CRUD and authenticated collaboration WebSockets...");
-  const createdPage = await requestJson(`${serverOrigin}/pages`, {
-    body: {
-      content: null,
-      name: "Self-host deployment probe",
-      type: "pageblock",
-      url: "#",
-      workspaceId: bootstrap.data.workspaceId,
-    },
-    jar,
-    method: "POST",
+  const pageId = await api.createPage(jar, {
+    name: "Self-host deployment probe",
+    workspaceId: bootstrap.data.workspaceId,
   });
-  assert.equal(createdPage.response.status, 201);
-  const pageId = createdPage.data.page.id;
-  const updatedPage = await requestJson(`${serverOrigin}/pages/${pageId}`, {
-    body: { name: "Self-host deployment probe updated" },
-    jar,
-    method: "PATCH",
+  await api.renamePage(jar, pageId, "Self-host deployment probe updated");
+  const collaborationTicket = await api.collaborationTicket(jar, pageId);
+  await api.openCollaborationSocket({
+    accessToken: desktopSession.access_token,
+    websocketUrl: collaborationTicket.websocketUrl,
   });
-  assert.equal(updatedPage.data.page.name, "Self-host deployment probe updated");
-  const collaborationTicket = await requestJson(
-    `${serverOrigin}/pages/${pageId}/collaboration-ticket`,
-    { body: {}, jar, method: "POST" },
-  );
-  await verifyCollaborationWebSocket(collaborationTicket.data, desktopSession.access_token);
 
   console.info("Checking Mailpit OTP and invitation delivery...");
-  const otpRequest = await requestJson(`${serverOrigin}/api/auth/email-otp/send-verification-otp`, {
+  const otpRequest = await api.requestJson("/api/auth/email-otp/send-verification-otp", {
     body: { email: ownerEmail, type: "sign-in" },
     method: "POST",
   });
@@ -179,7 +97,7 @@ try {
   const otpMessage = await waitForMessage(ownerEmail);
   assert.match(otpMessage, /\b\d{6}\b/);
 
-  const invitation = await requestJson(`${serverOrigin}/api/auth/workspace/invite-member`, {
+  const invitation = await api.requestJson("/api/auth/workspace/invite-member", {
     body: {
       email: inviteEmail,
       role: "member",
@@ -193,47 +111,15 @@ try {
   assert.match(invitationMessage, /accept-invitation/i);
 
   console.info("Uploading and reading an object-storage profile image...");
-  const imageBytes = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-    "base64",
+  const { imagePath, uploadUrl } = await api.uploadProfileImage(jar, {
+    filename: "selfhost-test.png",
+  });
+  assert.equal(
+    new URL(uploadUrl).origin,
+    `http://127.0.0.1:${minioPort}`,
+    "the upload URL did not point at the bundled object store",
   );
-  const uploadRequest = await requestJson(`${serverOrigin}/user-settings/profile/image/uploads`, {
-    body: {
-      byteSize: imageBytes.byteLength,
-      contentType: "image/png",
-      filename: "selfhost-test.png",
-    },
-    jar,
-    method: "POST",
-  });
-  assert.equal(uploadRequest.response.status, 200);
-  assert.equal(new URL(uploadRequest.data.upload.url).origin, `http://127.0.0.1:${minioPort}`);
-
-  const objectUpload = await fetch(uploadRequest.data.upload.url, {
-    body: imageBytes,
-    headers: uploadRequest.data.upload.headers,
-    method: "PUT",
-  });
-  assert.equal(objectUpload.status, 200);
-
-  const completedImage = await requestJson(
-    `${serverOrigin}/user-settings/profile/image/uploads/${uploadRequest.data.image.id}/complete`,
-    {
-      body: {
-        byteSize: imageBytes.byteLength,
-        contentType: "image/png",
-        filename: "selfhost-test.png",
-      },
-      jar,
-      method: "POST",
-    },
-  );
-  assert.equal(completedImage.response.status, 200);
-  const imageRead = await fetch(`${serverOrigin}${completedImage.data.image}`, {
-    headers: { cookie: jar.header() },
-  });
-  assert.equal(imageRead.status, 200);
-  assert.deepEqual(Buffer.from(await imageRead.arrayBuffer()), imageBytes);
+  api.assertProbeImage(await api.readProfileImage({ cookie: jar.header(), imagePath }));
 
   const uid = await captureCompose([
     "exec",
@@ -253,26 +139,14 @@ try {
   assert.equal(preservedVolume.code, 0, "selfhost:down removed the database volume");
   await selfhost("up", ...(noBuild ? ["--no-build"] : []));
 
-  const discoveryAfterRestart = await json(`${serverOrigin}/.well-known/zilobase`);
+  const discoveryAfterRestart = await api.getJson("/.well-known/zilobase");
   assert.equal(discoveryAfterRestart.instanceId, initialDiscovery.instanceId);
   const restartJar = new CookieJar();
-  const signInAfterRestart = await requestJson(`${serverOrigin}/api/auth/sign-in/email`, {
-    body: { email: ownerEmail, password },
-    jar: restartJar,
-    method: "POST",
-  });
-  assert.equal(signInAfterRestart.response.status, 200);
-  const persistedImage = await fetch(`${serverOrigin}${completedImage.data.image}`, {
-    headers: { cookie: restartJar.header() },
-  });
-  assert.equal(persistedImage.status, 200);
-  assert.deepEqual(Buffer.from(await persistedImage.arrayBuffer()), imageBytes);
+  await api.signIn({ email: ownerEmail, jar: restartJar, password });
+  api.assertProbeImage(await api.readProfileImage({ cookie: restartJar.header(), imagePath }));
 
-  const persistedPage = await requestJson(`${serverOrigin}/pages/${pageId}`, {
-    jar: restartJar,
-    method: "GET",
-  });
-  assert.equal(persistedPage.data.page.name, "Self-host deployment probe updated");
+  const persistedPage = await api.readPage(restartJar.header(), pageId);
+  assert.equal(persistedPage.name, "Self-host deployment probe updated");
 
   console.info("Backing up and restoring Postgres and object storage into clean volumes...");
   const backupDirectory = path.join(tempDirectory, "backup");
@@ -317,24 +191,13 @@ try {
   const resumed = await captureCompose(["up", "-d", "--no-build", "--wait"]);
   assert.equal(resumed.code, 0, resumed.stderr);
 
-  const restoredDiscovery = await json(`${serverOrigin}/.well-known/zilobase`);
+  const restoredDiscovery = await api.getJson("/.well-known/zilobase");
   assert.equal(restoredDiscovery.instanceId, initialDiscovery.instanceId);
   const restoredJar = new CookieJar();
-  await requestJson(`${serverOrigin}/api/auth/sign-in/email`, {
-    body: { email: ownerEmail, password },
-    jar: restoredJar,
-    method: "POST",
-  });
-  const restoredPage = await requestJson(`${serverOrigin}/pages/${pageId}`, {
-    jar: restoredJar,
-    method: "GET",
-  });
-  assert.equal(restoredPage.data.page.name, "Self-host deployment probe updated");
-  const restoredImage = await fetch(`${serverOrigin}${completedImage.data.image}`, {
-    headers: { cookie: restoredJar.header() },
-  });
-  assert.equal(restoredImage.status, 200);
-  assert.deepEqual(Buffer.from(await restoredImage.arrayBuffer()), imageBytes);
+  await api.signIn({ email: ownerEmail, jar: restoredJar, password });
+  const restoredPage = await api.readPage(restoredJar.header(), pageId);
+  assert.equal(restoredPage.name, "Self-host deployment probe updated");
+  api.assertProbeImage(await api.readProfileImage({ cookie: restoredJar.header(), imagePath }));
 
   console.info("Running the explicitly destructive selfhost:reset path...");
   await selfhost("reset", "--yes");
@@ -434,73 +297,6 @@ async function waitForMessage(recipient) {
   throw new Error(`Mailpit did not receive the expected message for ${recipient}`);
 }
 
-async function requestJson(url, { body, headers = {}, jar, method }) {
-  const requestHeaders = new Headers(headers);
-  if (body !== undefined) requestHeaders.set("content-type", "application/json");
-  requestHeaders.set("origin", serverOrigin);
-  if (jar?.header()) requestHeaders.set("cookie", jar.header());
-
-  const response = await fetch(url, {
-    body: body === undefined ? undefined : JSON.stringify(body),
-    headers: requestHeaders,
-    method,
-  });
-  jar?.store(response.headers);
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    throw new Error(`${method} ${new URL(url).pathname} failed with ${response.status}: ${text}`);
-  }
-
-  return { data, response };
-}
-
-async function requestForm(url, body, { jar, origin = serverOrigin, redirect } = {}) {
-  const headers = new Headers({
-    "content-type": "application/x-www-form-urlencoded",
-  });
-  if (origin !== undefined) headers.set("origin", origin);
-  if (jar?.header()) headers.set("cookie", jar.header());
-  const response = await fetch(url, {
-    body: body.toString(),
-    headers,
-    method: "POST",
-    redirect,
-  });
-  jar?.store(response.headers);
-  return response;
-}
-
-async function verifyCollaborationWebSocket(ticket, sessionToken) {
-  assert.equal(typeof ticket.documentName, "string");
-  assert.equal(typeof ticket.token, "string");
-  assert.ok(new Date(ticket.expiresAt).getTime() > Date.now());
-  const encodedSession = Buffer.from(sessionToken, "utf8").toString("base64url");
-  const socket = new WebSocket(ticket.websocketUrl, [
-    "zilobase.collaboration.v1",
-    `zilobase.session.v1.${encodedSession}`,
-  ]);
-  try {
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(
-        () => reject(new Error("Collaboration WebSocket upgrade timed out")),
-        15_000,
-      );
-      socket.once("open", () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      socket.once("error", (error) => {
-        clearTimeout(timeout);
-        reject(new Error(`Collaboration WebSocket upgrade failed: ${error.message}`));
-      });
-    });
-  } finally {
-    socket.close();
-  }
-}
-
 async function mirrorObjectStorage(direction, localDirectory) {
   const image = "rustfs/rc:v0.1.36";
   const backupOwner =
@@ -515,6 +311,11 @@ async function mirrorObjectStorage(direction, localDirectory) {
   const result = await capture("docker", [
     "run",
     "--rm",
+    // The rc image declares USER rc (uid 100), which cannot write into a backup
+    // directory owned by the invoking user, so mirror as root and hand ownership
+    // back afterwards.
+    "--user",
+    "0:0",
     "--network",
     `${projectName}_default`,
     "--env-file",
@@ -561,12 +362,6 @@ function captureComposeToFile(args, filename) {
     });
     output.once("error", reject);
   });
-}
-
-async function json(url) {
-  const response = await fetch(url);
-  assert.equal(response.status, 200);
-  return response.json();
 }
 
 async function getFreePort() {
