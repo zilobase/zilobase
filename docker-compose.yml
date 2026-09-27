@@ -136,12 +136,12 @@ services:
       retries: 10
 
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: rustfs/rustfs:1.0.0
     restart: unless-stopped
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      RUSTFS_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      RUSTFS_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      RUSTFS_ADDRESS: ":9000"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -151,7 +151,7 @@ services:
       retries: 10
 
   minio-init:
-    image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+    image: rustfs/rc:v0.1.36
     depends_on:
       minio:
         condition: service_healthy
@@ -165,16 +165,16 @@ services:
       - |
         set -eu
         attempts=0
-        until mc alias set -- zilobase http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+        until rc alias set zilobase http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
           attempts=$$((attempts + 1))
           if [ "$$attempts" -ge 20 ]; then
-            echo "MinIO did not accept authenticated requests after 20 attempts" >&2
+            echo "Object storage did not accept authenticated requests after 20 attempts" >&2
             exit 1
           fi
           sleep 2
         done
-        mc mb --ignore-existing "zilobase/$$MINIO_BUCKET"
-        mc anonymous set none "zilobase/$$MINIO_BUCKET"
+        rc mb --ignore-existing "zilobase/$$MINIO_BUCKET"
+        rc anonymous set private "zilobase/$$MINIO_BUCKET"
 
   valkey:
     image: valkey/valkey:8-alpine

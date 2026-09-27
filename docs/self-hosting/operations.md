@@ -62,11 +62,11 @@ are in [database operations and troubleshooting](../databases/operations.md).
 
 ## Backups
 
-Back up Postgres and MinIO together at a documented consistency point. At
+Back up Postgres and object storage together at a documented consistency point. At
 minimum, retain:
 
 - a `pg_dump` of the configured database;
-- a recursive copy or `mc mirror` of the configured MinIO bucket;
+- a recursive copy or `rc mirror` of the configured bucket;
 - the exact Zilobase image digest and non-secret configuration used by the backup.
 
 Test restoration into a separate Compose project or Kubernetes namespace. A
@@ -101,7 +101,7 @@ owner can switch registration mode under **Settings → Team**.
 ## Destructive actions
 
 Normal `docker compose down` preserves data. `down --volumes` permanently
-removes Postgres, MinIO, and Caddy state and must be used only for an intentional
+removes Postgres, object storage, and Caddy state and must be used only for an intentional
 fresh installation. In the local workflow, this distinction is encoded as
 `npm run selfhost:down` versus the explicitly confirmed
 `npm run selfhost:reset`.

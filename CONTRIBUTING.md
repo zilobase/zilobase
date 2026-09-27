@@ -49,7 +49,7 @@ invitation email at `http://127.0.0.1:8025`.
 
 Use `npm run selfhost:down` to stop containers without losing data. Use
 `npm run selfhost:reset` only when you intend to delete the local Postgres,
-MinIO, and Caddy volumes. The command requires an explicit confirmation. Run
+object storage, and Caddy volumes. The command requires an explicit confirmation. Run
 the production-image integration suite in an isolated Compose project with:
 
 ```sh

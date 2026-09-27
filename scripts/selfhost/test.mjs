@@ -192,7 +192,7 @@ try {
   const invitationMessage = await waitForMessage(inviteEmail);
   assert.match(invitationMessage, /accept-invitation/i);
 
-  console.info("Uploading and reading a MinIO-backed profile image...");
+  console.info("Uploading and reading an object-storage profile image...");
   const imageBytes = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
     "base64",
@@ -274,7 +274,7 @@ try {
   });
   assert.equal(persistedPage.data.page.name, "Self-host deployment probe updated");
 
-  console.info("Backing up and restoring Postgres and MinIO into clean volumes...");
+  console.info("Backing up and restoring Postgres and object storage into clean volumes...");
   const backupDirectory = path.join(tempDirectory, "backup");
   const objectBackupDirectory = path.join(backupDirectory, "objects");
   const databaseBackup = path.join(backupDirectory, "postgres.dump");
@@ -502,7 +502,7 @@ async function verifyCollaborationWebSocket(ticket, sessionToken) {
 }
 
 async function mirrorObjectStorage(direction, localDirectory) {
-  const image = "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z";
+  const image = "rustfs/rc:v0.1.36";
   const backupOwner =
     typeof process.getuid === "function" && typeof process.getgid === "function"
       ? `${process.getuid()}:${process.getgid()}`
@@ -510,8 +510,8 @@ async function mirrorObjectStorage(direction, localDirectory) {
   const normalizeBackupOwnership = backupOwner ? ' && chown -R "$BACKUP_OWNER" /backup' : "";
   const script =
     direction === "backup"
-      ? `mc alias set -- local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite "local/$MINIO_BUCKET" /backup${normalizeBackupOwnership}`
-      : 'mc alias set -- local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite /backup "local/$MINIO_BUCKET"';
+      ? `rc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && rc mirror --overwrite "local/$MINIO_BUCKET" /backup${normalizeBackupOwnership}`
+      : 'rc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && rc mirror --overwrite /backup "local/$MINIO_BUCKET"';
   const result = await capture("docker", [
     "run",
     "--rm",

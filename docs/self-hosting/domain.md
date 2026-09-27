@@ -3,7 +3,7 @@
 Use two DNS names pointing to the host:
 
 - `notes.example.com` for the web app, API, collaboration, and realtime traffic
-- `objects.notes.example.com` for private MinIO object transfers signed by the app
+- `objects.notes.example.com` for private object transfers signed by the app
 
 Set the corresponding values in `.env.selfhost`:
 
@@ -16,8 +16,8 @@ S3_PUBLIC_ENDPOINT=https://objects.notes.example.com
 ```
 
 Allow inbound TCP 80 and 443 so Caddy can obtain and renew certificates. Do not
-publish Postgres or MinIO directly. Caddy terminates TLS for both origins and
-proxies object requests to the private MinIO service.
+publish Postgres or the object store directly. Caddy terminates TLS for both origins and
+proxies object requests to the private `minio` service.
 
 Origins are exact security boundaries. Use lowercase canonical origins without
 paths, query strings, fragments, or trailing slash aliases. Self-hosting below a

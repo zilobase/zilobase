@@ -105,21 +105,32 @@ jobs:
           until docker exec community-helm-postgres pg_isready -U zilobase -d zilobase >/dev/null 2>&1; do sleep 1; done
 
           mkdir -p "$RUNNER_TEMP/community-minio-tls"
+          chmod 755 "$RUNNER_TEMP/community-minio-tls"
           openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
-            -keyout "$RUNNER_TEMP/community-minio-tls/private.key" \
-            -out "$RUNNER_TEMP/community-minio-tls/public.crt" \
+            -keyout "$RUNNER_TEMP/community-minio-tls/rustfs_key.pem" \
+            -out "$RUNNER_TEMP/community-minio-tls/rustfs_cert.pem" \
             -days 2 -subj "/CN=minio.external.svc.cluster.local" \
             -addext "subjectAltName=DNS:minio,DNS:minio.external,DNS:minio.external.svc,DNS:minio.external.svc.cluster.local"
+          chmod 644 "$RUNNER_TEMP/community-minio-tls/rustfs_cert.pem" "$RUNNER_TEMP/community-minio-tls/rustfs_key.pem"
           docker run -d --name community-helm-minio --network kind \
             -e MINIO_ROOT_USER=zilobase \
             -e MINIO_ROOT_PASSWORD="$minio_password" \
-            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server --address :443 /data
-          docker exec community-helm-minio mkdir -p /root/.minio/certs
-          docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
-          docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
-          docker restart community-helm-minio >/dev/null
-          until docker exec community-helm-minio sh -c 'mc --insecure alias set -- ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
-          docker exec community-helm-minio sh -c 'mc --insecure mb ga/zilobase >/dev/null && mc --insecure version enable ga/zilobase >/dev/null'
+            -e RUSTFS_ACCESS_KEY=zilobase \
+            -e RUSTFS_SECRET_KEY="$minio_password" \
+            -e RUSTFS_ADDRESS=:443 \
+            -e RUSTFS_TLS_PATH=/certs \
+            -v "$RUNNER_TEMP/community-minio-tls:/certs:ro" \
+            rustfs/rustfs:1.0.0
+          until docker run --rm --network kind \
+            -e MINIO_ROOT_USER=zilobase \
+            -e MINIO_ROOT_PASSWORD="$minio_password" \
+            --entrypoint /bin/sh rustfs/rc:v0.1.36 -c \
+            'rc alias set --insecure ga https://community-helm-minio "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null'; do sleep 1; done
+          docker run --rm --network kind \
+            -e MINIO_ROOT_USER=zilobase \
+            -e MINIO_ROOT_PASSWORD="$minio_password" \
+            --entrypoint /bin/sh rustfs/rc:v0.1.36 -c \
+            'rc alias set --insecure ga https://community-helm-minio "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && rc mb --ignore-existing ga/zilobase >/dev/null && rc version enable ga/zilobase >/dev/null'
 
           postgres_ip=$(docker inspect community-helm-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
           minio_ip=$(docker inspect community-helm-minio --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
@@ -170,7 +181,7 @@ jobs:
             --from-literal="S3_ACCESS_KEY_ID=zilobase" \
             --from-literal="S3_SECRET_ACCESS_KEY=$minio_password"
           kubectl -n community create configmap zilobase-test-ca \
-            --from-file=ca.crt="$RUNNER_TEMP/community-minio-tls/public.crt"
+            --from-file=ca.crt="$RUNNER_TEMP/community-minio-tls/rustfs_cert.pem"
       - name: Install and smoke Community chart
         shell: bash
         run: |
@@ -224,16 +235,18 @@ jobs:
 
           docker volume create community-helm-minio-restored >/dev/null
           docker run --rm -v community-helm-object-backup:/backup:ro \
-            -v community-helm-minio-restored:/data alpine:3.22 sh -c 'cp -a /backup/. /data/'
+            -v community-helm-minio-restored:/data alpine:3.22 sh -c 'cp -a /backup/. /data/ && chown -R 10001:10001 /data'
           docker run -d --name community-helm-minio --network kind \
             -e MINIO_ROOT_USER=zilobase -e MINIO_ROOT_PASSWORD="$minio_password" \
+            -e RUSTFS_ACCESS_KEY=zilobase -e RUSTFS_SECRET_KEY="$minio_password" \
+            -e RUSTFS_ADDRESS=:443 -e RUSTFS_TLS_PATH=/certs \
             -v community-helm-minio-restored:/data \
-            quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server --address :443 /data
-          docker exec community-helm-minio mkdir -p /root/.minio/certs
-          docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
-          docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
-          docker restart community-helm-minio >/dev/null
-          until docker exec community-helm-minio sh -c 'mc --insecure alias set -- ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
+            -v "$RUNNER_TEMP/community-minio-tls:/certs:ro" \
+            rustfs/rustfs:1.0.0
+          until docker run --rm --network kind \
+            -e MINIO_ROOT_USER=zilobase -e MINIO_ROOT_PASSWORD="$minio_password" \
+            --entrypoint /bin/sh rustfs/rc:v0.1.36 -c \
+            'rc alias set --insecure ga https://community-helm-minio "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null'; do sleep 1; done
           restored_minio_ip=$(docker inspect community-helm-minio --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 
           kubectl -n external patch endpointslice postgres-external --type merge \

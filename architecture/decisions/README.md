@@ -11,3 +11,4 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Unified runtime adapter](0007-unified-runtime-adapter.md)
 - [Runtime ports and controller inversion](0008-runtime-ports-and-controller-inversion.md)
 - [Mandatory Redis bus for Node realtime](0009-mandatory-node-realtime-redis.md)
+- [Bundled S3 service is RustFS](0010-bundled-s3-is-rustfs.md)

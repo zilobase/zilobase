@@ -526,8 +526,8 @@ async function resetNodeBucket() {
     "-T",
     "--no-deps",
     "minio-init",
-    'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && ' +
-      "mc rb --force local/zilobase-node || true; mc mb local/zilobase-node; mc anonymous set none local/zilobase-node",
+    'rc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && ' +
+      "rc rb --force local/zilobase-node || true; rc mb local/zilobase-node; rc anonymous set private local/zilobase-node",
   ]);
 }
 
@@ -599,7 +599,7 @@ function printLocalSummary(names, profiles = localProfiles) {
     );
   }
   console.info("Mailpit http://127.0.0.1:18025");
-  console.info("MinIO  http://127.0.0.1:19101");
+  console.info("Object storage  http://127.0.0.1:19101");
   console.info("\nCtrl-C stops source processes and preserves dependency data.\n");
 }
 
@@ -612,7 +612,7 @@ function printPreviewSummary(names, profiles = localProfiles) {
     );
   }
   console.info("Mailpit http://127.0.0.1:18025");
-  console.info("MinIO  http://127.0.0.1:19101");
+  console.info("Object storage  http://127.0.0.1:19101");
   console.info("\nCtrl-C stops processes and preserves dependency data.\n");
 }
 

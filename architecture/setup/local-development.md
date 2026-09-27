@@ -5,8 +5,9 @@ The development CLI coordinates dependency containers and local Node processes. 
 [Desktop development](../../scripts/desktop/dev.mjs) starts the same workspace as `npm run dev` and then launches Electron. The CLI owns setup/status/logs/down/reset behavior; setup also installs the
 path-filtered Git commit and push hooks. The runbook explains when to use each command. Reset commands are destructive operational actions, not refactor verification.
 
-The normal `npm run dev` dependency set includes PostgreSQL, MinIO, Mailpit,
-and Valkey. Generated Node configuration points `REALTIME_REDIS_URL` at the
+The normal `npm run dev` dependency set includes PostgreSQL, RustFS, Mailpit,
+and Valkey. RustFS is the bundled S3 service and keeps the Compose service
+name `minio`. Generated Node configuration points `REALTIME_REDIS_URL` at the
 loopback Valkey port, so source development exercises the same mandatory bus
 topology as self-hosted deployments without a manual broker step.
 The workspace launcher also forwards that generated Redis URL to discovered

@@ -23,7 +23,7 @@ production Docker image from the current source, starts an isolated stack, and
 waits for readiness. All published ports bind to `127.0.0.1`:
 
 - Zilobase: `http://127.0.0.1:8787`
-- MinIO S3 API: `http://127.0.0.1:9000`
+- Object storage S3 API: `http://127.0.0.1:9000`
 - Mailpit: `http://127.0.0.1:8025`
 
 Open `http://127.0.0.1:8787/setup` and paste the generated bootstrap token from
@@ -116,7 +116,7 @@ npm run test:selfhost
 ```
 
 The test uses random ports, secrets, and a unique Compose project. It verifies
-fresh bootstrap, OTP and invitation delivery through Mailpit, a MinIO-backed
+fresh bootstrap, OTP and invitation delivery through Mailpit, an object-storage
 upload/read, non-root execution, restart persistence, production configuration
 failure without secrets, and explicit volume reset. It always removes its
 ephemeral infrastructure.

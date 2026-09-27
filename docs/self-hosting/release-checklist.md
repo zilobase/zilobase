@@ -11,7 +11,7 @@ installer checksums, timestamps, and operator for each run.
 - [ ] Resolve the candidate container tag to a digest and set
       `ZILOBASE_IMAGE=ghcr.io/zilobase/zilobase@sha256:...`.
 - [ ] Generate independent production secrets for Better Auth, bootstrap,
-      Postgres, MinIO, and SMTP. Keep them out of shell history and test reports.
+      Postgres, object storage, and SMTP. Keep them out of shell history and test reports.
 - [ ] Allocate real DNS names for the application and object storage. Point both
       names to a clean Ubuntu 24.04 VM with inbound TCP 80 and 443 available.
 
@@ -49,8 +49,8 @@ installer checksums, timestamps, and operator for each run.
       migration logs for warnings before accepting new traffic. Verify the
       existing database through `/databases/:id/bootstrap` and its v2 records
       window, including the row order key and property value.
-- [ ] Back up Postgres with `pg_dump --format=custom` and mirror the MinIO bucket
-      with `mc mirror`. Store both backups together with the image digest and secret
+- [ ] Back up Postgres with `pg_dump --format=custom` and mirror the object-storage bucket
+      with `rc mirror`. Store both backups together with the image digest and secret
       version used to create them.
 - [ ] Restore both backups into empty named volumes, start the same pinned image,
       and verify the page, collaboration content, and uploaded object byte-for-byte.

@@ -49,14 +49,15 @@ spec:
   template:
     metadata: { labels: { app: minio } }
     spec:
+      securityContext: { fsGroup: 10001 }
       containers:
         - name: minio
-          image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
-          args: ["server", "/data", "--console-address", ":9001"]
+          image: rustfs/rustfs:1.0.0
           env:
-            - { name: MINIO_ROOT_USER, value: zilobase }
-            - name: MINIO_ROOT_PASSWORD
+            - { name: RUSTFS_ACCESS_KEY, value: zilobase }
+            - name: RUSTFS_SECRET_KEY
               valueFrom: { secretKeyRef: { name: zilobase-dev-infra, key: MINIO_ROOT_PASSWORD } }
+            - { name: RUSTFS_ADDRESS, value: ":9000" }
           ports:
             - { name: api, containerPort: 9000 }
             - { name: console, containerPort: 9001 }
@@ -94,7 +95,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: minio-init
-          image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+          image: rustfs/rc:v0.1.36
           env:
             - { name: MINIO_ROOT_USER, value: zilobase }
             - name: MINIO_ROOT_PASSWORD
@@ -102,9 +103,9 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - >-
-              until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do sleep 2; done;
-              mc mb --ignore-existing local/zilobase;
-              mc anonymous set none local/zilobase
+              until rc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do sleep 2; done;
+              rc mb --ignore-existing local/zilobase;
+              rc anonymous set private local/zilobase
 ---
 apiVersion: apps/v1
 kind: Deployment

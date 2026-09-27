@@ -34,7 +34,7 @@ Zilobase is an open-source workspace for building and organizing knowledge with 
 - **Write and organize pages** with a rich editor, nested navigation, comments, and workspace context.
 - **Model structured information** with standalone or embedded databases, table views, kanban views, timeline views, properties, filters, sorting, and grouping.
 - **Work with AI in context** using page-aware chat, workspace tools, and supported page/database edit flows.
-- **Run it yourself** with Docker Compose, Caddy, Postgres, and MinIO.
+- **Run it yourself** with Docker Compose, Caddy, Postgres, and RustFS.
 
 ## Quick Start
 
@@ -45,7 +45,7 @@ npm run selfhost:up
 ```
 
 The command generates ignored development secrets, builds the production image
-from source, waits for Postgres and MinIO readiness, and prints these local-only
+from source, waits for Postgres and object-storage readiness, and prints these local-only
 addresses:
 
 ```text
@@ -200,7 +200,7 @@ The public self-hosted deployment uses Docker Compose with:
 - Caddy for HTTP/HTTPS
 - Zilobase for the web client and API
 - Postgres for relational data
-- MinIO for S3-compatible image storage
+- RustFS for S3-compatible image storage
 
 The open-source server exports edition-neutral runtime extension surfaces from
 `@zilobase/server/adapter-api`. This repository documents and supports the

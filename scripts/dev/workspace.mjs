@@ -119,8 +119,8 @@ export async function startDevelopmentWorkspace() {
             fields: [
               ["Postgres user", dependencies.POSTGRES_USER],
               ["Postgres password", dependencies.POSTGRES_PASSWORD],
-              ["MinIO user", dependencies.MINIO_ROOT_USER],
-              ["MinIO password", dependencies.MINIO_ROOT_PASSWORD],
+              ["Object storage user", dependencies.MINIO_ROOT_USER],
+              ["Object storage password", dependencies.MINIO_ROOT_PASSWORD],
             ],
             name: "Infrastructure",
           },
@@ -134,7 +134,7 @@ export async function startDevelopmentWorkspace() {
             url: `http://127.0.0.1:${dependencies.MAILPIT_UI_PORT}`,
           },
           {
-            detail: "MinIO object storage console",
+            detail: "RustFS object storage console",
             name: "Object storage",
             url: `http://127.0.0.1:${dependencies.MINIO_CONSOLE_PORT}`,
           },

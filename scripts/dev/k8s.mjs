@@ -26,8 +26,8 @@ const dependencyManifest = path.join(coreDir, "scripts", "dev", "k8s-dependencie
 const k8sStateFile = path.join(stateDir, "k8s-runtime.json");
 const dependencyImages = [
   "postgres:17.10-alpine",
-  "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
-  "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z",
+  "rustfs/rustfs:1.0.0",
+  "rustfs/rc:v0.1.36",
   "axllent/mailpit:v1.27.8",
   "valkey/valkey:8-alpine",
 ];
