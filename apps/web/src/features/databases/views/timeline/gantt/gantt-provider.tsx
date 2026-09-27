@@ -213,7 +213,7 @@ export function GanttProvider({
         {toolbar}
         <div
           className={cn(
-            "gantt-scroll relative isolate grid min-h-0 w-full flex-1 select-none overflow-auto",
+            "gantt-scroll relative isolate grid min-h-0 w-full flex-1 select-none overflow-x-auto overflow-y-hidden",
             scrollClassName,
           )}
           ref={scrollRef}
