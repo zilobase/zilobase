@@ -1,34 +1,14 @@
 name: Community Helm gate
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/community-helm.yml"
-      - "Dockerfile"
-      - "apps/server/**"
-      - "apps/web/**"
-      - "deploy/helm/zilobase/**"
-      - "docker/entrypoint.sh"
-      - "package-lock.json"
-      - "package.json"
-      - "packages/**"
-      - "scripts/selfhost/test-community-helm.mjs"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/community-helm.yml"
-      - "Dockerfile"
-      - "apps/server/**"
-      - "apps/web/**"
-      - "deploy/helm/zilobase/**"
-      - "docker/entrypoint.sh"
-      - "package-lock.json"
-      - "package.json"
-      - "packages/**"
-      - "scripts/selfhost/test-community-helm.mjs"
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: community-helm-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   kind:

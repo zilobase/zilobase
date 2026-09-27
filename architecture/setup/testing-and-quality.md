@@ -2,7 +2,7 @@
 
 The root scripts compose workspace checks. Server tests use Vitest, packages use their configured Node/tsx runners, web tests use a custom esbuild-backed runner, and Rust uses Cargo. Source-string assertions prove source structure only. `test:tooling`, included in `verify:core`, runs development-profile tests, [self-host cookie tests](../../scripts/selfhost/cookie-jar.test.mjs) and [version setter tests](../../scripts/release/set-version.test.mjs). These unit tests use controlled inputs and temporary files; self-host deployment, upgrade, and packaged desktop checks remain separate integration commands requiring their corresponding local environments.
 
-The root `fmt` command formats supported repository files with Oxfmt, while `fmt:check` verifies the committed baseline without writing. [Oxfmt configuration](../../.oxfmtrc.json) owns formatting conventions and excludes generated snapshots, Helm templates, and agent/tool instruction trees that are generated or use nonstandard syntax. The always-on community-boundary workflow and local commit/push checks enforce `fmt:check`; `verify:core` includes the same gate.
+The root `fmt` command formats supported repository files with Oxfmt, while `fmt:check` verifies the committed baseline without writing. [Oxfmt configuration](../../.oxfmtrc.json) owns formatting conventions and excludes generated snapshots, Helm templates, and agent/tool instruction trees that are generated or use nonstandard syntax. The always-on [CI workflow](../../.github/workflows/ci.yml) and local commit/push checks enforce `fmt:check`; `verify:core` includes the same gate.
 
 The root `lint` command runs Oxlint over the web and shared feature-package sources. [Oxlint configuration](../../.oxlintrc.json) registers `@shadcn/lint` and the official `@tanstack/eslint-plugin-query`. It points component discovery at the web shared UI alias and enforces TanStack Query's strict query-key, option-factory, stable-dependency, property-order and query-function rules. Package unit-test files remain covered by their TypeScript and test runners rather than the application-oriented query lint rules.
 
@@ -25,13 +25,14 @@ Earlier migrations narrowed desktop/offline cross-imports, web feature imports o
 
 Shared mutation tests render real hooks with React DOM's server renderer and execute their MutationObservers against an isolated QueryClient. The renderer is a test dependency pinned to the web workspace's existing version. These tests cover optimistic writes before transport, rollback of source/target caches, publication invalidation, and template navigation refresh; the latter replaces the old source-string assertion.
 
-Pull requests and main pushes run the complete `verify:architecture` suite.
+Pull requests and main pushes run `verify:core`, lint, and the complete `verify:architecture` suite in one CI job with PostgreSQL. Superseded CI runs are cancelled. The separate backend, web/package, and community-boundary workflows have been consolidated into this job to share dependency installation and keep one core check.
+
+The [self-host suite](../../.github/workflows/selfhost.yml) (Compose, packaged desktop, and upgrade) and [Community Helm suite](../../.github/workflows/community-helm.yml) run only through manual dispatch before releases or deployment changes. They no longer run on every PR, main push, or nightly; operators must trigger them for the candidate ref and review their results.
 
 The [Electron matrix](../../.github/workflows/electron-desktop.yml) builds an unpacked app on each desktop OS and runs the [packaged smoke](../../apps/desktop/e2e/electron-smoke.mjs) and [OAuth loopback test](../../apps/desktop/e2e/electron-oauth.mjs). Its manually dispatched installer matrix also runs [artifact verification](../../scripts/desktop/verify-electron-candidate.mjs), including signature checks when signing credentials are supplied. The [Electron self-host flow](../../apps/desktop/e2e/electron-selfhost.mjs) requires a running compatible server and is a separate integration command. These checks do not exercise a real browser OAuth redirect, signed update installation or live audio devices.
 
-The [commit and push hooks](../../scripts/git/pre-push.mjs) select those
-pull-request jobs from staged files (`git commit`) or `origin/main...HEAD`
-(`git push`), matching the workflow `paths:` filters. Commit only runs the
+The [commit and push hooks](../../scripts/git/pre-push.mjs) select relevant subsets of CI from staged files (`git commit`) or `origin/main...HEAD`
+(`git push`) using their own path filters. GitHub CI runs the complete core suite. Commit only runs the
 cheap jobs. Push adds the web, package, or desktop suites when those paths changed. It does not run Compose self-host,
 Community Helm, desktop packaging, or release publishing. Setup
 installs both hooks through [hook installation](../../scripts/git/install-hooks.mjs);

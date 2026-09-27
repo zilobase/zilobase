@@ -9,7 +9,7 @@ import { run } from "../dev/process.mjs";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const zeroSha = /^0+$/;
 
-// Path filters copy the pull_request `paths:` lists in .github/workflows.
+// Local hooks select relevant subsets of CI; CI runs the full core suite.
 // Self-host Compose, Community Helm, desktop packaging, and release publishing
 // stay off this hook: they need Docker/kind clusters and 45+ minutes.
 export const jobs = [
@@ -32,7 +32,7 @@ export const jobs = [
   {
     id: "community-boundary",
     name: "Community boundary",
-    workflow: ".github/workflows/community-boundary.yml",
+    workflow: ".github/workflows/ci.yml",
     commit: true,
     paths: null,
     commands: [
@@ -51,14 +51,14 @@ export const jobs = [
   {
     id: "web-and-packages",
     name: "Web and packages",
-    workflow: ".github/workflows/web-and-packages.yml",
+    workflow: ".github/workflows/ci.yml",
     paths: [
       "apps/web/**",
       "packages/**",
       "scripts/colors/**",
       "package.json",
       "package-lock.json",
-      ".github/workflows/web-and-packages.yml",
+      ".github/workflows/ci.yml",
     ],
     commands: [
       ["npm", "run", "typecheck"],
@@ -225,7 +225,7 @@ export async function runPushChecks({
   for (const job of selected) log.info(`  - ${job.name} (${job.workflow})`);
   if (!commit) {
     log.info(
-      "Not run here: self-host Compose, Community Helm, nightly desktop packaging, release publishing.",
+      "Not run here: self-host Compose, Community Helm, desktop packaging, release publishing.",
     );
   }
   log.info("Skip with git commit/push --no-verify or ZILOBASE_SKIP_HOOKS=1.");

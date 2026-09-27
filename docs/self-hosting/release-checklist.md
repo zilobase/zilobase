@@ -6,6 +6,10 @@ installer checksums, timestamps, and operator for each run.
 
 ## Release inputs
 
+- [ ] Manually dispatch the [self-host](../../.github/workflows/selfhost.yml) and
+      [Community Helm](../../.github/workflows/community-helm.yml) workflows against
+      the candidate ref and confirm every job passes. These suites are manual-only.
+
 - [ ] Select the exact desktop installers produced by the release workflow for
       Windows, macOS, and Linux. Do not rebuild between environments.
 - [ ] Resolve the candidate container tag to a digest and set

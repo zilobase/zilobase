@@ -184,11 +184,15 @@ factories.
 
 `npm run setup` points Git at [`.githooks`](.githooks). `git commit` runs the
 cheap path-filtered jobs (community boundary, architecture links, and tooling
-or token checks when those files are staged). `git push` then runs the same
-pull-request jobs GitHub runs: those commit checks plus the web, package, or
-desktop suites when those paths changed. Compose self-host, Community Helm,
-desktop packaging, and release publishing stay on GitHub; they need
-Docker/kind clusters and take much longer. Enable the hooks later with
+or token checks when those files are staged). `git push` runs a local subset of CI: those commit checks plus the web,
+package, or desktop suites when those paths changed. The [CI workflow](.github/workflows/ci.yml)
+runs the full core verification, lint, and architecture checks on PRs and main pushes.
+[Electron CI](.github/workflows/electron-desktop.yml) keeps platform packaging checks
+for relevant changes; release publishing remains tag-triggered or manual.
+Run the [self-host](.github/workflows/selfhost.yml) and
+[Community Helm](.github/workflows/community-helm.yml) integration workflows manually
+for deployment changes and release candidates. These Docker/kind suites no longer
+run on PRs, main pushes, or a nightly schedule. Enable the hooks later with
 `npm run hooks:install`. Skip once with `git commit --no-verify`,
 `git push --no-verify`, or `ZILOBASE_SKIP_HOOKS=1`.
 

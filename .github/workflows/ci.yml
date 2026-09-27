@@ -1,28 +1,23 @@
-name: Backend
+name: CI
 
 on:
   pull_request:
-    paths:
-      - "apps/server/**"
-      - "packages/features/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/backend.yml"
   push:
     branches: [main]
-    paths:
-      - "apps/server/**"
-      - "packages/features/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/backend.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
+    name: Core checks
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:17-alpine
@@ -47,4 +42,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:migrate --workspace @zilobase/server
-      - run: npm run test:quality --workspace @zilobase/server
+      - run: npm run verify:core
+      - run: npm run lint
+      - run: npm run verify:architecture
