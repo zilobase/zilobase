@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { desktopBridge, isDesktopApp } from "@/platform/desktop/native";
 import type { DesktopDeepLink } from "../../../../../desktop/electron/shared/bridge";
 
@@ -8,6 +8,9 @@ import { getSelectedDesktopServer } from "../../../platform/server/desktop-serve
 import { requestDesktopServerReplacement } from "../server/desktop-server-replacement";
 
 export function DesktopDeepLinkHandler({ openPath }: { openPath: (path: string) => void }) {
+  const openPathRef = useRef(openPath);
+  openPathRef.current = openPath;
+
   useEffect(() => {
     if (!isDesktopApp()) return;
 
@@ -29,7 +32,7 @@ export function DesktopDeepLinkHandler({ openPath }: { openPath: (path: string) 
         }
 
         recordDesktopDiagnostic("deep_link.accepted", { status: "success" });
-        if (action.type === "open-path") openPath(action.path);
+        if (action.type === "open-path") openPathRef.current(action.path);
         else requestDesktopServerReplacement(action);
         return;
       }
@@ -53,7 +56,7 @@ export function DesktopDeepLinkHandler({ openPath }: { openPath: (path: string) 
       disposed = true;
       unlisten?.();
     };
-  }, [openPath]);
+  }, []);
 
   return null;
 }

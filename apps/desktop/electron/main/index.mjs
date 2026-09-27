@@ -22,7 +22,7 @@ const diagnosticsOnly = process.argv.includes("--diagnostics");
 const startedAt = Date.now();
 let mainWindow;
 let rendererReady = false;
-let deepLinkSubscribed = false;
+let deepLinkSubscribers = 0;
 const pendingLinks = [];
 
 protocol.registerSchemesAsPrivileged([
@@ -132,6 +132,13 @@ function parseDeepLink(value) {
   return null;
 }
 
+function publishPendingLinks() {
+  if (!mainWindow || deepLinkSubscribers < 1 || pendingLinks.length === 0) return;
+  const links = pendingLinks.splice(0);
+  mainWindow.webContents.send("desktop:deep-link:opened", links);
+  log.info("[diagnostics] event=deep_link.delivered count=" + links.length);
+}
+
 function enqueueLinks(args) {
   for (const arg of args) {
     if (typeof arg !== "string" || !arg.startsWith("zilobase://")) continue;
@@ -139,9 +146,7 @@ function enqueueLinks(args) {
     log.info("[diagnostics] event=deep_link.received target=" + (link?.type ?? "other"));
     if (link) pendingLinks.push(link);
   }
-  if (deepLinkSubscribed && pendingLinks.length) {
-    mainWindow?.webContents.send("desktop:deep-link:opened", pendingLinks.splice(0));
-  }
+  publishPendingLinks();
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
@@ -283,12 +288,10 @@ function createWindow() {
   });
   contents.on("did-finish-load", () => {
     mainWindow.show();
+    publishPendingLinks();
     log.info(
       "[diagnostics] event=webview.page_load status=success elapsed_ms=" + (Date.now() - startedAt),
     );
-  });
-  contents.on("did-start-loading", () => {
-    deepLinkSubscribed = false;
   });
   for (const event of ["maximize", "unmaximize"]) {
     mainWindow.on(event, () =>
@@ -338,12 +341,11 @@ function registerCoreIpc(registerUpdaterHandlers) {
   });
   checkedHandler("desktop:deep-link:pending", () => pendingLinks.splice(0));
   checkedHandler("desktop:deep-link:subscribe", () => {
-    deepLinkSubscribed = true;
-    if (pendingLinks.length)
-      mainWindow.webContents.send("desktop:deep-link:opened", pendingLinks.splice(0));
+    deepLinkSubscribers += 1;
+    publishPendingLinks();
   });
   checkedHandler("desktop:deep-link:unsubscribe", () => {
-    deepLinkSubscribed = false;
+    deepLinkSubscribers = Math.max(0, deepLinkSubscribers - 1);
   });
   checkedHandler("desktop:window:minimize", () => mainWindow.minimize());
   checkedHandler("desktop:window:toggle-maximize", () =>

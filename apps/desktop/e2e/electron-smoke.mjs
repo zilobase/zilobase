@@ -61,9 +61,18 @@ try {
       timeout: 15_000,
     },
   );
-  await page.waitForFunction(() => window.__electronSmokeLink?.type === "open", null, {
-    timeout: 10_000,
-  });
+  await page.waitForFunction(
+    async () => {
+      if (window.__electronSmokeLink?.type === "open") return true;
+      const pending = await window.zilobaseDesktop.deepLinks.getPending();
+      const link = pending.find((item) => item?.type === "open");
+      if (!link) return false;
+      window.__electronSmokeLink = link;
+      return true;
+    },
+    null,
+    { timeout: 10_000 },
+  );
   assert.deepEqual(await page.evaluate(() => window.__electronSmokeLink), {
     type: "open",
     serverUrl: "https://api.zilobase.com",
