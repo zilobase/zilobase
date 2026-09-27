@@ -29,7 +29,10 @@ type MoveRowInput = {
   groupPropertyId?: string;
   groupValue?: unknown;
   hostDatabaseId?: string;
-  onOptimisticAccepted?: () => void;
+  /** View-local move drafts retire only after a window reaches this version. */
+  onCommitted?: (databaseVersion: number) => void;
+  /** A view owning a complete move draft does not also patch the group cell. */
+  optimistic?: boolean;
   rowId: string;
 };
 
@@ -156,7 +159,6 @@ export function useMoveDatabaseRow() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      input.onOptimisticAccepted?.();
       try {
         const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
           executeDatabaseCommand(apiFetch, {
@@ -178,6 +180,7 @@ export function useMoveDatabaseRow() {
             dataSourceId: scope.dataSourceId,
           }),
         );
+        input.onCommitted?.(ack.event.version);
         invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
         return ack.result as DatabaseRecordEntity;
       } catch (error) {
@@ -190,12 +193,13 @@ export function useMoveDatabaseRow() {
       }
     },
     onMutate: async (input): Promise<OptimisticContext | undefined> => {
-      // Cross-group moves change a cell value, exactly like a table cell edit:
-      // patch the cached cell with the same helper so every view converges
-      // instantly. Pure reorders keep their view-local preview instead.
-      if (!input.groupPropertyId) return undefined;
+      // Kanban owns a complete local position + group draft until refetch.
+      // Other consumers keep the shared optimistic cell-edit behavior.
       const scope = resolveOptimisticScope(queryClient, input.databaseId, input.hostDatabaseId);
       if (!scope) return undefined;
+      if (input.optimistic === false || !input.groupPropertyId) {
+        return { rollback: () => undefined, scope };
+      }
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
       const rollback = patchCachedCellValue(queryClient, sessionId, scope.hostDatabaseId, {
         propertyId: input.groupPropertyId,

@@ -46,11 +46,49 @@ The [toolbar](../../../apps/web/src/features/databases/views/components/database
 
 [Source projection](../../../apps/web/src/features/databases/views/model/toolbar-source.ts) centralizes host/source identity, display titles and fallback sources without browser state or persistence. [Overflow calculation](../../../apps/web/src/features/databases/views/model/toolbar-view-overflow.ts) reserves control widths and keeps the active view visible. Their [source tests](../../../apps/web/test/features/databases/toolbar-source.test.mjs) and [overflow tests](../../../apps/web/test/features/databases/toolbar-view-overflow.test.mjs) cover linked-source identity, empty identifiers, active-view fallback, width reservation and active-tab pinning. UI source checks continue to protect structural integration; they do not substitute for interactive browser verification.
 
-## Kanban drag preview
+## Kanban board and moves
 
-The [Kanban drag controller](../../../apps/web/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts) measures card heights at drag start and keeps the reorder preview local until drop. The dragged card is captured in a ref synchronously at drag start so a fast drop cannot miss it before the deferred drag-state frame runs. The [preview model](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-card-drag.ts) computes card offsets and a card-sized placeholder within and between groups, including empty groups and rows already present in the destination. Hit testing uses untransformed layout positions so animated cards cannot move their own drop thresholds. Native page payloads, sorted-move confirmation and shared row mutations retain their existing contracts. On drop, the controller immediately renders the projected source and destination rows until the mutation settles, so clearing the drag preview cannot briefly restore the old layout. Transform transitions are suppressed during this handoff because the final layout already occupies the preview positions. Failed writes release that projection and rely on the following host refetch. Cancellation clears the preview without writing; reduced-motion preferences disable card transitions.
+The [board model](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-board.ts)
+derives stable options and indexes column membership in one pass. The
+[view](../../../apps/web/src/features/databases/views/kanban/components/database-kanban-view.tsx)
+composes group creation/settings, property editors and the
+[column component](../../../apps/web/src/features/databases/views/kanban/components/database-kanban-column.tsx).
+Interaction state is scoped to host, source, view and grouping property.
 
-All row-drag views (table, Kanban, timeline, list, gallery) share [useMoveDatabaseRow](../../../packages/features/src/databases/mutations/rows.ts). Cross-group moves optimistically patch the cached group cell with the same helper as table cell edits and roll back plus refetch on error; every view surfaces the resulting failure (including the `Order changed — try again` conflict message) through a toast instead of failing silently.
+The [drag controller](../../../apps/web/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts)
+owns native page payloads, cancellation, sorted-move confirmation and drop targets.
+It captures the active card synchronously so dropping before the first animation
+frame works. The [geometry hook](../../../apps/web/src/features/databases/views/kanban/controller/use-kanban-geometry.ts)
+registers elements, observes resizes and batches layout reads. Dirty target
+geometry is refreshed at hit testing, including rapid consecutive drops.
+The [preview model](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-card-drag.ts)
+uses untransformed card positions for offsets and placeholders, so animated
+cards cannot shift their own drop thresholds.
+
+The [move model](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-moves.ts)
+converts drops into neighbor anchors and grouping values, including multi-select
+cards already in the destination. The [move controller](../../../apps/web/src/features/databases/views/kanban/controller/use-kanban-moves.ts)
+keeps ordered React-local drafts for both position and group. Rendering and
+subsequent drags use those drafts applied to the latest rows, retaining unrelated
+edits and newly loaded rows. Same-card reorders inherit a pending destination,
+so failure of an earlier group change does not silently change a later intention.
+Title-group renames and their row moves execute sequentially.
+
+All row-drag views use [useMoveDatabaseRow](../../../packages/features/src/databases/mutations/rows.ts).
+Kanban opts out of the shared optimistic group-cell patch because its local
+draft already covers the complete move. The hook reports the acknowledged host
+version through `onCommitted`. A draft retires only when the active, non-placeholder
+record window reaches that version; a POST acknowledgement or an older refresh
+cannot restore the old layout. Refetch failures leave committed drafts visible
+and use the existing save-status error. Rejected writes remove only their own
+draft and refetch; newer intentions survive. Other views retain the shared
+optimistic group-cell behavior and all views report move failures through toasts.
+No acknowledgement payload or synthetic version is written into QueryClient.
+
+[Lifecycle tests](../../../apps/web/test/features/databases/database-kanban-move-lifecycle.test.mjs)
+mount the actual drag and mutation hooks with controlled responses, covering slow
+saves, stale refreshes, fast drops before the first frame, rapid moves, isolated
+rollback and failed sort clearing.
 
 The [Kanban edge-scroll hook](../../../apps/web/src/features/databases/views/kanban/controller/use-kanban-edge-scroll.ts) scrolls the board horizontally while a database page is held near its visible left or right edge. A frame loop keeps scrolling with a stationary pointer and accelerates toward the edge. It supports internal cards and external database-page drags, clamps to scroll limits, and stops on drop, cancellation, leaving the board or window, blur, and unmount.
 

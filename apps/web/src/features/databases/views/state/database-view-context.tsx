@@ -144,6 +144,7 @@ export type DatabaseViewProviderValue = {
   databasePageId?: string | null;
   databaseWorkspaceId?: string;
   realtimeEnabled?: boolean;
+  recordWindowVersion?: number | null;
   deleteDatabaseView: (view: DatabaseViewTab, options?: { deleteDataSource?: boolean }) => void;
   duplicateDatabaseView: (view: DatabaseViewTab) => void;
   draftDatabaseTitle: string;
@@ -294,6 +295,7 @@ const databaseDataKeys = [
   "properties",
   "propertyValuesByKey",
   "realtimeEnabled",
+  "recordWindowVersion",
   "sortFieldOptions",
   "sortedItems",
   "subItemChildRowIdsByParentId",

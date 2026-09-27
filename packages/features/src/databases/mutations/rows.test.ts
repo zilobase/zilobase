@@ -163,14 +163,14 @@ test("rapid row moves serialize per source in order", async () => {
         afterRowId: "row-2",
         beforeRowId: null,
         databaseId: "data-source-1",
-        onOptimisticAccepted: () => accepted.push("first"),
+        onCommitted: () => accepted.push("first"),
         rowId: "row-1",
       }),
       mutation.mutateAsync({
         afterRowId: null,
         beforeRowId: "row-2",
         databaseId: "data-source-1",
-        onOptimisticAccepted: () => accepted.push("second"),
+        onCommitted: () => accepted.push("second"),
         rowId: "row-1",
       }),
     ]);
@@ -229,6 +229,94 @@ function readTestStatusValue(queryClient: QueryClient) {
     "property-status"
   ]?.value;
 }
+
+test("view-owned move drafts receive a version only after acknowledgement and leave the cache intact", async () => {
+  let release!: () => void;
+  let started!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const inner = commandApi(() => undefined);
+  const { mutation, queryClient } = createMutationTestRuntime(useMoveDatabaseRow, (async <T>(
+    path: string,
+    init?: RequestInit,
+  ) => {
+    started();
+    await gate;
+    return inner<T>(path, init);
+  }) as import("../../shared/api-fetcher").ApiFetcher);
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+  const versions: number[] = [];
+  try {
+    const pending = mutation.mutateAsync({
+      databaseId: "data-source-1",
+      rowId: "row-1",
+      afterRowId: "row-2",
+      beforeRowId: null,
+      groupPropertyId: "property-status",
+      groupValue: "Done",
+      optimistic: false,
+      onCommitted: (version) => versions.push(version),
+    });
+    await requested;
+    assert.deepEqual(versions, []);
+    assert.equal(readTestStatusValue(queryClient), "Not started");
+    release();
+    await pending;
+    assert.deepEqual(versions, [1]);
+    assert.equal(
+      readTestStatusValue(queryClient),
+      "Not started",
+      "ack must not replace cached record data",
+    );
+  } finally {
+    release();
+    queryClient.clear();
+  }
+});
+
+test("failed view-owned moves refetch without rolling back another edit", async () => {
+  let reject!: (error: Error) => void;
+  let started!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const { mutation, queryClient } = createMutationTestRuntime(useMoveDatabaseRow, (async () => {
+    started();
+    return new Promise((_resolve, rejectRequest) => {
+      reject = rejectRequest;
+    });
+  }) as import("../../shared/api-fetcher").ApiFetcher);
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+  const key = databaseWindowQueryKey("test-session", {
+    databaseId: "database-1",
+    dataSourceId: "data-source-1",
+    queryHash: databaseViewQueryHash({}),
+  });
+  try {
+    const pending = mutation.mutateAsync({
+      databaseId: "data-source-1",
+      rowId: "row-1",
+      afterRowId: "row-2",
+      beforeRowId: null,
+      groupPropertyId: "property-status",
+      groupValue: "Done",
+      optimistic: false,
+    });
+    await requested;
+    const latest = { unrelated: "newer edit" };
+    queryClient.setQueryData(key, latest);
+    reject(new Error("Rejected"));
+    await assert.rejects(pending, /Rejected/);
+    assert.deepEqual(queryClient.getQueryData(key), latest);
+    assert.equal(queryClient.getQueryState(key)?.isInvalidated, true);
+  } finally {
+    queryClient.clear();
+  }
+});
 
 test("grouped row move patches the group cell before commit", async () => {
   const original = createTestDatabasePayload();

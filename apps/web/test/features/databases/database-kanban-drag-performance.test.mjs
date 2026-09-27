@@ -1,30 +1,30 @@
-export function register({ assert, readSource, readWorkspace, test }) {
+export function register({ assert, readSource, test }) {
   test("kanban drag uses registered resize-observed geometry", async () => {
     const controller = await readSource(
       "/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts",
     );
     const view = await readSource(
-      "/src/features/databases/views/kanban/components/database-kanban-view.tsx",
+      "/src/features/databases/views/kanban/components/database-kanban-column.tsx",
+    );
+    const geometry = await readSource(
+      "/src/features/databases/views/kanban/controller/use-kanban-geometry.ts",
     );
 
     assert.doesNotMatch(controller, /querySelectorAll/);
     assert.doesNotMatch(controller, /closest\("\.database-kanban-board"\)/);
-    assert.match(controller, /new ResizeObserver/);
+    assert.match(geometry, /new ResizeObserver/);
     assert.match(controller, /pendingHitTest\.current/);
     assert.match(controller, /hitTestFrame\.current = requestAnimationFrame/);
     assert.match(view, /ref=\{cardDrag\.getColumnRef\(option\.id\)\}/);
     assert.match(view, /ref=\{cardDrag\.getCardRef\(option\.id, item\.id\)\}/);
   });
 
-  test("kanban provisional rows clear on optimistic acceptance", async () => {
+  test("kanban drag controller delegates persistence and geometry to their owners", async () => {
     const controller = await readSource(
       "/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts",
     );
-    const mutations = await readWorkspace("/packages/features/src/databases/mutations/rows.ts");
-
-    assert.match(controller, /applyMove\(move, \(\) => \{/);
-    assert.match(controller, /markDatabaseInteractionPaint\(dropStartedAt\)/);
-    assert.doesNotMatch(controller, /onSettled[^\n]*setDroppedRows/);
-    assert.match(mutations, /input\.onOptimisticAccepted\?\.\(\)/);
+    assert.match(controller, /input\.submitMove\(move\)/);
+    assert.match(controller, /useKanbanGeometry\(input\)/);
+    assert.doesNotMatch(controller, /useMoveDatabaseRow|setDroppedRows|onOptimisticAccepted/);
   });
 }

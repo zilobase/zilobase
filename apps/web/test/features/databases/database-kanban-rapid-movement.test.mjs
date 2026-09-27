@@ -57,13 +57,15 @@ export function register({ assert, loadModule, readSource, test }) {
       "/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts",
     );
 
-    assert.match(controller, /if \(input\.isSorted\) \{/);
-    assert.match(controller, /saveDatabaseSorts\(\[\]\)[\s\S]*\.then\(\(\) => applyMove\(move\)\)/);
-    assert.match(controller, /ResizeObserver\(\(entries\) =>/);
-    assert.match(controller, /scheduleColumnMeasurement\(optionId\)/);
+    const geometry = await readSource(
+      "/src/features/databases/views/kanban/controller/use-kanban-geometry.ts",
+    );
+    assert.match(controller, /if \(input\.isSorted\) setPendingSortedMove/);
     assert.match(
       controller,
-      /input\.options\.forEach\(\(option\) => scheduleColumnMeasurement\(option\.id\)\)/,
+      /await input\.saveDatabaseSorts\(\[\]\)[\s\S]*input\.submitMove\(pendingSortedMove\)/,
     );
+    assert.match(geometry, /new ResizeObserver/);
+    assert.match(geometry, /input\.getOptionItems/);
   });
 }

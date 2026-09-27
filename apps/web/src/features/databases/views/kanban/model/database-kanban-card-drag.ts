@@ -78,25 +78,3 @@ export function getKanbanEdgeScrollSpeed({
   }
   return 0;
 }
-
-/** The committed card layout, shown while the shared cache mutation catches up. */
-export function getKanbanDroppedRows<Row extends { id: string }>({
-  rows,
-  draggedRow,
-  rowIds,
-  isTarget,
-}: {
-  rows: Row[];
-  draggedRow: Row;
-  rowIds: string[];
-  isTarget: boolean;
-}) {
-  const nextRows = new Map(
-    rows.filter((row) => row.id !== draggedRow.id).map((row) => [row.id, row]),
-  );
-  if (isTarget) nextRows.set(draggedRow.id, draggedRow);
-  return rowIds.flatMap((id) => {
-    const row = nextRows.get(id);
-    return row ? [row] : [];
-  });
-}

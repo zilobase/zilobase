@@ -1043,7 +1043,7 @@
 
   /* The final layout already occupies the preview positions. Animating the
      obsolete transform back to zero would move each card a second time. */
-  .database-kanban-board[data-drop-settling="true"]
+  .database-kanban-board[data-move-pending="true"]:not([data-drag-active="true"])
     :is(.database-kanban-card, .database-kanban-new-card) {
     transition: none;
   }
