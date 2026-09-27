@@ -33,7 +33,7 @@ The [commit and push hooks](../../scripts/git/pre-push.mjs) select those
 pull-request jobs from staged files (`git commit`) or `origin/main...HEAD`
 (`git push`), matching the workflow `paths:` filters. Commit only runs the
 cheap jobs. Push adds the web, package, or desktop suites when those paths changed. It does not run Compose self-host,
-Community Helm, nightly desktop packaging, or release publishing. Setup
+Community Helm, desktop packaging, or release publishing. Setup
 installs both hooks through [hook installation](../../scripts/git/install-hooks.mjs);
 [hook tests](../../scripts/git/pre-push.test.mjs) cover path selection and skip
 behavior.

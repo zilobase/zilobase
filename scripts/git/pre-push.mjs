@@ -10,8 +10,8 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 const zeroSha = /^0+$/;
 
 // Path filters copy the pull_request `paths:` lists in .github/workflows.
-// Self-host Compose, Community Helm, nightly desktop packaging, and release
-// publishing stay off this hook: they need Docker/kind clusters and 45+ minutes.
+// Self-host Compose, Community Helm, desktop packaging, and release publishing
+// stay off this hook: they need Docker/kind clusters and 45+ minutes.
 export const jobs = [
   {
     id: "tokens",
@@ -69,13 +69,15 @@ export const jobs = [
   },
   {
     id: "desktop",
-    name: "Desktop checks",
-    workflow: ".github/workflows/desktop-checks.yml",
+    name: "Desktop sidecar checks",
+    // Electron desktop also runs on apps/web/** because the packaged app bundles
+    // the web build, but the Rust sidecar itself has no dependency on it.
+    workflow: ".github/workflows/electron-desktop.yml",
     paths: [
-      "apps/desktop/**",
+      "apps/desktop/electron/**",
       "package.json",
       "package-lock.json",
-      ".github/workflows/desktop-checks.yml",
+      ".github/workflows/electron-desktop.yml",
     ],
     commands: [["npm", "run", "verify:desktop"]],
   },

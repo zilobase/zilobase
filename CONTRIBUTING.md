@@ -186,9 +186,9 @@ factories.
 cheap path-filtered jobs (community boundary, architecture links, and tooling
 or token checks when those files are staged). `git push` then runs the same
 pull-request jobs GitHub runs: those commit checks plus the web, package, or
-desktop suites when those paths changed. Compose self-host, Community Helm, nightly desktop
-packaging, and release publishing stay on GitHub; they need Docker/kind
-clusters and take much longer. Enable the hooks later with
+desktop suites when those paths changed. Compose self-host, Community Helm,
+desktop packaging, and release publishing stay on GitHub; they need
+Docker/kind clusters and take much longer. Enable the hooks later with
 `npm run hooks:install`. Skip once with `git commit --no-verify`,
 `git push --no-verify`, or `ZILOBASE_SKIP_HOOKS=1`.
 
