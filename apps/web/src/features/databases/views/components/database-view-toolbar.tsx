@@ -825,7 +825,7 @@ export function DatabaseViewToolbar({
                     aria-label="Open filter options"
                     className="group h-7 shrink-0 rounded-md px-3"
                     type="button"
-                    variant="secondary"
+                    variant="selected"
                   >
                     <Filter className="size-4 self-center shrink-0" />
                     <span className="self-center truncate">
@@ -851,7 +851,7 @@ export function DatabaseViewToolbar({
                     aria-label="Open sort options"
                     className="group h-7 shrink-0 rounded-md px-3"
                     type="button"
-                    variant="secondary"
+                    variant="selected"
                   >
                     <ArrowDownUp className="size-4 self-center shrink-0" />
                     <span className="self-center truncate">

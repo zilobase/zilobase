@@ -39,6 +39,10 @@ application areas. Navigation behavior is covered by
 
 ## Shared button-group presentation
 
+[Button](../../apps/web/src/shared/ui/button.tsx) exposes a `selected` variant for
+persistent neutral selection styling. Database filter and sort pills use this
+shared variant rather than styling button internals in the feature.
+
 [ButtonGroup](../../apps/web/src/shared/ui/button-group.tsx) owns connected,
 floating, plain and selection-toolbar geometry. Width and density are component
 props; grouped actions use `ButtonGroupItem`, nested action runs use

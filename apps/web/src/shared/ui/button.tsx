@@ -17,6 +17,8 @@ const buttonVariants = cva(
           "border-stroke-default hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral aria-expanded:bg-action-neutral-hover aria-expanded:text-action-on-neutral aria-expanded:hover:bg-action-neutral-pressed aria-expanded:hover:text-action-on-neutral dark:bg-control-background",
         secondary:
           "bg-action-secondary text-action-on-secondary hover:bg-action-secondary-hover active:bg-action-neutral-pressed active:text-action-on-neutral aria-expanded:bg-action-secondary aria-expanded:text-action-on-secondary",
+        selected:
+          "bg-action-neutral-hover text-action-on-neutral hover:bg-action-neutral-pressed active:bg-action-neutral-pressed",
         ghost:
           "hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral aria-expanded:bg-action-neutral-hover aria-expanded:text-action-on-neutral aria-expanded:hover:bg-action-neutral-pressed aria-expanded:hover:text-action-on-neutral",
         destructive:
