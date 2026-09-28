@@ -2,10 +2,7 @@ import type { ConfigurationChange } from "../interactions/configuration";
 import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
-import { pagesNavRootQueryKey } from "../../pages/queries";
-import { useDatabaseSessionId } from "../queries/session";
-import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
-import { invalidateDatabaseQueries } from "./invalidate";
+import { resolveDataSourceCommandScope } from "./scope";
 import type { DatabasePropertyEntity } from "../core/entities";
 type AddPropertyInput = {
   config?: unknown;
@@ -54,7 +51,6 @@ type DuplicatePropertyInput = {
 export function useAddDatabaseProperty() {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({ config, databaseId, name, position, type }: AddPropertyInput) => {
       const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
@@ -74,27 +70,13 @@ export function useAddDatabaseProperty() {
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
-    },
-    onSuccess: async (_result, variables) => {
-      try {
-        const scope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.databaseId,
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      } catch {
-        // Ignore.
-      }
     },
   });
 }
 export function useApplyDatabaseTemplate() {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
       const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
@@ -106,13 +88,6 @@ export function useApplyDatabaseTemplate() {
       const result = ack.result as {
         dataSource: import("../core/entities").DataSourceEntity;
       };
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      const workspaceId = findDataSourceBootstrap(queryClient, databaseId)?.database.workspaceId;
-      if (workspaceId) {
-        await queryClient.invalidateQueries({
-          queryKey: pagesNavRootQueryKey(workspaceId),
-        });
-      }
       return result;
     },
   });
@@ -120,7 +95,6 @@ export function useApplyDatabaseTemplate() {
 export function useUpdateDatabaseProperty() {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({ databaseId, databasePropertyId, ...patch }: UpdatePropertyInput) => {
       const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
@@ -133,27 +107,13 @@ export function useUpdateDatabaseProperty() {
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
-    },
-    onSuccess: async (_result, variables) => {
-      try {
-        const scope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.databaseId,
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      } catch {
-        // Ignore.
-      }
     },
   });
 }
 export function useDeleteDatabaseProperty() {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({ databaseId, databasePropertyId }: DeletePropertyInput) => {
       const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
@@ -165,27 +125,13 @@ export function useDeleteDatabaseProperty() {
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
-    },
-    onSuccess: async (_result, variables) => {
-      try {
-        const scope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.databaseId,
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      } catch {
-        // Ignore.
-      }
     },
   });
 }
 export function useDuplicateDatabaseProperty() {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({
       databaseId,
@@ -202,20 +148,7 @@ export function useDuplicateDatabaseProperty() {
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
-    },
-    onSuccess: async (_result, variables) => {
-      try {
-        const scope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.databaseId,
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      } catch {
-        // Ignore.
-      }
     },
   });
 }

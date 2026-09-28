@@ -9,7 +9,6 @@ export function metadataEffectsForCommand(
 ): MetadataEffect[] {
   const command = input.command;
   const base = { hostId: input.databaseId };
-  if (!snapshot) return [];
   switch (command.type) {
     case "database.update": {
       const { configuration, ...patch } = command.patch;
@@ -24,23 +23,20 @@ export function metadataEffectsForCommand(
       ];
     }
     case "dataSource.update": {
-      const source = snapshot.dataSources.find(({ id }) => id === input.dataSourceId);
-      if (!source) return [];
+      if (!input.dataSourceId) return [];
       const { configuration, ...patch } = command.patch;
       return [
         {
           ...base,
           kind: "source",
-          id: source.id,
-          dataSourceId: source.id,
+          id: input.dataSourceId,
+          dataSourceId: input.dataSourceId,
           patch,
           ...(configuration !== undefined ? { configuration } : {}),
         },
       ];
     }
     case "view.update": {
-      const view = snapshot.views.find(({ id }) => id === command.viewId);
-      if (!view) return [];
       const { configuration, ...patch } = command.patch;
       // Setup may create reciprocal schema and reconcile existing record values.
       // Keep that server-derived slice confirmed-only while previewing unrelated edits.
@@ -49,14 +45,14 @@ export function metadataEffectsForCommand(
         {
           ...base,
           kind: "view",
-          id: view.id,
+          id: command.viewId,
           patch,
           ...(previewConfiguration !== undefined ? { configuration: previewConfiguration } : {}),
         },
       ];
     }
     case "property.update": {
-      const column = snapshot.properties.find(({ id }) => id === command.propertyId);
+      const column = snapshot?.properties.find(({ id }) => id === command.propertyId);
       if (!column || (command.patch.type && command.patch.type !== column.property.type)) return [];
       const { configuration, visible, width, ...propertyPatch } = command.patch;
       return [
@@ -75,8 +71,8 @@ export function metadataEffectsForCommand(
       ];
     }
     case "property.create": {
-      const source = snapshot.dataSources.find(({ id }) => id === input.dataSourceId);
-      if (!source) return [];
+      const source = snapshot?.dataSources.find(({ id }) => id === input.dataSourceId);
+      if (!source || !snapshot) return [];
       const id = `pending-property:${crypto.randomUUID()}`;
       const propertyId = `pending-field:${crypto.randomUUID()}`;
       const properties = snapshot.properties.filter(

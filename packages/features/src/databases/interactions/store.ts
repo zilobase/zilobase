@@ -23,6 +23,7 @@ import { invalidateDatabaseQueries } from "../mutations/invalidate";
 import { refreshConfirmedDatabaseReads } from "./confirmation";
 import type { PageNavigationPayload } from "../../pages/contracts";
 import { favoriteNeedsProjection, isNavigationSnapshot } from "./favorites";
+import { navigationMetadataNeedsProjection } from "./navigation";
 import {
   projectRecordInteractions,
   remapRecordIdentity,
@@ -451,6 +452,19 @@ export class DatabaseController {
           }
         }
         for (const effect of interaction.metadataEffects ?? []) {
+          for (const snapshot of this.navigationWindows.values())
+            if (navigationMetadataNeedsProjection(effect, interaction, snapshot)) stale = true;
+          for (const query of this.queryClient.getQueryCache().findAll({ queryKey: ["pages"] })) {
+            if (
+              query.queryKey[2] !== "nav" ||
+              !isNavigationSnapshot(query.state.data) ||
+              !navigationMetadataNeedsProjection(effect, interaction, query.state.data)
+            )
+              continue;
+            if (!query.isActive() && query.state.fetchStatus === "idle")
+              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
+            else stale = true;
+          }
           for (const snapshot of this.bootstrapWindows.values())
             if (metadataNeedsProjection(effect, interaction, snapshot)) stale = true;
           for (const query of queries) {

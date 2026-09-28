@@ -187,6 +187,10 @@ all mounted windows catch up; stale inactive windows are evicted before retireme
 Refresh errors never reject committed writes. Schema and view metadata now submit
 through the same session controller. Bootstrap hooks project metadata intentions
 over server snapshots, and source schema writes share record ordering lanes.
+Navigation uses those same metadata intentions, with independent host/source/actor
+revision checks for every mounted consumer. All schema, source and template hooks
+delegate refresh ownership to controller confirmation; no success/settled callback
+duplicates invalidation or awaits navigation after an acknowledged save.
 Host-wide mutations form barriers across the source writes visible through that host.
 The command policy is exhaustive and enforces host/source scope before scheduling.
 Pending counts, errors and the reload guard use that same session controller, never

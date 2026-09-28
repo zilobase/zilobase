@@ -4,7 +4,7 @@ export type NavDelta = {
   removeDatabaseIds?: string[];
   removePlacementIds?: string[];
   removePageIds?: string[];
-  upsertDatabases?: Omit<PageDatabase, "actorState" | "isFavorite">[];
+  upsertDatabases?: Omit<PageDatabase, "actorState" | "isFavorite" | "metadataState">[];
   upsertPlacements?: PageItemPlacement[];
   upsertPages?: Page[];
 };
@@ -35,25 +35,17 @@ export function applyNavDelta(
   }
 
   const removePageIds = new Set(delta.removePageIds ?? []);
-  const removeDatabaseIds = new Set(delta.removeDatabaseIds ?? []);
   const removePlacementIds = new Set(delta.removePlacementIds ?? []);
   let pages = navigation.pages.filter((page) => !removePageIds.has(page.id));
-  let databases = removeByIds(navigation.databases, removeDatabaseIds);
+  const databases = navigation.databases;
   let placements = removeByIds(navigation.placements, removePlacementIds);
 
   for (const page of delta.upsertPages ?? []) {
     pages = upsertById(pages, page);
   }
 
-  for (const database of delta.upsertDatabases ?? []) {
-    // Workspace deltas cannot replace a viewer's actor-private state.
-    const {
-      actorState: _actorState,
-      isFavorite: _isFavorite,
-      ...publicDatabase
-    } = database as PageDatabase;
-    databases = upsertById(databases, publicDatabase);
-  }
+  // Database deltas have no atomic revision envelope. Their owning adapter
+  // refreshes GET snapshots; only controller intentions may project over them.
 
   for (const placement of delta.upsertPlacements ?? []) {
     placements = upsertById(placements, placement);

@@ -16,6 +16,8 @@ export type PageDatabaseView = {
 
 export type PageDatabase = {
   id: string;
+  /** Atomic navigation GET state; workspace deltas are invalidation hints only. */
+  metadataState?: { version: number; primarySource: { id: string; version: number } | null };
   /** Authenticated navigation reads only; never part of a public navigation delta. */
   actorState?: { actorId: string; revision: number; isFavorite: boolean };
   workspaceId: string;

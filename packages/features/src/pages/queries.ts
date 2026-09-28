@@ -24,7 +24,7 @@ import {
 } from "../shared/api-errors";
 import type { ApiFetcher } from "../shared/api-fetcher";
 import type { EmbeddedItemsOpenAs } from "./item-relationships";
-import { preferNewestDatabaseActorState } from "../databases/interactions/favorites";
+import { preferNewestDatabaseNavigation } from "../databases/interactions/navigation";
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -152,7 +152,7 @@ export const pagesQueryOptions = (
           pages: Page[];
         }>(`/pages?${params.toString()}`, { method: "GET" });
 
-        return preferNewestDatabaseActorState(
+        return preferNewestDatabaseNavigation(
           {
             databases: result.databases ?? [],
             pages: result.pages,

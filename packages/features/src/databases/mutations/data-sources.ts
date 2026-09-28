@@ -1,11 +1,8 @@
 import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
-import { pagesNavRootQueryKey } from "../../pages/queries";
 import { type UpdateDatabaseInput } from "./databases";
-import { useDatabaseSessionId } from "../queries/session";
-import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
-import { invalidateDatabaseQueries } from "./invalidate";
+import { resolveDataSourceCommandScope } from "./scope";
 import type { DatabaseViewEntity, DataSourceEntity } from "../core/entities";
 type LinkDatabaseDataSourceInput = {
   config?: unknown;
@@ -29,7 +26,6 @@ type ReplaceDatabaseViewDataSourceInput = {
 export function useUpdateDataSource() {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({ databaseId: dataSourceId, ...patch }: UpdateDatabaseInput) => {
       const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, dataSourceId);
@@ -38,40 +34,12 @@ export function useUpdateDataSource() {
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DataSourceEntity;
-    },
-    onSuccess: async (_result, variables) => {
-      const workspaceId = findDataSourceBootstrap(queryClient, variables.databaseId)?.database
-        .workspaceId;
-      await Promise.all([
-        (async () => {
-          try {
-            const scope = await resolveDataSourceCommandScope(
-              queryClient,
-              apiFetch,
-              variables.databaseId,
-            );
-            invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-          } catch {
-            // Ignore.
-          }
-        })(),
-        ...(workspaceId
-          ? [
-              queryClient.invalidateQueries({
-                queryKey: pagesNavRootQueryKey(workspaceId),
-              }),
-            ]
-          : []),
-      ]);
     },
   });
 }
 export function useLinkDatabaseDataSource() {
   const controller = useDatabaseController();
-  const { queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({
       config,
@@ -96,15 +64,12 @@ export function useLinkDatabaseDataSource() {
           },
         })
       ).result as { dataSource: DataSourceEntity; view: DatabaseViewEntity };
-      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return result;
     },
   });
 }
 export function useCreateDatabaseDataSource() {
   const controller = useDatabaseController();
-  const { queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: CreateDatabaseDataSourceInput) => {
       const ack = await controller.execute({
@@ -117,21 +82,15 @@ export function useCreateDatabaseDataSource() {
         },
         databaseId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as {
         dataSource: DataSourceEntity;
         view: DatabaseViewEntity;
       };
     },
-    onSettled: async (_result, _error, variables) => {
-      invalidateDatabaseQueries(queryClient, sessionId, variables.databaseId);
-    },
   });
 }
 export function useReplaceDatabaseViewDataSource() {
   const controller = useDatabaseController();
-  const { queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({
       databaseId,
@@ -146,18 +105,12 @@ export function useReplaceDatabaseViewDataSource() {
         },
         databaseId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
-    },
-    onSettled: async (_result, _error, variables) => {
-      invalidateDatabaseQueries(queryClient, sessionId, variables.databaseId);
     },
   });
 }
 export function useUnlinkDatabaseDataSource() {
   const controller = useDatabaseController();
-  const { queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async ({
       databaseId,
@@ -167,7 +120,6 @@ export function useUnlinkDatabaseDataSource() {
         command: { dataSourceId, type: "dataSource.unlink" },
         databaseId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DataSourceEntity;
     },
   });

@@ -9,7 +9,7 @@ import { projectDatabaseMetadata } from "./metadata";
 import { useDatabaseSessionId } from "../queries/session";
 import { databaseController } from "./store";
 import type { PageNavigationPayload } from "../../pages/contracts";
-import { projectDatabaseFavorites } from "./favorites";
+import { projectDatabaseNavigation } from "./navigation";
 import { projectRecordInteractions, type RecordEffect } from "./model";
 import { changeRecordHierarchy } from "./hierarchy";
 import type { DatabaseCommandTarget } from "../mutations/pending";
@@ -68,7 +68,7 @@ export function useProjectedDatabaseNavigation(snapshot: PageNavigationPayload |
     return () => controller.unobserve(token);
   }, [controller]);
   return useMemo(
-    () => (snapshot ? projectDatabaseFavorites(snapshot, intentions) : undefined),
+    () => (snapshot ? projectDatabaseNavigation(snapshot, intentions) : undefined),
     [snapshot, intentions],
   );
 }

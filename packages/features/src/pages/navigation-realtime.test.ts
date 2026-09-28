@@ -71,3 +71,26 @@ test("accepts metadata-only navigation events", () => {
     false,
   );
 });
+
+test("database deltas invalidate instead of overwriting revisioned navigation", () => {
+  const client = new QueryClient();
+  const key = pagesQueryKey("workspace-1");
+  const database = {
+    id: "database",
+    workspaceId: "workspace-1",
+    pageId: null,
+    name: "Confirmed",
+    views: [],
+    createdAt: page.createdAt,
+    updatedAt: page.updatedAt,
+    metadataState: { version: 5, primarySource: null },
+  };
+  client.setQueryData(key, { pages: [], placements: [], databases: [database] });
+  applyNavigationDeltaToCache(client, "workspace-1", {
+    upsertDatabases: [{ ...database, name: "Stale" }],
+    removeDatabaseIds: ["database"],
+  });
+  assert.equal(client.getQueryData<PageNavigationPayload>(key)?.databases[0]?.name, "Confirmed");
+  assert.equal(client.getQueryState(key)?.isInvalidated, true);
+  client.clear();
+});

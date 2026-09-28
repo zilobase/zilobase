@@ -24,10 +24,12 @@ Writes can change hierarchy, database associations and navigation state. Preserv
 
 Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [React entrypoint](../../../packages/features/src/pages/react.ts) exports each operation family directly; the page root exposes contracts and pure query builders, not hooks. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
 
-The navigation hook composes database favorite intentions from the shared database
-controller; page state remains page-owned. Authenticated [navigation reads](../../../apps/server/src/features/pages/page-browse-routes.ts)
-return each database's favorite value and actor revision from one statement. Private
-actor envelopes appear only on these reads, not on workspace navigation deltas.
+The navigation hook composes database metadata and favorite intentions from the shared
+database controller; page state remains page-owned. Authenticated
+[navigation reads](../../../apps/server/src/features/pages/page-browse-routes.ts) return
+host, primary-source and actor revision envelopes from a read-only repeatable-read
+snapshot. Envelopes appear only on these reads, not on workspace navigation deltas;
+database deltas request a refresh instead of patching database state.
 
 ## Verification and change points
 

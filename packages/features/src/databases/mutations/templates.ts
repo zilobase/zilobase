@@ -1,9 +1,7 @@
 import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
-import { useDatabaseSessionId } from "../queries/session";
 import { resolveDataSourceCommandScope } from "./scope";
-import { invalidateDatabaseQueries } from "./invalidate";
 export type DatabaseStoredTemplate = {
   archivedAt: string | null;
   id: string;
@@ -86,7 +84,6 @@ function useDatabaseTemplateMutation<
 >(command: (input: TInput) => TCommand) {
   const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async (input: TInput) => {
       const scope = await resolveDataSourceCommandScope(
@@ -100,7 +97,6 @@ function useDatabaseTemplateMutation<
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
       });
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabaseStoredTemplate;
     },
   });

@@ -26,12 +26,19 @@ Calendar sidebar controls share the content pane's Calendar controller through a
 
 Hierarchy changes and workspace switches invalidate navigation state. Preserve expansion, ordering, recency, selected view and realtime reconciliation while separating actions from rendering.
 
-Database favorites are projected over navigation GET snapshots by the session database
-controller, not patched into QueryClient. [Favorite projection](../../../packages/features/src/databases/interactions/favorites.ts)
+Database names, view configuration/ordering, primary-source configuration and favorites
+are projected over navigation GET snapshots by the session database controller, not
+patched into QueryClient. [Metadata projection](../../../packages/features/src/databases/interactions/navigation.ts)
+compares the host and primary-source revision envelope with each mounted consumer;
+bootstrap confirmation alone cannot retire a stale sidebar's intention. Navigation
+GETs use a read-only repeatable-read transaction. Out-of-order responses reconcile
+host, source and actor clocks independently. Database navigation deltas invalidate
+reads rather than merging unversioned labels or removals into confirmed snapshots.
+[Favorite projection](../../../packages/features/src/databases/interactions/favorites.ts)
 compares the receipt's actor-private revision with each navigation consumer's
 `actorState`. Confirmed reads retain newer private state when an older response arrives,
-without retaining stale public labels. [Navigation deltas](../../../packages/features/src/pages/nav-delta.ts)
-cannot overwrite actor state or database favorites. Page favorites and visits retain
+independently of public metadata. [Navigation deltas](../../../packages/features/src/pages/nav-delta.ts)
+cannot overwrite database metadata, actor state or favorites. Page favorites and visits retain
 their page-owned mutation paths.
 
 ## Verification and change points

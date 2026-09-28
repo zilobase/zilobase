@@ -145,6 +145,9 @@ export class DemoDatabaseRuntime {
         const bootstrap = this.dirtyHosts.has(database.id)
           ? this.bootstraps.get(database.id)
           : undefined;
+        const primarySource =
+          bootstrap?.dataSources.find((source) => source.parentDatabaseId === database.id) ??
+          bootstrap?.dataSources[0];
         return bootstrap
           ? {
               ...database,
@@ -152,6 +155,13 @@ export class DemoDatabaseRuntime {
               config: bootstrap.database.config,
               version: bootstrap.database.version,
               views: bootstrap.views,
+              dataSourceConfig: primarySource?.config ?? null,
+              metadataState: {
+                version: bootstrap.database.version,
+                primarySource: primarySource
+                  ? { id: primarySource.id, version: primarySource.version }
+                  : null,
+              },
             }
           : database;
       }),

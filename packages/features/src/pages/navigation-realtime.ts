@@ -24,5 +24,7 @@ export function applyNavigationDeltaToCache(
   queryClient.setQueriesData<PageNavigationPayload | undefined>({ queryKey }, (current) =>
     applyNavDelta(current, delta),
   );
+  if (delta.upsertDatabases?.length || delta.removeDatabaseIds?.length)
+    void queryClient.invalidateQueries({ queryKey }).catch(() => undefined);
   return true;
 }
