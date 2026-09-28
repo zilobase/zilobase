@@ -1,6 +1,9 @@
 import { useCallback, useState, type DragEvent } from "react";
 import { toast } from "sonner";
-import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
+import {
+  getDatabaseRowMoveAnchors,
+  useChangeDatabaseRow,
+} from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import {
@@ -35,7 +38,7 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
   const [isExternalDragActive, setIsExternalDragActive] = useState(false);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
-  const reorderRows = useMoveDatabaseRow();
+  const reorderRows = useChangeDatabaseRow();
 
   const clearDrag = useCallback(() => {
     finishDatabaseRowDrag();
@@ -128,9 +131,10 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
       if (rowIds) {
         reorderRows.mutate(
           {
-            databaseId: input.databaseId,
-            ...(input.hostDatabaseId ? { hostDatabaseId: input.hostDatabaseId } : {}),
-            ...getDatabaseRowMoveAnchors(rowIds, draggedRowId),
+            databaseId: input.hostDatabaseId!,
+            dataSourceId: input.databaseId,
+            rowId: draggedRowId,
+            placement: getDatabaseRowMoveAnchors(rowIds, draggedRowId),
           },
           {
             onError: (error) => {

@@ -23,7 +23,10 @@ import { createPortal } from "react-dom";
 import { Reorder } from "framer-motion";
 import { ChevronDown, ChevronRight, Loader2, Plus } from "@/shared/components/icons";
 import { toast } from "sonner";
-import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
+import {
+  getDatabaseRowMoveAnchors,
+  useChangeDatabaseRow,
+} from "@zilobase/features/databases/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,7 +68,6 @@ import {
 } from "../../state/database-view-context";
 import {
   getDatabaseSubItemLineParentRowId,
-  getDatabaseSubItemRelationChanges,
   getSubItemCreateRowsAfterRow,
 } from "../../model/database-sub-items";
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll";
@@ -182,8 +184,7 @@ export function DatabaseTableView() {
     showPageIconInTitle: nameColumnShowPageIcon,
     subItemsSettings,
   } = useDatabaseUiContext();
-  const moveRow = useMoveDatabaseRow();
-  const reorderRows = useMoveDatabaseRow();
+  const moveRow = useChangeDatabaseRow();
   const undoHistory = useUndoHistory();
   const loadedDatabaseId = requireDatabaseId(databaseId);
 
@@ -643,76 +644,35 @@ export function DatabaseTableView() {
       : null;
   };
   const applyRowMove = (nextMove: RowMove) => {
-    if (!databaseId) {
-      return;
-    }
-    const notifyMoveError = (error: unknown) => {
-      toast.error(error instanceof Error && error.message ? error.message : "Couldn't move row");
-    };
-
-    if (nextMove.groupPropertyId) {
-      moveRow.mutate(
-        {
-          databaseId,
-          ...(hostDatabaseId ? { hostDatabaseId } : {}),
-          groupPropertyId: nextMove.groupPropertyId,
-          groupValue: nextMove.groupValue,
-          ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-        },
-        { onError: notifyMoveError },
-      );
-      return;
-    }
-
-    if (nextMove.subItemParentRowId !== undefined) {
-      const parentPropertyId = subItemsSettings.parentPropertyId;
-      const subItemPropertyId = subItemsSettings.subItemPropertyId;
-      const changes =
-        parentPropertyId && subItemPropertyId
-          ? getDatabaseSubItemRelationChanges({
-              draggedRowId: nextMove.rowId,
-              parentPropertyId,
-              propertyValuesByKey: propertyValuesByKeyRef.current,
-              rows,
-              subItemPropertyId,
-              targetParentRowId: nextMove.subItemParentRowId,
-            })
-          : [];
-
-      if (changes === null) {
-        toast.error("A page can't be moved below itself or one of its sub-items");
-        return;
-      }
-
-      for (const change of changes) {
-        savePropertyValue(
-          change.rowId,
-          change.propertyId,
-          "relation",
-          change.currentValue,
-          change.nextValue,
-        );
-      }
-
-      if (nextMove.subItemParentRowId) {
-        setCollapsedSubItemRowIds((current) => {
-          const next = new Set(current);
-          next.delete(nextMove.subItemParentRowId!);
-          return next;
-        });
-      }
-    }
-
-    if (nextMove.rowIds.some((rowId, index) => rowId !== rows[index]?.id)) {
-      reorderRows.mutate(
-        {
-          databaseId,
-          ...(hostDatabaseId ? { hostDatabaseId } : {}),
-          ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-        },
-        { onError: notifyMoveError },
-      );
-    }
+    if (!databaseId || !hostDatabaseId) return;
+    const { parentPropertyId, subItemPropertyId } = subItemsSettings;
+    moveRow.mutate(
+      {
+        databaseId: hostDatabaseId,
+        dataSourceId: databaseId,
+        rowId: nextMove.rowId,
+        placement: getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
+        ...(nextMove.groupPropertyId
+          ? { valuesByPropertyId: { [nextMove.groupPropertyId]: nextMove.groupValue } }
+          : {}),
+        ...(nextMove.subItemParentRowId !== undefined && parentPropertyId && subItemPropertyId
+          ? {
+              hierarchy: {
+                parentRowId: nextMove.subItemParentRowId,
+                parentPropertyId,
+                subItemPropertyId,
+              },
+            }
+          : {}),
+      },
+      { onError: (error) => toast.error(error.message) },
+    );
+    if (nextMove.subItemParentRowId)
+      setCollapsedSubItemRowIds((current) => {
+        const next = new Set(current);
+        next.delete(nextMove.subItemParentRowId!);
+        return next;
+      });
   };
   const confirmSortedRowReorder = () => {
     if (!databaseId || !pendingSortedRowReorder) {

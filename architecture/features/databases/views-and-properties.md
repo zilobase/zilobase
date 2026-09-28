@@ -67,23 +67,18 @@ cards cannot shift their own drop thresholds.
 
 The [move model](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-moves.ts)
 converts drops into neighbor anchors and grouping values, including multi-select
-cards already in the destination. The [move controller](../../../apps/web/src/features/databases/views/kanban/controller/use-kanban-moves.ts)
-keeps ordered React-local drafts for both position and group. Rendering and
-subsequent drags use those drafts applied to the latest rows, retaining unrelated
-edits and newly loaded rows. Same-card reorders inherit a pending destination,
-so failure of an earlier group change does not silently change a later intention.
-Title-group renames and their row moves execute sequentially.
+cards already in the destination. Its move controller submits one atomic
+record change to the [shared interaction hooks](../../../packages/features/src/databases/interactions/react.ts).
+It owns no post-drop draft, queue, or reconciliation clock. Table, list, gallery,
+Kanban and timeline read projected records from the common view controller.
 
-All row-drag views use [useMoveDatabaseRow](../../../packages/features/src/databases/mutations/rows.ts).
-Kanban opts out of the shared optimistic group-cell patch because its local
-draft already covers the complete move. The hook reports the acknowledged host
-version through `onCommitted`. A draft retires only when the active, non-placeholder
-record window reaches that version; a POST acknowledgement or an older refresh
-cannot restore the old layout. Refetch failures leave committed drafts visible
-and use the existing save-status error. Rejected writes remove only their own
-draft and refetch; newer intentions survive. Other views retain the shared
-optimistic group-cell behavior and all views report move failures through toasts.
-No acknowledgement payload or synthetic version is written into QueryClient.
+The [session store](../../../packages/features/src/databases/interactions/store.ts)
+serializes conflicting source writes, retains unconfirmed intentions for receipt
+retry, and removes only rejected intentions. It reconciles each mounted window
+against committed source versions, including placeholders and linked hosts;
+stale inactive cache windows are evicted before an intention is retired.
+Projection precedes filtering, sorting, grouping and hierarchy. QueryClient
+contains only server snapshots, never speculative rows or versions.
 
 [Lifecycle tests](../../../apps/web/test/features/databases/database-kanban-move-lifecycle.test.mjs)
 mount the actual drag and mutation hooks with controlled responses, covering slow

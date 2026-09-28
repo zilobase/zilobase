@@ -42,7 +42,6 @@ export {
   useAddDatabaseRow,
   useArchiveDatabaseRow,
   useRestoreDatabaseRow,
-  useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
   getDatabaseRowMoveAnchors,
 } from "./rows";

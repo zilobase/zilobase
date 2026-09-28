@@ -7,8 +7,8 @@
 - [packages/features/src/databases](../../../packages/features/src/databases)
 
 Shared database code is grouped by boundary inside `packages/features/src/databases`:
-`interactions/` owns the pure sparse record-intention projection and identity
-remapping model; see [ADR 0011](../../decisions/0011-shared-record-interactions.md).
+`interactions/` owns the session store, sparse record-intention projection,
+source sequencing, receipt recovery and identity remapping; see [ADR 0011](../../decisions/0011-shared-record-interactions.md).
 `core/` (entities, ordering, telemetry), `schema/` (filter, property types,
 formula), `views/` (appearance, view evaluation), `records/` (snapshots,
 row-page host resolution), `access/` (sharing writes), `queries/` (session
@@ -44,8 +44,9 @@ prefetch for same-source siblings.
 Postgres remains the only truth and the host `database.version` is the clock.
 Writes go `UI -> useMutation -> POST …/commands -> ack -> invalidate -> GET`;
 the realtime socket is a doorbell that only says `{ databaseId, version }`.
-Displayed cells read `draft ?? photocopy`, where `draft` is React-local editor
-state cleared after POST plus refetch.
+Record gestures and cell edits read shared pending intentions projected over
+server windows before view evaluation. React-local state is limited to active
+editor input and pointer geometry.
 
 Database JSON routes use shared authenticated input parsing, retaining each operation’s payload validation and permission decisions. [Transport tests](../../../apps/server/src/features/databases/http/route-input.test.ts) cover malformed input and authentication ordering.
 
@@ -61,7 +62,7 @@ include committed `sourceVersions`, so a client can reconcile linked-host window
 without receiving the identities of other linked hosts. The former `row.move`
 and `row.create` commands are not accepted.
 
-The accepted [poke-and-refetch database client decision](../../decisions/0005-poke-and-refetch-database-client.md) defines the QueryClient-backed client used here. It supersedes the collection-backed responsive client: the server protocol is unchanged, but the client no longer keeps TanStack DB collections, optimistic overlays, journals, or command lanes.
+The accepted [poke-and-refetch database client decision](../../decisions/0005-poke-and-refetch-database-client.md) defines the QueryClient-backed client used here. It supersedes the collection-backed responsive client: the server protocol is unchanged, but the client no longer keeps TanStack DB collections or a journal. [ADR 0011](../../decisions/0011-shared-record-interactions.md) replaces row-local drafts and row cache patches with shared sparse intentions.
 
 The [v2 read service](../../../apps/server/src/features/databases/read/service.ts) separates metadata bootstrap from bounded record windows. Bootstrap aggregates properties for every accessible linked source without rows and always includes the host database's nullable `deletedAt` lifecycle state. Record reads materialize one complete entity per row, evaluate the selected view before slicing, default to 50 records (or a persisted 10/25/50/100 view choice), and bind continuation reads to host/source/view revisions. A changed revision raises the typed `WINDOW_STALE` conflict. The [database read routes](../../../apps/server/src/features/databases/http/read-routes.ts) expose those services as `GET /:id/bootstrap` and `GET /:id/data-sources/:dataSourceId/records`, retaining authenticated and published-database access while validating source/view scope and exact window sizes. The `GET /:id/mutations` catch-up feed remains on the server but the client never calls it. The [shared view evaluator](../../../packages/features/src/databases/views/view-evaluation.ts) is server-safe and reuses the tested filter and formula domains. The [view query hash](../../../packages/features/src/databases/views/query-hash.ts) reduces each view config to its data-affecting slice (normalized filters/sorts plus the deleted-rows flag, excluding type, grouping, visibility, and layout) so the client cache in [record windows](../../../packages/features/src/databases/queries/records.ts) is per query, not per view; see the [query-hashed windows decision](../../decisions/0006-query-hashed-database-windows.md).
 
@@ -121,7 +122,16 @@ The response version and entities therefore describe the same committed state.
 Out-of-order GETs use a prefer-newest guard: a cached bootstrap or window that
 is newer than the incoming payload is kept instead of regressing.
 
-Shared mutations are grouped into database lifecycle, data sources, views, properties/templates, access and rows. The [mutation entrypoint](../../../packages/features/src/databases/mutations/mutation-hooks.ts) preserves the supported public hooks while React bindings select the operation modules directly. Interactive row, cell, schema, and view writes execute `POST …/commands` through tiny keyed serialization (cells coalesced per source/row/property, ordering and structural writes per source, views per host), then invalidate the host `["db", …]` queries so a fresh GET converges filters, sorts, formulas, grouping, and counts. Own edits stay visible through local `draft` state until POST plus refetch finishes. Hot-path writes (cell values, database/view titles, property add/update) additionally apply [targeted optimistic patches](../../../packages/features/src/databases/mutations/optimistic.ts) to the cached bootstrap/windows in `onMutate` with rollback plus refetch in `onError`; version fields are never patched, so pokes and prefer-newest guards keep converging on server truth. Navigation-only actions remain in TanStack Query and refresh their narrow navigation queries after commit.
+Shared mutations are grouped into database lifecycle, data sources, views,
+properties/templates, access and rows. Record changes and cells share the
+[interaction store](../../../packages/features/src/databases/interactions/store.ts),
+scoped by QueryClient and auth session. The store publishes synchronously, queues
+writes per affected source, and replays sparse intentions over untouched GET
+windows. Unconfirmed deliveries keep their preview and block dependent writes;
+the save indicator offers receipt-safe retry. Confirmed intentions remain until
+all mounted windows catch up; stale inactive windows are evicted before retirement.
+Refresh errors never reject committed writes. Schema and view metadata still use
+targeted optimistic bootstrap patches and their domain serialization.
 
 The interactive client consumes bootstrap plus record windows directly through [`DatabaseViewData`](../../../apps/web/src/features/databases/views/model/database-controller-state.ts) (canonical host bootstrap, active source, filtered records); the monolithic composed payload is gone. The position-based row/value export shape remains only as the [`DatabaseExportPayload`](../../../packages/features/src/databases/core/export-payload.ts) wire contract behind `GET /:id/export` and derived AI/task context, never as client state. Realtime-only state (presence, version watermarks) stays out of QueryClient entirely.
 
@@ -138,6 +148,6 @@ Update this guide when ownership, interfaces, authorization, persistence or cros
 
 The table [model](../../../apps/web/src/features/databases/views/table/model/database-table-model.ts) owns drop-target identity retention, including sub-item parent changes. List [row presentation](../../../apps/web/src/features/databases/views/list/components/list-row-presentation.ts) derives drag indicators and task completion labels. Their tests cover unchanged references, internal/external drag placement and parent nullability while controllers retain drag lifecycle and mutations.
 
-Table and toolbar composition keep named local render sections for property cells, grouped rows and view source/actions. Kanban separates board derivation, column rendering, drag geometry and move drafts as described in [views and properties](views-and-properties.md#kanban-board-and-moves). Its drafts remain visible until the active record window reaches the move acknowledgement's host version; placeholder windows cannot confirm a move. Form title previews select the existing input or textarea with one shared set of props; question settings and mutations remain unchanged.
+Table and toolbar composition keep named local render sections for property cells, grouped rows and view source/actions. Kanban separates board derivation, column rendering, drag geometry and move drafts as described in [views and properties](views-and-properties.md#kanban-board-and-moves). All views read shared record intentions; placeholder windows cannot confirm a change. Form title previews select the existing input or textarea with one shared set of props; question settings and mutations remain unchanged.
 
 [Row mutations](../../../packages/features/src/databases/mutations/rows.ts) complete after row confirmation. Adding a favorited page refreshes navigation in the background, so navigation latency or failure cannot delay the editor’s success callback or reject an already committed row. [Row mutation tests](../../../packages/features/src/databases/mutations/rows.test.ts) cover slow and failed navigation refresh alongside serial ordering and move-conflict invalidation.

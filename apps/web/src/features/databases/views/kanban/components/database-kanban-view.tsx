@@ -99,7 +99,6 @@ function DatabaseKanbanBoard() {
     properties,
     items: savedRows,
     sortedItems: savedVisibleRows,
-    recordWindowVersion,
     visibleProperties,
     workspaceId,
     options,
@@ -114,12 +113,10 @@ function DatabaseKanbanBoard() {
   const moves = useKanbanMoves({
     databaseId,
     hostDatabaseId,
-    rows: savedRows,
-    visibleRows: savedVisibleRows,
-    propertyValuesByKey: savedPropertyValues,
-    windowVersion: recordWindowVersion,
   });
-  const { rows: allRows, visibleRows: items, propertyValuesByKey } = moves;
+  const allRows = savedRows;
+  const items = savedVisibleRows;
+  const propertyValuesByKey = savedPropertyValues;
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const newGroupRef = useRef<HTMLElement | null>(null);

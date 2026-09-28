@@ -1,3 +1,4 @@
+import { recordInteractionStore } from "../interactions/store";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
@@ -238,7 +239,7 @@ function hookAck(commandId: string) {
       type: "database.mutation",
       version: 1,
     },
-    sourceVersions: {},
+    sourceVersions: { "data-source-1": 2 },
     result: hookRecord,
   };
 }
@@ -264,7 +265,7 @@ async function flush(times = 10) {
   }
 }
 
-test("cell mutation is visible in cache while POST is still in flight", async () => {
+test("cell mutations project immediately without modifying server snapshots", async () => {
   let releasePost!: (value: unknown) => void;
   const postGate = new Promise<unknown>((resolve) => {
     releasePost = resolve;
@@ -290,12 +291,20 @@ test("cell mutation is visible in cache while POST is still in flight", async ()
       value: "Done",
     });
     await flush();
-    // POST has not resolved, yet the cache already shows the edit.
-    assert.equal(cellValueOf(queryClient), "Done");
+    const store = recordInteractionStore(queryClient, SESSION, async () => {
+      throw new Error("unused");
+    });
+    assert.equal(cellValueOf(queryClient), "Not started");
+    assert.equal(
+      store.records("data-source-1").find(({ id }) => id === "row-1")?.valuesByPropertyId[
+        "property-status"
+      ]?.value,
+      "Done",
+    );
     releasePost(undefined);
     await pending;
-    // Ack + refetch reconcile; the value stays.
-    assert.equal(cellValueOf(queryClient), "Done");
+    // Inactive stale windows are evicted, never patched with speculative data.
+    assert.equal(cellValueOf(queryClient), undefined);
   } finally {
     queryClient.clear();
   }

@@ -37,6 +37,7 @@ export type DatabaseWindowFetchScope = DatabaseWindowScope & {
 
 export type DatabaseRecordHookWindow = {
   databaseVersion: number | null;
+  dataSourceVersion: number | null;
   error: Error | null;
   fetchNextPage: () => Promise<void>;
   hasMore: boolean;
@@ -247,6 +248,7 @@ export function useDatabaseRecords(scope: DatabaseViewScope | null): DatabaseRec
   if (!scope) {
     return {
       databaseVersion: null,
+      dataSourceVersion: null,
       error: null,
       fetchNextPage: async () => undefined,
       hasMore: false,
@@ -270,6 +272,7 @@ export function useDatabaseRecords(scope: DatabaseViewScope | null): DatabaseRec
         : null;
 
   return {
+    dataSourceVersion: query.isPlaceholderData ? null : (latest?.dataSourceVersion ?? null),
     databaseVersion: query.isPlaceholderData ? null : (latest?.databaseVersion ?? null),
     error,
     fetchNextPage: async () => {

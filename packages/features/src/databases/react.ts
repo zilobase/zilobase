@@ -39,7 +39,6 @@ export {
   useAddDatabaseRow,
   useArchiveDatabaseRow,
   useRestoreDatabaseRow,
-  useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
   getDatabaseRowMoveAnchors,
 } from "./mutations/rows";
@@ -56,3 +55,8 @@ export { saveCellValue } from "./mutations/serialize";
 export { resolveCellCommandScope, resolveDataSourceCommandScope } from "./mutations/scope";
 export type { DatabaseScope } from "./queries/bootstrap";
 export type { DatabaseViewScope, DatabaseWindowFetchScope } from "./queries/records";
+export {
+  useChangeDatabaseRow,
+  useProjectedDatabaseRecords,
+  useDatabaseInteractionRecovery,
+} from "./interactions/react";

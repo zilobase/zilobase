@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { useDatabaseEntityCommandState } from "@zilobase/features/databases/react";
+import {
+  useDatabaseEntityCommandState,
+  useDatabaseInteractionRecovery,
+} from "@zilobase/features/databases/react";
 
 function subscribeConnectivity(listener: () => void) {
   window.addEventListener("online", listener);
@@ -12,6 +15,7 @@ function subscribeConnectivity(listener: () => void) {
 
 export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
   const state = useDatabaseEntityCommandState({ hostDatabaseId: databaseId });
+  const recovery = useDatabaseInteractionRecovery();
   const online = useSyncExternalStore(
     subscribeConnectivity,
     () => navigator.onLine,
@@ -22,7 +26,7 @@ export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
     : state.error?.name === "DatabaseReconciliationError"
       ? "Saved — reload to refresh"
       : state.error?.name === "DatabaseCommandUnconfirmedError"
-        ? "Save unconfirmed — reload to check"
+        ? "Save unconfirmed"
         : state.error
           ? `Save failed${state.isPending ? " · Saving other changes…" : " — try your edit again"}`
           : state.isPending
@@ -37,6 +41,11 @@ export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
       title={state.error?.message ?? message}
     >
       {message}
+      {online && recovery.hasUnconfirmed ? (
+        <button type="button" onClick={recovery.retry} className="ml-2 underline">
+          Retry save
+        </button>
+      ) : null}
     </span>
   );
 }

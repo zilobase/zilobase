@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { useProjectedDatabaseRecords } from "../../../../../packages/features/src/databases/interactions/react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -41,6 +42,7 @@ export function mountKanbanMoves(container: HTMLElement) {
           resolve({
             commandId,
             result: {},
+            sourceVersions: { source: version },
             event: {
               actorId: "user",
               areas: ["records"],
@@ -82,20 +84,62 @@ export function mountKanbanMoves(container: HTMLElement) {
     id: "status",
     property: { id: "status", type: "status" },
   } as DatabasePropertyListItem;
-  let moves!: ReturnType<typeof useKanbanMoves<DatabaseRow>>;
+  let moves!: ReturnType<typeof useKanbanMoves> & {
+    rows: DatabaseRow[];
+    visibleRows: DatabaseRow[];
+    propertyValuesByKey: Record<string, string>;
+  };
   let drag!: ReturnType<typeof useDatabaseKanbanCardDrag<DatabaseRow, KanbanGroupOption>>;
   let options: KanbanGroupOption[] = [];
   let columns = new Map<string, DatabaseRow[]>();
 
   function Capture() {
-    moves = useKanbanMoves({
-      databaseId: "source",
-      hostDatabaseId: "host",
-      rows,
-      visibleRows: rows,
-      propertyValuesByKey: values,
-      windowVersion: version,
+    const records = rows.map((row) => ({
+      ...row,
+      dataSourceId: "source",
+      orderKey: "1024.0000000000",
+      parentRowId: null,
+      page: {
+        ...row.page,
+        id: row.pageId,
+        createdAt: "",
+        updatedAt: "",
+        deletedAt: null,
+        hasContent: false,
+        metadata: null,
+      },
+      valuesByPropertyId: {
+        status: {
+          id: row.id + "-status",
+          pageId: row.pageId,
+          propertyId: "status",
+          value: values[row.pageId + ":status"],
+          createdAt: "",
+          updatedAt: "",
+        },
+      },
+    }));
+    queryClient.setQueryData(["db", "kanban-test", "host", "window", "source", "all", false], {
+      pages: [{ records, dataSourceVersion: version ?? 1 }],
     });
+    const projected = useProjectedDatabaseRecords({
+      records,
+      dataSourceId: "source",
+      sourceVersion: version,
+    });
+    const actions = useKanbanMoves({ databaseId: "source", hostDatabaseId: "host" });
+    const projectedRows = projected.map((record, position) => ({ ...record, position }));
+    moves = {
+      ...actions,
+      rows: projectedRows,
+      visibleRows: projectedRows,
+      propertyValuesByKey: Object.fromEntries(
+        projected.map((record) => [
+          record.pageId + ":status",
+          record.valuesByPropertyId.status?.value as string,
+        ]),
+      ),
+    };
     const board = buildKanbanBoard({
       groupProperty: property,
       items: moves.visibleRows,

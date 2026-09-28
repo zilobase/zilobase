@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useRef, type PropsWithChildren } 
 
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { guardPendingDatabaseWrites } from "../mutations/beforeunload";
+import { disposeRecordInteractions } from "../interactions/store";
 
 const DatabaseSessionContext = createContext<string | null>(null);
 
@@ -23,6 +24,7 @@ export function DbProvider({ children, queryClient, sessionId }: DbProviderProps
     const current = sessionId ?? "public";
     const previous = previousSessionRef.current;
     if (previous && previous !== current) {
+      disposeRecordInteractions(queryClient, previous);
       queryClient.removeQueries({ queryKey: ["db", previous] });
     }
     previousSessionRef.current = current;

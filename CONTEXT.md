@@ -10,7 +10,7 @@ validated main-process IPC channels.
 
 ### Database view
 
-A Database view is the editor surface for viewing and changing a Database as a Table or Kanban board. It owns the active view, visible properties, row ordering, grouping, sorting, draft property values, and row/property/view commands for that surface.
+A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout, pointer geometry and view configuration. A session-level record interaction controller owns pending row changes and projects them over server windows before filtering, sorting, grouping and hierarchy.
 
 ### Database
 

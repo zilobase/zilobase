@@ -23,6 +23,7 @@ import {
   useCreateDatabaseDataSource,
   useDatabaseBootstrap,
   useDatabaseRecords,
+  useProjectedDatabaseRecords,
   useDatabaseSessionId,
   useDeleteDatabaseView,
   useLinkDatabaseDataSource,
@@ -193,20 +194,25 @@ export function useDatabaseViewController({
         }
       : null,
   );
+  const projectedRecords = useProjectedDatabaseRecords({
+    dataSourceId: activeDataSourceId,
+    sourceVersion: recordWindow.dataSourceVersion,
+    records: recordWindow.records,
+  });
   const viewData = useMemo(
     () =>
       composeDatabaseViewData({
         bootstrap,
         dataSourceId: activeDataSourceId,
         hasMore: recordWindow.hasMore,
-        records: recordWindow.records,
+        records: projectedRecords,
         totalCount: recordWindow.totalCount,
       }),
     [
       activeDataSourceId,
       bootstrap,
       recordWindow.hasMore,
-      recordWindow.records,
+      projectedRecords,
       recordWindow.totalCount,
     ],
   );

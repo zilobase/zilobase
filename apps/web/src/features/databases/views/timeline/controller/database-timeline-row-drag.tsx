@@ -7,7 +7,10 @@ import {
   type RefObject,
 } from "react";
 import { toast } from "sonner";
-import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
+import {
+  getDatabaseRowMoveAnchors,
+  useChangeDatabaseRow,
+} from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import {
@@ -68,8 +71,8 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
   const [overlay, setOverlay] = useState<DatabaseRowDragOverlay | null>(null);
   const [pendingSortedMove, setPendingSortedMove] = useState<TimelineRowMove | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
-  const { mutate: moveDatabaseRow } = useMoveDatabaseRow();
-  const { mutate: reorderDatabaseRows } = useMoveDatabaseRow();
+  const { mutate: moveDatabaseRow } = useChangeDatabaseRow();
+  const { mutate: reorderDatabaseRows } = useChangeDatabaseRow();
 
   const groupSectionByRowId = useMemo(
     () => indexTimelineGroupSections(input.groupedSections),
@@ -96,11 +99,11 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
       if (move.groupPropertyId) {
         moveDatabaseRow(
           {
-            databaseId: input.databaseId,
-            ...(input.hostDatabaseId ? { hostDatabaseId: input.hostDatabaseId } : {}),
-            groupPropertyId: move.groupPropertyId,
-            groupValue: move.groupValue,
-            ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
+            databaseId: input.hostDatabaseId!,
+            dataSourceId: input.databaseId,
+            valuesByPropertyId: { [move.groupPropertyId]: move.groupValue },
+            rowId: move.rowId,
+            placement: getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
           },
           { onError: notifyMoveError },
         );
@@ -109,9 +112,10 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
 
       reorderDatabaseRows(
         {
-          databaseId: input.databaseId,
-          ...(input.hostDatabaseId ? { hostDatabaseId: input.hostDatabaseId } : {}),
-          ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
+          databaseId: input.hostDatabaseId!,
+          dataSourceId: input.databaseId,
+          rowId: move.rowId,
+          placement: getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
         },
         { onError: notifyMoveError },
       );
