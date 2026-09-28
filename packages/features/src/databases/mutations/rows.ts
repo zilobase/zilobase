@@ -5,7 +5,7 @@ import type { ChangeRowCommand, DatabaseRecordEntity } from "../core/entities";
 import { changeRecordHierarchy } from "../interactions/hierarchy";
 import { previewTransferredValues } from "../interactions/transfer";
 import type { RecordEffect } from "../interactions/model";
-import { useRecordInteractionStore, submitRecordChange } from "../interactions/react";
+import { useDatabaseController, submitRecordChange } from "../interactions/react";
 import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
 
 type AddRowInput = {
@@ -36,7 +36,7 @@ type UpdatePropertyValueInput = {
 
 export function useAddDatabaseRow() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const store = useRecordInteractionStore();
+  const store = useDatabaseController();
   return useMutation({
     networkMode: "always",
     mutationFn: async (variables: AddRowInput) => {
@@ -184,7 +184,7 @@ export function useAddDatabaseRow() {
 
 export function useUpdateDatabasePropertyValue() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const store = useRecordInteractionStore();
+  const store = useDatabaseController();
   return useMutation({
     networkMode: "always",
     mutationFn: async (input: UpdatePropertyValueInput) => {
@@ -215,7 +215,7 @@ export function useRestoreDatabaseRow() {
 
 function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const store = useRecordInteractionStore();
+  const store = useDatabaseController();
   return useMutation({
     networkMode: "always",
     mutationFn: async (input: { databaseId: string; hostDatabaseId?: string; rowId: string }) => {

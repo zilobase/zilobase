@@ -44,7 +44,7 @@ test("template application uses the idempotent source command and refreshes navi
           type: "database.mutation",
           version: 1,
         },
-        sourceVersions: {},
+        sourceVersions: { "data-source-1": 1 },
         result: { dataSource: source },
       } as T;
     },

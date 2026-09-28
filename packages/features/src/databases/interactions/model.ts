@@ -1,4 +1,5 @@
 import type { DatabaseRecordEntity } from "../core/entities";
+import type { MetadataIntention } from "./metadata";
 
 export type RowPlacement = { afterRowId: string | null; beforeRowId: string | null };
 
@@ -14,7 +15,7 @@ export type RecordEffect = {
   values?: Record<string, unknown>;
 };
 
-export type RecordInteraction = {
+export type RecordInteraction = MetadataIntention & {
   id: string;
   effects: readonly RecordEffect[];
   status: "queued" | "saving" | "unconfirmed" | "committed";

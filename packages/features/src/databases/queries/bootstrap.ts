@@ -2,6 +2,7 @@ import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query"
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
+import { useProjectedDatabaseBootstrap } from "../interactions/react";
 import { databaseBootstrapResponseSchema, type DatabaseBootstrapResponse } from "../core/entities";
 import { databaseBootstrapQueryKey, type DatabaseBootstrapScope } from "./keys";
 
@@ -63,6 +64,7 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
     ),
     enabled: Boolean(scope),
   });
+  const projected = useProjectedDatabaseBootstrap(query.data);
 
   if (!scope || !queryKey) {
     return {
@@ -82,7 +84,7 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
         : null;
 
   return {
-    data: query.data,
+    data: projected,
     error,
     refetch: () => queryClient.refetchQueries({ exact: true, queryKey }),
     scope,

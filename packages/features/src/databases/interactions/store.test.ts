@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
-import { RecordInteractionStore } from "./store";
+import { DatabaseController } from "./store";
 import { DatabaseCommandUnconfirmedError } from "../mutations/execute";
 
 function harness() {
@@ -16,7 +16,7 @@ function harness() {
       requests.push({ body: String(init?.body), resolve, reject }),
     )) as ApiFetcher;
   const client = new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
-  const store = new RecordInteractionStore(client, "session", apiFetch);
+  const store = new DatabaseController(client, "session", apiFetch);
   const token = {};
   store.observe(token, { dataSourceId: "source", sourceVersion: 1 });
   const submit = (rowId = "row", source = "source") =>
@@ -71,6 +71,32 @@ function harness() {
 const tick = async () => {
   for (let i = 0; i < 10; i++) await Promise.resolve();
 };
+
+test("host configuration forms a barrier between record writes without blocking unrelated hosts", async () => {
+  const h = harness();
+  try {
+    const first = h.submit("row");
+    const metadata = h.store.execute({
+      databaseId: "host",
+      command: { type: "view.update", viewId: "view", patch: { name: "Renamed" } },
+    });
+    const next = h.submit("next");
+    assert.equal(h.requests.length, 1);
+    h.ack(0);
+    await first;
+    await tick();
+    assert.equal(h.requests.length, 2);
+    assert.equal(JSON.parse(h.requests[1]!.body).command.type, "view.update");
+    h.ack(1);
+    await metadata;
+    await tick();
+    assert.equal(h.requests.length, 3);
+    h.ack(2);
+    await next;
+  } finally {
+    h.close();
+  }
+});
 
 test("session queue publishes synchronously, survives ack and reconciles each mounted window", async () => {
   const h = harness();

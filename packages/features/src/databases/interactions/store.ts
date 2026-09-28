@@ -1,6 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
-import { databaseRecordEntitySchema } from "../core/entities";
+import { databaseRecordEntitySchema, databaseBootstrapResponseSchema } from "../core/entities";
+import { databasePropertyEntitySchema } from "../core/entities";
+import { metadataEffectsForCommand } from "./metadata-command";
+import type { DatabaseBootstrapResponse } from "../core/entities";
+import { metadataNeedsProjection, projectDatabaseMetadata, type MetadataEffect } from "./metadata";
 import type {
   DatabaseCommandAck,
   DatabaseRecordEntity,
@@ -31,6 +35,7 @@ type Job = {
   input: DatabaseCommandInput;
   interaction: RecordInteraction;
   sources: string[];
+  resources: string[];
   resolve: (ack: DatabaseCommandAck) => void;
   reject: (error: unknown) => void;
   release: (error: Error | null) => void;
@@ -39,11 +44,12 @@ type Job = {
 type Window = { dataSourceId: string; sourceVersion: number | null };
 
 /** Session-owned intentions. QueryClient remains an unmodified server snapshot. */
-export class RecordInteractionStore {
+export class DatabaseController {
   private snapshot: readonly RecordInteraction[] = [];
   private listeners = new Set<() => void>();
   private jobs = new Map<string, Job>();
   private windows = new Map<object, Window>();
+  private bootstrapWindows = new Map<object, DatabaseBootstrapResponse>();
   private identities = new Map<string, string>();
   private pageIdentities = new Map<string, string>();
   private disposed = false;
@@ -77,7 +83,33 @@ export class RecordInteractionStore {
   }
   unobserve(key: object) {
     this.windows.delete(key);
+    this.bootstrapWindows.delete(key);
     this.collect();
+  }
+
+  observeBootstrap(key: object, snapshot: DatabaseBootstrapResponse) {
+    this.bootstrapWindows.set(key, snapshot);
+    this.collect();
+  }
+
+  bootstrap(hostId: string) {
+    const snapshots = this.queryClient
+      .getQueriesData({ queryKey: ["db", this.sessionId, hostId] })
+      .flatMap(([, data]) => {
+        const result = databaseBootstrapResponseSchema.safeParse(data);
+        return result.success ? [result.data] : [];
+      })
+      .sort((left, right) => right.database.version - left.database.version);
+    return snapshots[0] ? projectDatabaseMetadata(snapshots[0], this.snapshot) : undefined;
+  }
+
+  execute(input: DatabaseCommandInput) {
+    return this.submit(
+      input,
+      [],
+      undefined,
+      metadataEffectsForCommand(input, this.bootstrap(input.databaseId)),
+    );
   }
 
   records(dataSourceId: string) {
@@ -104,21 +136,40 @@ export class RecordInteractionStore {
 
   submit(
     input: DatabaseCommandInput,
-    effects: RecordEffect[],
+    effects: RecordEffect[] = [],
     temporaryId?: string,
+    metadataEffects: MetadataEffect[] = [],
   ): Promise<DatabaseCommandAck> {
     if (this.disposed) return Promise.reject(new Error("Database session ended"));
     if (typeof navigator !== "undefined" && navigator.onLine === false)
       return Promise.reject(new OfflineError());
     const id = crypto.randomUUID();
-    const interaction: RecordInteraction = { id, effects, status: "queued" };
+    if (input.command.type === "database.create") input = { ...input, databaseId: id };
+    const interaction: RecordInteraction = { id, effects, metadataEffects, status: "queued" };
+    const sources = [
+      ...new Set([
+        ...(input.dataSourceId ? [input.dataSourceId] : []),
+        ...effects.map(({ dataSourceId }) => dataSourceId),
+      ]),
+    ].sort();
+    const resources = new Set([
+      `host:${input.databaseId}`,
+      ...sources.map((source) => `source:${source}`),
+    ]);
+    if (!input.dataSourceId)
+      for (const source of this.bootstrap(input.databaseId)?.dataSources ?? [])
+        resources.add(`source:${source.id}`);
+    if ("dataSourceId" in input.command) resources.add(`source:${input.command.dataSourceId}`);
+    if (input.command.type === "row.place" && input.command.source)
+      resources.add(`host:${input.command.source.databaseId}`);
     const targets = targetsForCommand(input);
     beginPending(targets);
     const promise = new Promise<DatabaseCommandAck>((resolve, reject) => {
       this.jobs.set(id, {
         input,
         interaction,
-        sources: [...new Set(effects.map(({ dataSourceId }) => dataSourceId))].sort(),
+        sources,
+        resources: [...resources].sort(),
         resolve,
         reject,
         temporaryId,
@@ -140,11 +191,17 @@ export class RecordInteractionStore {
   }
   private pump() {
     if (this.disposed) return;
-    const blocked = new Set<string>();
+    const blocked = new Map<string, boolean>();
     for (const job of this.jobs.values()) {
+      const exclusive = (resource: string) =>
+        !resource.startsWith("host:") || !job.input.dataSourceId;
       const canStart =
-        job.interaction.status === "queued" && !job.sources.some((source) => blocked.has(source));
-      for (const source of job.sources) blocked.add(source);
+        job.interaction.status === "queued" &&
+        !job.resources.some(
+          (resource) => blocked.has(resource) && (blocked.get(resource) || exclusive(resource)),
+        );
+      for (const resource of job.resources)
+        blocked.set(resource, (blocked.get(resource) ?? false) || exclusive(resource));
       if (canStart) {
         job.interaction = { ...job.interaction, status: "saving" };
         this.update(job.interaction);
@@ -153,6 +210,7 @@ export class RecordInteractionStore {
     }
   }
   private remapInput(input: DatabaseCommandInput): DatabaseCommandInput {
+    input = this.remapReferences(input);
     const map = (id: string | null) => (id === null ? null : (this.identities.get(id) ?? id));
     const mapValues = (values: Record<string, unknown>) =>
       Object.fromEntries(
@@ -224,6 +282,20 @@ export class RecordInteractionStore {
       return { ...input, command: { ...command, rowId: map(command.rowId)! } };
     return input;
   }
+
+  private remapReferences<T>(value: T): T {
+    if (typeof value === "string")
+      return (this.identities.get(value) ?? this.pageIdentities.get(value) ?? value) as T;
+    if (Array.isArray(value)) return value.map((item) => this.remapReferences(item)) as T;
+    if (value && typeof value === "object")
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [
+          this.identities.get(key) ?? key,
+          this.remapReferences(item),
+        ]),
+      ) as T;
+    return value;
+  }
   private async save(job: Job) {
     // Freeze the remapped request before first delivery; retries use exactly this ID/body.
     job.input = this.remapInput(job.input);
@@ -236,6 +308,26 @@ export class RecordInteractionStore {
       for (const source of job.sources)
         if (ack.sourceVersions[source] === undefined)
           throw new DatabaseCommandUnconfirmedError(new Error("Missing source confirmation"));
+      const createdProperty = job.interaction.metadataEffects?.find(
+        (effect) => effect.kind === "property" && effect.insert,
+      );
+      if (createdProperty?.insert && "propertyId" in createdProperty.insert) {
+        const parsed = databasePropertyEntitySchema.safeParse(ack.result);
+        if (!parsed.success) throw new DatabaseCommandUnconfirmedError(parsed.error);
+        this.identities.set(createdProperty.id, parsed.data.id);
+        this.identities.set(createdProperty.insert.propertyId, parsed.data.propertyId);
+        const remap = (interaction: RecordInteraction) => {
+          const next = this.remapReferences(interaction);
+          return {
+            ...next,
+            metadataEffects: next.metadataEffects?.map((effect) =>
+              effect.insert?.id === parsed.data.id ? { ...effect, insert: parsed.data } : effect,
+            ),
+          };
+        };
+        this.publish(this.snapshot.map(remap));
+        for (const queued of this.jobs.values()) queued.interaction = remap(queued.interaction);
+      }
       if (job.temporaryId) {
         const parsed = databaseRecordEntitySchema.safeParse(ack.result);
         if (!parsed.success) throw new DatabaseCommandUnconfirmedError(parsed.error);
@@ -262,6 +354,7 @@ export class RecordInteractionStore {
         ...job.interaction,
         status: "committed",
         sourceVersions: ack.sourceVersions,
+        hostVersions: ack.event ? { [ack.event.databaseId]: ack.event.version } : {},
       };
       this.update(job.interaction);
       this.jobs.delete(job.interaction.id);
@@ -281,38 +374,34 @@ export class RecordInteractionStore {
         this.jobs.delete(job.interaction.id);
         this.publish(this.snapshot.filter(({ id }) => id !== job.interaction.id));
         job.release(error);
-        // A failed insertion cannot supply identities for dependent gestures.
-        if (job.temporaryId) {
-          const failedIds = new Set([job.temporaryId]);
-          for (const dependent of this.jobs.values()) {
-            const command = dependent.input.command;
-            const references =
-              command.type === "row.place"
-                ? [
-                    command.afterRowId,
-                    command.beforeRowId,
-                    command.parentRowId,
-                    command.hierarchy?.parentRowId,
-                    command.source?.rowId,
-                  ]
-                : command.type === "row.change"
-                  ? [
-                      command.rowId,
-                      command.placement?.afterRowId,
-                      command.placement?.beforeRowId,
-                      command.hierarchy?.parentRowId,
-                    ]
-                  : command.type === "row.archive" || command.type === "row.restore"
-                    ? [command.rowId]
-                    : [];
-            if (references.some((id) => id && failedIds.has(id))) {
-              if (dependent.temporaryId) failedIds.add(dependent.temporaryId);
-              this.jobs.delete(dependent.interaction.id);
-              this.publish(this.snapshot.filter(({ id }) => id !== dependent.interaction.id));
-              dependent.release(error);
-              dependent.reject(error);
-            }
-          }
+        // Cancel the entire dependency chain, including newly created schema identities.
+        const createdIds = (candidate: Job) => [
+          ...(candidate.temporaryId ? [candidate.temporaryId] : []),
+          ...(candidate.interaction.metadataEffects ?? []).flatMap((effect) =>
+            effect.insert
+              ? [effect.id, ...("propertyId" in effect.insert ? [effect.insert.propertyId] : [])]
+              : [],
+          ),
+        ];
+        const failedIds = new Set(createdIds(job));
+        const referencesFailed = (value: unknown): boolean => {
+          if (typeof value === "string") return failedIds.has(value);
+          if (Array.isArray(value)) return value.some(referencesFailed);
+          return (
+            !!value &&
+            typeof value === "object" &&
+            Object.entries(value).some(
+              ([key, item]) => failedIds.has(key) || referencesFailed(item),
+            )
+          );
+        };
+        for (const dependent of this.jobs.values()) {
+          if (!referencesFailed(dependent.input.command)) continue;
+          for (const id of createdIds(dependent)) failedIds.add(id);
+          this.jobs.delete(dependent.interaction.id);
+          this.publish(this.snapshot.filter(({ id }) => id !== dependent.interaction.id));
+          dependent.release(error);
+          dependent.reject(error);
         }
         this.pump();
       }
@@ -360,6 +449,18 @@ export class RecordInteractionStore {
       const keep = this.snapshot.filter((interaction) => {
         if (interaction.status !== "committed") return true;
         let stale = false;
+        for (const effect of interaction.metadataEffects ?? []) {
+          for (const snapshot of this.bootstrapWindows.values())
+            if (metadataNeedsProjection(effect, interaction, snapshot)) stale = true;
+          for (const query of queries) {
+            const parsed = databaseBootstrapResponseSchema.safeParse(query.state.data);
+            if (!parsed.success || !metadataNeedsProjection(effect, interaction, parsed.data))
+              continue;
+            if (!query.isActive() && query.state.fetchStatus === "idle")
+              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
+            else stale = true;
+          }
+        }
         for (const [source, version] of Object.entries(interaction.sourceVersions ?? {})) {
           for (const window of this.windows.values())
             if (
@@ -392,14 +493,15 @@ export class RecordInteractionStore {
     }
     this.jobs.clear();
     this.windows.clear();
+    this.bootstrapWindows.clear();
     this.identities.clear();
     this.pageIdentities.clear();
     this.publish([]);
   }
 }
 
-const sessions = new WeakMap<QueryClient, Map<string, RecordInteractionStore>>();
-export function recordInteractionStore(
+const sessions = new WeakMap<QueryClient, Map<string, DatabaseController>>();
+export function databaseController(
   queryClient: QueryClient,
   sessionId: string,
   apiFetch: ApiFetcher,
@@ -411,12 +513,12 @@ export function recordInteractionStore(
   }
   let store = stores.get(sessionId);
   if (!store) {
-    store = new RecordInteractionStore(queryClient, sessionId, apiFetch);
+    store = new DatabaseController(queryClient, sessionId, apiFetch);
     stores.set(sessionId, store);
   }
   return store;
 }
-export function disposeRecordInteractions(queryClient: QueryClient, sessionId: string) {
+export function disposeDatabaseController(queryClient: QueryClient, sessionId: string) {
   sessions.get(queryClient)?.get(sessionId)?.dispose();
   sessions.get(queryClient)?.delete(sessionId);
 }

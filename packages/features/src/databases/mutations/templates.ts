@@ -1,24 +1,19 @@
+import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
-
 import { useZilobaseFeatures } from "../../shared/context";
 import { useDatabaseSessionId } from "../queries/session";
 import { resolveDataSourceCommandScope } from "./scope";
-import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
-import { runSerialized, structuralSerializationKey } from "./serialize";
-
 export type DatabaseStoredTemplate = {
   archivedAt: string | null;
   id: string;
   name: string;
   template: unknown;
 };
-
 type DatabaseTemplateScope = {
   databaseId: string;
   hostDatabaseId?: string;
 };
-
 export function useCreateDatabaseTemplate() {
   return useDatabaseTemplateMutation(
     (
@@ -33,7 +28,6 @@ export function useCreateDatabaseTemplate() {
     }),
   );
 }
-
 export function useUpdateDatabaseTemplate() {
   return useDatabaseTemplateMutation(
     (
@@ -48,7 +42,6 @@ export function useUpdateDatabaseTemplate() {
     }),
   );
 }
-
 export function useArchiveDatabaseTemplate() {
   return useDatabaseTemplateMutation(
     (
@@ -61,7 +54,6 @@ export function useArchiveDatabaseTemplate() {
     }),
   );
 }
-
 export function useRestoreDatabaseTemplate() {
   return useDatabaseTemplateMutation(
     (
@@ -74,17 +66,27 @@ export function useRestoreDatabaseTemplate() {
     }),
   );
 }
-
 function useDatabaseTemplateMutation<
   TInput extends DatabaseTemplateScope,
   TCommand extends
-    | { name: string; template: unknown; type: "template.create" }
-    | { patch: unknown; templateId: string; type: "template.update" }
-    | { templateId: string; type: "template.archive" | "template.restore" },
+    | {
+        name: string;
+        template: unknown;
+        type: "template.create";
+      }
+    | {
+        patch: unknown;
+        templateId: string;
+        type: "template.update";
+      }
+    | {
+        templateId: string;
+        type: "template.archive" | "template.restore";
+      },
 >(command: (input: TInput) => TCommand) {
+  const controller = useDatabaseController();
   const { apiFetch, queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-
   return useMutation({
     mutationFn: async (input: TInput) => {
       const scope = await resolveDataSourceCommandScope(
@@ -93,13 +95,11 @@ function useDatabaseTemplateMutation<
         input.databaseId,
         input.hostDatabaseId,
       );
-      const ack = await runSerialized(structuralSerializationKey(scope.dataSourceId), () =>
-        executeDatabaseCommand(apiFetch, {
-          command: command(input),
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
-        }),
-      );
+      const ack = await controller.execute({
+        command: command(input),
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      });
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabaseStoredTemplate;
     },

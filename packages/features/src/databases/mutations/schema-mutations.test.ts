@@ -106,7 +106,7 @@ function commandApi(sent: Array<{ path: string; request: DatabaseCommandRequest 
         version,
       },
       result,
-      sourceVersions: {},
+      sourceVersions: path.includes("/data-sources/") ? { "data-source-1": version } : {},
     } as T;
   };
 }

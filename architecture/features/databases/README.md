@@ -150,8 +150,10 @@ writes per affected source, and replays sparse intentions over untouched GET
 windows. Unconfirmed deliveries keep their preview and block dependent writes;
 the save indicator offers receipt-safe retry. Confirmed intentions remain until
 all mounted windows catch up; stale inactive windows are evicted before retirement.
-Refresh errors never reject committed writes. Schema and view metadata still use
-targeted optimistic bootstrap patches and their domain serialization.
+Refresh errors never reject committed writes. Schema and view metadata now submit
+through the same session controller. Bootstrap hooks project metadata intentions
+over server snapshots, and source schema writes share record ordering lanes.
+Host-wide mutations form barriers across the source writes visible through that host.
 
 The interactive client consumes bootstrap plus record windows directly through [`DatabaseViewData`](../../../apps/web/src/features/databases/views/model/database-controller-state.ts) (canonical host bootstrap, active source, filtered records); the monolithic composed payload is gone. The position-based row/value export shape remains only as the [`DatabaseExportPayload`](../../../packages/features/src/databases/core/export-payload.ts) wire contract behind `GET /:id/export` and derived AI/task context, never as client state. Realtime-only state (presence, version watermarks) stays out of QueryClient entirely.
 

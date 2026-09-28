@@ -1,4 +1,4 @@
-import { recordInteractionStore } from "../interactions/store";
+import { databaseController } from "../interactions/store";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
@@ -219,7 +219,7 @@ test("cell mutations project immediately without modifying server snapshots", as
       value: "Done",
     });
     await flush();
-    const store = recordInteractionStore(queryClient, SESSION, async () => {
+    const store = databaseController(queryClient, SESSION, async () => {
       throw new Error("unused");
     });
     assert.equal(cellValueOf(queryClient), "Not started");

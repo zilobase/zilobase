@@ -53,10 +53,12 @@ export async function executeDatabaseCommand(
 
   const commandId = opts?.commandId ?? crypto.randomUUID();
   const endpoint =
-    `/databases/${encodeURIComponent(input.databaseId)}` +
-    (input.dataSourceId
-      ? `/data-sources/${encodeURIComponent(input.dataSourceId)}/commands`
-      : "/commands");
+    input.command.type === "database.create"
+      ? "/databases/commands"
+      : `/databases/${encodeURIComponent(input.databaseId)}` +
+        (input.dataSourceId
+          ? `/data-sources/${encodeURIComponent(input.dataSourceId)}/commands`
+          : "/commands");
   // Serialize ONCE — receipt replay requires identical ID + body
   const body = JSON.stringify({
     command: input.command,

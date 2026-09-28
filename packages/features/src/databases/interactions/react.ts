@@ -1,15 +1,42 @@
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useZilobaseFeatures } from "../../shared/context";
-import type { ChangeRowCommand, DatabaseRecordEntity } from "../core/entities";
+import type {
+  ChangeRowCommand,
+  DatabaseRecordEntity,
+  DatabaseBootstrapResponse,
+} from "../core/entities";
+import { projectDatabaseMetadata } from "./metadata";
 import { useDatabaseSessionId } from "../queries/session";
-import { recordInteractionStore } from "./store";
+import { databaseController } from "./store";
 import { projectRecordInteractions, type RecordEffect } from "./model";
 import { changeRecordHierarchy } from "./hierarchy";
 
-export function useRecordInteractionStore() {
+export function useDatabaseController() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-  return recordInteractionStore(queryClient, sessionId, apiFetch);
+  return databaseController(queryClient, sessionId, apiFetch);
+}
+
+export function useProjectedDatabaseBootstrap(snapshot: DatabaseBootstrapResponse | undefined) {
+  const controller = useDatabaseController();
+  const intentions = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+  const key = useRef({});
+  useEffect(() => {
+    if (snapshot) controller.observeBootstrap(key.current, snapshot);
+    else controller.unobserve(key.current);
+  }, [controller, snapshot]);
+  useEffect(() => {
+    const token = key.current;
+    return () => controller.unobserve(token);
+  }, [controller]);
+  return useMemo(
+    () => (snapshot ? projectDatabaseMetadata(snapshot, intentions) : undefined),
+    [snapshot, intentions],
+  );
 }
 
 export function useProjectedDatabaseRecords(input: {
@@ -17,7 +44,7 @@ export function useProjectedDatabaseRecords(input: {
   sourceVersion: number | null;
   records: DatabaseRecordEntity[];
 }) {
-  const store = useRecordInteractionStore();
+  const store = useDatabaseController();
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const key = useRef({});
   useEffect(() => {
@@ -49,7 +76,7 @@ export type ChangeDatabaseRowInput = Omit<ChangeRowCommand, "type"> & {
 };
 
 export function submitRecordChange(
-  store: ReturnType<typeof useRecordInteractionStore>,
+  store: ReturnType<typeof useDatabaseController>,
   input: ChangeDatabaseRowInput,
 ) {
   const { databaseId, dataSourceId, ...change } = input;
@@ -106,7 +133,7 @@ export function submitRecordChange(
 }
 
 export function useChangeDatabaseRow() {
-  const store = useRecordInteractionStore();
+  const store = useDatabaseController();
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const mutateAsync = (input: ChangeDatabaseRowInput) => {
     try {
@@ -133,7 +160,7 @@ export function useChangeDatabaseRow() {
 }
 
 export function useDatabaseInteractionRecovery() {
-  const store = useRecordInteractionStore();
+  const store = useDatabaseController();
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   return {
     retry: () => store.retryUnconfirmed(),

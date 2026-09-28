@@ -1,3 +1,4 @@
+import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import { invalidateDeletedItems, invalidateRestoredItems } from "../../shared/item-action-cache";
@@ -7,16 +8,7 @@ import { pagesNavRootQueryKey, pagesQueryKey } from "../../pages/queries";
 import type { PageNavigationPayload } from "../../pages/contracts";
 import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
-import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
-import {
-  cancelHostQueries,
-  invalidateOptimisticHost,
-  patchCachedDatabase,
-  type OptimisticContext,
-} from "./optimistic";
-import { runSerialized, viewSerializationKey } from "./serialize";
-
 type CreateDatabaseInput = {
   name?: string;
   workspaceId: string;
@@ -24,33 +16,27 @@ type CreateDatabaseInput = {
   standalone?: boolean;
   teamspaceId?: string | null;
 };
-
 type CreateDatabaseResponse = {
   activeDataSource: DataSourceEntity | null;
   database: DatabaseHostEntity;
   navDelta: NavDelta;
 };
-
 export type UpdateDatabaseInput = {
   databaseId: string;
   name?: string;
   config?: unknown;
 };
-
 type SetDatabaseFavoriteInput = {
   databaseId: string;
   isFavorite: boolean;
 };
-
 type SetDatabaseFavoriteResponse = {
   databaseId: string;
   isFavorite: boolean;
   workspaceId: string;
 };
-
 export function useCreateDatabase() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-
   return useMutation({
     mutationFn: async (input: CreateDatabaseInput) => {
       return apiFetch<CreateDatabaseResponse>("/databases", {
@@ -65,36 +51,23 @@ export function useCreateDatabase() {
         });
         return;
       }
-
       // POST /databases always returns navDelta; apply it directly.
       applyNavigationDeltaToCache(queryClient, payload.database.workspaceId, payload.navDelta);
     },
   });
 }
-
 export function useUpdateDatabase() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-
   return useMutation({
     mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) => {
-      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
-        executeDatabaseCommand(apiFetch, {
-          command: { patch, type: "database.update" },
-          databaseId,
-        }),
-      );
+      const ack = await controller.execute({
+        command: { patch, type: "database.update" },
+        databaseId,
+      });
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseHostEntity;
-    },
-    onMutate: async ({ databaseId, ...patch }): Promise<OptimisticContext> => {
-      await cancelHostQueries(queryClient, sessionId, databaseId);
-      const rollback = patchCachedDatabase(queryClient, sessionId, databaseId, patch);
-      return { rollback, scope: { hostDatabaseId: databaseId } };
-    },
-    onError: (_error, _input, context) => {
-      context?.rollback();
-      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
     },
     onSuccess: async (database) => {
       await queryClient.invalidateQueries({
@@ -103,22 +76,18 @@ export function useUpdateDatabase() {
     },
   });
 }
-
 type DeleteDatabaseResult = {
   database: DatabaseHostEntity | null;
   deletedDatabaseIds: string[];
   deletedPageIds: string[];
 };
-
 type RestoreDatabaseResult = {
   database: DatabaseHostEntity;
   restoredDatabaseIds: string[];
   restoredPageIds: string[];
 };
-
 export function useDeleteDatabase() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-
   return useMutation({
     mutationFn: async (databaseId: string) =>
       apiFetch<DeleteDatabaseResult>(`/databases/${databaseId}`, {
@@ -132,10 +101,8 @@ export function useDeleteDatabase() {
       }),
   });
 }
-
 export function useRestoreDatabase() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-
   return useMutation({
     mutationFn: async (databaseId: string) =>
       apiFetch<RestoreDatabaseResult>(`/databases/${databaseId}/restore`, {
@@ -149,10 +116,8 @@ export function useRestoreDatabase() {
       }),
   });
 }
-
 export function useSetDatabaseFavorite() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-
   return useMutation({
     mutationFn: async ({ databaseId, isFavorite }: SetDatabaseFavoriteInput) =>
       apiFetch<SetDatabaseFavoriteResponse>(`/databases/${databaseId}/favorite`, {

@@ -1,3 +1,4 @@
+import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import { pagesNavRootQueryKey } from "../../pages/queries";
@@ -5,16 +6,7 @@ import type { PageNavigationPayload } from "../../pages/contracts";
 import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseViewEntity } from "../core/entities";
 import { findDataSourceBootstrap } from "./scope";
-import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
-import {
-  cancelHostQueries,
-  invalidateOptimisticHost,
-  patchCachedView,
-  type OptimisticContext,
-} from "./optimistic";
-import { runSerialized, viewSerializationKey } from "./serialize";
-
 type UpdateDatabaseViewInput = {
   config?: unknown;
   databaseId: string;
@@ -22,7 +14,6 @@ type UpdateDatabaseViewInput = {
   name?: string;
   type?: string;
 };
-
 type AddDatabaseViewInput = {
   config?: unknown;
   databaseId: string;
@@ -30,22 +21,20 @@ type AddDatabaseViewInput = {
   name?: string;
   type?: string;
 };
-
 type DeleteDatabaseViewInput = {
   databaseId: string;
   databaseViewId: string;
 };
-
 export function updateDatabaseViewInNavigation(
   navigation: PageNavigationPayload | undefined,
-  input: UpdateDatabaseViewInput & { updatedAt?: string },
+  input: UpdateDatabaseViewInput & {
+    updatedAt?: string;
+  },
 ) {
   if (!navigation) {
     return navigation;
   }
-
   const updatedAt = input.updatedAt ?? new Date().toISOString();
-
   return {
     ...navigation,
     databases: navigation.databases.map((database) =>
@@ -68,34 +57,22 @@ export function updateDatabaseViewInNavigation(
     ),
   };
 }
-
 export function useUpdateDatabaseView() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-
   return useMutation({
     mutationFn: async ({ databaseId, databaseViewId, ...patch }: UpdateDatabaseViewInput) => {
-      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
-        executeDatabaseCommand(apiFetch, {
-          command: {
-            patch,
-            type: "view.update",
-            viewId: databaseViewId,
-          },
-          databaseId,
-        }),
-      );
+      const ack = await controller.execute({
+        command: {
+          patch,
+          type: "view.update",
+          viewId: databaseViewId,
+        },
+        databaseId,
+      });
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
-    },
-    onMutate: async ({ databaseId, databaseViewId, ...patch }): Promise<OptimisticContext> => {
-      await cancelHostQueries(queryClient, sessionId, databaseId);
-      const rollback = patchCachedView(queryClient, sessionId, databaseId, databaseViewId, patch);
-      return { rollback, scope: { hostDatabaseId: databaseId } };
-    },
-    onError: (_error, _input, context) => {
-      context?.rollback();
-      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
     },
     onSuccess: (updatedView, variables) => {
       const bootstrap = findDataSourceBootstrap(queryClient, updatedView.dataSourceId);
@@ -118,47 +95,43 @@ export function useUpdateDatabaseView() {
     },
   });
 }
-
 export function useAddDatabaseView() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-
   return useMutation({
     mutationFn: async ({ config, databaseId, dataSourceId, name, type }: AddDatabaseViewInput) => {
-      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
-        executeDatabaseCommand(apiFetch, {
-          command: {
-            afterViewId: null,
-            beforeViewId: null,
-            config: config ?? null,
-            dataSourceId,
-            name: name?.trim() || "Table",
-            type: "view.create",
-            viewType: type?.trim() || "table",
-          },
-          databaseId,
-        }),
-      );
+      const ack = await controller.execute({
+        command: {
+          afterViewId: null,
+          beforeViewId: null,
+          config: config ?? null,
+          dataSourceId,
+          name: name?.trim() || "Table",
+          type: "view.create",
+          viewType: type?.trim() || "table",
+        },
+        databaseId,
+      });
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
     },
   });
 }
-
 export function useDeleteDatabaseView() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-
   return useMutation({
     mutationFn: async ({ databaseId, databaseViewId }: DeleteDatabaseViewInput) => {
-      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
-        executeDatabaseCommand(apiFetch, {
-          command: { type: "view.delete", viewId: databaseViewId },
-          databaseId,
-        }),
-      );
+      const ack = await controller.execute({
+        command: { type: "view.delete", viewId: databaseViewId },
+        databaseId,
+      });
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
-      return ack.result as { viewId: string };
+      return ack.result as {
+        viewId: string;
+      };
     },
   });
 }
