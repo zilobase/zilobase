@@ -1,6 +1,6 @@
 import type { ConfigurationChange } from "../interactions/configuration";
 import { useDatabaseController } from "../interactions/react";
-import { useMutation, type QueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import { pagesNavRootQueryKey } from "../../pages/queries";
 import { useDatabaseSessionId } from "../queries/session";
@@ -58,7 +58,11 @@ export function useAddDatabaseProperty() {
   return useMutation({
     mutationFn: async ({ config, databaseId, name, position, type }: AddPropertyInput) => {
       const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
-      const anchors = resolvePropertyCreateAnchors(queryClient, scope.dataSourceId, position);
+      const anchors = resolvePropertyCreateAnchors(
+        controller.bootstrap(scope.hostDatabaseId)?.properties ?? [],
+        scope.dataSourceId,
+        position,
+      );
       const ack = await controller.execute({
         command: {
           ...anchors,
@@ -216,15 +220,12 @@ export function useDuplicateDatabaseProperty() {
   });
 }
 function resolvePropertyCreateAnchors(
-  queryClient: QueryClient,
+  properties: DatabasePropertyEntity[],
   dataSourceId: string,
   requestedPosition?: number,
 ) {
-  const ids = (findDataSourceBootstrap(queryClient, dataSourceId)?.properties ?? [])
-    .filter(
-      (property) =>
-        property.dataSourceId === dataSourceId && !property.id.startsWith("optimistic-property-"),
-    )
+  const ids = properties
+    .filter((property) => property.dataSourceId === dataSourceId)
     .slice()
     .sort((left, right) => left.position - right.position)
     .map(({ id }) => id);

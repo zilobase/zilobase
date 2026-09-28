@@ -4,7 +4,6 @@ import {
   type DatabaseCommand,
   type DatabaseCommandAck,
 } from "../core/entities";
-import { beginPending, endPending, targetsForCommand, type DatabaseCommandTarget } from "./pending";
 
 export class DatabaseCommandUnconfirmedError extends Error {
   constructor(cause: unknown) {
@@ -38,8 +37,6 @@ export type DatabaseCommandInput = {
 
 export type ExecuteDatabaseCommandOptions = {
   commandId?: string;
-  pendingTarget?: DatabaseCommandTarget;
-  trackPending?: boolean;
 };
 
 export async function executeDatabaseCommand(
@@ -66,27 +63,18 @@ export async function executeDatabaseCommand(
     protocolVersion: 2,
   });
 
-  const targets =
-    opts?.trackPending === false
-      ? []
-      : opts?.pendingTarget
-        ? [opts.pendingTarget]
-        : targetsForCommand(input);
-  beginPending(targets);
   for (let attempt = 0; ; attempt += 1) {
     let raw: unknown;
     try {
       raw = await apiFetch(endpoint, { body, method: "POST" });
     } catch (error) {
       if (!isRetryable(error)) {
-        endPending(targets, toError(error));
         throw error;
       }
       if (attempt === 0 && (typeof navigator === "undefined" || navigator.onLine !== false)) {
         continue; // retry once with same body
       }
       const unconfirmed = new DatabaseCommandUnconfirmedError(error);
-      endPending(targets, unconfirmed);
       throw unconfirmed;
     }
     try {
@@ -102,14 +90,12 @@ export async function executeDatabaseCommand(
       }
       if ((input.command.type === "database.favorite") !== (ack.event === null))
         throw new Error("ack visibility mismatch");
-      endPending(targets, null);
       return ack;
     } catch (error) {
       const unconfirmed =
         error instanceof DatabaseCommandUnconfirmedError
           ? error
           : new DatabaseCommandUnconfirmedError(error);
-      endPending(targets, unconfirmed);
       throw unconfirmed;
     }
   }
@@ -119,8 +105,4 @@ function isRetryable(error: unknown): boolean {
   if (error instanceof TypeError) return true; // network down
   const status = (error as { status?: unknown })?.status;
   return status === 408 || (typeof status === "number" && status >= 500);
-}
-
-function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
 }

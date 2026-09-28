@@ -1,14 +1,17 @@
-import { hasPendingDatabaseWrites, subscribeAnyPending } from "./pending";
+import type { DatabaseCommandState } from "./pending";
 
-export function guardPendingDatabaseWrites(target: Window): () => void {
+export function guardPendingDatabaseWrites(
+  target: Window,
+  state: DatabaseCommandState,
+): () => void {
   const onBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!hasPendingDatabaseWrites()) return;
+    if (!state.hasPending()) return;
     event.preventDefault();
     event.returnValue = "";
   };
   let installed = false;
   const sync = () => {
-    const pending = hasPendingDatabaseWrites();
+    const pending = state.hasPending();
     if (pending && !installed) {
       target.addEventListener("beforeunload", onBeforeUnload);
       installed = true;
@@ -17,7 +20,7 @@ export function guardPendingDatabaseWrites(target: Window): () => void {
       installed = false;
     }
   };
-  const unsubscribe = subscribeAnyPending(sync);
+  const unsubscribe = state.subscribe(sync);
   sync();
   return () => {
     unsubscribe();

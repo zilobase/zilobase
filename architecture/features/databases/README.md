@@ -13,7 +13,7 @@ source sequencing, receipt recovery and identity remapping; see [ADR 0011](../..
 formula), `views/` (appearance, view evaluation), `records/` (snapshots,
 row-page host resolution), `access/` (sharing writes), `queries/` (session
 provider, read query options and hooks), `mutations/` (command execution, invalidation,
-serialization, pending state, one module per write domain), `realtime/` (poke
+session command-state utilities, one module per write domain), `realtime/` (poke
 socket plus presence). Automations were promoted out of the
 database section to [packages/features/src/automations](../../../packages/features/src/automations),
 [apps/server/src/features/automations](../../../apps/server/src/features/automations),
@@ -130,7 +130,7 @@ The [command executor](../../../packages/features/src/databases/mutations/execut
 posts one command with `protocolVersion: 2`, validates receipt and event
 identity, and retries a lost network response once with the identical command
 ID and serialized body. A confirmed server commit remains successful even when
-the following refresh fails; the [pending map](../../../packages/features/src/databases/mutations/pending.ts)
+the following refresh fails; the controller-owned [command state](../../../packages/features/src/databases/mutations/pending.ts)
 exposes that refresh failure separately from a rejected write.
 
 Editing is online-only. The [save indicator](../../../apps/web/src/features/databases/views/components/database-save-status.tsx)
@@ -158,6 +158,12 @@ Refresh errors never reject committed writes. Schema and view metadata now submi
 through the same session controller. Bootstrap hooks project metadata intentions
 over server snapshots, and source schema writes share record ordering lanes.
 Host-wide mutations form barriers across the source writes visible through that host.
+The command policy is exhaustive and enforces host/source scope before scheduling.
+Pending counts, errors and the reload guard use that same session controller, never
+a process-global pending map. The former cache rollback helpers and metadata queue
+are deleted. Property creation projects temporary column and field identities;
+dependent anchors, cell keys and configuration references remap after confirmation.
+Neighbor-based property/view placement projects immediately without mutating snapshots.
 
 Metadata update commands accept `patch.configuration`, a bounded list of explicit
 path assignments/removals, not a replacement `config`. Editors compute changes against

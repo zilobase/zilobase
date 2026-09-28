@@ -1,42 +1,55 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { beginPending, clearPendingStateForTests, endPending, getPendingState } from "./pending";
+import { DatabaseCommandState } from "./pending";
+
+test("pending counts, errors and cleanup are isolated by controller", () => {
+  const first = new DatabaseCommandState();
+  const second = new DatabaseCommandState();
+  const target = { hostDatabaseId: "same-host" };
+  first.begin([target]);
+  assert.equal(first.hasPending(), true);
+  assert.equal(second.hasPending(), false);
+  first.end([target], new Error("first session failed"));
+  assert.equal(second.get(target).error, null);
+  first.clear();
+  assert.equal(first.get(target).error, null);
+});
 
 test("per-target pendingCount tracks independently", () => {
-  clearPendingStateForTests();
+  const state = new DatabaseCommandState();
   try {
     const target = { hostDatabaseId: "database-1" };
     const other = { hostDatabaseId: "database-2" };
-    beginPending([target]);
-    assert.equal(getPendingState(target).pendingCount, 1);
-    assert.equal(getPendingState(target).isPending, true);
-    assert.equal(getPendingState(other).pendingCount, 0);
-    endPending([target]);
-    assert.equal(getPendingState(target).isPending, false);
+    state.begin([target]);
+    assert.equal(state.get(target).pendingCount, 1);
+    assert.equal(state.get(target).isPending, true);
+    assert.equal(state.get(other).pendingCount, 0);
+    state.end([target]);
+    assert.equal(state.get(target).isPending, false);
   } finally {
-    clearPendingStateForTests();
+    state.clear();
   }
 });
 
 test("error sticks until same target succeeds", () => {
-  clearPendingStateForTests();
+  const state = new DatabaseCommandState();
   try {
     const target = { hostDatabaseId: "database-1", rowId: "row-1" };
     const unrelated = { hostDatabaseId: "database-1", rowId: "row-2" };
-    beginPending([target]);
-    endPending([target], new Error("failed"));
-    assert.match(getPendingState(target).error?.message ?? "", /failed/);
+    state.begin([target]);
+    state.end([target], new Error("failed"));
+    assert.match(state.get(target).error?.message ?? "", /failed/);
     // Unrelated success does not clear
-    beginPending([unrelated]);
-    endPending([unrelated]);
-    assert.match(getPendingState(target).error?.message ?? "", /failed/);
+    state.begin([unrelated]);
+    state.end([unrelated]);
+    assert.match(state.get(target).error?.message ?? "", /failed/);
     // Same target next start clears error
-    beginPending([target]);
-    assert.equal(getPendingState(target).error, null);
-    endPending([target]);
-    assert.equal(getPendingState(target).error, null);
+    state.begin([target]);
+    assert.equal(state.get(target).error, null);
+    state.end([target]);
+    assert.equal(state.get(target).error, null);
   } finally {
-    clearPendingStateForTests();
+    state.clear();
   }
 });

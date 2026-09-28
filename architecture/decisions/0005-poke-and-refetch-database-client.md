@@ -38,8 +38,8 @@ for keys plus `cachedVersion` and prefer-newest helpers,
 [records](../../packages/features/src/databases/queries/records.ts) hooks,
 [command execution](../../packages/features/src/databases/mutations/execute.ts),
 [host invalidation](../../packages/features/src/databases/mutations/invalidate.ts),
-[keyed serialization](../../packages/features/src/databases/mutations/serialize.ts)
-with cell coalescing, [pending state](../../packages/features/src/databases/mutations/pending.ts),
+[session command ownership](../../packages/features/src/databases/interactions/store.ts),
+[controller command state](../../packages/features/src/databases/mutations/pending.ts),
 and the [poke socket](../../packages/features/src/databases/realtime/realtime.ts).
 The [thin session provider](../../packages/features/src/databases/queries/session.tsx)
 supplies only the session id, evicts the previous session's `["db", …]`
@@ -105,17 +105,11 @@ saved-but-stale states. The server journal, receipts, outbox, and
 See the current [database architecture](../features/databases/README.md) and
 [database realtime flow](../features/databases/realtime.md).
 
-## Amendment: targeted optimistic cache updates
+## Superseded amendment: optimistic cache updates
 
-Hot-path mutations (cell values, database/view titles, property add/update)
-now patch the QueryClient photocopy synchronously in `onMutate`
-([optimistic helpers](../../packages/features/src/databases/mutations/optimistic.ts))
-and roll back in `onError`, so the UI reflects the attempted edit instantly
-instead of waiting for POST plus refetch. `onError` also invalidates the
-host, because rollback alone would hide a write that committed while its
-response was lost (unconfirmed) — only a refetch can tell. Version fields
-are never patched,
-so pokes and prefer-newest guards keep working on server versions, and the
-normal invalidation refetch still reconciles with committed truth. The
-acknowledgement payload itself is still never written into the cache; only
-the user-supplied input values are applied optimistically.
+The former `onMutate` cache patch and rollback approach was superseded by
+[shared record intentions](0011-shared-record-interactions.md) and
+[unified mutation ownership](0012-unified-database-mutations.md).
+QueryClient now holds confirmed snapshots; session intentions project reliable
+previews without snapshot rollback. The separate serialization and optimistic
+cache modules have been removed.

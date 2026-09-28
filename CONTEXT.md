@@ -10,7 +10,7 @@ validated main-process IPC channels.
 
 ### Database view
 
-A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout, pointer geometry and view configuration. A session-level record interaction controller owns pending row changes and projects them over server windows before filtering, sorting, grouping and hierarchy.
+A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout and pointer geometry. One session-level database controller owns pending commands across records, schema, configuration, lifecycle and access. Reliable record and metadata intentions are projected over server snapshots before filtering, sorting, grouping and hierarchy; server-derived and access changes remain pending until confirmed.
 
 ### Database
 

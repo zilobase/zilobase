@@ -3,7 +3,6 @@ import test from "node:test";
 
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { DatabaseCommandUnconfirmedError, OfflineError, executeDatabaseCommand } from "./execute";
-import { clearPendingStateForTests } from "./pending";
 
 function ackFor(commandId: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -28,7 +27,6 @@ function ackFor(commandId: string, overrides: Record<string, unknown> = {}) {
 }
 
 test("offline throws OfflineError without POST", async () => {
-  clearPendingStateForTests();
   const original = globalThis.navigator;
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
@@ -55,12 +53,10 @@ test("offline throws OfflineError without POST", async () => {
       configurable: true,
       value: original,
     });
-    clearPendingStateForTests();
   }
 });
 
 test("retry-once uses SAME commandId and SAME body on network failure", async () => {
-  clearPendingStateForTests();
   const bodies: string[] = [];
   let calls = 0;
   const apiFetch = (async (_path: string, init?: RequestInit) => {
@@ -79,11 +75,9 @@ test("retry-once uses SAME commandId and SAME body on network failure", async ()
   assert.equal(bodies[0], bodies[1]);
   assert.ok(ack.event);
   assert.equal(ack.commandId, ack.event.commandId);
-  clearPendingStateForTests();
 });
 
 test("second retry failure becomes Unconfirmed", async () => {
-  clearPendingStateForTests();
   const apiFetch = (async () => {
     throw new TypeError("network down");
   }) as ApiFetcher;
@@ -96,11 +90,9 @@ test("second retry failure becomes Unconfirmed", async () => {
       }),
     DatabaseCommandUnconfirmedError,
   );
-  clearPendingStateForTests();
 });
 
 test("409 COMMAND_ID_REUSED and ROW_MOVE_CONFLICT do NOT retry", async () => {
-  clearPendingStateForTests();
   for (const body of [
     { code: "COMMAND_ID_REUSED", commandId: "x" },
     { code: "ROW_MOVE_CONFLICT", rowId: "r" },
@@ -119,11 +111,9 @@ test("409 COMMAND_ID_REUSED and ROW_MOVE_CONFLICT do NOT retry", async () => {
     );
     assert.equal(calls, 1);
   }
-  clearPendingStateForTests();
 });
 
 test("ack id and scope mismatch become Unconfirmed", async () => {
-  clearPendingStateForTests();
   const mismatched = (async () => ({
     commandId: "other",
     event: { commandId: "other" },
@@ -151,5 +141,4 @@ test("ack id and scope mismatch become Unconfirmed", async () => {
       }),
     DatabaseCommandUnconfirmedError,
   );
-  clearPendingStateForTests();
 });

@@ -10,6 +10,16 @@ import { useDatabaseSessionId } from "../queries/session";
 import { databaseController } from "./store";
 import { projectRecordInteractions, type RecordEffect } from "./model";
 import { changeRecordHierarchy } from "./hierarchy";
+import type { DatabaseCommandTarget } from "../mutations/pending";
+
+export function useDatabaseEntityCommandState(target: DatabaseCommandTarget) {
+  const state = useDatabaseController().commandState;
+  return useSyncExternalStore(
+    state.subscribe,
+    () => state.get(target),
+    () => state.get(target),
+  );
+}
 
 export function useDatabaseController() {
   const { apiFetch, queryClient } = useZilobaseFeatures();

@@ -1,5 +1,6 @@
 import type { DatabaseRecordEntity } from "../core/entities";
 import type { MetadataIntention } from "./metadata";
+import type { DatabaseOperationStatus } from "../core/lifecycle-commands";
 
 export type RowPlacement = { afterRowId: string | null; beforeRowId: string | null };
 
@@ -15,20 +16,20 @@ export type RecordEffect = {
   values?: Record<string, unknown>;
 };
 
-export type RecordInteraction = MetadataIntention & {
+export type DatabaseIntention = MetadataIntention & {
   id: string;
   effects: readonly RecordEffect[];
-  status: "queued" | "saving" | "unconfirmed" | "committed";
+  status: DatabaseOperationStatus;
   /** Source clocks work across linked hosts without disclosing their identities. */
   sourceVersions?: Readonly<Record<string, number>>;
 };
 
-export function interactionAffectsSource(interaction: RecordInteraction, dataSourceId: string) {
+export function interactionAffectsSource(interaction: DatabaseIntention, dataSourceId: string) {
   return interaction.effects.some((effect) => effect.dataSourceId === dataSourceId);
 }
 
 export function needsProjection(
-  interaction: RecordInteraction,
+  interaction: DatabaseIntention,
   dataSourceId: string,
   sourceVersion: number | null,
 ) {
@@ -40,7 +41,7 @@ export function needsProjection(
 /** Rebase intentions in submission order; rejecting one does not roll back another. */
 export function projectRecordInteractions(
   records: DatabaseRecordEntity[],
-  interactions: readonly RecordInteraction[],
+  interactions: readonly DatabaseIntention[],
   scope: { dataSourceId: string; sourceVersion: number | null },
 ): DatabaseRecordEntity[] {
   let result = records;
@@ -93,11 +94,11 @@ export function projectRecordInteractions(
 
 /** Apply a create acknowledgement to every queued reference, not only its own preview. */
 export function remapRecordIdentity(
-  interaction: RecordInteraction,
+  interaction: DatabaseIntention,
   temporaryId: string,
   record: DatabaseRecordEntity,
   temporaryPageId?: string,
-): RecordInteraction {
+): DatabaseIntention {
   const map = (id: string | null) => (id === temporaryId ? record.id : id);
   return {
     ...interaction,

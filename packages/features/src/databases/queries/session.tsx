@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useRef, type PropsWithChildren } 
 
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { guardPendingDatabaseWrites } from "../mutations/beforeunload";
-import { disposeDatabaseController } from "../interactions/store";
+import { databaseController, disposeDatabaseController } from "../interactions/store";
 
 const DatabaseSessionContext = createContext<string | null>(null);
 
@@ -17,7 +17,7 @@ export type DbProviderProps = PropsWithChildren<{
   sessionId: string | null;
 }>;
 
-export function DbProvider({ children, queryClient, sessionId }: DbProviderProps) {
+export function DbProvider({ children, queryClient, sessionId, apiFetch }: DbProviderProps) {
   const previousSessionRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -32,8 +32,11 @@ export function DbProvider({ children, queryClient, sessionId }: DbProviderProps
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    return guardPendingDatabaseWrites(window);
-  }, []);
+    return guardPendingDatabaseWrites(
+      window,
+      databaseController(queryClient, sessionId ?? "public", apiFetch).commandState,
+    );
+  }, [apiFetch, queryClient, sessionId]);
 
   return (
     <DatabaseSessionContext.Provider value={sessionId ?? "public"}>

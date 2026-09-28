@@ -3,6 +3,7 @@ import type { ApiFetcher } from "../../shared/api-fetcher";
 import { databaseRecordEntitySchema, databaseBootstrapResponseSchema } from "../core/entities";
 import { databasePropertyEntitySchema } from "../core/entities";
 import { metadataEffectsForCommand } from "./metadata-command";
+import { databaseCommandPolicies } from "./command-policy";
 import type { DatabaseBootstrapResponse } from "../core/entities";
 import { metadataNeedsProjection, projectDatabaseMetadata, type MetadataEffect } from "./metadata";
 import type {
@@ -17,23 +18,18 @@ import {
   executeDatabaseCommand,
   type DatabaseCommandInput,
 } from "../mutations/execute";
-import {
-  beginPending,
-  endPending,
-  reportPendingError,
-  targetsForCommand,
-} from "../mutations/pending";
+import { DatabaseCommandState, targetsForCommand } from "../mutations/pending";
 import { invalidateDatabaseQueries } from "../mutations/invalidate";
 import {
   projectRecordInteractions,
   remapRecordIdentity,
   type RecordEffect,
-  type RecordInteraction,
+  type DatabaseIntention,
 } from "./model";
 
 type Job = {
   input: DatabaseCommandInput;
-  interaction: RecordInteraction;
+  interaction: DatabaseIntention;
   sources: string[];
   resources: string[];
   resolve: (ack: DatabaseCommandAck) => void;
@@ -45,7 +41,8 @@ type Window = { dataSourceId: string; sourceVersion: number | null };
 
 /** Session-owned intentions. QueryClient remains an unmodified server snapshot. */
 export class DatabaseController {
-  private snapshot: readonly RecordInteraction[] = [];
+  readonly commandState = new DatabaseCommandState();
+  private snapshot: readonly DatabaseIntention[] = [];
   private listeners = new Set<() => void>();
   private jobs = new Map<string, Job>();
   private windows = new Map<object, Window>();
@@ -70,11 +67,11 @@ export class DatabaseController {
       this.listeners.delete(listener);
     };
   };
-  private publish(interactions: readonly RecordInteraction[]) {
+  private publish(interactions: readonly DatabaseIntention[]) {
     this.snapshot = interactions;
     for (const listener of this.listeners) listener();
   }
-  private update(interaction: RecordInteraction) {
+  private update(interaction: DatabaseIntention) {
     this.publish(this.snapshot.map((item) => (item.id === interaction.id ? interaction : item)));
   }
   observe(key: object, window: Window) {
@@ -108,7 +105,9 @@ export class DatabaseController {
       input,
       [],
       undefined,
-      metadataEffectsForCommand(input, this.bootstrap(input.databaseId)),
+      databaseCommandPolicies[input.command.type].preview === "metadata"
+        ? metadataEffectsForCommand(input, this.bootstrap(input.databaseId))
+        : [],
     );
   }
 
@@ -141,11 +140,14 @@ export class DatabaseController {
     metadataEffects: MetadataEffect[] = [],
   ): Promise<DatabaseCommandAck> {
     if (this.disposed) return Promise.reject(new Error("Database session ended"));
+    const policy = databaseCommandPolicies[input.command.type];
+    if ((policy.scope === "source") !== !!input.dataSourceId)
+      return Promise.reject(new Error("Database command scope does not match its policy"));
     if (typeof navigator !== "undefined" && navigator.onLine === false)
       return Promise.reject(new OfflineError());
     const id = crypto.randomUUID();
     if (input.command.type === "database.create") input = { ...input, databaseId: id };
-    const interaction: RecordInteraction = { id, effects, metadataEffects, status: "queued" };
+    const interaction: DatabaseIntention = { id, effects, metadataEffects, status: "queued" };
     const sources = [
       ...new Set([
         ...(input.dataSourceId ? [input.dataSourceId] : []),
@@ -163,7 +165,7 @@ export class DatabaseController {
     if (input.command.type === "row.place" && input.command.source)
       resources.add(`host:${input.command.source.databaseId}`);
     const targets = targetsForCommand(input);
-    beginPending(targets);
+    this.commandState.begin(targets);
     const promise = new Promise<DatabaseCommandAck>((resolve, reject) => {
       this.jobs.set(id, {
         input,
@@ -173,7 +175,7 @@ export class DatabaseController {
         resolve,
         reject,
         temporaryId,
-        release: (error) => endPending(targets, error),
+        release: (error) => this.commandState.end(targets, error),
       });
     });
     this.publish([...this.snapshot, interaction]);
@@ -209,80 +211,6 @@ export class DatabaseController {
       }
     }
   }
-  private remapInput(input: DatabaseCommandInput): DatabaseCommandInput {
-    input = this.remapReferences(input);
-    const map = (id: string | null) => (id === null ? null : (this.identities.get(id) ?? id));
-    const mapValues = (values: Record<string, unknown>) =>
-      Object.fromEntries(
-        Object.entries(values).map(([key, value]) => [
-          key,
-          Array.isArray(value)
-            ? value.map((id) => (typeof id === "string" ? (this.pageIdentities.get(id) ?? id) : id))
-            : typeof value === "string"
-              ? (this.pageIdentities.get(value) ?? value)
-              : value,
-        ]),
-      );
-    const command = input.command;
-    if (command.type === "row.change")
-      return {
-        ...input,
-        command: {
-          ...command,
-          rowId: map(command.rowId)!,
-          ...(command.valuesByPropertyId
-            ? { valuesByPropertyId: mapValues(command.valuesByPropertyId) }
-            : {}),
-          ...(command.placement
-            ? {
-                placement: {
-                  afterRowId: map(command.placement.afterRowId),
-                  beforeRowId: map(command.placement.beforeRowId),
-                },
-              }
-            : {}),
-          ...(command.hierarchy
-            ? {
-                hierarchy: {
-                  ...command.hierarchy,
-                  parentRowId: map(command.hierarchy.parentRowId),
-                },
-              }
-            : {}),
-        },
-      };
-    if (command.type === "row.place")
-      return {
-        ...input,
-        command: {
-          ...command,
-          ...(command.pageId
-            ? { pageId: this.pageIdentities.get(command.pageId) ?? command.pageId }
-            : {}),
-          afterRowId: map(command.afterRowId),
-          beforeRowId: map(command.beforeRowId),
-          parentRowId: map(command.parentRowId),
-          ...(command.valuesByPropertyId
-            ? { valuesByPropertyId: mapValues(command.valuesByPropertyId) }
-            : {}),
-          ...(command.hierarchy
-            ? {
-                hierarchy: {
-                  ...command.hierarchy,
-                  parentRowId: map(command.hierarchy.parentRowId),
-                },
-              }
-            : {}),
-          ...(command.source
-            ? { source: { ...command.source, rowId: map(command.source.rowId)! } }
-            : {}),
-        },
-      };
-    if (command.type === "row.archive" || command.type === "row.restore")
-      return { ...input, command: { ...command, rowId: map(command.rowId)! } };
-    return input;
-  }
-
   private remapReferences<T>(value: T): T {
     if (typeof value === "string")
       return (this.identities.get(value) ?? this.pageIdentities.get(value) ?? value) as T;
@@ -298,11 +226,10 @@ export class DatabaseController {
   }
   private async save(job: Job) {
     // Freeze the remapped request before first delivery; retries use exactly this ID/body.
-    job.input = this.remapInput(job.input);
+    job.input = this.remapReferences(job.input);
     try {
       const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
         commandId: job.interaction.id,
-        trackPending: false,
       });
       if (this.disposed) return;
       for (const source of job.sources)
@@ -316,7 +243,7 @@ export class DatabaseController {
         if (!parsed.success) throw new DatabaseCommandUnconfirmedError(parsed.error);
         this.identities.set(createdProperty.id, parsed.data.id);
         this.identities.set(createdProperty.insert.propertyId, parsed.data.propertyId);
-        const remap = (interaction: RecordInteraction) => {
+        const remap = (interaction: DatabaseIntention) => {
           const next = this.remapReferences(interaction);
           return {
             ...next,
@@ -369,7 +296,7 @@ export class DatabaseController {
       if (error instanceof DatabaseCommandUnconfirmedError) {
         job.interaction = { ...job.interaction, status: "unconfirmed" };
         this.update(job.interaction);
-        reportPendingError(targetsForCommand(job.input), error);
+        this.commandState.report(targetsForCommand(job.input), error);
       } else {
         this.jobs.delete(job.interaction.id);
         this.publish(this.snapshot.filter(({ id }) => id !== job.interaction.id));
@@ -436,7 +363,10 @@ export class DatabaseController {
         )
         .catch((cause) => {
           if (!this.disposed)
-            reportPendingError([{ hostDatabaseId: host }], new DatabaseReconciliationError(cause));
+            this.commandState.report(
+              [{ hostDatabaseId: host }],
+              new DatabaseReconciliationError(cause),
+            );
         });
     }
   }
@@ -502,6 +432,7 @@ export class DatabaseController {
     this.bootstrapWindows.clear();
     this.identities.clear();
     this.pageIdentities.clear();
+    this.commandState.clear();
     this.publish([]);
   }
 }

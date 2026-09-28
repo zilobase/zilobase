@@ -89,6 +89,7 @@ export function metadataEffectsForCommand(
           kind: "property",
           id,
           dataSourceId: source.id,
+          placement: { afterId: command.afterPropertyId, beforeId: command.beforePropertyId },
           insert: {
             id,
             dataSourceId: source.id,
@@ -111,6 +112,25 @@ export function metadataEffectsForCommand(
         },
       ];
     }
+    case "view.move":
+      return [
+        {
+          ...base,
+          kind: "view",
+          id: command.viewId,
+          placement: { afterId: command.afterViewId, beforeId: command.beforeViewId },
+        },
+      ];
+    case "property.move":
+      return [
+        {
+          ...base,
+          kind: "property",
+          dataSourceId: input.dataSourceId ?? undefined,
+          id: command.propertyId,
+          placement: { afterId: command.afterPropertyId, beforeId: command.beforePropertyId },
+        },
+      ];
     default:
       return [];
   }

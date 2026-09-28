@@ -42,7 +42,7 @@ export {
   useUpdateDatabasePropertyValue,
   getDatabaseRowMoveAnchors,
 } from "./mutations/rows";
-export { useDatabaseEntityCommandState } from "./mutations/pending";
+export { useDatabaseEntityCommandState } from "./interactions/react";
 export { useDatabaseSessionId } from "./queries/session";
 export { DbProvider } from "./queries/session";
 export type { DbProviderProps } from "./queries/session";

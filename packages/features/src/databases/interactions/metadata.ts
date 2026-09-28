@@ -18,6 +18,7 @@ export type MetadataEffect = {
   propertyConfiguration?: ConfigurationChange[];
   insert?: DatabasePropertyEntity | DatabaseViewEntity | DataSourceEntity;
   remove?: boolean;
+  placement?: { afterId: string | null; beforeId: string | null };
 };
 export type MetadataIntention = {
   metadataEffects?: readonly MetadataEffect[];
@@ -82,7 +83,29 @@ export function projectDatabaseMetadata(
         const exists = entities.some(({ id }) => id === effect.id);
         const values =
           !exists && effect.insert ? [...entities, effect.insert as unknown as T] : entities;
-        return values.map((entity) => (entity.id === effect.id ? patch(entity) : entity));
+        let updated = values.map((entity) => (entity.id === effect.id ? patch(entity) : entity));
+        if (effect.placement) {
+          const moving = updated.find(({ id }) => id === effect.id);
+          if (!moving) return updated;
+          const belongs = (entity: T) =>
+            !effect.dataSourceId ||
+            (entity as { dataSourceId?: string }).dataSourceId === effect.dataSourceId;
+          const ordered = updated
+            .filter((entity) => belongs(entity) && entity.id !== effect.id)
+            .sort(
+              (left, right) =>
+                ((left as { position?: number }).position ?? 0) -
+                ((right as { position?: number }).position ?? 0),
+            );
+          const before = ordered.findIndex(({ id }) => id === effect.placement!.beforeId);
+          const after = ordered.findIndex(({ id }) => id === effect.placement!.afterId);
+          ordered.splice(before >= 0 ? before : after >= 0 ? after + 1 : ordered.length, 0, moving);
+          const positions = new Map(ordered.map(({ id }, position) => [id, position]));
+          updated = updated.map((entity) =>
+            positions.has(entity.id) ? { ...entity, position: positions.get(entity.id)! } : entity,
+          );
+        }
+        return updated;
       };
       switch (effect.kind) {
         case "database":

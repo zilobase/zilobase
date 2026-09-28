@@ -40,16 +40,4 @@ export const databaseLifecycleCommandSchema = z.discriminatedUnion("type", [
 export type DatabaseCreationCommand = z.infer<typeof databaseCreationCommandSchema>;
 export type DatabaseLifecycleCommand = z.infer<typeof databaseLifecycleCommandSchema>;
 
-export type DatabaseConfirmation = {
-  hosts: Readonly<Record<string, number>>;
-  sources: Readonly<Record<string, number>>;
-  /** Only the authenticated actor's private database revisions. */
-  actorDatabases: Readonly<Record<string, number>>;
-};
-
 export type DatabaseOperationStatus = "queued" | "saving" | "unconfirmed" | "committed";
-export type DatabaseIdentity = {
-  kind: "database" | "source" | "view" | "property" | "row" | "page";
-  id: string;
-};
-export type DatabaseIdentityMapping = { temporary: DatabaseIdentity; confirmed: DatabaseIdentity };

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { DatabaseRecordEntity } from "../core/entities";
-import { projectRecordInteractions, remapRecordIdentity, type RecordInteraction } from "./model";
+import { projectRecordInteractions, remapRecordIdentity, type DatabaseIntention } from "./model";
 
 const row = (id: string): DatabaseRecordEntity => ({
   id,
@@ -23,7 +23,7 @@ const row = (id: string): DatabaseRecordEntity => ({
   },
 });
 const scope = { dataSourceId: "source", sourceVersion: 1 };
-const move = (id: string, rowId: string, afterRowId: string | null): RecordInteraction => ({
+const move = (id: string, rowId: string, afterRowId: string | null): DatabaseIntention => ({
   id,
   status: "saving",
   effects: [{ dataSourceId: "source", rowId, placement: { afterRowId, beforeRowId: null } }],
@@ -57,7 +57,7 @@ test("acknowledgement retires per window, never by a sibling's freshness", () =>
 test("sparse changes preserve refreshed fields and sequence cell and group writes", () => {
   const first = move("one", "a", "b");
   first.effects = [{ ...first.effects[0]!, values: { status: "done" }, title: "moved" }];
-  const second: RecordInteraction = {
+  const second: DatabaseIntention = {
     id: "two",
     status: "queued",
     effects: [{ dataSourceId: "source", rowId: "a", values: { status: "open" } }],
@@ -72,7 +72,7 @@ test("sparse changes preserve refreshed fields and sequence cell and group write
 
 test("transfer projects both sources and remaps dependent anchors", () => {
   const temporary = { ...row("temp"), dataSourceId: "destination" };
-  const transfer: RecordInteraction = {
+  const transfer: DatabaseIntention = {
     id: "one",
     status: "unconfirmed",
     effects: [
@@ -99,7 +99,7 @@ test("a queued transfer retains its row identity but remaps a newly created page
   const pending = row("destination-temp");
   pending.pageId = "page-temp";
   pending.page.id = "page-temp";
-  const interaction: RecordInteraction = {
+  const interaction: DatabaseIntention = {
     id: "transfer",
     status: "queued",
     effects: [

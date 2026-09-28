@@ -100,3 +100,43 @@ test("linked hosts retire source effects by their own source revision, not anoth
   snapshot.dataSources[0]!.version = 2;
   assert.equal(projectDatabaseMetadata(snapshot, [intention]), snapshot);
 });
+
+test("view neighbor intentions compose before confirmation without rewriting cache positions", () => {
+  const snapshot = metadataSnapshot();
+  const first = snapshot.views[0]!;
+  snapshot.views = [
+    first,
+    { ...first, id: "second", position: 1 },
+    { ...first, id: "third", position: 2 },
+  ];
+  const projected = projectDatabaseMetadata(snapshot, [
+    {
+      metadataEffects: [
+        {
+          hostId: "host",
+          kind: "view",
+          id: "third",
+          placement: { beforeId: "view", afterId: null },
+        },
+      ],
+    },
+    {
+      metadataEffects: [
+        {
+          hostId: "host",
+          kind: "view",
+          id: "second",
+          placement: { beforeId: "view", afterId: "third" },
+        },
+      ],
+    },
+  ]);
+  assert.deepEqual(
+    [...projected.views].sort((a, b) => a.position - b.position).map(({ id }) => id),
+    ["third", "second", "view"],
+  );
+  assert.deepEqual(
+    snapshot.views.map(({ position }) => position),
+    [0, 1, 2],
+  );
+});
