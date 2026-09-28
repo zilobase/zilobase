@@ -80,6 +80,7 @@ async function loadModule(path) {
       sourcePath.includes("/features/calendar/") ||
       sourcePath.includes("/shared/components/calendar/") ||
       sourcePath.endsWith("/fixtures/database-kanban-moves.tsx") ||
+      sourcePath.endsWith("/support/demo-transport.ts") ||
       sourcePath.includes("/features/src/calendar-layout/")
         ? []
         : ["@zilobase/features"],

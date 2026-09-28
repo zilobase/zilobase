@@ -95,12 +95,12 @@ export function register({ assert, loadModule, test }) {
         runtime.NetworkUnavailableError,
       );
       runtime.installDemoTransport({
-        interceptMutation: () => ({ handled: true, value: "demo" }),
+        interceptRequest: () => ({ handled: true, value: "demo" }),
         applyReadOverlay: (_path, value) => value,
       });
       assert.equal(await runtime.apiFetch("/pages", { method: "POST" }), "demo");
       runtime.installDemoTransport({
-        interceptMutation: () => ({ handled: false }),
+        interceptRequest: () => ({ handled: false }),
         applyReadOverlay: (_path, value) => value,
       });
       globalThis.fetch = async () => new Response("denied", { status: 401 });

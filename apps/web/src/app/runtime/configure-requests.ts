@@ -1,12 +1,12 @@
 import { NetworkUnavailableError } from "@/platform/network/api";
 import { installRequestPolicy, type RequestObservation } from "@/platform/network/request-policy";
-import { applyDemoReadOverlay, interceptDemoMutation } from "@/features/demo/transport";
+import { applyDemoReadOverlay, interceptDemoRequest } from "@/features/demo/transport";
 
 /** Install before startup work or rendering can issue feature requests. */
 export function configureApplicationRequests() {
   installRequestPolicy({
     intercept(path, method, body) {
-      const demo = interceptDemoMutation(path, method, body);
+      const demo = interceptDemoRequest(path, method, body);
       if (demo.handled) return demo;
       return { handled: false };
     },

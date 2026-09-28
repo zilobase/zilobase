@@ -2,6 +2,7 @@ import type { PageDetail } from "@zilobase/features/pages";
 import type { UserSettings } from "@zilobase/features/user-settings";
 
 import { installDemoTransport } from "./transport";
+import { DemoDatabaseRuntime } from "./database-runtime";
 
 export const DEMO_SIGNUP_URL = "https://app.zilobase.com/signup";
 export const DEMO_GUARD_EVENT = "zilobase:demo-guard";
@@ -9,7 +10,7 @@ export const DEMO_GUARD_EVENT = "zilobase:demo-guard";
 const pageSnapshots = new Map<string, PageDetail>();
 const pagePatches = new Map<string, { name?: string; updatedAt: string }>();
 let settingsSnapshot: UserSettings | null = null;
-let mutationSequence = 1;
+const databaseRuntime = new DemoDatabaseRuntime(requestDemoGuard);
 
 type DemoCache = {
   getQueriesData: <T>(filters: {
@@ -68,16 +69,21 @@ export function requestDemoGuard() {
   return new DemoGuardError();
 }
 
-function interceptDemoMutation<T>(
+function interceptDemoRequest<T>(
   path: string,
   method: string,
   body: BodyInit | null | undefined,
 ): { handled: false } | { handled: true; value: T } {
-  if (!isHostedDemoRuntime() || method === "GET" || method === "HEAD") {
+  if (!isHostedDemoRuntime()) {
     return { handled: false };
   }
 
   const url = toLocalUrl(path);
+  if (method === "GET") {
+    const value = databaseRuntime.read(url);
+    return value === undefined ? { handled: false } : { handled: true, value: value as T };
+  }
+  if (method === "HEAD") return { handled: false };
   const payload = parseBody(body);
   if (
     method === "POST" &&
@@ -140,30 +146,8 @@ function interceptDemoMutation<T>(
     };
   }
 
-  const commandTarget = readDatabaseCommand(url.pathname, method, payload);
-  if (commandTarget) {
-    const eventId = `demo-local-${mutationSequence++}`;
-    return {
-      handled: true,
-      value: {
-        commandId: commandTarget.commandId,
-        event: {
-          actorId: "demo-user",
-          areas: commandTarget.areas,
-          changes: {},
-          commandId: commandTarget.commandId,
-          committedAt: new Date().toISOString(),
-          databaseId: commandTarget.databaseId,
-          dataSourceId: commandTarget.dataSourceId,
-          eventId,
-          protocolVersion: 2,
-          type: "database.mutation",
-          version: mutationSequence - 1,
-        },
-        result: null,
-      } as T,
-    };
-  }
+  const ack = method === "POST" ? databaseRuntime.command(url, payload) : undefined;
+  if (ack) return { handled: true, value: ack as T };
 
   throw requestDemoGuard();
 }
@@ -174,6 +158,9 @@ function applyDemoReadOverlay<T>(path: string, value: T): T {
   }
 
   const url = toLocalUrl(path);
+  databaseRuntime.capture(url, value);
+  const databaseRead = databaseRuntime.read(url);
+  if (databaseRead !== undefined) return databaseRead as T;
   const pageMatch = url.pathname.match(/^\/pages\/([^/]+)$/);
   if (pageMatch) {
     const pageId = decodeURIComponent(pageMatch[1]!);
@@ -195,33 +182,7 @@ function applyDemoReadOverlay<T>(path: string, value: T): T {
     return value;
   }
 
-  return applyPagePatches(value);
-}
-
-function readDatabaseCommand(pathname: string, method: string, payload: unknown) {
-  if (method !== "POST" || !isRecord(payload)) return null;
-  if (payload.protocolVersion !== 2 || typeof payload.commandId !== "string") return null;
-  const command = payload.command;
-  if (!isRecord(command) || typeof command.type !== "string") return null;
-  const source = pathname.match(/^\/databases\/([^/]+)\/data-sources\/([^/]+)\/commands$/);
-  const host = pathname.match(/^\/databases\/([^/]+)\/commands$/);
-  const match = source ?? host;
-  if (!match) return null;
-  const type = command.type;
-  return {
-    areas: type.startsWith("view.")
-      ? ["views"]
-      : type.startsWith("property.")
-        ? ["properties"]
-        : type === "database.update"
-          ? ["databases"]
-          : type.startsWith("dataSource.") || type.startsWith("template.")
-            ? ["dataSources"]
-            : ["records"],
-    commandId: payload.commandId,
-    databaseId: decodeURIComponent(match[1]!),
-    dataSourceId: source ? decodeURIComponent(source[2]!) : null,
-  };
+  return applyPagePatches(databaseRuntime.navigation(value));
 }
 
 function capturePageSnapshot(pageId: string) {
@@ -282,5 +243,5 @@ function clone<T>(value: T): T {
 
 installDemoTransport({
   applyReadOverlay: applyDemoReadOverlay,
-  interceptMutation: interceptDemoMutation,
+  interceptRequest: interceptDemoRequest,
 });

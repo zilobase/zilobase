@@ -9,6 +9,22 @@
 
 The browser demo transport overlays reads and intercepts selected mutations. Server demo modules define request identity, seed data and write guards. [App providers](../../../apps/web/src/app/providers/app-providers.tsx) install the demo cache once during module initialization, before rendering providers. Demo presentation does not import the app query client. App composition selects demo behavior. The [request classifier](../../../apps/server/src/features/demo/request.ts) requires the configured demo flag and matching header; feature operations consume the resulting auth method. The [demo transport](../../../apps/web/src/features/demo/transport.ts) stays behind app-installed runtime policy rather than selecting itself inside authentication.
 
+The [local database adapter](../../../apps/web/src/features/demo/database-runtime.ts)
+implements supported command receipts and subsequent bootstrap/window reads in browser
+memory. It shares the normal controller, contracts, sparse projections and view evaluator;
+it does not patch QueryClient or return synthetic success without changed read state.
+Identical command IDs replay the same receipt; different reuse is rejected. Source and
+host revisions advance with local changes, and stale hashes/windows receive conflicts.
+Edited reads are intercepted before network access, including locally changed filter/sort
+hashes. Navigation overlays use the same local metadata.
+
+Supported operations are existing-row moves, titles and values; existing database/source,
+view and property metadata updates; and view/property ordering. Source writes require a
+complete unfiltered source snapshot. Query-changing view settings require complete source
+data. Creation, lifecycle/access changes, hierarchy setup, type conversion and other
+server-derived operations are guarded explicitly. Partial or filtered data never produces
+a false save confirmation. Local state lasts only for this page load.
+
 ## Authorization and persistence
 
 Demo state must remain separate from ordinary authenticated writes. Seed data uses existing content schema; request/write guards enforce the demo behavior on the server.
