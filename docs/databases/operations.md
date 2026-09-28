@@ -31,8 +31,10 @@ views may persist 10, 25, 50, or 100. `Load more` extends the requested window.
 A record-window snapshot binds the host version, source version, and view
 configuration revision. `409 WINDOW_STALE` means that membership or ordering
 may have changed. The client retries that window once without the snapshot;
-the user's own edit stays visible as local draft state until POST plus refetch
-finishes.
+the user's own edit stays visible as a controller intention until POST plus refetch
+finishes. Requests also require `expectedQueryHash`; `409 VIEW_QUERY_CHANGED`
+means the saved filter/sort query differs from that cache identity. Refresh bootstrap
+metadata and select the confirmed hash rather than retrying the obsolete hash.
 
 Every write uses a protocol-v2 command with a caller-generated `commandId`.
 Replaying the same ID and identical request returns the stored acknowledgement
@@ -64,18 +66,18 @@ marker produces `resetRequired` on the server feed; the poke-and-refetch client
 converges through its following GET instead. Oversized changes use
 `requiresReset` instead of publishing a truncated changeset.
 
-There is no durable browser command queue or offline replay. Writes serialize
-through tiny keyed queues: ordering and structural commands per source, view
-commands per host, and cell writes coalesced per source/row/property (one in
-flight plus the latest queued value) so concurrent edits to different cells
-stay parallel.
+There is no durable browser command queue or offline replay. One session controller
+owns intentions, receipt recovery and conflict scheduling. Source writes share
+source lanes, host metadata forms a barrier over its linked sources, and unrelated
+sources can proceed concurrently. Favorites use a separate actor/host revision on
+the server and project privately over navigation snapshots.
 
 The toolbar shows `Saving…` while commands are pending and asks the browser to
 confirm reload/close during that interval. Offline edits fail without entering
 a queue. `Save failed` means to correct or repeat the edit. `Save unconfirmed`
-means a transport failure left the result uncertain: reload to check the server
-before repeating an operation such as creating a page. The client first retries
-an interrupted request once with the same command ID to recover its receipt.
+means a transport failure left the result uncertain: use receipt-safe retry, which
+preserves the original command ID and body, instead of repeating an operation such
+as creating a page. The client first retries an interrupted request once automatically.
 `Saved — reload to refresh` means the server confirmed the write but the client
 could not reconcile its projection; do not repeat that write.
 
@@ -147,6 +149,22 @@ Run the core acceptance suite before release:
 ```sh
 npm run test:databases:acceptance
 ```
+
+For real controller persistence checks, Docker must be running and the
+`postgres:17.10-alpine` image must already be available locally (the runner does not
+pull images):
+
+```sh
+npm run test:databases:isolated
+```
+
+This command creates a uniquely named PostgreSQL container on a random loopback
+port, applies production migrations to an empty tmpfs-backed database, and checks
+receipt replay, actor isolation, concurrent favorites, query identity and compound
+transaction rollback. It removes the test container afterward. It does not connect
+to or reset the development database. The inner verification script rejects missing
+URLs, non-loopback hosts, other database names and nonempty databases. This does not
+replace a deployed upgrade test or full-browser verification.
 
 The full matrix additionally needs explicit previous/current self-host images
 and deployable Cloudflare production configuration:

@@ -215,6 +215,11 @@ and transient interaction state.
 
 Start with [the existing tests or model](../../../apps/server/src/features/databases/http/routes.test.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
 
+The isolated PostgreSQL suite applies the complete migration set and exercises real
+receipt transactions, actor-scoped navigation reads, compound writes, rollback and
+linked-host lifecycle revisions. See the [operations runbook](../../../docs/databases/operations.md#deployment-and-verification)
+for the disposable-container command and prerequisites.
+
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
 
 The table [model](../../../apps/web/src/features/databases/views/table/model/database-table-model.ts) owns drop-target identity retention, including sub-item parent changes. List [row presentation](../../../apps/web/src/features/databases/views/list/components/list-row-presentation.ts) derives drag indicators and task completion labels. Their tests cover unchanged references, internal/external drag placement and parent nullability while controllers retain drag lifecycle and mutations.

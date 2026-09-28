@@ -138,9 +138,11 @@ pageBrowseRoutes.get("/", async (c) => {
         .select({
           ...getTableColumns(database),
           // One statement observes the private favorite and its revision together.
-          favoriteValue: sql<boolean>`exists (select 1 from ${favorite} where ${favorite.databaseId} = ${database.id} and ${favorite.userId} = ${user.id})`,
+          // Keep the outer table as an explicit SQL identifier: select-field
+          // normalization strips PgColumn qualifiers in single-table queries.
+          favoriteValue: sql<boolean>`exists (select 1 from ${favorite} where ${favorite.databaseId} = ${database}.${sql.identifier("id")} and ${favorite.userId} = ${user.id})`,
           actorRevision:
-            sql<number>`coalesce((select ${databaseActorState.revision} from ${databaseActorState} where ${databaseActorState.databaseId} = ${database.id} and ${databaseActorState.actorId} = ${user.id}), 0)`.mapWith(
+            sql<number>`coalesce((select ${databaseActorState.revision} from ${databaseActorState} where ${databaseActorState.databaseId} = ${database}.${sql.identifier("id")} and ${databaseActorState.actorId} = ${user.id}), 0)`.mapWith(
               Number,
             ),
         })
