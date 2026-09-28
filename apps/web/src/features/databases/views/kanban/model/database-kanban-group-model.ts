@@ -6,7 +6,10 @@ import {
 import { formatDatabaseDateValue } from "../../../schema/model/database-date-config";
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import type { DatabasePropertyConfig } from "../../model/database-view-config";
-import type { DatabasePropertyListItem, DatabaseSelectOption } from "./database-kanban-config";
+import type {
+  DatabasePropertyListItem,
+  DatabaseSelectOption,
+} from "../../model/database-group-config";
 
 export type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical";
 export type DatabaseRow = SortableDatabaseItem;

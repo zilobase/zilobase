@@ -178,13 +178,7 @@ export function targetsForCommand(input: {
       { dataSourceId: source.dataSourceId, rowId: source.rowId },
     );
   }
-  if (command.type === "cell.set") {
-    const rowId = (command as { rowId?: unknown }).rowId;
-    const propertyId = (command as { propertyId?: unknown }).propertyId;
-    if (typeof rowId === "string" && typeof propertyId === "string") {
-      targets.push({ dataSourceId, propertyId, rowId });
-    }
-  } else if ("propertyId" in command && typeof command.propertyId === "string") {
+  if ("propertyId" in command && typeof command.propertyId === "string") {
     targets.push({ dataSourceId, propertyId: command.propertyId });
   }
   return targets;

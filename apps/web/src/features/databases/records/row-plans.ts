@@ -3,9 +3,9 @@ import type { DatabaseProperty, DatabaseRow } from "@zilobase/features/databases
 import { isSelectLikePropertyType } from "../schema/model/property-defaults";
 import { serializePropertyValue } from "../schema/property-values";
 import {
-  canUpdateKanbanGroupProperty,
+  canUpdateGroupProperty,
   type DatabasePropertyListItem,
-} from "../views/kanban/model/database-kanban-config";
+} from "../views/model/database-group-config";
 
 export type NewRowPropertyValue = {
   propertyId: string;
@@ -34,7 +34,7 @@ export function getNewRowGroupSetup(
     return { propertyValues: [], title: groupValue };
   }
 
-  if (!canUpdateKanbanGroupProperty(groupProperty)) {
+  if (!canUpdateGroupProperty(groupProperty)) {
     return { propertyValues: [], title: "Untitled" };
   }
 
@@ -65,7 +65,7 @@ export function getDraggedRowGroupSetup(
     };
   }
 
-  if (!canUpdateKanbanGroupProperty(groupProperty)) {
+  if (!canUpdateGroupProperty(groupProperty)) {
     return { propertyValues: [], title: "Untitled" };
   }
 

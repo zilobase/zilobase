@@ -25,7 +25,7 @@ import type { DatabasePropertyValue } from "../../schema/property-values";
 import type {
   DatabasePropertyListItem,
   DatabaseSelectOption,
-} from "../kanban/model/database-kanban-config";
+} from "../model/database-group-config";
 import type { DatabaseSearchableMenuOption } from "../menu-option-contracts";
 import type {
   DatabaseActiveFilter,
@@ -146,7 +146,6 @@ export type DatabaseViewProviderValue = {
   databasePageId?: string | null;
   databaseWorkspaceId?: string;
   realtimeEnabled?: boolean;
-  recordWindowVersion?: number | null;
   deleteDatabaseView: (view: DatabaseViewTab, options?: { deleteDataSource?: boolean }) => void;
   duplicateDatabaseView: (view: DatabaseViewTab) => void;
   draftDatabaseTitle: string;
@@ -297,7 +296,6 @@ const databaseDataKeys = [
   "properties",
   "propertyValuesByKey",
   "realtimeEnabled",
-  "recordWindowVersion",
   "sortFieldOptions",
   "sortedItems",
   "subItemChildRowIdsByParentId",

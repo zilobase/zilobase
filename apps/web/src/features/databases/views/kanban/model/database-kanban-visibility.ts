@@ -1,4 +1,4 @@
-import type { DatabasePropertyListItem } from "./database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 import { getPropertyHidden, getSubItemRelationRole } from "../../model/database-view-config";
 
 const defaultKanbanVisiblePropertyCount = 3;

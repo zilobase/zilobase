@@ -1,9 +1,9 @@
 import type { DatabaseTableGroupSection } from "../../../interactions/database-table-group-sections";
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import {
-  canCreateRowInKanbanGroup,
+  canCreateRowInGroup,
   type DatabasePropertyListItem,
-} from "../../kanban/model/database-kanban-config";
+} from "../../model/database-group-config";
 
 export const TIMELINE_ROW_HEIGHT = 32;
 export const TIMELINE_GROUP_HEADER_HEIGHT = 40;
@@ -138,7 +138,7 @@ function buildGroupRows({
   rows.push({ kind: "name-header", sectionId: section.id });
   rows.push(...section.rows.map((item): TimelineViewRow => ({ item, kind: "item" })));
 
-  if (editable && !section.isEmpty && canCreateRowInKanbanGroup(groupProperty)) {
+  if (editable && !section.isEmpty && canCreateRowInGroup(groupProperty)) {
     rows.push({ kind: "new-page", section });
   }
 

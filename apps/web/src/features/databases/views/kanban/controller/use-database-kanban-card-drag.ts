@@ -13,14 +13,18 @@ import {
 } from "../../../interactions/database-row-drag";
 import { isInteractiveDatabaseCardTarget } from "../../../interactions/database-card-drag-target";
 import {
-  canMoveRowsAcrossKanbanGroups,
+  canMoveRowsAcrossGroups,
   type DatabasePropertyListItem,
-} from "../model/database-kanban-config";
+} from "../../model/database-group-config";
 import {
   getKanbanCardPreview,
   getKanbanExternalDropPosition,
 } from "../model/database-kanban-card-drag";
-import { getKanbanMove, type KanbanMove, type KanbanMoveRow } from "../model/database-kanban-moves";
+import {
+  getGroupedRecordMove,
+  type RecordDrop,
+  type RecordDropRow,
+} from "../../model/database-record-drop";
 import { useKanbanGeometry } from "./use-kanban-geometry";
 
 type DragOption = { id: string; groupValue: string };
@@ -32,9 +36,9 @@ type DraggedCard = {
 };
 type DropTarget = { optionId: string; targetIndex: number };
 
-/** Native drag lifecycle and previews only; persistence belongs to useKanbanMoves. */
+/** Native drag lifecycle and previews only; persistence belongs to useRecordDrops. */
 export function useDatabaseKanbanCardDrag<
-  Row extends KanbanMoveRow,
+  Row extends RecordDropRow,
   Option extends DragOption,
 >(input: {
   addDraggedPageRow: (
@@ -51,7 +55,7 @@ export function useDatabaseKanbanCardDrag<
   groupProperty: DatabasePropertyListItem | null;
   options: Option[];
   propertyValuesByKey: Record<string, string | string[]>;
-  submitMove: (move: KanbanMove) => void;
+  submitMove: (move: RecordDrop) => void;
 }) {
   const geometry = useKanbanGeometry(input);
   const dragFrame = useRef<number | null>(null);
@@ -97,7 +101,7 @@ export function useDatabaseKanbanCardDrag<
   const getMove = (target: DropTarget, card: DraggedCard | null, override?: Option) => {
     const option = override ?? input.options.find(({ id }) => id === target.optionId);
     if (!card || !option || !input.groupProperty) return null;
-    return getKanbanMove({
+    return getGroupedRecordMove({
       rows: input.allRows,
       targetRows: input.getOptionItems(option),
       rowId: card.rowId,
@@ -108,7 +112,7 @@ export function useDatabaseKanbanCardDrag<
       propertyValuesByKey: input.propertyValuesByKey,
     });
   };
-  const acceptMove = (move: KanbanMove | null) => {
+  const acceptMove = (move: RecordDrop | null) => {
     if (!move) return;
     manualPlacement.request(() => input.submitMove(move));
   };
@@ -186,8 +190,7 @@ export function useDatabaseKanbanCardDrag<
     const card = draggedCardRef.current;
     if (!card) return hasDatabasePageDragPayload(event.dataTransfer);
     return (
-      card.sourceGroupValue === option.groupValue ||
-      canMoveRowsAcrossKanbanGroups(input.groupProperty)
+      card.sourceGroupValue === option.groupValue || canMoveRowsAcrossGroups(input.groupProperty)
     );
   };
   const dragOver = (option: Option, event: DragEvent<HTMLElement>) => {

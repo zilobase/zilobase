@@ -516,41 +516,6 @@ async function changeRow(
   };
 }
 
-async function setCell(
-  context: DatabaseCommandContext,
-  command: Extract<DataSourceCommand, { type: "cell.set" }>,
-): Promise<DatabaseCommandDispatchResult<DatabaseRecordEntity>> {
-  const source = await sourceRecord(context);
-  const [row] = await context.transaction
-    .select({ id: databaseRow.id, pageId: databaseRow.pageId })
-    .from(databaseRow)
-    .where(
-      and(
-        eq(databaseRow.id, command.rowId),
-        eq(databaseRow.dataSourceId, source.id),
-        isNull(databaseRow.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!row) throw new ServiceMutationError("Row not found", 404);
-  await propertiesForValues(context, source, { [command.propertyId]: command.value });
-  const now = new Date();
-  await writeValues(context, row.pageId, { [command.propertyId]: command.value }, now);
-  await context.transaction
-    .update(databaseRow)
-    .set({
-      lastEditedById: context.actorId,
-      updatedAt: now,
-    })
-    .where(eq(databaseRow.id, row.id));
-  await context.transaction.update(page).set({ updatedAt: now }).where(eq(page.id, row.pageId));
-  const record = await getDatabaseRecordEntity(context.transaction, source.id, row.id);
-  return {
-    mutations: await mutationForHosts(context, record, { records: [record] }),
-    result: record,
-  };
-}
-
 async function setRowArchived(
   context: DatabaseCommandContext,
   command: Extract<DataSourceCommand, { type: "row.archive" | "row.restore" }>,
@@ -642,7 +607,7 @@ async function setRowArchived(
   };
 }
 
-export async function dispatchRowOrCellCommand(
+export async function dispatchRecordCommand(
   context: DatabaseCommandContext,
   command: DataSourceCommand,
 ) {
@@ -654,8 +619,6 @@ export async function dispatchRowOrCellCommand(
     case "row.archive":
     case "row.restore":
       return setRowArchived(context, command);
-    case "cell.set":
-      return setCell(context, command);
     default:
       return null;
   }

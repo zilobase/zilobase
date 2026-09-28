@@ -1,23 +1,11 @@
-import { serializePropertyValue } from "../../../schema/property-values";
-import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values";
+import { getGroupedRecordMove, type RecordDrop } from "../../model/database-record-drop";
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import {
-  getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getReorderedRowIds,
 } from "../../../interactions/database-row-drag";
-import {
-  canUpdateKanbanGroupProperty,
-  type DatabasePropertyListItem,
-} from "../../kanban/model/database-kanban-config";
+import { type DatabasePropertyListItem } from "../../model/database-group-config";
 import type { TimelineGroupSection } from "./database-timeline-rows";
-
-export type TimelineRowMove = {
-  groupPropertyId?: string;
-  groupValue?: unknown;
-  rowId: string;
-  rowIds: string[];
-};
 
 export type TimelineRowMoveInput = {
   draggedRowId: string | null;
@@ -49,7 +37,7 @@ export function getTimelineRowMove({
   rowsById,
   sortedItems,
   visibleRows,
-}: TimelineRowMoveInput): TimelineRowMove | null {
+}: TimelineRowMoveInput): RecordDrop | null {
   if (draggedRowId === null || dropTargetIndex === null) return null;
 
   if (!isGrouped) {
@@ -57,7 +45,15 @@ export function getTimelineRowMove({
       ? getFilteredReorderedRowIds(items, sortedItems, draggedRowId, dropTargetIndex)
       : getReorderedRowIds(isSorted ? sortedItems : items, draggedRowId, dropTargetIndex);
 
-    return rowIds ? { rowId: draggedRowId, rowIds } : null;
+    const row = rowsById.get(draggedRowId);
+    if (!rowIds || !row) return null;
+    const index = rowIds.indexOf(draggedRowId);
+    return {
+      rowId: draggedRowId,
+      pageId: row.pageId,
+      afterRowId: rowIds[index - 1] ?? null,
+      beforeRowId: rowIds[index + 1] ?? null,
+    };
   }
 
   const sourceSection = groupSectionByRowId.get(draggedRowId);
@@ -73,41 +69,17 @@ export function getTimelineRowMove({
     groupSectionByRowId,
   );
 
-  if (sourceSection.id === targetSection.id) {
-    const rowIds = getFilteredReorderedRowIds(
-      items,
-      targetSection.rows,
-      draggedRowId,
-      localTargetIndex,
-    );
-    return rowIds ? { rowId: draggedRowId, rowIds } : null;
-  }
-
-  if (!groupProperty || !canUpdateKanbanGroupProperty(groupProperty)) {
-    return null;
-  }
-
-  const draggedRow = rowsById.get(draggedRowId);
-  if (!draggedRow) return null;
-
-  const rowIds =
-    getAnchoredReorderedRowIds(items, draggedRowId, targetSection.rows, localTargetIndex) ??
-    items.map((row) => row.id);
-  const currentValue =
-    propertyValuesByKey[`${draggedRow.pageId}:${groupProperty.property.id}`] ?? "";
-  const nextValue = getDatabaseGroupMoveValue({
-    currentValue,
-    propertyType: groupProperty.property.type,
+  if (!groupProperty) return null;
+  return getGroupedRecordMove({
+    rows: items,
+    targetRows: targetSection.rows,
+    rowId: draggedRowId,
+    targetIndex: localTargetIndex,
+    property: groupProperty,
+    propertyValuesByKey,
     sourceGroupValue: sourceSection.groupValue,
     targetGroupValue: targetSection.groupValue,
   });
-
-  return {
-    groupPropertyId: groupProperty.property.id,
-    groupValue: serializePropertyValue(groupProperty.property.type, nextValue),
-    rowId: draggedRowId,
-    rowIds,
-  };
 }
 
 export function indexTimelineGroupSections(sections: TimelineGroupSection[]) {

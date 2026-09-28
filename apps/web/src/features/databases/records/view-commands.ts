@@ -13,9 +13,9 @@ import type { DatabaseViewData } from "../views/model/database-controller-state"
 
 import { defaultStatusOption } from "../schema/model/property-defaults";
 import {
-  getKanbanGroupPropertyId,
+  getGroupPropertyId,
   type DatabasePropertyListItem,
-} from "../views/kanban/model/database-kanban-config";
+} from "../views/model/database-group-config";
 import { getDefaultKanbanHiddenPropertyIds } from "../views/kanban/model/database-kanban-visibility";
 import {
   ganttMoveToDateValue,
@@ -717,7 +717,7 @@ export function getDatabaseViewCommands({
 
       if (isKanbanView) {
         const currentGroupPropertyId =
-          getKanbanGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null;
+          getGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null;
         const hiddenPropertyIds = new Set(
           hasViewHiddenPropertyIds(currentConfig)
             ? getViewHiddenPropertyIds(currentConfig)
@@ -900,7 +900,7 @@ export function getDatabaseViewCommands({
       if (type === "timeline") {
         ensureTimelineDatePropertyId((datePropertyId) => {
           const groupPropertyId =
-            getKanbanGroupPropertyId(activeView.config) ??
+            getGroupPropertyId(activeView.config) ??
             getTimelineGroupPropertyId(properties) ??
             undefined;
 
@@ -1075,7 +1075,7 @@ export function getDatabaseViewCommands({
           : isKanbanView
             ? getDefaultKanbanHiddenPropertyIds(
                 properties,
-                getKanbanGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null,
+                getGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null,
               )
             : properties
                 .filter((property) => getPropertyHidden(property.property.config))

@@ -2,7 +2,7 @@ import { CalendarPlus } from "@/shared/components/icons";
 import { Button } from "@/shared/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { getDatabasePropertyType } from "../../../schema/property-catalog";
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 
 export function DatabaseTimelineSetup({
   configuredDatePropertyId,

@@ -2,17 +2,15 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import {
   databaseBootstrapResponseSchema,
-  databaseRecordWindowResponseSchema,
   type DatabaseBootstrapResponse,
   type DatabasePropertyEntity,
-  type DatabaseRecordWindowResponse,
 } from "../core/entities";
 import { databaseQueryRoot } from "../queries/keys";
 import { invalidateDatabaseQueries } from "./invalidate";
 import { findDataSourceBootstrap } from "./scope";
 
 /**
- * Targeted optimistic cache updates for database mutations.
+ * Targeted optimistic bootstrap updates for metadata mutations.
  *
  * The poke-and-refetch client converges through POST + GET, which leaves a
  * visible stale window on production latency. These helpers patch the
@@ -139,89 +137,6 @@ export function firstCachedDataSourceId(
     }
   }
   return null;
-}
-
-function patchWindowRecords(
-  data: unknown,
-  patch: (
-    records: DatabaseRecordWindowResponse["records"],
-  ) => DatabaseRecordWindowResponse["records"] | null,
-): { changed: boolean; next: unknown } {
-  const direct = databaseRecordWindowResponseSchema.safeParse(data);
-  if (direct.success) {
-    const records = patch(direct.data.records);
-    if (!records) return { changed: false, next: data };
-    return {
-      changed: true,
-      next: { ...direct.data, records },
-    };
-  }
-  if (
-    data &&
-    typeof data === "object" &&
-    "pages" in data &&
-    Array.isArray((data as { pages?: unknown }).pages)
-  ) {
-    const holder = data as { pages: unknown[] } & Record<string, unknown>;
-    let changed = false;
-    const pages = holder.pages.map((page) => {
-      const parsed = databaseRecordWindowResponseSchema.safeParse(page);
-      if (!parsed.success) return page;
-      const records = patch(parsed.data.records);
-      if (!records) return page;
-      changed = true;
-      return { ...parsed.data, records };
-    });
-    if (!changed) return { changed: false, next: data };
-    return { changed: true, next: { ...holder, pages } };
-  }
-  return { changed: false, next: data };
-}
-
-/** Optimistically set one cell value in every cached window holding the row. */
-export function patchCachedCellValue(
-  queryClient: QueryClient,
-  sessionId: string,
-  hostDatabaseId: string,
-  input: {
-    dataSourceId?: string;
-    propertyId: string;
-    rowId: string;
-    value: unknown;
-  },
-): OptimisticRollback {
-  const previous = hostQueryEntries(queryClient, sessionId, hostDatabaseId);
-  const now = new Date().toISOString();
-  for (const { data, queryKey } of previous) {
-    const { changed, next } = patchWindowRecords(data, (records) => {
-      let recordChanged = false;
-      const nextRecords = records.map((record) => {
-        if (record.id !== input.rowId) return record;
-        if (input.dataSourceId && record.dataSourceId !== input.dataSourceId) {
-          return record;
-        }
-        recordChanged = true;
-        const existing = record.valuesByPropertyId[input.propertyId];
-        return {
-          ...record,
-          valuesByPropertyId: {
-            ...record.valuesByPropertyId,
-            [input.propertyId]: {
-              createdAt: existing?.createdAt ?? now,
-              id: existing?.id ?? `${record.id}:${input.propertyId}`,
-              pageId: existing?.pageId ?? record.pageId,
-              propertyId: input.propertyId,
-              updatedAt: now,
-              value: input.value,
-            },
-          },
-        };
-      });
-      return recordChanged ? nextRecords : null;
-    });
-    if (changed) queryClient.setQueryData(queryKey, next);
-  }
-  return restoreEntries(queryClient, previous);
 }
 
 function patchBootstraps(

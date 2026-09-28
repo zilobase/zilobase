@@ -267,9 +267,25 @@ test("failed insertion removes its dependent gestures, without dropping unrelate
     const rejected = assert.rejects(creation, /forbidden/);
     const dependent = h.submit("temporary");
     const dependentRejected = assert.rejects(dependent, /forbidden/);
+    const child = h.store.submit(
+      {
+        databaseId: "host",
+        dataSourceId: "source",
+        command: {
+          type: "row.place",
+          afterRowId: "temporary",
+          beforeRowId: null,
+          parentRowId: null,
+        },
+      },
+      [{ dataSourceId: "source", rowId: "child", record: record("child") }],
+      "child",
+    );
+    const childRejected = assert.rejects(child, /forbidden/);
+    const grandchildRejected = assert.rejects(h.submit("child"), /forbidden/);
     const unrelated = h.submit("other");
     h.requests[0]!.reject(Object.assign(new Error("forbidden"), { status: 403 }));
-    await Promise.all([rejected, dependentRejected]);
+    await Promise.all([rejected, dependentRejected, childRejected, grandchildRejected]);
     await tick();
     assert.equal(h.requests.length, 2);
     assert.equal(JSON.parse(h.requests[1]!.body).command.rowId, "other");

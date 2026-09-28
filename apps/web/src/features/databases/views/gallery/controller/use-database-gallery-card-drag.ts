@@ -1,5 +1,5 @@
 import { useManualRecordPlacement } from "../../state/manual-record-placement";
-import { getKanbanMove } from "../../kanban/model/database-kanban-moves";
+import { getGroupedRecordMove } from "../../model/database-record-drop";
 import { useCallback, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -22,7 +22,7 @@ import {
 } from "../../../interactions/database-row-drag";
 import { isInteractiveDatabaseCardTarget } from "../../../interactions/database-card-drag-target";
 import type { DatabaseTableGroupSection } from "../../../interactions/database-table-group-sections";
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 
 type GallerySection = DatabaseTableGroupSection<SortableDatabaseItem>;
 
@@ -165,7 +165,7 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
       event.stopPropagation();
       const groupedMove =
         section && input.groupProperty
-          ? getKanbanMove({
+          ? getGroupedRecordMove({
               rows: input.items,
               targetRows: anchorRows,
               rowId: draggedRowId,

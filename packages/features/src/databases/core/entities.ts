@@ -422,15 +422,6 @@ const rowStateCommandSchema = z.discriminatedUnion("type", [
   z.object({ rowId: entityIdSchema, type: z.literal("row.restore") }).strict(),
 ]);
 
-const cellSetCommandSchema = z
-  .object({
-    propertyId: entityIdSchema,
-    rowId: entityIdSchema,
-    type: z.literal("cell.set"),
-    value: z.unknown(),
-  })
-  .strict();
-
 export const dataSourceCommandSchema = z.discriminatedUnion("type", [
   dataSourceUpdateCommandSchema,
   propertyCreateCommandSchema,
@@ -443,7 +434,6 @@ export const dataSourceCommandSchema = z.discriminatedUnion("type", [
   rowPlaceCommandSchema,
   changeRowCommandSchema,
   ...rowStateCommandSchema.options,
-  cellSetCommandSchema,
 ]);
 export type DataSourceCommand = z.infer<typeof dataSourceCommandSchema>;
 

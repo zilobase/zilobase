@@ -103,7 +103,17 @@ export function remapRecordIdentity(
     effects: interaction.effects.map((effect) => ({
       ...effect,
       rowId: map(effect.rowId)!,
-      ...(effect.record?.id === temporaryId ? { record } : {}),
+      ...(effect.record?.id === temporaryId
+        ? { record }
+        : effect.record && temporaryPageId && effect.record.pageId === temporaryPageId
+          ? {
+              record: {
+                ...effect.record,
+                pageId: record.pageId,
+                page: { ...effect.record.page, id: record.pageId },
+              },
+            }
+          : {}),
       ...(effect.values && temporaryPageId
         ? {
             values: Object.fromEntries(

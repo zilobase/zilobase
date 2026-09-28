@@ -41,10 +41,9 @@ export function register({ assert, loadModule, test }) {
         JSON.stringify({
           commandId: "demo-command",
           command: {
-            propertyId: "demo-status",
             rowId: "demo-row",
-            type: "cell.set",
-            value: "In progress",
+            type: "row.change",
+            valuesByPropertyId: { "demo-status": "In progress" },
           },
           protocolVersion: 2,
         }),

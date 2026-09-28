@@ -12,16 +12,16 @@ import {
   type ZilobaseFeaturesConfig,
 } from "../../../../../packages/features/src/shared/context";
 import { DbProvider } from "../../../../../packages/features/src/databases/queries/session";
-import { useKanbanMoves } from "../../../src/features/databases/views/kanban/controller/use-kanban-moves";
+import { useRecordDrops } from "../../../src/features/databases/views/controller/use-record-drop";
 import { useDatabaseKanbanCardDrag } from "../../../src/features/databases/views/kanban/controller/use-database-kanban-card-drag";
 import { buildKanbanBoard } from "../../../src/features/databases/views/kanban/model/database-kanban-board";
 import type {
   DatabaseRow,
   KanbanGroupOption,
 } from "../../../src/features/databases/views/kanban/model/database-kanban-group-model";
-import type { DatabasePropertyListItem } from "../../../src/features/databases/views/kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../../src/features/databases/views/model/database-group-config";
 
-export function mountKanbanMoves(container: HTMLElement) {
+export function mountRecordDrops(container: HTMLElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false, gcTime: Infinity },
@@ -88,7 +88,7 @@ export function mountKanbanMoves(container: HTMLElement) {
     id: "status",
     property: { id: "status", type: "status" },
   } as DatabasePropertyListItem;
-  let moves!: ReturnType<typeof useKanbanMoves> & {
+  let moves!: ReturnType<typeof useRecordDrops> & {
     rows: DatabaseRow[];
     visibleRows: DatabaseRow[];
     propertyValuesByKey: Record<string, string>;
@@ -133,7 +133,7 @@ export function mountKanbanMoves(container: HTMLElement) {
       dataSourceId: "source",
       sourceVersion: version,
     });
-    const actions = useKanbanMoves({ databaseId: "source", hostDatabaseId: "host" });
+    const actions = useRecordDrops({ databaseId: "source", hostDatabaseId: "host" });
     const projectedRows = projected.map((record, position) => ({ ...record, position }));
     moves = {
       ...actions,

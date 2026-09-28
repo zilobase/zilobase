@@ -5,7 +5,7 @@ import { getColorTokenBadgeClassName, getColorTokenDotClassName } from "@/shared
 
 import { databaseNameColumnDefaultWidth } from "../../model/column-dimensions";
 import { DatabasePageLink } from "../../../interactions/database-page-link";
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 import { DatabaseCellContent } from "../../components/database-cell-content";
 import type { TimelineViewRow } from "../model/database-timeline-rows";
 

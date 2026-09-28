@@ -22,8 +22,8 @@ import { useInlineDatabaseScroll } from "../../../interactions/use-inline-databa
 import {
   type DatabasePropertyListItem,
   canCreateKanbanGroup,
-  isOptionBackedKanbanGroupProperty,
-} from "../model/database-kanban-config";
+  isOptionBackedGroupProperty,
+} from "../../model/database-group-config";
 import {
   useDatabaseActionsContext,
   useDatabaseDataContext,
@@ -33,7 +33,7 @@ import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-s
 import { NameColumnGlyph } from "../../../interactions/name-column-glyph";
 import { useKanbanEdgeScroll } from "../controller/use-kanban-edge-scroll";
 import { useDatabaseKanbanCardDrag } from "../controller/use-database-kanban-card-drag";
-import { useKanbanMoves } from "../controller/use-kanban-moves";
+import { useRecordDrops } from "../../controller/use-record-drop";
 import { buildKanbanBoard } from "../model/database-kanban-board";
 import { DatabaseKanbanColumn } from "./database-kanban-column";
 import { getKanbanBoardContentWidth } from "../layout/database-kanban-layout";
@@ -100,7 +100,7 @@ function DatabaseKanbanBoard() {
     showPropertyTitles,
     titlePropertyLabel,
   } = useDatabaseUiContext();
-  const moves = useKanbanMoves({
+  const moves = useRecordDrops({
     databaseId,
     hostDatabaseId,
   });
@@ -188,7 +188,7 @@ function DatabaseKanbanBoard() {
       return;
     }
 
-    if (!isOptionBackedKanbanGroupProperty(groupProperty)) {
+    if (!isOptionBackedGroupProperty(groupProperty)) {
       const temporaryOption: KanbanGroupOption = {
         groupValue: optionName,
         id: `temporary-${crypto.randomUUID()}`,

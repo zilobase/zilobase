@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { Button } from "@/shared/ui/button";
 import {
   useDatabaseEntityCommandState,
   useDatabaseInteractionRecovery,
@@ -42,9 +43,9 @@ export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
     >
       {message}
       {online && recovery.hasUnconfirmed ? (
-        <button type="button" onClick={recovery.retry} className="ml-2 underline">
+        <Button type="button" variant="link" size="sm" onClick={recovery.retry}>
           Retry save
-        </button>
+        </Button>
       ) : null}
     </span>
   );

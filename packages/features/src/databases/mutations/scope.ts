@@ -100,7 +100,7 @@ export function findLoadedDataSourceRecords(
 }
 
 /**
- * For cell.set from page-metadata (no source in presenceTarget):
+ * For record changes from page-metadata (no source in presenceTarget):
  * first try cached windows for record id===rowId, then bootstrap
  * dataSources[0], then throw.
  */

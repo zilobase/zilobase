@@ -7,11 +7,7 @@ import {
   type DragEvent as ReactDragEvent,
   type RefObject,
 } from "react";
-import { toast } from "sonner";
-import {
-  getDatabaseRowMoveAnchors,
-  useChangeDatabaseRow,
-} from "@zilobase/features/databases/react";
+import { useRecordDrops } from "../../controller/use-record-drop";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import {
@@ -27,13 +23,12 @@ import {
   startDatabaseRowDrag,
   type DatabaseRowDragOverlay,
 } from "../../../interactions/database-row-drag";
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 import type { TimelineGroupSection } from "../model/database-timeline-rows";
 import type { TimelineRowLayout } from "../layout/database-timeline-layout";
 import {
   getTimelineRowMove,
   indexTimelineGroupSections,
-  type TimelineRowMove,
 } from "../model/database-timeline-row-move";
 
 type TimelineRowDragInput = {
@@ -71,8 +66,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
   const [overlay, setOverlay] = useState<DatabaseRowDragOverlay | null>(null);
   const manualPlacement = useManualRecordPlacement();
   const overlayRef = useRef<HTMLDivElement | null>(null);
-  const { mutate: moveDatabaseRow } = useChangeDatabaseRow();
-  const { mutate: reorderDatabaseRows } = useChangeDatabaseRow();
+  const { submitMove: applyMove } = useRecordDrops(input);
 
   const groupSectionByRowId = useMemo(
     () => indexTimelineGroupSections(input.groupedSections),
@@ -87,40 +81,6 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
         groupSectionByRowId,
       }),
     [draggedRowId, dropTargetIndex, groupSectionByRowId, input],
-  );
-
-  const applyMove = useCallback(
-    (move: TimelineRowMove) => {
-      if (!input.databaseId) return;
-      const notifyMoveError = (error: unknown) => {
-        toast.error(error instanceof Error && error.message ? error.message : "Couldn't move row");
-      };
-
-      if (move.groupPropertyId) {
-        moveDatabaseRow(
-          {
-            databaseId: input.hostDatabaseId!,
-            dataSourceId: input.databaseId,
-            valuesByPropertyId: { [move.groupPropertyId]: move.groupValue },
-            rowId: move.rowId,
-            placement: getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-          },
-          { onError: notifyMoveError },
-        );
-        return;
-      }
-
-      reorderDatabaseRows(
-        {
-          databaseId: input.hostDatabaseId!,
-          dataSourceId: input.databaseId,
-          rowId: move.rowId,
-          placement: getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-        },
-        { onError: notifyMoveError },
-      );
-    },
-    [input.databaseId, input.hostDatabaseId, moveDatabaseRow, reorderDatabaseRows],
   );
 
   const clearDrag = useCallback(() => {

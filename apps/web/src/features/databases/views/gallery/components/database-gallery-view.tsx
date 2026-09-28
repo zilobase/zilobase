@@ -5,7 +5,7 @@ import { getPageCover, getPageEmoji, type PageMetadata } from "@zilobase/feature
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
 import { getColorTokenBadgeClassName, getColorTokenDotClassName } from "@/shared/lib/color-tokens";
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections";
-import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config";
+import { canCreateRowInGroup } from "../../model/database-group-config";
 import {
   useDatabaseActionsContext,
   useDatabaseDataContext,
@@ -210,7 +210,7 @@ export function DatabaseGalleryView() {
     );
   };
   const renderNewCard = (groupValue?: string, grouped = false) =>
-    editable && (!grouped || (groupProperty && canCreateRowInKanbanGroup(groupProperty))) ? (
+    editable && (!grouped || (groupProperty && canCreateRowInGroup(groupProperty))) ? (
       <button
         className="database-gallery-new-card"
         disabled={!databaseId}

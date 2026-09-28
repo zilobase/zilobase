@@ -43,7 +43,7 @@ test("offline throws OfflineError without POST", async () => {
     await assert.rejects(
       () =>
         executeDatabaseCommand(apiFetch, {
-          command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
+          command: { rowId: "r", type: "row.change", valuesByPropertyId: { p: 1 } },
           databaseId: "database-1",
           dataSourceId: "data-source-1",
         }),
@@ -71,7 +71,7 @@ test("retry-once uses SAME commandId and SAME body on network failure", async ()
     return ackFor(request.commandId);
   }) as ApiFetcher;
   const ack = await executeDatabaseCommand(apiFetch, {
-    command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
+    command: { rowId: "r", type: "row.change", valuesByPropertyId: { p: 1 } },
     databaseId: "database-1",
     dataSourceId: "data-source-1",
   });
@@ -89,7 +89,7 @@ test("second retry failure becomes Unconfirmed", async () => {
   await assert.rejects(
     () =>
       executeDatabaseCommand(apiFetch, {
-        command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
+        command: { rowId: "r", type: "row.change", valuesByPropertyId: { p: 1 } },
         databaseId: "database-1",
         dataSourceId: "data-source-1",
       }),
@@ -111,7 +111,7 @@ test("409 COMMAND_ID_REUSED and ROW_MOVE_CONFLICT do NOT retry", async () => {
     }) as ApiFetcher;
     await assert.rejects(() =>
       executeDatabaseCommand(apiFetch, {
-        command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
+        command: { rowId: "r", type: "row.change", valuesByPropertyId: { p: 1 } },
         databaseId: "database-1",
         dataSourceId: "data-source-1",
       }),
@@ -130,7 +130,7 @@ test("ack id and scope mismatch become Unconfirmed", async () => {
   await assert.rejects(
     () =>
       executeDatabaseCommand(mismatched, {
-        command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
+        command: { rowId: "r", type: "row.change", valuesByPropertyId: { p: 1 } },
         databaseId: "database-1",
         dataSourceId: "data-source-1",
       }),
@@ -144,7 +144,7 @@ test("ack id and scope mismatch become Unconfirmed", async () => {
   await assert.rejects(
     () =>
       executeDatabaseCommand(scopeMismatch, {
-        command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
+        command: { rowId: "r", type: "row.change", valuesByPropertyId: { p: 1 } },
         databaseId: "database-1",
         dataSourceId: "data-source-1",
       }),

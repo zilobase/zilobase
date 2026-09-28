@@ -20,7 +20,7 @@ The [sub-item view model](../../../apps/web/src/features/databases/views/model/d
 
 The current [view update command](../../../apps/server/src/features/databases/commands/structural/views.ts) calls [sub-item relation setup](../../../apps/server/src/features/databases/commands/structural/sub-items.ts) in the command transaction. Setup creates or reuses the source's Parent item and Sub-item relation properties, reconciles their existing values, saves the generated property IDs in the view config, and publishes property and record changes to linked hosts. The client can create children after that view update is reflected in its bootstrap data.
 
-Server [property operations](../../../apps/server/src/features/databases/schema), [row operations](../../../apps/server/src/features/databases/records), and [data sources](../../../apps/server/src/features/databases/data-sources) enforce persistence and access. UI visibility does not grant editability. A cell edit stays local `draft` state with an `isPending` indicator until POST plus refetch succeeds; failed writes keep the draft visible and surface through the save indicator as described in the [database overview](README.md).
+Server [property operations](../../../apps/server/src/features/databases/schema), [row operations](../../../apps/server/src/features/databases/records), and [data sources](../../../apps/server/src/features/databases/data-sources) enforce persistence and access. UI visibility does not grant editability. Local editor drafts feed the shared record-change queue; all mounted views project pending cell edits. Rejected intentions are removed independently, while unconfirmed writes retain their preview for receipt retry. Save failures and refresh failures are distinct, as described in the [database overview](README.md).
 
 ## Tests and recovery
 
@@ -65,7 +65,7 @@ The [preview model](../../../apps/web/src/features/databases/views/kanban/model/
 uses untransformed card positions for offsets and placeholders, so animated
 cards cannot shift their own drop thresholds.
 
-The [move model](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-moves.ts)
+The [move model](../../../apps/web/src/features/databases/views/model/database-record-drop.ts)
 converts drops into neighbor anchors and grouping values, including multi-select
 cards already in the destination. Its move controller submits one atomic
 record change to the [shared interaction hooks](../../../packages/features/src/databases/interactions/react.ts).

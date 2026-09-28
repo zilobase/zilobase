@@ -26,7 +26,7 @@ import {
 } from "../../views/state/database-cell-state";
 import { areSerializedPropertyValuesEqual } from "../../interactions/database-item-utils";
 import { getPersonLimit, getPropertyWrapContent } from "../../views/model/database-view-config";
-import { type DatabasePropertyListItem } from "../../views/kanban/model/database-kanban-config";
+import { type DatabasePropertyListItem } from "../../views/model/database-group-config";
 import {
   DatabaseRelationPropertyValue,
   DatabaseRollupPropertyValue,

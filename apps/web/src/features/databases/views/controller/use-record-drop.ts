@@ -1,16 +1,16 @@
 import { useChangeDatabaseRow } from "@zilobase/features/databases/react";
 import { toast } from "sonner";
-import type { KanbanMove } from "../model/database-kanban-moves";
+import type { RecordDrop } from "../model/database-record-drop";
 
-/** Kanban describes a drop; the session controller owns state and persistence. */
-export function useKanbanMoves(input: {
+/** A renderer describes a drop; the session controller owns state and persistence. */
+export function useRecordDrops(input: {
   databaseId: string | null | undefined;
   hostDatabaseId: string | null | undefined;
 }) {
   const changeRow = useChangeDatabaseRow();
   return {
     isPending: changeRow.isPending,
-    submitMove(move: KanbanMove) {
+    submitMove(move: RecordDrop) {
       if (!input.databaseId || !input.hostDatabaseId) return;
       changeRow.mutate(
         {

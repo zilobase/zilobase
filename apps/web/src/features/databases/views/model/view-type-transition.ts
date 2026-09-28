@@ -1,8 +1,5 @@
 import type { DatabaseProperty } from "@zilobase/features/databases";
-import {
-  getKanbanGroupPropertyId,
-  type DatabasePropertyListItem,
-} from "../kanban/model/database-kanban-config";
+import { getGroupPropertyId, type DatabasePropertyListItem } from "./database-group-config";
 import { getDefaultKanbanHiddenPropertyIds } from "../kanban/model/database-kanban-visibility";
 import { hasViewHiddenPropertyIds } from "../../interactions/database-item-utils";
 import { getMergedDatabaseConfig, getViewHiddenPropertyIds } from "./database-view-config";
@@ -52,7 +49,7 @@ function getUngroupedTableConfig({
   properties,
 }: GroupingInput) {
   const previousGroupPropertyId =
-    getKanbanGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null;
+    getGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null;
   const previousGroupProperty = properties.find(
     (property) => property.property.id === previousGroupPropertyId,
   );

@@ -6,10 +6,7 @@ import { getPaletteColor } from "@/shared/lib/color-tokens";
 import { parseLocalDateMatch } from "../../../schema/model/database-date-value";
 
 import { defaultStatusOptions } from "../../../schema/model/property-defaults";
-import {
-  getSelectOptions,
-  type DatabasePropertyListItem,
-} from "../../kanban/model/database-kanban-config";
+import { getSelectOptions, type DatabasePropertyListItem } from "../../model/database-group-config";
 import {
   firstScalarValue,
   serializePropertyValue,

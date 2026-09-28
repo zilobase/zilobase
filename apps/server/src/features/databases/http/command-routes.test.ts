@@ -110,7 +110,7 @@ test("host commands validate their union and forward actor and host scope", asyn
 
 test("source commands require both host and source edit access", async () => {
   const body = {
-    command: { propertyId: "property-1", rowId: "row-1", type: "cell.set", value: "Done" },
+    command: { rowId: "row-1", type: "row.change", valuesByPropertyId: { "property-1": "Done" } },
     commandId: "command-2",
     protocolVersion: 2,
   };
@@ -149,7 +149,7 @@ test("link commands require view access to the source", async () => {
 
 test("route scope rejects the other command union and unauthenticated writes", async () => {
   const sourceCommand = {
-    command: { propertyId: "property-1", rowId: "row-1", type: "cell.set", value: "Done" },
+    command: { rowId: "row-1", type: "row.change", valuesByPropertyId: { "property-1": "Done" } },
     commandId: "command-2",
     protocolVersion: 2,
   };

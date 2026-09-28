@@ -56,10 +56,10 @@ export function register({ assert, loadModule, test }) {
     const initial = { "a:status": "Todo", "b:status": "Done", "c:status": "Done" };
     const done = { ...initial, "a:status": "Done" };
     try {
-      const { mountKanbanMoves } = await loadModule(
+      const { mountRecordDrops } = await loadModule(
         "/apps/web/test/support/fixtures/database-kanban-moves.tsx",
       );
-      board = mountKanbanMoves(document.getElementById("root"));
+      board = mountRecordDrops(document.getElementById("root"));
       await tick();
       board.drag("a", "Todo", "Done", 1);
       assert.deepEqual(board.read().order, ["b", "a", "c"]);

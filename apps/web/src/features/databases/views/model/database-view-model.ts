@@ -11,8 +11,7 @@ import {
   type DatabasePropertyListItem,
   getGroupOptions,
   getKanbanGroupProperty,
-  getKanbanOptions,
-} from "../kanban/model/database-kanban-config";
+} from "./database-group-config";
 import { getDefaultKanbanHiddenPropertyIds } from "../kanban/model/database-kanban-visibility";
 import {
   getTimelineDateProperties,
@@ -118,7 +117,7 @@ export function deriveDatabaseViewModel({
   const kanbanGroupProperty = isKanbanView
     ? groupProperty
     : (groupProperty ?? getKanbanGroupProperty(properties, activeViewConfig));
-  const kanbanOptions = getKanbanOptions(kanbanGroupProperty);
+  const kanbanOptions = getGroupOptions(kanbanGroupProperty);
   const timelineDateProperty = isTimelineView
     ? getTimelineDateProperty(properties, activeViewConfig)
     : null;

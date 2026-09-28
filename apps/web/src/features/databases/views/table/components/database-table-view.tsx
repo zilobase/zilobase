@@ -46,7 +46,7 @@ import {
 } from "../../../schema/editors/database-property-menu";
 import { DatabasePropertyValue } from "../../../schema/editors/database-property-value";
 import { getDatabasePropertyType } from "../../../schema/property-catalog";
-import { serializePropertyValue } from "../../../schema/property-values";
+import { getGroupedRecordMove } from "../../model/database-record-drop";
 import {
   getDatabasePropertyIcon,
   getNameColumnWrapContent,
@@ -67,7 +67,6 @@ import {
   areSerializedPropertyValuesEqual,
   databaseItemMatchesFilter,
 } from "../../../interactions/database-item-utils";
-import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values";
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections";
 import {
   getDatabaseCellFillRowIds,
@@ -78,7 +77,6 @@ import { getDatabaseRowDropTarget } from "../../../interactions/database-table-l
 import {
   claimDatabaseRowDropOwner,
   getAnchoredRowInsertPosition,
-  getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   finishDatabaseRowDrag,
   hideNativeDatabaseRowDragPreview,
@@ -87,10 +85,7 @@ import {
   subscribeDatabaseRowDropOwner,
 } from "../../../interactions/database-row-drag";
 import { useDatabaseRowDragOverlay } from "../../../interactions/use-database-row-drag-overlay";
-import {
-  canCreateRowInKanbanGroup,
-  canUpdateKanbanGroupProperty,
-} from "../../kanban/model/database-kanban-config";
+import { canCreateRowInGroup } from "../../model/database-group-config";
 
 import {
   ADD_PROPERTY_COLUMN_ID,
@@ -575,49 +570,17 @@ export function DatabaseTableView() {
         return null;
       }
 
-      if (!groupTarget.isCrossGroup) {
-        const rowIds = getFilteredReorderedRowIds(
-          rows,
-          groupTarget.section.rows,
-          draggedRowId,
-          groupTarget.localTargetIndex,
-        );
-
-        return rowIds ? { rowId: draggedRowId, rowIds } : null;
-      }
-
-      if (!groupProperty || !canUpdateKanbanGroupProperty(groupProperty)) {
-        return null;
-      }
-
-      const draggedRow = rowsById.get(draggedRowId);
-
-      if (!draggedRow) {
-        return null;
-      }
-
-      const rowIds =
-        getAnchoredReorderedRowIds(
-          rows,
-          draggedRowId,
-          groupTarget.section.rows,
-          groupTarget.localTargetIndex,
-        ) ?? rows.map((row) => row.id);
-      const key = `${draggedRow.pageId}:${groupProperty.property.id}`;
-      const currentValue = propertyValuesByKey[key] ?? "";
-      const nextValue = getDatabaseGroupMoveValue({
-        currentValue,
-        propertyType: groupProperty.property.type,
+      if (!groupProperty) return null;
+      return getGroupedRecordMove({
+        rows,
+        targetRows: groupTarget.section.rows,
+        rowId: draggedRowId,
+        targetIndex: groupTarget.localTargetIndex,
+        property: groupProperty,
+        propertyValuesByKey,
         sourceGroupValue: groupTarget.sourceSection.groupValue,
         targetGroupValue: groupTarget.section.groupValue,
       });
-
-      return {
-        groupPropertyId: groupProperty.property.id,
-        groupValue: serializePropertyValue(groupProperty.property.type, nextValue),
-        rowId: draggedRowId,
-        rowIds,
-      };
     }
 
     const targetIndex = rowDropTargetRef.current?.index ?? 0;
@@ -626,8 +589,8 @@ export function DatabaseTableView() {
 
     return rowIds || subItemParentRowId !== undefined
       ? {
-          rowId: draggedRowId,
-          rowIds: rowIds ?? rows.map((row) => row.id),
+          ...getDatabaseRowMoveAnchors(rowIds ?? rows.map((row) => row.id), draggedRowId),
+          pageId: rowsById.get(draggedRowId)!.pageId,
           ...(subItemParentRowId !== undefined ? { subItemParentRowId } : {}),
         }
       : null;
@@ -640,9 +603,10 @@ export function DatabaseTableView() {
         databaseId: hostDatabaseId,
         dataSourceId: databaseId,
         rowId: nextMove.rowId,
-        placement: getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-        ...(nextMove.groupPropertyId
-          ? { valuesByPropertyId: { [nextMove.groupPropertyId]: nextMove.groupValue } }
+        placement: { afterRowId: nextMove.afterRowId, beforeRowId: nextMove.beforeRowId },
+        ...(nextMove.pageTitle !== undefined ? { title: nextMove.pageTitle } : {}),
+        ...(nextMove.group
+          ? { valuesByPropertyId: { [nextMove.group.propertyId]: nextMove.group.serializedValue } }
           : {}),
         ...(nextMove.subItemParentRowId !== undefined && parentPropertyId && subItemPropertyId
           ? {
@@ -1756,7 +1720,7 @@ export function DatabaseTableView() {
                           editable &&
                           !section.isEmpty &&
                           groupProperty &&
-                          canCreateRowInKanbanGroup(groupProperty) ? (
+                          canCreateRowInGroup(groupProperty) ? (
                             <CreateDatabaseRowButton
                               columnCount={columnKeys.length}
                               disabled={!databaseId}

@@ -15,13 +15,6 @@ export type DatabaseSubItemsView<Row extends SubItemRow> = {
   rows: Row[];
 };
 
-export type DatabaseSubItemRelationChange = {
-  currentValue: string | string[];
-  nextValue: string[];
-  propertyId: string;
-  rowId: string;
-};
-
 export function getDatabaseSubItemLineParentRowId<Row extends { id: string }>({
   childRowIdsByParentId,
   collapsedRowIds,
@@ -55,121 +48,6 @@ export function getDatabaseSubItemLineParentRowId<Row extends { id: string }>({
   }
 
   return nextRow ? null : previousRow ? (parentRowIdsByRowId[previousRow.id]?.[0] ?? null) : null;
-}
-
-export function getDatabaseSubItemRelationChanges<Row extends SubItemRow>({
-  draggedRowId,
-  parentPropertyId,
-  propertyValuesByKey,
-  rows,
-  subItemPropertyId,
-  targetParentRowId,
-}: {
-  draggedRowId: string;
-  parentPropertyId: string;
-  propertyValuesByKey: Record<string, string | string[]>;
-  rows: Row[];
-  subItemPropertyId: string;
-  targetParentRowId: string | null;
-}): DatabaseSubItemRelationChange[] | null {
-  const rowsById = new Map(rows.map((row) => [row.id, row]));
-  const draggedRow = rowsById.get(draggedRowId);
-  const targetParentRow = targetParentRowId ? rowsById.get(targetParentRowId) : undefined;
-
-  if (
-    !draggedRow?.pageId ||
-    (targetParentRowId && !targetParentRow?.pageId) ||
-    draggedRow.id === targetParentRow?.id
-  ) {
-    return null;
-  }
-
-  const childrenByPageId = new Map<string, Set<string>>();
-  const addChild = (parentPageId: string, childPageId: string) => {
-    const children = childrenByPageId.get(parentPageId) ?? new Set<string>();
-    children.add(childPageId);
-    childrenByPageId.set(parentPageId, children);
-  };
-
-  for (const row of rows) {
-    if (!row.pageId) continue;
-
-    for (const parentPageId of toRelationPageIds(
-      propertyValuesByKey[`${row.pageId}:${parentPropertyId}`],
-    )) {
-      addChild(parentPageId, row.pageId);
-    }
-
-    for (const childPageId of toRelationPageIds(
-      propertyValuesByKey[`${row.pageId}:${subItemPropertyId}`],
-    )) {
-      addChild(row.pageId, childPageId);
-    }
-  }
-
-  if (targetParentRow?.pageId) {
-    const pending = [draggedRow.pageId];
-    const visited = new Set<string>();
-
-    while (pending.length > 0) {
-      const pageId = pending.shift()!;
-      if (visited.has(pageId)) continue;
-      if (pageId === targetParentRow.pageId) return null;
-      visited.add(pageId);
-      pending.push(...(childrenByPageId.get(pageId) ?? []));
-    }
-  }
-
-  const changes: DatabaseSubItemRelationChange[] = [];
-  const currentParentValue = propertyValuesByKey[`${draggedRow.pageId}:${parentPropertyId}`] ?? "";
-  const nextParentValue = targetParentRow?.pageId ? [targetParentRow.pageId] : [];
-
-  addRelationChange(changes, {
-    currentValue: currentParentValue,
-    nextValue: nextParentValue,
-    propertyId: parentPropertyId,
-    rowId: draggedRow.id,
-  });
-
-  for (const row of rows) {
-    if (!row.pageId) continue;
-
-    const currentValue = propertyValuesByKey[`${row.pageId}:${subItemPropertyId}`] ?? "";
-    const currentPageIds = toRelationPageIds(currentValue);
-    const nextValue =
-      row.id === targetParentRow?.id
-        ? currentPageIds.includes(draggedRow.pageId)
-          ? currentPageIds
-          : [...currentPageIds, draggedRow.pageId]
-        : currentPageIds.filter((pageId) => pageId !== draggedRow.pageId);
-
-    addRelationChange(changes, {
-      currentValue,
-      nextValue,
-      propertyId: subItemPropertyId,
-      rowId: row.id,
-    });
-  }
-
-  return changes;
-}
-
-function addRelationChange(
-  changes: DatabaseSubItemRelationChange[],
-  change: DatabaseSubItemRelationChange,
-) {
-  const currentPageIds = toRelationPageIds(change.currentValue);
-
-  if (
-    currentPageIds.length !== change.nextValue.length ||
-    currentPageIds.some((pageId, index) => pageId !== change.nextValue[index])
-  ) {
-    changes.push(change);
-  }
-}
-
-function toRelationPageIds(value: string | string[] | undefined) {
-  return [...new Set(Array.isArray(value) ? value : value ? [value] : [])];
 }
 
 export function getSubItemCreateRowsAfterRow<Row extends SubItemHierarchyRow>({

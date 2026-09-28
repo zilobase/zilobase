@@ -7,9 +7,9 @@ import {
 } from "@/shared/lib/color-tokens";
 import { DatabasePageLink } from "../../../interactions/database-page-link";
 import {
-  canCreateRowInKanbanGroup,
+  canCreateRowInGroup,
   type DatabasePropertyListItem,
-} from "../model/database-kanban-config";
+} from "../../model/database-group-config";
 import type { DatabaseRow, KanbanGroupOption } from "../model/database-kanban-group-model";
 import type { useDatabaseKanbanCardDrag } from "../controller/use-database-kanban-card-drag";
 import {
@@ -53,7 +53,7 @@ export function DatabaseKanbanColumn({
   const optionItems = items;
   const preview = cardDrag.getPreview(option);
   const colorToken = getColorToken(option.color);
-  const canAddPageToOption = !isEmptyOption && canCreateRowInKanbanGroup(groupProperty);
+  const canAddPageToOption = !isEmptyOption && canCreateRowInGroup(groupProperty);
   const activeCardDropTarget =
     cardDrag.dropTarget?.optionId === option.id && cardDrag.isExternalDragActive
       ? cardDrag.dropTarget

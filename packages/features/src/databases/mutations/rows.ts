@@ -5,12 +5,8 @@ import type { ChangeRowCommand, DatabaseRecordEntity } from "../core/entities";
 import { changeRecordHierarchy } from "../interactions/hierarchy";
 import { previewTransferredValues } from "../interactions/transfer";
 import type { RecordEffect } from "../interactions/model";
-import { useDatabaseSessionId } from "../queries/session";
-import { executeDatabaseCommand } from "./execute";
-import { invalidateDatabaseQueries } from "./invalidate";
 import { useRecordInteractionStore, submitRecordChange } from "../interactions/react";
 import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
-import { dropSerializedQueue, orderingSerializationKey, runSerialized } from "./serialize";
 
 type AddRowInput = {
   afterRowId?: string | null;
@@ -37,12 +33,6 @@ type UpdatePropertyValueInput = {
   rowId: string;
   value: unknown;
 };
-
-function isRowMoveConflict(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const candidate = error as { body?: { code?: unknown }; code?: unknown };
-  return candidate.code === "ROW_MOVE_CONFLICT" || candidate.body?.code === "ROW_MOVE_CONFLICT";
-}
 
 export function useAddDatabaseRow() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
@@ -225,8 +215,9 @@ export function useRestoreDatabaseRow() {
 
 function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
+  const store = useRecordInteractionStore();
   return useMutation({
+    networkMode: "always",
     mutationFn: async (input: { databaseId: string; hostDatabaseId?: string; rowId: string }) => {
       const scope = await resolveDataSourceCommandScope(
         queryClient,
@@ -234,37 +225,23 @@ function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
         input.databaseId,
         input.hostDatabaseId,
       );
-      try {
-        const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
-          executeDatabaseCommand(apiFetch, {
-            command: { rowId: input.rowId, type },
-            databaseId: scope.hostDatabaseId,
+      const record = store.records(scope.dataSourceId).find(({ id }) => id === input.rowId);
+      const ack = await store.submit(
+        {
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+          command: { type, rowId: input.rowId },
+        },
+        [
+          {
             dataSourceId: scope.dataSourceId,
-          }),
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-        return ack.result as DatabaseRecordEntity;
-      } catch (error) {
-        if (isRowMoveConflict(error)) {
-          invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-          dropSerializedQueue(orderingSerializationKey(scope.dataSourceId));
-          throw new Error("Order changed — try again.", { cause: error });
-        }
-        throw error;
-      }
-    },
-    onSuccess: async (_data, variables) => {
-      try {
-        const scope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.databaseId,
-          variables.hostDatabaseId,
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      } catch {
-        // Ignore.
-      }
+            rowId: input.rowId,
+            record,
+            remove: type === "row.archive",
+          },
+        ],
+      );
+      return ack.result as DatabaseRecordEntity;
     },
   });
 }

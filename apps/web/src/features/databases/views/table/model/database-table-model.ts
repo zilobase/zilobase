@@ -6,6 +6,7 @@ import {
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import type { DatabaseRowDropTarget } from "../../../interactions/database-table-layout";
 import type { DatabaseTableGroupSection } from "../../../interactions/database-table-group-sections";
+import type { RecordDrop } from "../../model/database-record-drop";
 
 export type InsertPropertySide = "left" | "right";
 
@@ -26,15 +27,10 @@ export type PendingFormulaSetup = {
   existingPropertyIds: string[];
 };
 
-export type PendingSortedRowReorder = {
-  groupPropertyId?: string;
-  groupValue?: unknown;
-  rowId: string;
-  rowIds: string[];
+export type RowMove = RecordDrop & {
   subItemParentRowId?: string | null;
 };
 
-export type RowMove = PendingSortedRowReorder;
 export type TableRow = SortableDatabaseItem;
 export type GroupSection = DatabaseTableGroupSection<TableRow>;
 

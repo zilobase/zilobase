@@ -39,6 +39,7 @@ export type DatabaseCommandInput = {
 export type ExecuteDatabaseCommandOptions = {
   commandId?: string;
   pendingTarget?: DatabaseCommandTarget;
+  trackPending?: boolean;
 };
 
 export async function executeDatabaseCommand(
@@ -63,7 +64,12 @@ export async function executeDatabaseCommand(
     protocolVersion: 2,
   });
 
-  const targets = opts?.pendingTarget ? [opts.pendingTarget] : targetsForCommand(input);
+  const targets =
+    opts?.trackPending === false
+      ? []
+      : opts?.pendingTarget
+        ? [opts.pendingTarget]
+        : targetsForCommand(input);
   beginPending(targets);
   for (let attempt = 0; ; attempt += 1) {
     let raw: unknown;

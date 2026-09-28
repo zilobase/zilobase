@@ -134,15 +134,14 @@ test("command requests are protocol-versioned discriminated unions", () => {
   assert.equal(
     databaseCommandRequestSchema.parse({
       command: {
-        propertyId: "property-1",
         rowId: "row-1",
-        type: "cell.set",
-        value: "Done",
+        type: "row.change",
+        valuesByPropertyId: { "property-1": "Done" },
       },
       commandId: "command-1",
       protocolVersion: 2,
     }).command.type,
-    "cell.set",
+    "row.change",
   );
   assert.equal(
     databaseCommandRequestSchema.safeParse({

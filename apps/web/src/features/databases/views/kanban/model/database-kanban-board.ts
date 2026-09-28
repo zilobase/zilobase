@@ -1,5 +1,8 @@
 import type { DatabasePropertyValue } from "../../../schema/property-values";
-import type { DatabasePropertyListItem, DatabaseSelectOption } from "./database-kanban-config";
+import type {
+  DatabasePropertyListItem,
+  DatabaseSelectOption,
+} from "../../model/database-group-config";
 import {
   getDerivedKanbanGroupId,
   getKanbanGroupLabel,

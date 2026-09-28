@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 
 import { GanttAddFeatureRow, GanttFeatureItem, GanttHeader } from "../gantt";
 
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 import {
   TimelineNameHeaderRow,
   TimelineSidebarRowCell,

@@ -14,7 +14,6 @@ import type {
 import { createMutationTestRuntime } from "../../shared/mutation-runtime.test";
 import {
   insertOptimisticProperty,
-  patchCachedCellValue,
   patchCachedDatabase,
   patchCachedProperty,
   patchCachedView,
@@ -53,77 +52,6 @@ function readBootstrap(queryClient: QueryClient): DatabaseBootstrapResponse {
   assert.ok(data);
   return data;
 }
-
-test("cell patch updates the cached record and rolls back", () => {
-  const queryClient = seededClient();
-  try {
-    const before = readWindow(queryClient).records.find((record) => record.id === "row-1")
-      ?.valuesByPropertyId["property-status"]?.value;
-    assert.equal(before, "Not started");
-
-    const rollback = patchCachedCellValue(queryClient, SESSION, HOST, {
-      dataSourceId: "data-source-1",
-      propertyId: "property-status",
-      rowId: "row-1",
-      value: "Done",
-    });
-    assert.equal(
-      readWindow(queryClient).records.find((record) => record.id === "row-1")?.valuesByPropertyId[
-        "property-status"
-      ]?.value,
-      "Done",
-    );
-    // Untouched row keeps its values.
-    assert.equal(
-      readWindow(queryClient).records.find((record) => record.id === "row-2")?.valuesByPropertyId[
-        "property-status"
-      ],
-      undefined,
-    );
-
-    rollback();
-    assert.equal(
-      readWindow(queryClient).records.find((record) => record.id === "row-1")?.valuesByPropertyId[
-        "property-status"
-      ]?.value,
-      "Not started",
-    );
-  } finally {
-    queryClient.clear();
-  }
-});
-
-test("cell patch ignores unknown rows and other hosts", () => {
-  const queryClient = seededClient();
-  try {
-    const rollback = patchCachedCellValue(queryClient, SESSION, HOST, {
-      propertyId: "property-status",
-      rowId: "row-missing",
-      value: "Done",
-    });
-    assert.equal(
-      readWindow(queryClient).records.find((record) => record.id === "row-1")?.valuesByPropertyId[
-        "property-status"
-      ]?.value,
-      "Not started",
-    );
-    const other = patchCachedCellValue(queryClient, SESSION, "database-2", {
-      propertyId: "property-status",
-      rowId: "row-1",
-      value: "Done",
-    });
-    assert.equal(
-      readWindow(queryClient).records.find((record) => record.id === "row-1")?.valuesByPropertyId[
-        "property-status"
-      ]?.value,
-      "Not started",
-    );
-    rollback();
-    other();
-  } finally {
-    queryClient.clear();
-  }
-});
 
 test("database, view, and property patches apply and roll back", () => {
   const queryClient = seededClient();

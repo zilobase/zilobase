@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database kanban config allows new groups only for creatable group types", async () => {
-    const { canCreateKanbanGroup, canMoveRowsAcrossKanbanGroups, canUpdateKanbanGroupProperty } =
-      await loadModule("/src/features/databases/views/kanban/model/database-kanban-config.ts");
+    const { canCreateKanbanGroup, canMoveRowsAcrossGroups, canUpdateGroupProperty } =
+      await loadModule("/src/features/databases/views/model/database-group-config.ts");
 
     assert.equal(canCreateKanbanGroup(createProperty("name", "text")), true);
     assert.equal(canCreateKanbanGroup(createProperty("property-select", "select")), true);
@@ -15,11 +15,11 @@ export function register({ assert, loadModule, test }) {
     assert.equal(canCreateKanbanGroup(createProperty("property-person", "person")), false);
     assert.equal(canCreateKanbanGroup(createProperty("property-files", "files")), false);
 
-    assert.equal(canUpdateKanbanGroupProperty(createProperty("name", "text")), false);
-    assert.equal(canMoveRowsAcrossKanbanGroups(createProperty("name", "text")), true);
-    assert.equal(canMoveRowsAcrossKanbanGroups(createProperty("property-select", "select")), true);
+    assert.equal(canUpdateGroupProperty(createProperty("name", "text")), false);
+    assert.equal(canMoveRowsAcrossGroups(createProperty("name", "text")), true);
+    assert.equal(canMoveRowsAcrossGroups(createProperty("property-select", "select")), true);
     assert.equal(
-      canMoveRowsAcrossKanbanGroups(createProperty("property-created", "created_time")),
+      canMoveRowsAcrossGroups(createProperty("property-created", "created_time")),
       false,
     );
   });

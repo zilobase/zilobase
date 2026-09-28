@@ -61,7 +61,8 @@ export function submitRecordChange(
   if (change.placement) {
     // A second gesture expresses the currently displayed destination, even if
     // the preceding move is subsequently rejected.
-    for (const interaction of [...store.getSnapshot()].reverse())
+    for (const interaction of [...store.getSnapshot()].reverse()) {
+      if (interaction.status === "committed") continue;
       for (const effect of interaction.effects) {
         if (effect.dataSourceId !== dataSourceId || effect.rowId !== input.rowId || effect.remove)
           continue;
@@ -69,6 +70,7 @@ export function submitRecordChange(
           change.valuesByPropertyId = { ...effect.values, ...change.valuesByPropertyId };
         if (change.title === undefined && effect.title !== undefined) change.title = effect.title;
       }
+    }
   }
   const rows = store.records(dataSourceId);
   const record = rows.find(({ id }) => id === input.rowId);

@@ -11,7 +11,7 @@ import { areSerializedPropertyValuesEqual } from "../../../interactions/database
 
 import { type DatabaseCellFillHistoryChange } from "../../../interactions/database-cell-fill";
 
-import { type DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import { type DatabasePropertyListItem } from "../../model/database-group-config";
 import { getSharedDatabaseSelectionValue } from "../model/database-table-selection";
 import { type TableRow } from "../model/database-table-model";
 

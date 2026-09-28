@@ -24,7 +24,7 @@ import {
 } from "../../../schema/property-catalog";
 import type { DatabasePropertyValue as DatabasePropertyValueType } from "../../../schema/property-values";
 import { getPersonLimit } from "../../model/database-view-config";
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import type { DatabasePropertyListItem } from "../../model/database-group-config";
 import { splitDatabaseSelectionProperties } from "../model/database-table-selection";
 
 function DatabaseSelectionPropertyTrigger({

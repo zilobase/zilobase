@@ -51,7 +51,6 @@ export { useDatabaseRecords } from "./queries/records";
 export { useDatabaseAccess } from "./queries/query-hooks";
 export { useDatabaseRealtime } from "./realtime/realtime";
 export { useDatabaseIdForRowPage } from "./records/use-database-id-for-row-page";
-export { saveCellValue } from "./mutations/serialize";
 export { resolveCellCommandScope, resolveDataSourceCommandScope } from "./mutations/scope";
 export type { DatabaseScope } from "./queries/bootstrap";
 export type { DatabaseViewScope, DatabaseWindowFetchScope } from "./queries/records";

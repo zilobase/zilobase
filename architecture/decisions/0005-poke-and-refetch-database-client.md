@@ -2,6 +2,10 @@
 
 Status: accepted and implemented. Supersedes [0004-responsive-database-client](0004-responsive-database-client.md).
 
+Record interaction ownership and acknowledgement clocks are superseded by
+[0011-shared-record-interactions](0011-shared-record-interactions.md). QueryClient
+still owns server snapshots; record gestures now share a session-owned sparse projection.
+
 ## Context
 
 The collection-backed client hid TanStack DB Query Collections behind a

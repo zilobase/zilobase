@@ -154,6 +154,17 @@ export class RecordInteractionStore {
   }
   private remapInput(input: DatabaseCommandInput): DatabaseCommandInput {
     const map = (id: string | null) => (id === null ? null : (this.identities.get(id) ?? id));
+    const mapValues = (values: Record<string, unknown>) =>
+      Object.fromEntries(
+        Object.entries(values).map(([key, value]) => [
+          key,
+          Array.isArray(value)
+            ? value.map((id) => (typeof id === "string" ? (this.pageIdentities.get(id) ?? id) : id))
+            : typeof value === "string"
+              ? (this.pageIdentities.get(value) ?? value)
+              : value,
+        ]),
+      );
     const command = input.command;
     if (command.type === "row.change")
       return {
@@ -161,6 +172,9 @@ export class RecordInteractionStore {
         command: {
           ...command,
           rowId: map(command.rowId)!,
+          ...(command.valuesByPropertyId
+            ? { valuesByPropertyId: mapValues(command.valuesByPropertyId) }
+            : {}),
           ...(command.placement
             ? {
                 placement: {
@@ -190,11 +204,24 @@ export class RecordInteractionStore {
           afterRowId: map(command.afterRowId),
           beforeRowId: map(command.beforeRowId),
           parentRowId: map(command.parentRowId),
+          ...(command.valuesByPropertyId
+            ? { valuesByPropertyId: mapValues(command.valuesByPropertyId) }
+            : {}),
+          ...(command.hierarchy
+            ? {
+                hierarchy: {
+                  ...command.hierarchy,
+                  parentRowId: map(command.hierarchy.parentRowId),
+                },
+              }
+            : {}),
           ...(command.source
             ? { source: { ...command.source, rowId: map(command.source.rowId)! } }
             : {}),
         },
       };
+    if (command.type === "row.archive" || command.type === "row.restore")
+      return { ...input, command: { ...command, rowId: map(command.rowId)! } };
     return input;
   }
   private async save(job: Job) {
@@ -203,6 +230,7 @@ export class RecordInteractionStore {
     try {
       const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
         commandId: job.interaction.id,
+        trackPending: false,
       });
       if (this.disposed) return;
       for (const source of job.sources)
@@ -254,15 +282,38 @@ export class RecordInteractionStore {
         this.publish(this.snapshot.filter(({ id }) => id !== job.interaction.id));
         job.release(error);
         // A failed insertion cannot supply identities for dependent gestures.
-        if (job.temporaryId)
-          for (const dependent of [...this.jobs.values()]) {
-            if (JSON.stringify(dependent.input.command).includes(job.temporaryId)) {
+        if (job.temporaryId) {
+          const failedIds = new Set([job.temporaryId]);
+          for (const dependent of this.jobs.values()) {
+            const command = dependent.input.command;
+            const references =
+              command.type === "row.place"
+                ? [
+                    command.afterRowId,
+                    command.beforeRowId,
+                    command.parentRowId,
+                    command.hierarchy?.parentRowId,
+                    command.source?.rowId,
+                  ]
+                : command.type === "row.change"
+                  ? [
+                      command.rowId,
+                      command.placement?.afterRowId,
+                      command.placement?.beforeRowId,
+                      command.hierarchy?.parentRowId,
+                    ]
+                  : command.type === "row.archive" || command.type === "row.restore"
+                    ? [command.rowId]
+                    : [];
+            if (references.some((id) => id && failedIds.has(id))) {
+              if (dependent.temporaryId) failedIds.add(dependent.temporaryId);
               this.jobs.delete(dependent.interaction.id);
               this.publish(this.snapshot.filter(({ id }) => id !== dependent.interaction.id));
               dependent.release(error);
               dependent.reject(error);
             }
           }
+        }
         this.pump();
       }
       job.reject(error);

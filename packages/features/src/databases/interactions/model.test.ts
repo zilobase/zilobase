@@ -94,3 +94,25 @@ test("transfer projects both sources and remaps dependent anchors", () => {
   );
   assert.deepEqual(ids(projectRecordInteractions([row("a")], [], scope)), ["a"]);
 });
+
+test("a queued transfer retains its row identity but remaps a newly created page", () => {
+  const pending = row("destination-temp");
+  pending.pageId = "page-temp";
+  pending.page.id = "page-temp";
+  const interaction: RecordInteraction = {
+    id: "transfer",
+    status: "queued",
+    effects: [
+      {
+        dataSourceId: "destination",
+        rowId: pending.id,
+        record: pending,
+        values: { relation: ["page-temp"] },
+      },
+    ],
+  };
+  const result = remapRecordIdentity(interaction, "temp", row("confirmed"), "page-temp");
+  assert.equal(result.effects[0]!.record!.id, "destination-temp");
+  assert.equal(result.effects[0]!.record!.pageId, "page-confirmed");
+  assert.deepEqual(result.effects[0]!.values!.relation, ["page-confirmed"]);
+});

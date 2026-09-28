@@ -1,8 +1,8 @@
-import { defaultStatusOptions } from "../../../schema/model/property-defaults";
+import { defaultStatusOptions } from "../../schema/model/property-defaults";
 import {
   isReadOnlyPropertyType,
   isSelectLikePropertyType,
-} from "../../../schema/model/property-defaults";
+} from "../../schema/model/property-defaults";
 
 export type DatabaseSelectOption = {
   color?: string;
@@ -25,34 +25,34 @@ type DatabaseViewConfig = {
   groupPropertyId?: unknown;
 };
 
-export function isKanbanGroupProperty(property: DatabasePropertyListItem) {
+export function isGroupProperty(property: DatabasePropertyListItem) {
   return Boolean(property.property.id);
 }
 
-export function isOptionBackedKanbanGroupProperty(property: DatabasePropertyListItem) {
+export function isOptionBackedGroupProperty(property: DatabasePropertyListItem) {
   return isSelectLikePropertyType(property.property.type);
 }
 
-export function isReadOnlyKanbanGroupProperty(property: DatabasePropertyListItem) {
+export function isReadOnlyGroupProperty(property: DatabasePropertyListItem) {
   return isReadOnlyPropertyType(property.property.type);
 }
 
-export function canUpdateKanbanGroupProperty(property: DatabasePropertyListItem) {
-  return property.id !== "name" && !isReadOnlyKanbanGroupProperty(property);
+export function canUpdateGroupProperty(property: DatabasePropertyListItem) {
+  return property.id !== "name" && !isReadOnlyGroupProperty(property);
 }
 
-export function canMoveRowsAcrossKanbanGroups(property: DatabasePropertyListItem) {
-  return property.id === "name" || canUpdateKanbanGroupProperty(property);
+export function canMoveRowsAcrossGroups(property: DatabasePropertyListItem) {
+  return property.id === "name" || canUpdateGroupProperty(property);
 }
 
-export function canCreateRowInKanbanGroup(property: DatabasePropertyListItem) {
-  return property.id === "name" || canUpdateKanbanGroupProperty(property);
+export function canCreateRowInGroup(property: DatabasePropertyListItem) {
+  return property.id === "name" || canUpdateGroupProperty(property);
 }
 
 export function canCreateKanbanGroup(property: DatabasePropertyListItem) {
   return (
     property.id === "name" ||
-    isOptionBackedKanbanGroupProperty(property) ||
+    isOptionBackedGroupProperty(property) ||
     ["date", "email", "number", "phone", "text", "url"].includes(property.property.type)
   );
 }
@@ -77,7 +77,7 @@ export function getSelectOptions(config: unknown) {
   );
 }
 
-export function getKanbanGroupPropertyId(config: unknown) {
+export function getGroupPropertyId(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return null;
   }
@@ -91,7 +91,7 @@ export function getConfiguredGroupProperty(
   properties: DatabasePropertyListItem[],
   config: unknown,
 ) {
-  const configuredGroupPropertyId = getKanbanGroupPropertyId(config);
+  const configuredGroupPropertyId = getGroupPropertyId(config);
 
   return configuredGroupPropertyId
     ? (properties.find((property) => property.property.id === configuredGroupPropertyId) ?? null)
@@ -99,11 +99,11 @@ export function getConfiguredGroupProperty(
 }
 
 export function getKanbanGroupProperty(properties: DatabasePropertyListItem[], config: unknown) {
-  const configuredGroupPropertyId = getKanbanGroupPropertyId(config);
+  const configuredGroupPropertyId = getGroupPropertyId(config);
   const configuredGroupProperty = configuredGroupPropertyId
     ? (properties.find(
         (property) =>
-          property.property.id === configuredGroupPropertyId && isKanbanGroupProperty(property),
+          property.property.id === configuredGroupPropertyId && isGroupProperty(property),
       ) ?? null)
     : null;
 
@@ -128,8 +128,4 @@ export function getGroupOptions(property: DatabasePropertyListItem | null) {
   }
 
   return property.property.type === "status" ? defaultStatusOptions : [];
-}
-
-export function getKanbanOptions(property: DatabasePropertyListItem | null) {
-  return getGroupOptions(property);
 }

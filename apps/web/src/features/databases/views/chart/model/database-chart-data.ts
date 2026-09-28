@@ -4,7 +4,7 @@ import { cyclingColorTokens, getPaletteColor, type ColorTokenId } from "@/shared
 import type { DatabasePropertyValue } from "../../../schema/property-values";
 import { formatDatabaseDateValue } from "../../../schema/model/database-date-config";
 import { getReadOnlyTimePropertyRawValue } from "../../../schema/model/read-only-time-property";
-import { getSelectOptions } from "../../kanban/model/database-kanban-config";
+import { getSelectOptions } from "../../model/database-group-config";
 import type { DatabaseChartDateInterval, DatabaseChartSort } from "./database-chart-config";
 
 export type DatabaseChartDataItem = {
