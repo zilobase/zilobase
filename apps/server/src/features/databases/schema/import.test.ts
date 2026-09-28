@@ -1,11 +1,13 @@
+import {
+  getPropertyNameKey,
+  normalizeValueForPropertyType,
+} from "@zilobase/features/databases/record-interactions";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import {
   getDuplicatePropertyName,
-  getPropertyNameKey,
   mergeSelectOptionsForValue,
-  normalizeValueForPropertyType,
   shouldInsertUnmatchedSourceProperty,
 } from "./import";
 

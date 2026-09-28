@@ -162,6 +162,22 @@ export function targetsForCommand(input: {
   if ("rowId" in command && typeof command.rowId === "string") {
     targets.push({ dataSourceId, rowId: command.rowId });
   }
+  if (command.type === "row.change") {
+    const rowId = command.rowId;
+    const values = command.valuesByPropertyId;
+    if (typeof rowId === "string" && values && typeof values === "object") {
+      for (const propertyId of Object.keys(values))
+        targets.push({ dataSourceId, propertyId, rowId });
+    }
+  }
+  if (command.type === "row.place" && command.source && typeof command.source === "object") {
+    const source = command.source as { databaseId: string; dataSourceId: string; rowId: string };
+    if (source.databaseId !== input.databaseId) targets.push({ hostDatabaseId: source.databaseId });
+    targets.push(
+      { dataSourceId: source.dataSourceId },
+      { dataSourceId: source.dataSourceId, rowId: source.rowId },
+    );
+  }
   if (command.type === "cell.set") {
     const rowId = (command as { rowId?: unknown }).rowId;
     const propertyId = (command as { propertyId?: unknown }).propertyId;

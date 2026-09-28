@@ -1,8 +1,6 @@
 import { defaultStatusOptions, normalizePropertyConfig } from "./config";
 import { isSelectLikePropertyType } from "./types";
 
-export const getPropertyNameKey = (name: string) => name.trim().toLowerCase();
-
 export const shouldInsertUnmatchedSourceProperty = (mode: "duplicate" | "match") =>
   mode === "duplicate";
 
@@ -61,30 +59,6 @@ const getOptionId = (name: string, existingIds: Set<string>) => {
 
   existingIds.add(id);
   return id;
-};
-
-export const normalizeValueForPropertyType = (propertyType: string, value: unknown) => {
-  if (propertyType === "multi_select") {
-    if (typeof value === "string") {
-      return [value];
-    }
-
-    return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : null;
-  }
-
-  if (propertyType === "select" || propertyType === "status") {
-    if (typeof value === "string") {
-      return value;
-    }
-
-    if (Array.isArray(value)) {
-      return value.find((item): item is string => typeof item === "string") ?? null;
-    }
-
-    return null;
-  }
-
-  return value;
 };
 
 export const mergeSelectOptionsForValue = (

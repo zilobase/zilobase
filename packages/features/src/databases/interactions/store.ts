@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
+import { databaseRecordEntitySchema } from "../core/entities";
 import type {
   DatabaseCommandAck,
   DatabaseRecordEntity,
@@ -44,6 +45,7 @@ export class RecordInteractionStore {
   private jobs = new Map<string, Job>();
   private windows = new Map<object, Window>();
   private identities = new Map<string, string>();
+  private pageIdentities = new Map<string, string>();
   private disposed = false;
   private collecting = false;
   private unsubscribe: () => void;
@@ -182,6 +184,9 @@ export class RecordInteractionStore {
         ...input,
         command: {
           ...command,
+          ...(command.pageId
+            ? { pageId: this.pageIdentities.get(command.pageId) ?? command.pageId }
+            : {}),
           afterRowId: map(command.afterRowId),
           beforeRowId: map(command.beforeRowId),
           parentRowId: map(command.parentRowId),
@@ -204,13 +209,26 @@ export class RecordInteractionStore {
         if (ack.sourceVersions[source] === undefined)
           throw new DatabaseCommandUnconfirmedError(new Error("Missing source confirmation"));
       if (job.temporaryId) {
-        const record = ack.result as DatabaseRecordEntity;
+        const parsed = databaseRecordEntitySchema.safeParse(ack.result);
+        if (!parsed.success) throw new DatabaseCommandUnconfirmedError(parsed.error);
+        const record = parsed.data;
+        const temporaryPageId = job.interaction.effects.find(
+          ({ rowId }) => rowId === job.temporaryId,
+        )?.record?.pageId;
+        if (temporaryPageId) this.pageIdentities.set(temporaryPageId, record.pageId);
         this.identities.set(job.temporaryId, record.id);
         this.publish(
-          this.snapshot.map((item) => remapRecordIdentity(item, job.temporaryId!, record)),
+          this.snapshot.map((item) =>
+            remapRecordIdentity(item, job.temporaryId!, record, temporaryPageId),
+          ),
         );
         for (const queued of this.jobs.values())
-          queued.interaction = remapRecordIdentity(queued.interaction, job.temporaryId, record);
+          queued.interaction = remapRecordIdentity(
+            queued.interaction,
+            job.temporaryId,
+            record,
+            temporaryPageId,
+          );
       }
       job.interaction = {
         ...job.interaction,
@@ -324,6 +342,7 @@ export class RecordInteractionStore {
     this.jobs.clear();
     this.windows.clear();
     this.identities.clear();
+    this.pageIdentities.clear();
     this.publish([]);
   }
 }

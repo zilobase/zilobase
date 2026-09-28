@@ -162,6 +162,7 @@ export function mountKanbanMoves(container: HTMLElement) {
     drag = useDatabaseKanbanCardDrag({
       databaseId: "source",
       allRows: moves.rows,
+      hostDatabaseId: "host",
       editable: true,
       groupProperty: property,
       options,

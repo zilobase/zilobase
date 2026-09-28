@@ -51,17 +51,19 @@ export function register({ assert, loadModule, test }) {
       "Done",
       statusProperty,
     );
-    addRow.calls[0][1].onSuccess({ id: "imported-row", pageId: "source-page" });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
       initialValues: [{ propertyId: "property-status", value: "Done" }],
       pageId: "source-page",
-      position: 1,
+      afterRowId: "existing-row",
+      beforeRowId: null,
+      sourceHostDatabaseId: undefined,
       sourceDataSourceId: "source-database",
       sourcePropertyMode: "match",
       sourceRowId: "source-row",
-      title: "Imported task",
+      previewTitle: "Imported task",
+      title: undefined,
     });
     assert.deepEqual(updateValue.calls, []);
   });
@@ -111,13 +113,9 @@ export function register({ assert, loadModule, test }) {
       "Renamed task",
       nameProperty,
     );
-    addRow.calls[0][1].onSuccess({ id: "imported-row", pageId: "source-page" });
 
     assert.equal(addRow.calls[0][0].title, "Renamed task");
-    assert.deepEqual(updatePage.calls[0][0], {
-      id: "source-page",
-      name: "Renamed task",
-    });
+    assert.deepEqual(updatePage.calls, [], "name grouping is part of the atomic placement");
   });
 
   test("database view commands update sort config", async () => {
@@ -1090,9 +1088,6 @@ export function register({ assert, loadModule, test }) {
     });
 
     commands.addDatabaseRow("2026-01-01T00:00:00.000Z");
-    addRow.calls[0][1].onSuccess({
-      rows: [{ id: "row-1" }],
-    });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
@@ -1328,7 +1323,6 @@ export function register({ assert, loadModule, test }) {
       "In progress",
       statusProperty,
     );
-    addRow.calls[0][1].onSuccess({ id: "row-1", pageId: "page-1" });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
@@ -1974,15 +1968,14 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
       initialValues: [{ propertyId: "parent-property", value: "parent-page" }],
+      hierarchy: {
+        parentRowId: "parent-row",
+        parentPropertyId: "parent-property",
+        subItemPropertyId: "sub-item-property",
+      },
       title: "Untitled",
     });
-    addRow.calls[0][1].onSuccess({ pageId: "child-page" });
-    assert.deepEqual(updateValue.calls[0][0], {
-      databaseId,
-      propertyId: "sub-item-property",
-      rowId: "parent-row",
-      value: ["child-page"],
-    });
+    assert.deepEqual(updateValue.calls, [], "reciprocal hierarchy is saved atomically");
   });
 
   test("database view commands keep row and property creation responsive while commands are pending", async () => {
@@ -2051,7 +2044,7 @@ function createMutations(overrides = {}) {
     addRow: createMutation(),
     updateDatabase: createMutation(),
     updateDatabaseView: createMutation(),
-    updatePage: createMutation(),
+    changeRow: createMutation(),
     updateProperty: createMutation(),
     updateValue: createMutation(),
     ...overrides,

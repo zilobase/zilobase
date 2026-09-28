@@ -11,6 +11,12 @@ const mocks = vi.hoisted(() => ({
   requireDatabase: vi.fn(),
   requireSource: vi.fn(),
   requireSourceView: vi.fn(),
+  canEditPage: vi.fn(),
+}));
+
+vi.mock("../../access", async (original) => ({
+  ...(await original<typeof import("../../access")>()),
+  canAccessPageInWorkspace: mocks.canEditPage,
 }));
 
 vi.mock("../access/database-access", () => ({
@@ -74,7 +80,8 @@ beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.execute.mockResolvedValue(acknowledgement);
   mocks.requireDatabase.mockResolvedValue({ id: "database-1" });
-  mocks.requireSource.mockResolvedValue({ id: "source-1" });
+  mocks.requireSource.mockResolvedValue({ id: "source-1", workspaceId: "workspace" });
+  mocks.canEditPage.mockResolvedValue(true);
   mocks.requireSourceView.mockResolvedValue({ id: "source-1" });
 });
 
@@ -207,4 +214,55 @@ test("row move conflicts expose the rejected row ID", async () => {
     error: "The row move anchors conflict with the current ordering",
     rowId: "row-1",
   });
+});
+
+const transferRequest = {
+  commandId: "transfer",
+  protocolVersion: 2,
+  command: {
+    type: "row.place",
+    pageId: "page-1",
+    parentRowId: null,
+    afterRowId: null,
+    beforeRowId: null,
+    source: {
+      databaseId: "origin-host",
+      dataSourceId: "origin-source",
+      rowId: "origin-row",
+      propertyMode: "match",
+    },
+  },
+};
+function postTransfer() {
+  return appWithUser().request("/databases/database-1/data-sources/source-1/commands", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(transferRequest),
+  });
+}
+test("transfers authorize both hosts and sources plus the existing page", async () => {
+  const response = await postTransfer();
+  assert.equal(response.status, 200);
+  assert.deepEqual(mocks.requireDatabase.mock.calls, [
+    ["database-1", "user-1"],
+    ["origin-host", "user-1"],
+  ]);
+  assert.deepEqual(mocks.requireSource.mock.calls, [
+    ["source-1", "user-1"],
+    ["origin-source", "user-1"],
+  ]);
+  assert.deepEqual(mocks.canEditPage.mock.calls, [["page-1", "workspace", "user-1", "edit"]]);
+  assert.equal(mocks.execute.mock.calls.length, 1);
+});
+test("transfers reject cross-workspace sources before entering the transaction", async () => {
+  mocks.requireSource
+    .mockResolvedValueOnce({ workspaceId: "workspace" })
+    .mockResolvedValueOnce({ workspaceId: "other" });
+  assert.equal((await postTransfer()).status, 403);
+  assert.equal(mocks.execute.mock.calls.length, 0);
+});
+test("placing an existing page requires page edit permission", async () => {
+  mocks.canEditPage.mockResolvedValue(false);
+  assert.equal((await postTransfer()).status, 403);
+  assert.equal(mocks.execute.mock.calls.length, 0);
 });

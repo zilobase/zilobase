@@ -1,16 +1,17 @@
 import type {
   useAddDatabaseProperty,
   useAddDatabaseRow,
+  useChangeDatabaseRow,
   useAddDatabaseView,
   useUpdateDataSource,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
   useUpdateDatabaseView,
 } from "@zilobase/features/databases/react";
-import type { useUpdatePage } from "@zilobase/features/pages/react";
 
 export type DatabaseRowMutations = {
   addRow: ReturnType<typeof useAddDatabaseRow>;
+  changeRow: ReturnType<typeof useChangeDatabaseRow>;
   updateValue: ReturnType<typeof useUpdateDatabasePropertyValue>;
 };
 
@@ -25,11 +26,6 @@ export type DatabaseViewMutations = {
   updateDatabaseView: ReturnType<typeof useUpdateDatabaseView>;
 };
 
-export type DatabasePageMutations = {
-  updatePage: ReturnType<typeof useUpdatePage>;
-};
-
-export type DatabaseMutations = DatabasePageMutations &
-  DatabasePropertyMutations &
+export type DatabaseMutations = DatabasePropertyMutations &
   DatabaseRowMutations &
   DatabaseViewMutations;

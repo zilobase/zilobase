@@ -19,6 +19,7 @@ import {
   useAddDatabaseView,
   useAddDatabaseProperty,
   useAddDatabaseRow,
+  useChangeDatabaseRow,
   useApplyDatabaseTemplate,
   useCreateDatabaseDataSource,
   useDatabaseBootstrap,
@@ -41,7 +42,7 @@ import {
 } from "../../setup/components/database-setup-card";
 import { getDatabaseSetupTemplate } from "../../setup/model/database-setup-templates";
 import { serializePropertyValue } from "../../schema/property-values";
-import { usePage, usePagePersonAccessTargets, useUpdatePage } from "@zilobase/features/pages/react";
+import { usePage, usePagePersonAccessTargets } from "@zilobase/features/pages/react";
 import {
   getDatabasePageDragPayload,
   hasDatabasePageDragPayload,
@@ -118,7 +119,7 @@ export function useDatabaseViewController({
   const updateProperty = useUpdateDatabaseProperty();
   const addRow = useAddDatabaseRow();
   const updateValue = useUpdateDatabasePropertyValue();
-  const updatePage = useUpdatePage();
+  const changeRow = useChangeDatabaseRow();
   const subItemMigrationRequestsRef = useRef(new Set<string>());
   const { data: hostPage } = usePage(pageId, {
     refetchOnMount: false,
@@ -808,7 +809,7 @@ export function useDatabaseViewController({
       addRow,
       updateDatabase,
       updateDatabaseView,
-      updatePage,
+      changeRow,
       updateProperty,
       updateValue,
     },

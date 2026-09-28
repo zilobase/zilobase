@@ -95,6 +95,7 @@ export function remapRecordIdentity(
   interaction: RecordInteraction,
   temporaryId: string,
   record: DatabaseRecordEntity,
+  temporaryPageId?: string,
 ): RecordInteraction {
   const map = (id: string | null) => (id === temporaryId ? record.id : id);
   return {
@@ -103,6 +104,20 @@ export function remapRecordIdentity(
       ...effect,
       rowId: map(effect.rowId)!,
       ...(effect.record?.id === temporaryId ? { record } : {}),
+      ...(effect.values && temporaryPageId
+        ? {
+            values: Object.fromEntries(
+              Object.entries(effect.values).map(([key, value]) => [
+                key,
+                Array.isArray(value)
+                  ? value.map((id) => (id === temporaryPageId ? record.pageId : id))
+                  : value === temporaryPageId
+                    ? record.pageId
+                    : value,
+              ]),
+            ),
+          }
+        : {}),
       ...(effect.parentRowId !== undefined ? { parentRowId: map(effect.parentRowId) } : {}),
       ...(effect.placement
         ? {

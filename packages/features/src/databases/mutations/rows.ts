@@ -1,14 +1,15 @@
-import type { QueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 
-import type { DatabaseRecordEntity } from "../core/entities";
-import { parseDatabaseOrderKey } from "../core/order-key";
+import type { ChangeRowCommand, DatabaseRecordEntity } from "../core/entities";
+import { changeRecordHierarchy } from "../interactions/hierarchy";
+import { previewTransferredValues } from "../interactions/transfer";
+import type { RecordEffect } from "../interactions/model";
 import { useDatabaseSessionId } from "../queries/session";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import { useRecordInteractionStore, submitRecordChange } from "../interactions/react";
-import { findLoadedDataSourceRecords, resolveDataSourceCommandScope } from "./scope";
+import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
 import { dropSerializedQueue, orderingSerializationKey, runSerialized } from "./serialize";
 
 type AddRowInput = {
@@ -16,8 +17,10 @@ type AddRowInput = {
   beforeRowId?: string | null;
   databaseId: string;
   hostDatabaseId?: string;
+  hierarchy?: ChangeRowCommand["hierarchy"];
   initialValues?: Array<{ propertyId: string; value: unknown }>;
   pageId?: string;
+  previewTitle?: string;
   parentRowId?: string | null;
   position?: number;
   sourceDataSourceId?: string;
@@ -43,8 +46,9 @@ function isRowMoveConflict(error: unknown): boolean {
 
 export function useAddDatabaseRow() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
+  const store = useRecordInteractionStore();
   return useMutation({
+    networkMode: "always",
     mutationFn: async (variables: AddRowInput) => {
       const scope = await resolveDataSourceCommandScope(
         queryClient,
@@ -52,7 +56,7 @@ export function useAddDatabaseRow() {
         variables.databaseId,
         variables.hostDatabaseId,
       );
-      const anchors = resolveCreateAnchors(queryClient, {
+      const anchors = resolveCreateAnchors(store.records(scope.dataSourceId), {
         ...variables,
         databaseId: scope.dataSourceId,
       });
@@ -65,40 +69,118 @@ export function useAddDatabaseRow() {
               variables.sourceHostDatabaseId,
             )
           : undefined;
-      const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
-        executeDatabaseCommand(apiFetch, {
-          command: {
-            afterRowId: anchors.afterRowId,
-            beforeRowId: anchors.beforeRowId,
-            pageId: variables.pageId,
-            ...(sourceScope && sourceScope.dataSourceId !== scope.dataSourceId
-              ? {
-                  source: {
-                    databaseId: sourceScope.hostDatabaseId,
-                    dataSourceId: sourceScope.dataSourceId,
-                    rowId: variables.sourceRowId!,
-                    propertyMode: variables.sourcePropertyMode ?? "match",
-                  },
-                }
-              : {}),
-            parentRowId: variables.parentRowId ?? null,
-            title: variables.title ?? "Untitled",
-            type: "row.place",
-            valuesByPropertyId: variables.initialValues
-              ? Object.fromEntries(
-                  variables.initialValues.map(({ propertyId, value }) => [propertyId, value]),
-                )
-              : undefined,
-          },
+      const sourceRecord = sourceScope
+        ? store.records(sourceScope.dataSourceId).find(({ id }) => id === variables.sourceRowId)
+        : undefined;
+      const targetBootstrap = findDataSourceBootstrap(queryClient, scope.dataSourceId);
+      const sourceBootstrap = sourceScope
+        ? findDataSourceBootstrap(queryClient, sourceScope.dataSourceId)
+        : null;
+      const valuesByPropertyId = variables.initialValues
+        ? Object.fromEntries(
+            variables.initialValues.map(({ propertyId, value }) => [propertyId, value]),
+          )
+        : undefined;
+      const previewValues = {
+        ...(sourceRecord
+          ? previewTransferredValues({
+              record: sourceRecord,
+              mode: variables.sourcePropertyMode ?? "match",
+              sourceProperties: (sourceBootstrap?.properties ?? []).filter(
+                ({ dataSourceId }) => dataSourceId === sourceScope?.dataSourceId,
+              ),
+              targetProperties: (targetBootstrap?.properties ?? []).filter(
+                ({ dataSourceId }) => dataSourceId === scope.dataSourceId,
+              ),
+            })
+          : {}),
+        ...valuesByPropertyId,
+      };
+      const parentRowId = variables.hierarchy?.parentRowId ?? variables.parentRowId ?? null;
+      const temporaryId = "pending:" + crypto.randomUUID();
+      const pageId = variables.pageId ?? "pending-page:" + crypto.randomUUID();
+      const now = new Date().toISOString();
+      const record: DatabaseRecordEntity = {
+        id: temporaryId,
+        pageId,
+        dataSourceId: scope.dataSourceId,
+        parentRowId,
+        orderKey: "0.0000000000",
+        createdAt: now,
+        updatedAt: now,
+        page: sourceRecord
+          ? {
+              ...sourceRecord.page,
+              ...(variables.title !== undefined ? { name: variables.title } : {}),
+            }
+          : {
+              id: pageId,
+              name: variables.title ?? variables.previewTitle ?? "Untitled",
+              createdAt: now,
+              updatedAt: now,
+              deletedAt: null,
+              hasContent: false,
+              metadata: null,
+            },
+        valuesByPropertyId: {},
+      };
+      const effects: RecordEffect[] = [
+        {
+          dataSourceId: scope.dataSourceId,
+          rowId: temporaryId,
+          record,
+          placement: anchors,
+          values: previewValues,
+        },
+      ];
+      if (variables.hierarchy) {
+        const rows = [...store.records(scope.dataSourceId), record];
+        for (const change of changeRecordHierarchy({
+          ...variables.hierarchy,
+          rowId: temporaryId,
+          rows,
+          values: rows.flatMap(({ valuesByPropertyId }) => Object.values(valuesByPropertyId)),
+        }))
+          effects.push({
+            dataSourceId: scope.dataSourceId,
+            rowId: change.rowId,
+            values: { [change.propertyId]: change.value },
+          });
+      }
+      const source =
+        sourceScope && sourceScope.dataSourceId !== scope.dataSourceId
+          ? {
+              databaseId: sourceScope.hostDatabaseId,
+              dataSourceId: sourceScope.dataSourceId,
+              rowId: variables.sourceRowId!,
+              propertyMode: variables.sourcePropertyMode ?? ("match" as const),
+            }
+          : undefined;
+      if (source)
+        effects.push({
+          dataSourceId: source.dataSourceId,
+          rowId: source.rowId,
+          remove: true,
+          record: sourceRecord,
+        });
+      const ack = await store.submit(
+        {
           databaseId: scope.hostDatabaseId,
           dataSourceId: scope.dataSourceId,
-        }),
+          command: {
+            type: "row.place",
+            ...anchors,
+            pageId: variables.pageId,
+            parentRowId,
+            title: variables.title,
+            hierarchy: variables.hierarchy,
+            valuesByPropertyId,
+            ...(source ? { source } : {}),
+          },
+        },
+        effects,
+        temporaryId,
       );
-
-      if (sourceScope)
-        invalidateDatabaseQueries(queryClient, sessionId, sourceScope.hostDatabaseId);
-
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
 
       if (variables.pageId) {
         void queryClient.invalidateQueries({ queryKey: ["pages"] }).catch(() => {
@@ -106,19 +188,6 @@ export function useAddDatabaseRow() {
         });
       }
       return ack.result as DatabaseRecordEntity;
-    },
-    onSuccess: async (_data, variables) => {
-      try {
-        const scope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.databaseId,
-          variables.hostDatabaseId,
-        );
-        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      } catch {
-        // Scope resolution failed; cache stays as-is.
-      }
     },
   });
 }
@@ -212,23 +281,9 @@ export function getDatabaseRowMoveAnchors(rowIds: string[], rowId: string) {
   };
 }
 
-function resolveCreateAnchors(queryClient: QueryClient, input: AddRowInput) {
-  if (input.beforeRowId !== undefined || input.afterRowId !== undefined) {
-    return {
-      afterRowId: input.afterRowId ?? null,
-      beforeRowId: input.beforeRowId ?? null,
-    };
-  }
-  const rowIds =
-    findLoadedDataSourceRecords(queryClient, input.databaseId)
-      .slice()
-      .sort((left, right) =>
-        Number(parseDatabaseOrderKey(left.orderKey) - parseDatabaseOrderKey(right.orderKey)),
-      )
-      .map(({ id }) => id) ?? [];
-  const index = Math.max(0, Math.min(input.position ?? rowIds.length, rowIds.length));
-  return {
-    afterRowId: rowIds[index - 1] ?? null,
-    beforeRowId: rowIds[index] ?? null,
-  };
+function resolveCreateAnchors(records: DatabaseRecordEntity[], input: AddRowInput) {
+  if (input.beforeRowId !== undefined || input.afterRowId !== undefined)
+    return { afterRowId: input.afterRowId ?? null, beforeRowId: input.beforeRowId ?? null };
+  const index = Math.max(0, Math.min(input.position ?? records.length, records.length));
+  return { afterRowId: records[index - 1]?.id ?? null, beforeRowId: records[index]?.id ?? null };
 }

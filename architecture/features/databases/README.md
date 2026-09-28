@@ -62,6 +62,17 @@ include committed `sourceVersions`, so a client can reconcile linked-host window
 without receiving the identities of other linked hosts. The former `row.move`
 and `row.create` commands are not accepted.
 
+The [row mutation hooks](../../../packages/features/src/databases/mutations/rows.ts)
+publish insertion and transfer effects through the session interaction store.
+Transfers remove the source preview and insert a temporary destination record
+together. Acknowledgement remaps row IDs, page IDs and dependent anchors before
+queued gestures run. The [shared transfer model](../../../packages/features/src/databases/interactions/transfer.ts)
+uses the same name matching and select-value normalization as server import.
+Existing page titles are preserved unless a name-group drop explicitly changes
+them. Creating a sub-item saves both relation directions atomically. Record title
+editors and page-metadata cell writes use the same record-change queue; ordinary
+page links outside a record surface remain page actions.
+
 The accepted [poke-and-refetch database client decision](../../decisions/0005-poke-and-refetch-database-client.md) defines the QueryClient-backed client used here. It supersedes the collection-backed responsive client: the server protocol is unchanged, but the client no longer keeps TanStack DB collections or a journal. [ADR 0011](../../decisions/0011-shared-record-interactions.md) replaces row-local drafts and row cache patches with shared sparse intentions.
 
 The [v2 read service](../../../apps/server/src/features/databases/read/service.ts) separates metadata bootstrap from bounded record windows. Bootstrap aggregates properties for every accessible linked source without rows and always includes the host database's nullable `deletedAt` lifecycle state. Record reads materialize one complete entity per row, evaluate the selected view before slicing, default to 50 records (or a persisted 10/25/50/100 view choice), and bind continuation reads to host/source/view revisions. A changed revision raises the typed `WINDOW_STALE` conflict. The [database read routes](../../../apps/server/src/features/databases/http/read-routes.ts) expose those services as `GET /:id/bootstrap` and `GET /:id/data-sources/:dataSourceId/records`, retaining authenticated and published-database access while validating source/view scope and exact window sizes. The `GET /:id/mutations` catch-up feed remains on the server but the client never calls it. The [shared view evaluator](../../../packages/features/src/databases/views/view-evaluation.ts) is server-safe and reuses the tested filter and formula domains. The [view query hash](../../../packages/features/src/databases/views/query-hash.ts) reduces each view config to its data-affecting slice (normalized filters/sorts plus the deleted-rows flag, excluding type, grouping, visibility, and layout) so the client cache in [record windows](../../../packages/features/src/databases/queries/records.ts) is per query, not per view; see the [query-hashed windows decision](../../decisions/0006-query-hashed-database-windows.md).

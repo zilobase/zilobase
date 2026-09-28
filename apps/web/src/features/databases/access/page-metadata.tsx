@@ -21,9 +21,8 @@ import { useSession } from "@zilobase/features/auth/react";
 import { type DatabasePresenceCollaborator } from "@zilobase/features/databases";
 import {
   resolveCellCommandScope,
-  saveCellValue,
+  useChangeDatabaseRow,
   useDatabaseRealtime,
-  useDatabaseSessionId,
 } from "@zilobase/features/databases/react";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { usePagePersonAccessTargets, usePageProperties } from "@zilobase/features/pages/react";
@@ -261,7 +260,7 @@ export function PageMetadata({
   );
   const commentsSnapshot = usePageCommentsSnapshot(commentsEnabled ? pageId : null);
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const databaseSessionId = useDatabaseSessionId();
+  const changeRow = useChangeDatabaseRow();
   const cover = coverProp ?? localCover;
   const description = descriptionProp ?? localDescription;
   const icon = iconProp ?? localIcon;
@@ -377,20 +376,19 @@ export function PageMetadata({
     void (async () => {
       try {
         const scope = await resolveCellCommandScope(queryClient, apiFetch, hostDatabaseId, rowId);
-        await saveCellValue({
-          apiFetch,
+        await changeRow.mutateAsync({
+          databaseId: scope.hostDatabaseId,
           dataSourceId: scope.dataSourceId,
-          hostDatabaseId: scope.hostDatabaseId,
-          propertyId,
-          queryClient,
           rowId,
-          sessionId: databaseSessionId,
-          value: serializePropertyValue(propertyType, value),
+          valuesByPropertyId: { [propertyId]: serializePropertyValue(propertyType, value) },
         });
+        // Keep the local editor draft until its page-properties read catches up.
+        await queryClient.invalidateQueries({ queryKey: ["page", pageId] }, { throwOnError: true });
         setDraftValues((drafts) => {
           const nextDrafts = { ...drafts };
 
-          delete nextDrafts[propertyId];
+          if (JSON.stringify(nextDrafts[propertyId]) === JSON.stringify(value))
+            delete nextDrafts[propertyId];
 
           return nextDrafts;
         });

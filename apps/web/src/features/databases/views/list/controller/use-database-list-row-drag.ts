@@ -58,6 +58,7 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
       startDatabaseRowDrag();
       setDatabasePageDragPayload(event.dataTransfer, {
         databaseId: input.databaseId,
+        hostDatabaseId: input.hostDatabaseId ?? undefined,
         pageId: row.pageId,
         rowId: row.id,
         title: row.page.name?.trim() || "Untitled",
@@ -96,12 +97,7 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
     (event: DragEvent<HTMLDivElement>) => {
       const externalPayload = !draggedRowId ? getDatabasePageDragPayload(event.dataTransfer) : null;
 
-      if (
-        input.databaseId &&
-        externalPayload &&
-        externalPayload.databaseId !== input.databaseId &&
-        dropTargetIndex !== null
-      ) {
+      if (input.databaseId && externalPayload && dropTargetIndex !== null) {
         event.preventDefault();
         event.stopPropagation();
         manualPlacement.request(() =>

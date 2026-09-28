@@ -360,8 +360,13 @@ async function createRow(
     workspaceId: source.workspaceId,
   });
 
-  const record = await getDatabaseRecordEntity(context.transaction, source.id, rowId);
-  const mutations = await mutationForHosts(context, record, { records: [record] });
+  const hierarchy = command.hierarchy
+    ? await changeRow(context, { type: "row.change", rowId, hierarchy: command.hierarchy })
+    : undefined;
+  const record =
+    hierarchy?.result ?? (await getDatabaseRecordEntity(context.transaction, source.id, rowId));
+  const mutations =
+    hierarchy?.mutations ?? (await mutationForHosts(context, record, { records: [record] }));
   if (transferred) {
     // Property import may change metadata. One reset event per linked host also
     // handles hosts displaying both sources without leaking duplicate events.

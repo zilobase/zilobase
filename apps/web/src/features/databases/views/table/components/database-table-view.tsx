@@ -1052,6 +1052,7 @@ export function DatabaseTableView() {
     );
     setDatabasePageDragPayload(event.dataTransfer, {
       databaseId: loadedDatabaseId,
+      hostDatabaseId: hostDatabaseId ?? undefined,
       pageId: row.pageId,
       rowId: row.id,
       title: getRowTitle(row),

@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useOptionalPageSidePane } from "@/features/pages/pane/page-side-pane";
 import { getPageEmoji, type PageMetadata } from "@zilobase/features/pages";
 import { useUpdatePage } from "@zilobase/features/pages/react";
+import { useChangeDatabaseRow } from "@zilobase/features/databases/react";
+import { useOptionalDatabaseDataContext } from "../views/state/database-view-context";
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { useOptionalUndoHistory } from "@/shared/shortcuts";
@@ -35,6 +37,25 @@ export function DatabasePageLink({
 }) {
   const sidePane = useOptionalPageSidePane();
   const updatePage = useUpdatePage();
+  const changeRow = useChangeDatabaseRow();
+  const database = useOptionalDatabaseDataContext();
+  const rename = (name: string, onError?: () => void) => {
+    const row = database?.items.find((candidate) => candidate.pageId === pageId);
+    if (row && database?.databaseId && database.hostDatabaseId) {
+      changeRow.mutate(
+        {
+          databaseId: database.hostDatabaseId,
+          dataSourceId: database.databaseId,
+          rowId: row.id,
+          title: name,
+        },
+        { onError },
+      );
+    } else {
+      // Related-page links and the library are page actions, not record gestures.
+      updatePage.mutate({ id: pageId, name }, { onError });
+    }
+  };
   const undoHistory = useOptionalUndoHistory();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const titleEditFinishedRef = useRef(false);
@@ -124,23 +145,18 @@ export function DatabasePageLink({
       undoHistory.pushAction({
         label: "Rename database page",
         redo: () => {
-          updatePage.mutate({ id: pageId, name: nextTitle });
+          rename(nextTitle);
         },
         undo: () => {
-          updatePage.mutate({ id: pageId, name: currentTitle });
+          rename(currentTitle);
         },
       });
     }
 
-    updatePage.mutate(
-      { id: pageId, name: nextTitle },
-      {
-        onError: () => {
-          setDraftTitle(currentTitle);
-          toast.error("Couldn't rename page");
-        },
-      },
-    );
+    rename(nextTitle, () => {
+      setDraftTitle(currentTitle);
+      toast.error("Couldn't rename page");
+    });
   };
   const resizeTitleTextarea = (element: HTMLTextAreaElement) => {
     element.style.height = "auto";

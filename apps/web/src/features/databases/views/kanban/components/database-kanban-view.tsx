@@ -256,6 +256,7 @@ function DatabaseKanbanBoard() {
     databaseId,
     editable,
     getOptionItems: getKanbanOptionItems,
+    hostDatabaseId,
     groupProperty,
     options: kanbanOptions,
     propertyValuesByKey,

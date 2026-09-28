@@ -3,6 +3,7 @@ import { hasDragType, readDragPayload, writeDragPayload } from "@/shared/lib/dra
 
 export type DatabasePageDragPayload = {
   databaseId?: string;
+  hostDatabaseId?: string;
   pageId: string;
   rowId?: string;
   title?: string;
@@ -24,6 +25,9 @@ export function getDatabasePageDragPayload(
   return {
     databaseId: typeof payload.databaseId === "string" ? payload.databaseId : undefined,
     pageId: payload.pageId,
+    ...(typeof payload.hostDatabaseId === "string"
+      ? { hostDatabaseId: payload.hostDatabaseId }
+      : {}),
     rowId: typeof payload.rowId === "string" ? payload.rowId : undefined,
     title: typeof payload.title === "string" ? payload.title : undefined,
   };

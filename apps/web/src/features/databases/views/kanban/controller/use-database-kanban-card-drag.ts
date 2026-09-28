@@ -45,6 +45,7 @@ export function useDatabaseKanbanCardDrag<
   ) => void | Promise<void>;
   allRows: Row[];
   databaseId: string | null | undefined;
+  hostDatabaseId: string | null | undefined;
   editable: boolean;
   getOptionItems: (option: Option) => Row[];
   groupProperty: DatabasePropertyListItem | null;
@@ -149,6 +150,7 @@ export function useDatabaseKanbanCardDrag<
     startDatabaseRowDrag();
     setDatabasePageDragPayload(event.dataTransfer, {
       databaseId: input.databaseId,
+      hostDatabaseId: input.hostDatabaseId ?? undefined,
       pageId: row.pageId,
       rowId: row.id,
       title: row.page.name?.trim() || "Untitled",

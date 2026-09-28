@@ -45,7 +45,7 @@ function commandApi(inspect: (request: DatabaseCommandRequest, path: string) => 
         type: "database.mutation",
         version: 1,
       },
-      sourceVersions: {},
+      sourceVersions: { "data-source-1": 2 },
       result: record,
     } as T;
   };

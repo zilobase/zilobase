@@ -397,6 +397,7 @@ export type ChangeRowCommand = z.infer<typeof changeRowCommandSchema>;
 
 const rowPlaceCommandSchema = z
   .object({
+    hierarchy: changeRowCommandSchema.shape.hierarchy,
     afterRowId: nullableEntityIdSchema,
     beforeRowId: nullableEntityIdSchema,
     pageId: entityIdSchema.optional(),

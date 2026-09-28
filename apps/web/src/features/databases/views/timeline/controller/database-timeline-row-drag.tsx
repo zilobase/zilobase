@@ -160,6 +160,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
       setDropTargetIndex(input.visibleRowIndexById.get(row.id) ?? 0);
       setDatabasePageDragPayload(event.dataTransfer, {
         databaseId: input.databaseId,
+        hostDatabaseId: input.hostDatabaseId ?? undefined,
         pageId: row.pageId,
         rowId: row.id,
         title: getTimelineRowTitle(row),
@@ -200,12 +201,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
     (event: ReactDragEvent<HTMLDivElement>) => {
       const externalPayload = !draggedRowId ? getDatabasePageDragPayload(event.dataTransfer) : null;
 
-      if (
-        input.databaseId &&
-        externalPayload &&
-        externalPayload.databaseId !== input.databaseId &&
-        dropTargetIndex !== null
-      ) {
+      if (input.databaseId && externalPayload && dropTargetIndex !== null) {
         event.preventDefault();
         event.stopPropagation();
         const targetRow =

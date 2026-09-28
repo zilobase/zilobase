@@ -142,9 +142,9 @@ export function getDatabaseViewCommands({
     addDatabaseView,
     addProperty,
     addRow,
+    changeRow,
     updateDatabase,
     updateDatabaseView,
-    updatePage,
     updateProperty,
     updateValue,
   } = mutations;
@@ -171,8 +171,6 @@ export function getDatabaseViewCommands({
     databaseId,
     editable,
     hostDatabaseId: viewDatabaseId,
-    viewData,
-    updateValue,
   });
 
   const saveDatabaseSorts = (nextSorts: DatabaseSortConfig[]) => {
@@ -388,6 +386,35 @@ export function getDatabaseViewCommands({
         return;
       }
 
+      const groupSetup = getDraggedRowGroupSetup(groupValue, groupPropertyOverride);
+      if (dragPayload.databaseId === databaseId && dragPayload.rowId && viewDatabaseId) {
+        const previousIndex = items.findIndex(({ id }) => id === dragPayload.rowId);
+        const remaining = items.filter(({ id }) => id !== dragPayload.rowId);
+        const index = Math.max(
+          0,
+          Math.min(
+            position - (previousIndex >= 0 && previousIndex < position ? 1 : 0),
+            remaining.length,
+          ),
+        );
+        changeRow.mutate(
+          {
+            databaseId: viewDatabaseId,
+            dataSourceId: databaseId,
+            rowId: dragPayload.rowId,
+            placement: {
+              afterRowId: remaining[index - 1]?.id ?? null,
+              beforeRowId: remaining[index]?.id ?? null,
+            },
+            title: groupSetup.pageTitle,
+            valuesByPropertyId: Object.fromEntries(
+              groupSetup.propertyValues.map(({ propertyId, value }) => [propertyId, value]),
+            ),
+          },
+          { onError: () => notify.error("Couldn't move this row.") },
+        );
+        return;
+      }
       if (items.some((row) => row.pageId === dragPayload.pageId)) {
         notify.error("This page is already in this database.");
         return;
@@ -410,7 +437,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const groupSetup = getDraggedRowGroupSetup(groupValue, groupPropertyOverride);
       const groupValues = new Map(
         groupSetup.propertyValues.map((propertyValue) => [propertyValue.propertyId, propertyValue]),
       );
@@ -420,25 +446,18 @@ export function getDatabaseViewCommands({
           ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           ...(groupValues.size > 0 ? { initialValues: [...groupValues.values()] } : {}),
           pageId: dragPayload.pageId,
-          position,
+          afterRowId: items[position - 1]?.id ?? null,
+          beforeRowId: items[position]?.id ?? null,
+          sourceHostDatabaseId: dragPayload.hostDatabaseId,
           sourceDataSourceId: isCrossDatabaseMove ? dragPayload.databaseId : undefined,
           sourceRowId: isCrossDatabaseMove ? dragPayload.rowId : undefined,
           sourcePropertyMode: sourcePropertyMode ?? undefined,
-          title: groupSetup.pageTitle ?? dragPayload.title,
+          previewTitle: dragPayload.title,
+          title: groupSetup.pageTitle,
         },
         {
           onError: () => {
             notify.error("Couldn't move this row to the database.");
-          },
-          onSuccess: () => {
-            if (groupSetup.pageTitle !== undefined) {
-              updatePage.mutate(
-                { id: dragPayload.pageId, name: groupSetup.pageTitle },
-                {
-                  onError: () => notify.error("Moved the row, but couldn't update its group."),
-                },
-              );
-            }
           },
         },
       );

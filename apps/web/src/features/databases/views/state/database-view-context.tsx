@@ -633,6 +633,10 @@ export function useDatabaseDataContext() {
   return useRequiredDatabaseContext(DatabaseDataContext, "useDatabaseDataContext");
 }
 
+export function useOptionalDatabaseDataContext() {
+  return useContext(DatabaseDataContext);
+}
+
 export function useDatabaseUiContext() {
   return useRequiredDatabaseContext(DatabaseUiContext, "useDatabaseUiContext");
 }

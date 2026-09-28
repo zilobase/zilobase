@@ -94,6 +94,7 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
       startDatabaseRowDrag();
       setDatabasePageDragPayload(event.dataTransfer, {
         databaseId: input.databaseId,
+        hostDatabaseId: input.hostDatabaseId ?? undefined,
         pageId: row.pageId,
         rowId: row.id,
         title: row.page.name?.trim() || "Untitled",
@@ -137,7 +138,7 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
       const anchorRows = section?.rows ?? input.visibleRows;
       const externalPayload = !draggedRowId ? getDatabasePageDragPayload(event.dataTransfer) : null;
 
-      if (input.databaseId && externalPayload && externalPayload.databaseId !== input.databaseId) {
+      if (input.databaseId && externalPayload) {
         event.preventDefault();
         event.stopPropagation();
         manualPlacement.request(() =>

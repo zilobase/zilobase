@@ -1,3 +1,7 @@
+import {
+  getPropertyNameKey,
+  normalizeValueForPropertyType,
+} from "@zilobase/features/databases/record-interactions";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import type { Database } from "../../../infrastructure/database";
@@ -6,12 +10,7 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
-import {
-  getPropertyNameKey,
-  mergeSelectOptionsForValue,
-  normalizeValueForPropertyType,
-  shouldInsertUnmatchedSourceProperty,
-} from "../schema/import";
+import { mergeSelectOptionsForValue, shouldInsertUnmatchedSourceProperty } from "../schema/import";
 import { isReadOnlyPropertyType, normalizeDatabasePropertyType } from "../schema/types";
 import { validateCellValue } from "../schema/config";
 import { upsertPagePropertyValues } from "../../pages/properties/upsert";

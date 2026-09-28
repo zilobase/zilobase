@@ -391,3 +391,57 @@ test("oversized changesets produce a reset event instead of truncated data", asy
   assert.equal(ack.event.requiresReset, true);
   assert.deepEqual(ack.event.changes, {});
 });
+
+test("opposing transfers lock sources in one order and return only touched source clocks", async () => {
+  for (const [destination, origin] of [
+    ["source-z", "source-a"],
+    ["source-a", "source-z"],
+  ]) {
+    const harness = transactionHarness({ sourceVersion: 8, databaseVersions: [12] });
+    const ack = await executeDatabaseCommand(
+      {
+        actorId: "user-1",
+        scope: { databaseId: "database-1", dataSourceId: destination },
+        request: {
+          commandId: "transfer-" + destination,
+          protocolVersion: 2,
+          command: {
+            type: "row.place",
+            pageId: "page-1",
+            afterRowId: null,
+            beforeRowId: null,
+            parentRowId: null,
+            source: {
+              databaseId: "database-1",
+              dataSourceId: origin,
+              rowId: "row-1",
+              propertyMode: "match",
+            },
+          },
+        },
+      },
+      {
+        database: harness.database as never,
+        dispatch: (async () => ({
+          mutations: [
+            {
+              databaseId: "database-1",
+              dataSourceId: destination,
+              changes: {},
+              areas: ["records"],
+            },
+          ],
+          result: {},
+        })) as DatabaseCommandDispatcher,
+      },
+    );
+    assert.deepEqual(Object.keys(ack.sourceVersions), ["source-a", "source-z"]);
+    assert.deepEqual(ack.sourceVersions, { "source-a": 8, "source-z": 8 });
+    assert.equal(
+      harness.execute.mock.calls.length,
+      3,
+      "receipt lock followed by both source locks",
+    );
+    assert.deepEqual(harness.updates.slice(0, 2), [dataSource, dataSource]);
+  }
+});
