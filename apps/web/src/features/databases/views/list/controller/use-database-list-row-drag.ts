@@ -1,3 +1,4 @@
+import { useManualRecordPlacement } from "../../state/manual-record-placement";
 import { useCallback, useState, type DragEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -16,7 +17,6 @@ import {
   finishDatabaseRowDrag,
   getAnchoredRowInsertPosition,
   getFilteredReorderedRowIds,
-  getReorderedRowIds,
   startDatabaseRowDrag,
 } from "../../../interactions/database-row-drag";
 
@@ -28,9 +28,7 @@ type DatabaseListRowDragInput = {
   databaseId: string | null | undefined;
   hostDatabaseId: string | null | undefined;
   editable: boolean;
-  hasActiveFilters: boolean;
   items: SortableDatabaseItem[];
-  reorderEnabled: boolean;
   visibleRows: SortableDatabaseItem[];
 };
 
@@ -39,6 +37,7 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
   const [isExternalDragActive, setIsExternalDragActive] = useState(false);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const reorderRows = useChangeDatabaseRow();
+  const manualPlacement = useManualRecordPlacement();
 
   const clearDrag = useCallback(() => {
     finishDatabaseRowDrag();
@@ -105,9 +104,11 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
       ) {
         event.preventDefault();
         event.stopPropagation();
-        void input.addDraggedPageRow(
-          externalPayload,
-          getAnchoredRowInsertPosition(input.items, input.visibleRows, dropTargetIndex),
+        manualPlacement.request(() =>
+          input.addDraggedPageRow(
+            externalPayload,
+            getAnchoredRowInsertPosition(input.items, input.visibleRows, dropTargetIndex),
+          ),
         );
         clearDrag();
         return;
@@ -120,35 +121,36 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
 
       event.preventDefault();
       event.stopPropagation();
-      if (!input.reorderEnabled) {
-        clearDrag();
-        return;
-      }
-      const rowIds = input.hasActiveFilters
-        ? getFilteredReorderedRowIds(input.items, input.visibleRows, draggedRowId, dropTargetIndex)
-        : getReorderedRowIds(input.items, draggedRowId, dropTargetIndex);
+      const rowIds = getFilteredReorderedRowIds(
+        input.items,
+        input.visibleRows,
+        draggedRowId,
+        dropTargetIndex,
+      );
 
       if (rowIds) {
-        reorderRows.mutate(
-          {
-            databaseId: input.hostDatabaseId!,
-            dataSourceId: input.databaseId,
-            rowId: draggedRowId,
-            placement: getDatabaseRowMoveAnchors(rowIds, draggedRowId),
-          },
-          {
-            onError: (error) => {
-              toast.error(
-                error instanceof Error && error.message ? error.message : "Couldn't move row",
-              );
+        manualPlacement.request(() =>
+          reorderRows.mutate(
+            {
+              databaseId: input.hostDatabaseId!,
+              dataSourceId: input.databaseId!,
+              rowId: draggedRowId,
+              placement: getDatabaseRowMoveAnchors(rowIds, draggedRowId),
             },
-          },
+            {
+              onError: (error) => {
+                toast.error(
+                  error instanceof Error && error.message ? error.message : "Couldn't move row",
+                );
+              },
+            },
+          ),
         );
       }
 
       clearDrag();
     },
-    [clearDrag, draggedRowId, dropTargetIndex, input, reorderRows],
+    [clearDrag, draggedRowId, dropTargetIndex, input, reorderRows, manualPlacement],
   );
 
   return {

@@ -56,7 +56,7 @@ composes group creation/settings, property editors and the
 Interaction state is scoped to host, source, view and grouping property.
 
 The [drag controller](../../../apps/web/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts)
-owns native page payloads, cancellation, sorted-move confirmation and drop targets.
+owns native page payloads, cancellation and drop targets.
 It captures the active card synchronously so dropping before the first animation
 frame works. The [geometry hook](../../../apps/web/src/features/databases/views/kanban/controller/use-kanban-geometry.ts)
 registers elements, observes resizes and batches layout reads. Dirty target
@@ -79,6 +79,16 @@ against committed source versions, including placeholders and linked hosts;
 stale inactive cache windows are evicted before an intention is retired.
 Projection precedes filtering, sorting, grouping and hierarchy. QueryClient
 contains only server snapshots, never speculative rows or versions.
+
+The [manual placement provider](../../../apps/web/src/features/databases/views/state/manual-record-placement.tsx)
+owns one clear-sort policy and [confirmation dialog](../../../apps/web/src/features/databases/views/components/database-manual-placement-dialog.tsx)
+for all renderers, including external drops. Cancellation or failed sort clearing
+never submits a row write; a view change cancels the pending action. List supports
+sorted drag through this confirmation instead of disabling reordering. Gallery
+uses the grouped-drop intention model for writable group changes, preserving
+the source section for multi-select cards. Timeline dates and resizes continue
+through undoable cell actions and the shared record queue; date-only edits do
+not request manual-order confirmation.
 
 [Lifecycle tests](../../../apps/web/test/features/databases/database-kanban-move-lifecycle.test.mjs)
 mount the actual drag and mutation hooks with controlled responses, covering slow

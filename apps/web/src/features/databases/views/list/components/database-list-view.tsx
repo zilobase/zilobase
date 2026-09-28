@@ -24,8 +24,6 @@ export function DatabaseListView() {
     updateDatabasePropertyConfig,
   } = useDatabaseActionsContext();
   const {
-    activeDatabaseFilters,
-    activeDatabaseSorts,
     databaseId,
     editable,
     hostDatabaseId,
@@ -46,15 +44,13 @@ export function DatabaseListView() {
       return row ? [row] : [];
     });
   }, [items, sortedItems]);
-  const canReorderRows = editable && activeDatabaseSorts.length === 0;
+  const canReorderRows = editable;
   const rowDrag = useDatabaseListRowDrag({
     addDraggedPageRow,
     databaseId,
     editable,
-    hasActiveFilters: activeDatabaseFilters.length > 0,
     hostDatabaseId,
     items,
-    reorderEnabled: canReorderRows,
     visibleRows: rows,
   });
   return (

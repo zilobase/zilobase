@@ -1,3 +1,4 @@
+import { useManualRecordPlacement } from "../../state/manual-record-placement";
 import {
   retainTableRowDropTarget,
   retainGroupRowDropTarget,
@@ -27,16 +28,6 @@ import {
   getDatabaseRowMoveAnchors,
   useChangeDatabaseRow,
 } from "@zilobase/features/databases/react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog";
 import { useOptionalPageSidePane } from "@/features/pages/pane/page-side-pane";
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
 import { cn } from "@/shared/lib/utils";
@@ -114,7 +105,6 @@ import {
   type CellFillDrag,
   type GroupRowDropTarget,
   type GroupSection,
-  type PendingSortedRowReorder,
   type RowMove,
   type TableRow,
   type TableRowDropTarget,
@@ -145,12 +135,12 @@ export function DatabaseTableView() {
     addDatabaseRow,
     onOpenPage,
     savePropertyValue,
-    saveDatabaseSorts,
     setViewGroupProperty,
     renameDatabaseProperty,
     updateDatabasePropertyConfig,
     updateNameColumnConfig,
     saveDatabasePropertyOrder,
+    saveDatabaseSorts,
   } = useDatabaseActionsContext();
   const {
     activeConditionalColors,
@@ -228,8 +218,7 @@ export function DatabaseTableView() {
   const isExternalRowDragActiveRef = useRef(false);
   const rowDropOwner = useMemo(() => ({}), []);
 
-  const [pendingSortedRowReorder, setPendingSortedRowReorder] =
-    useState<PendingSortedRowReorder | null>(null);
+  const manualPlacement = useManualRecordPlacement();
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [collapsedSubItemRowIds, setCollapsedSubItemRowIds] = useState<Set<string>>(
@@ -672,23 +661,6 @@ export function DatabaseTableView() {
         const next = new Set(current);
         next.delete(nextMove.subItemParentRowId!);
         return next;
-      });
-  };
-  const confirmSortedRowReorder = () => {
-    if (!databaseId || !pendingSortedRowReorder) {
-      setPendingSortedRowReorder(null);
-      return;
-    }
-
-    const nextMove = pendingSortedRowReorder;
-
-    setPendingSortedRowReorder(null);
-    void saveDatabaseSorts([])
-      .then(() => {
-        applyRowMove(nextMove);
-      })
-      .catch(() => {
-        toast.error("Couldn't clear sort");
       });
   };
   const clearRowDrag = () => {
@@ -1679,13 +1651,7 @@ export function DatabaseTableView() {
           function moveInternalRow() {
             const nextMove = getDraggedRowMove();
 
-            if (isTableSorted) {
-              if (nextMove) {
-                setPendingSortedRowReorder(nextMove);
-              }
-            } else if (nextMove) {
-              applyRowMove(nextMove);
-            }
+            if (nextMove) manualPlacement.request(() => applyRowMove(nextMove));
           }
           function insertExternalRow(
             dragPayload: NonNullable<ReturnType<typeof getDatabasePageDragPayload>>,
@@ -1714,7 +1680,7 @@ export function DatabaseTableView() {
           if (draggedRowId) {
             moveInternalRow();
           } else if (dragPayload) {
-            insertExternalRow(dragPayload);
+            manualPlacement.request(() => insertExternalRow(dragPayload));
           }
           clearRowDrag();
         }}
@@ -1914,28 +1880,6 @@ export function DatabaseTableView() {
         }}
         open={formulaSetupPropertyId !== null}
       />
-      <AlertDialog
-        open={pendingSortedRowReorder !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingSortedRowReorder(null);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear sorting to reorder?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Row order is manual. To save this move, Zilobase needs to clear the active sorting
-              first.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSortedRowReorder}>Clear sorting</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

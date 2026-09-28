@@ -1,15 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { GanttProvider, type Range } from "../gantt";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog";
 
 import { getRawDatabaseGroupValue } from "../../../interactions/database-group-values";
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections";
@@ -47,7 +37,6 @@ export function DatabaseTimelineView() {
     addDatabaseRow,
     onOpenPage,
     savePropertyValue,
-    saveDatabaseSorts,
     setViewDateProperty,
     setupTimelineDateProperty,
     addTimelineRow,
@@ -210,7 +199,6 @@ export function DatabaseTimelineView() {
       measureRows,
       propertyValuesByKey,
       rowsById,
-      saveDatabaseSorts,
       sortedItems,
       timelineRef,
       visibleRows,
@@ -232,7 +220,6 @@ export function DatabaseTimelineView() {
       propertyValuesByKey,
       rowLayout,
       rowsById,
-      saveDatabaseSorts,
       sortedItems,
       visibleRows,
       visibleRowIndexById,
@@ -379,26 +366,6 @@ export function DatabaseTimelineView() {
         </GanttProvider>
       </div>
       <DatabaseRecordWindowControl />
-      <AlertDialog
-        open={rowDrag.pendingSortedMove !== null}
-        onOpenChange={(open) => {
-          if (!open) rowDrag.setPendingSortedMove(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear sorting to reorder?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Row order is manual. To save this move, Zilobase needs to clear the active sorting
-              first.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={rowDrag.confirmSortedMove}>Clear sorting</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

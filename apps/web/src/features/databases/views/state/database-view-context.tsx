@@ -1,3 +1,5 @@
+import { ManualRecordPlacementProvider } from "./manual-record-placement";
+import { DatabaseManualPlacementDialog } from "../components/database-manual-placement-dialog";
 import {
   createContext,
   useContext,
@@ -549,7 +551,15 @@ function UndoableDatabaseViewProvider({
         <DatabaseActionsContext.Provider value={actionsValue}>
           <DatabaseCellStateProvider>
             <DatabaseRealtimeStateProvider value={undoableValue}>
-              {children}
+              <ManualRecordPlacementProvider
+                key={[value.hostDatabaseId, value.databaseId, value.activeView?.id].join(":")}
+                editable={value.editable}
+                sorted={value.activeDatabaseSorts.length > 0}
+                clearSort={() => value.saveDatabaseSorts([])}
+              >
+                {children}
+                <DatabaseManualPlacementDialog />
+              </ManualRecordPlacementProvider>
             </DatabaseRealtimeStateProvider>
           </DatabaseCellStateProvider>
         </DatabaseActionsContext.Provider>

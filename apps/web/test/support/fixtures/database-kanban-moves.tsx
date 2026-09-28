@@ -1,3 +1,7 @@
+import {
+  ManualRecordPlacementProvider,
+  useManualRecordPlacement,
+} from "../../../src/features/databases/views/state/manual-record-placement";
 import { createElement } from "react";
 import { useProjectedDatabaseRecords } from "../../../../../packages/features/src/databases/interactions/react";
 import { flushSync } from "react-dom";
@@ -93,7 +97,9 @@ export function mountKanbanMoves(container: HTMLElement) {
   let options: KanbanGroupOption[] = [];
   let columns = new Map<string, DatabaseRow[]>();
 
+  let manual!: ReturnType<typeof useManualRecordPlacement>;
   function Capture() {
+    manual = useManualRecordPlacement();
     const records = rows.map((row) => ({
       ...row,
       dataSourceId: "source",
@@ -158,12 +164,10 @@ export function mountKanbanMoves(container: HTMLElement) {
       allRows: moves.rows,
       editable: true,
       groupProperty: property,
-      isSorted: sorted,
       options,
       propertyValuesByKey: moves.propertyValuesByKey,
       getOptionItems: (option) => columns.get(option.groupValue) ?? [],
       submitMove: moves.submitMove,
-      saveDatabaseSorts: () => clearSort(),
       addDraggedPageRow: async () => undefined,
     });
     return createElement(
@@ -205,7 +209,12 @@ export function mountKanbanMoves(container: HTMLElement) {
             createElement(
               DbProvider,
               { queryClient, apiFetch, sessionId: "kanban-test" },
-              createElement(Capture),
+              createElement(ManualRecordPlacementProvider, {
+                editable: true,
+                sorted,
+                clearSort: () => clearSort(),
+                children: createElement(Capture),
+              }),
             ),
           ),
         ),
@@ -255,8 +264,8 @@ export function mountKanbanMoves(container: HTMLElement) {
       clearSort = save;
       render();
     },
-    confirm: () => drag.confirmSortedMove(),
-    hasSortConfirmation: () => drag.pendingSortedMove !== null,
+    confirm: () => manual.confirm(),
+    hasSortConfirmation: () => manual.pending,
     unmount: () => {
       flushSync(() => root.unmount());
       queryClient.clear();

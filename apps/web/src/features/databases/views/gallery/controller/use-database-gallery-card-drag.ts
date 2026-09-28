@@ -1,3 +1,5 @@
+import { useManualRecordPlacement } from "../../state/manual-record-placement";
+import { getKanbanMove } from "../../kanban/model/database-kanban-moves";
 import { useCallback, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -43,9 +45,12 @@ type DatabaseGalleryCardDragInput = {
   groupedSections: GallerySection[];
   items: SortableDatabaseItem[];
   visibleRows: SortableDatabaseItem[];
+  propertyValuesByKey: Record<string, string | string[]>;
 };
 
 export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) {
+  const manualPlacement = useManualRecordPlacement();
+  const sourceSectionRef = useRef<string | null>(null);
   const dragOriginRef = useRef<EventTarget | null>(null);
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
   const [isExternalDragActive, setIsExternalDragActive] = useState(false);
@@ -65,7 +70,8 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
   }, []);
 
   const startDrag = useCallback(
-    (row: SortableDatabaseItem, event: DragEvent<HTMLElement>) => {
+    (row: SortableDatabaseItem, event: DragEvent<HTMLElement>, sectionId: string | null) => {
+      sourceSectionRef.current = sectionId;
       if (!input.editable || !input.databaseId) {
         event.preventDefault();
         return;
@@ -134,11 +140,13 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
       if (input.databaseId && externalPayload && externalPayload.databaseId !== input.databaseId) {
         event.preventDefault();
         event.stopPropagation();
-        void input.addDraggedPageRow(
-          externalPayload,
-          getAnchoredRowInsertPosition(input.items, anchorRows, target.targetIndex),
-          section?.groupValue,
-          section ? input.groupProperty : undefined,
+        manualPlacement.request(() =>
+          input.addDraggedPageRow(
+            externalPayload,
+            getAnchoredRowInsertPosition(input.items, anchorRows, target.targetIndex),
+            section?.groupValue,
+            section ? input.groupProperty : undefined,
+          ),
         );
         clearDrag();
         return;
@@ -149,44 +157,52 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
         return;
       }
 
-      const sourceSection = input.groupedSections.find((candidate) =>
-        candidate.rows.some((row) => row.id === draggedRowId),
+      const sourceSection = input.groupedSections.find(
+        (candidate) => candidate.id === sourceSectionRef.current,
       );
-
-      if (section?.id !== sourceSection?.id) {
-        clearDrag();
-        return;
-      }
-
       event.preventDefault();
       event.stopPropagation();
-      const rowIds = getFilteredReorderedRowIds(
-        input.items,
-        anchorRows,
-        draggedRowId,
-        target.targetIndex,
-      );
-
-      if (rowIds) {
-        reorderRows.mutate(
-          {
-            databaseId: input.hostDatabaseId!,
-            dataSourceId: input.databaseId,
-            rowId: draggedRowId,
-            placement: getDatabaseRowMoveAnchors(rowIds, draggedRowId),
-          },
-          {
-            onError: (error) => {
-              toast.error(
-                error instanceof Error && error.message ? error.message : "Couldn't move row",
-              );
+      const groupedMove =
+        section && input.groupProperty
+          ? getKanbanMove({
+              rows: input.items,
+              targetRows: anchorRows,
+              rowId: draggedRowId,
+              targetIndex: target.targetIndex,
+              sourceGroupValue: sourceSection?.groupValue ?? "",
+              targetGroupValue: section.groupValue,
+              property: input.groupProperty,
+              propertyValuesByKey: input.propertyValuesByKey,
+            })
+          : null;
+      const rowIds = !section
+        ? getFilteredReorderedRowIds(input.items, anchorRows, draggedRowId, target.targetIndex)
+        : null;
+      const anchors =
+        groupedMove ?? (rowIds ? getDatabaseRowMoveAnchors(rowIds, draggedRowId) : null);
+      if (anchors)
+        manualPlacement.request(() =>
+          reorderRows.mutate(
+            {
+              databaseId: input.hostDatabaseId!,
+              dataSourceId: input.databaseId!,
+              rowId: draggedRowId,
+              placement: { afterRowId: anchors.afterRowId, beforeRowId: anchors.beforeRowId },
+              ...(groupedMove?.group
+                ? {
+                    valuesByPropertyId: {
+                      [groupedMove.group.propertyId]: groupedMove.group.serializedValue,
+                    },
+                  }
+                : {}),
+              ...(groupedMove?.pageTitle !== undefined ? { title: groupedMove.pageTitle } : {}),
             },
-          },
+            { onError: (error) => toast.error(error.message) },
+          ),
         );
-      }
       clearDrag();
     },
-    [clearDrag, draggedRowId, dropTarget, input, reorderRows],
+    [clearDrag, draggedRowId, dropTarget, input, reorderRows, manualPlacement],
   );
 
   return {

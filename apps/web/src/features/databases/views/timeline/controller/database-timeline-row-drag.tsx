@@ -1,3 +1,4 @@
+import { useManualRecordPlacement } from "../../state/manual-record-placement";
 import {
   useCallback,
   useMemo,
@@ -56,7 +57,6 @@ type TimelineRowDragInput = {
   measureRows: () => TimelineRowLayout;
   propertyValuesByKey: Record<string, string | string[]>;
   rowsById: Map<string, SortableDatabaseItem>;
-  saveDatabaseSorts: (sorts: []) => Promise<unknown>;
   sortedItems: SortableDatabaseItem[];
   timelineRef: RefObject<HTMLDivElement | null>;
   visibleRows: SortableDatabaseItem[];
@@ -69,7 +69,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
   const [isExternalDragActive, setIsExternalDragActive] = useState(false);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const [overlay, setOverlay] = useState<DatabaseRowDragOverlay | null>(null);
-  const [pendingSortedMove, setPendingSortedMove] = useState<TimelineRowMove | null>(null);
+  const manualPlacement = useManualRecordPlacement();
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const { mutate: moveDatabaseRow } = useChangeDatabaseRow();
   const { mutate: reorderDatabaseRows } = useChangeDatabaseRow();
@@ -220,11 +220,13 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
               .filter((row) => groupSectionByRowId.get(row.id)?.id === targetSection.id).length
           : dropTargetIndex;
 
-        void input.addDraggedPageRow(
-          externalPayload,
-          getAnchoredRowInsertPosition(input.items, anchorRows, localTargetIndex),
-          targetSection?.groupValue,
-          targetSection ? input.groupProperty : undefined,
+        manualPlacement.request(() =>
+          input.addDraggedPageRow(
+            externalPayload,
+            getAnchoredRowInsertPosition(input.items, anchorRows, localTargetIndex),
+            targetSection?.groupValue,
+            targetSection ? input.groupProperty : undefined,
+          ),
         );
         clearDrag();
         return;
@@ -235,24 +237,21 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
       event.preventDefault();
       event.stopPropagation();
       if (rowMove) {
-        if (input.isSorted) setPendingSortedMove(rowMove);
-        else applyMove(rowMove);
+        manualPlacement.request(() => applyMove(rowMove));
       }
       clearDrag();
     },
-    [applyMove, clearDrag, draggedRowId, dropTargetIndex, groupSectionByRowId, input, rowMove],
+    [
+      applyMove,
+      clearDrag,
+      draggedRowId,
+      dropTargetIndex,
+      groupSectionByRowId,
+      input,
+      rowMove,
+      manualPlacement,
+    ],
   );
-
-  const confirmSortedMove = useCallback(() => {
-    if (!pendingSortedMove) return;
-
-    const move = pendingSortedMove;
-    setPendingSortedMove(null);
-    void input
-      .saveDatabaseSorts([])
-      .then(() => applyMove(move))
-      .catch(() => toast.error("Couldn't clear sort"));
-  }, [applyMove, input, pendingSortedMove]);
 
   const controlRows = useMemo(() => {
     const rowIds = new Set([hoveredRowId, draggedRowId]);
@@ -274,7 +273,6 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
 
   return {
     clearDrag,
-    confirmSortedMove,
     controlRows,
     draggedRowId,
     dropLineTop,
@@ -285,9 +283,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
     isExternalDragActive,
     overlay,
     overlayRef,
-    pendingSortedMove,
     setHoveredRowId,
-    setPendingSortedMove,
     startDrag,
   };
 }

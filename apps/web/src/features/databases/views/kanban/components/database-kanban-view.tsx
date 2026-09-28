@@ -2,16 +2,6 @@ import { DatabaseKanbanGroupDialogs, useKanbanGroupActions } from "./database-ka
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Plus } from "@/shared/components/icons";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
@@ -71,19 +61,19 @@ export function DatabaseKanbanView() {
 function DatabaseKanbanBoard() {
   const {
     fetchNextPage,
+    saveDatabaseSorts,
     addDatabaseRow,
     addDraggedPageRow,
     onOpenPage,
     savePropertyValue,
     setViewGroupProperty,
-    saveDatabaseSorts,
     renameDatabaseProperty,
     updateDatabasePropertyConfig,
     addDatabaseProperty,
   } = useDatabaseActionsContext();
   const {
-    activeDatabaseSorts,
     propertyValuesByKey: savedPropertyValues,
+    activeDatabaseSorts,
     canAddDatabaseProperties,
     databaseConfig,
     databaseId,
@@ -127,7 +117,6 @@ function DatabaseKanbanBoard() {
   const [temporaryKanbanOptions, setTemporaryKanbanOptions] = useState<KanbanGroupOption[]>([]);
   const [isCreatingKanbanOption, setIsCreatingKanbanOption] = useState(false);
   const [editingPropertyKey, setEditingPropertyKey] = useState<string | null>(null);
-  const isKanbanSorted = activeDatabaseSorts.length > 0;
   const canEditStructure = editable && (canAddDatabaseProperties ?? true);
   const canUsePropertyMenus = Boolean(databaseId) && (headerMenusEnabled ?? editable);
   const personOptionsById = useMemo(
@@ -268,10 +257,8 @@ function DatabaseKanbanBoard() {
     editable,
     getOptionItems: getKanbanOptionItems,
     groupProperty,
-    isSorted: isKanbanSorted,
     options: kanbanOptions,
     propertyValuesByKey,
-    saveDatabaseSorts,
     submitMove: moves.submitMove,
   });
   const renderCardProperty = (
@@ -568,36 +555,6 @@ function DatabaseKanbanBoard() {
           )}
         </div>
         <DatabaseKanbanGroupDialogs actions={groupActions} />
-        <AlertDialog
-          open={cardDrag.pendingSortedMove !== null}
-          onOpenChange={(open) => {
-            if (!open && !cardDrag.isClearingSort) {
-              cardDrag.setPendingSortedMove(null);
-            }
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear sorting to reorder?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Row order is manual. To save this move, Zilobase needs to clear the active sorting
-                first.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={cardDrag.isClearingSort}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                disabled={cardDrag.isClearingSort}
-                onClick={(event) => {
-                  event.preventDefault();
-                  void cardDrag.confirmSortedMove();
-                }}
-              >
-                {cardDrag.isClearingSort ? "Clearing…" : "Clear sorting"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </>
     );
   }

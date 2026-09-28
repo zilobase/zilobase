@@ -1,3 +1,4 @@
+import { useManualRecordPlacement } from "../../state/manual-record-placement";
 import { useCallback, useEffect, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
 import {
@@ -47,10 +48,8 @@ export function useDatabaseKanbanCardDrag<
   editable: boolean;
   getOptionItems: (option: Option) => Row[];
   groupProperty: DatabasePropertyListItem | null;
-  isSorted: boolean;
   options: Option[];
   propertyValuesByKey: Record<string, string | string[]>;
-  saveDatabaseSorts: (sorts: []) => Promise<unknown>;
   submitMove: (move: KanbanMove) => void;
 }) {
   const geometry = useKanbanGeometry(input);
@@ -66,8 +65,7 @@ export function useDatabaseKanbanCardDrag<
   const [draggedCard, setDraggedCard] = useState<DraggedCard | null>(null);
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [isExternalDragActive, setIsExternalDragActive] = useState(false);
-  const [pendingSortedMove, setPendingSortedMove] = useState<KanbanMove | null>(null);
-  const [isClearingSort, setIsClearingSort] = useState(false);
+  const manualPlacement = useManualRecordPlacement();
 
   const clearDrag = useCallback(() => {
     if (dragFrame.current !== null) cancelAnimationFrame(dragFrame.current);
@@ -111,21 +109,7 @@ export function useDatabaseKanbanCardDrag<
   };
   const acceptMove = (move: KanbanMove | null) => {
     if (!move) return;
-    if (input.isSorted) setPendingSortedMove(move);
-    else input.submitMove(move);
-  };
-  const confirmSortedMove = async () => {
-    if (!pendingSortedMove || isClearingSort || !input.editable) return;
-    setIsClearingSort(true);
-    try {
-      await input.saveDatabaseSorts([]);
-      input.submitMove(pendingSortedMove);
-      setPendingSortedMove(null);
-    } catch {
-      toast.error("Couldn't clear sort");
-    } finally {
-      setIsClearingSort(false);
-    }
+    manualPlacement.request(() => input.submitMove(move));
   };
   const addExternal = async (
     payload: DatabasePageDragPayload,
@@ -133,7 +117,9 @@ export function useDatabaseKanbanCardDrag<
     option: Option,
   ) => {
     try {
-      await input.addDraggedPageRow(payload, position, option.groupValue, input.groupProperty);
+      manualPlacement.request(() =>
+        input.addDraggedPageRow(payload, position, option.groupValue, input.groupProperty),
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't add card");
     }
@@ -146,8 +132,8 @@ export function useDatabaseKanbanCardDrag<
       !input.editable ||
       !input.databaseId ||
       !input.groupProperty ||
-      isClearingSort ||
-      pendingSortedMove ||
+      manualPlacement.clearing ||
+      manualPlacement.pending ||
       isInteractiveDatabaseCardTarget(origin)
     ) {
       event.preventDefault();
@@ -191,8 +177,8 @@ export function useDatabaseKanbanCardDrag<
       !input.editable ||
       !input.databaseId ||
       !input.groupProperty ||
-      isClearingSort ||
-      pendingSortedMove
+      manualPlacement.clearing ||
+      manualPlacement.pending
     )
       return false;
     const card = draggedCardRef.current;
@@ -275,8 +261,8 @@ export function useDatabaseKanbanCardDrag<
       input.editable &&
       input.databaseId &&
       input.groupProperty &&
-      !isClearingSort &&
-      !pendingSortedMove &&
+      !manualPlacement.clearing &&
+      !manualPlacement.pending &&
       (draggedCardRef.current || hasDatabasePageDragPayload(event.dataTransfer)),
     );
   const dropOnNewGroup = (event: DragEvent<HTMLElement>) => {
@@ -313,7 +299,6 @@ export function useDatabaseKanbanCardDrag<
       dragOrigin.current = event.target;
     },
     clearDrag,
-    confirmSortedMove,
     dragOver,
     drop,
     dropTarget,
@@ -325,9 +310,6 @@ export function useDatabaseKanbanCardDrag<
       setIsExternalDragActive(false);
       setDropTarget((current) => (current?.optionId === option.id ? null : current));
     },
-    pendingSortedMove,
-    setPendingSortedMove,
-    isClearingSort,
     startDrag,
   };
 }

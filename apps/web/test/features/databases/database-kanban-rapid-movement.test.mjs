@@ -60,10 +60,10 @@ export function register({ assert, loadModule, readSource, test }) {
     const geometry = await readSource(
       "/src/features/databases/views/kanban/controller/use-kanban-geometry.ts",
     );
-    assert.match(controller, /if \(input\.isSorted\) setPendingSortedMove/);
+    assert.match(controller, /manualPlacement\.request/);
     assert.match(
-      controller,
-      /await input\.saveDatabaseSorts\(\[\]\)[\s\S]*input\.submitMove\(pendingSortedMove\)/,
+      await readSource("/src/features/databases/views/state/manual-record-placement.tsx"),
+      /await clearSort\(\)[\s\S]*run\(pending\.run\)/,
     );
     assert.match(geometry, /new ResizeObserver/);
     assert.match(geometry, /input\.getOptionItems/);
