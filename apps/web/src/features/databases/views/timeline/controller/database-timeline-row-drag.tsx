@@ -37,6 +37,7 @@ type TimelineRowDragInput = {
     position: number,
     groupValue?: string,
     groupProperty?: DatabasePropertyListItem | null,
+    clearSortViewId?: string,
   ) => void | Promise<void>;
   databaseId: string | null | undefined;
   hostDatabaseId: string | null | undefined;
@@ -176,12 +177,13 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
               .filter((row) => groupSectionByRowId.get(row.id)?.id === targetSection.id).length
           : dropTargetIndex;
 
-        manualPlacement.request(() =>
+        manualPlacement.request((clearSortViewId) =>
           input.addDraggedPageRow(
             externalPayload,
             getAnchoredRowInsertPosition(input.items, anchorRows, localTargetIndex),
             targetSection?.groupValue,
             targetSection ? input.groupProperty : undefined,
+            clearSortViewId,
           ),
         );
         clearDrag();
@@ -193,7 +195,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
       event.preventDefault();
       event.stopPropagation();
       if (rowMove) {
-        manualPlacement.request(() => applyMove(rowMove));
+        manualPlacement.request((clearSortViewId) => applyMove(rowMove, clearSortViewId));
       }
       clearDrag();
     },

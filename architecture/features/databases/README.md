@@ -62,6 +62,14 @@ include committed `sourceVersions`, so a client can reconcile linked-host window
 without receiving the identities of other linked hosts. The former `row.move`
 and `row.create` commands are not accepted.
 
+Manual placement optionally clears its view's sort in the same command. Linking a
+source requires an initial-view descriptor and creates that view atomically, even
+when the source is already linked. Neither workflow stages a second command.
+Host writes reserve linked source lanes before the host row to avoid inverted
+source/host lock ordering. Tree archive/restore reserves workspace source lanes,
+advances affected source revisions and resets linked-host windows; sub-item setup
+confirms its schema source revision alongside the host revision.
+
 The [row mutation hooks](../../../packages/features/src/databases/mutations/rows.ts)
 publish insertion and transfer effects through the session interaction store.
 Transfers remove the source preview and insert a temporary destination record

@@ -46,6 +46,7 @@ export function useDatabaseKanbanCardDrag<
     position: number,
     groupValue?: string,
     property?: DatabasePropertyListItem | null,
+    clearSortViewId?: string,
   ) => void | Promise<void>;
   allRows: Row[];
   databaseId: string | null | undefined;
@@ -55,7 +56,7 @@ export function useDatabaseKanbanCardDrag<
   groupProperty: DatabasePropertyListItem | null;
   options: Option[];
   propertyValuesByKey: Record<string, string | string[]>;
-  submitMove: (move: RecordDrop) => void;
+  submitMove: (move: RecordDrop, clearSortViewId?: string) => void;
 }) {
   const geometry = useKanbanGeometry(input);
   const dragFrame = useRef<number | null>(null);
@@ -114,7 +115,7 @@ export function useDatabaseKanbanCardDrag<
   };
   const acceptMove = (move: RecordDrop | null) => {
     if (!move) return;
-    manualPlacement.request(() => input.submitMove(move));
+    manualPlacement.request((clearSortViewId) => input.submitMove(move, clearSortViewId));
   };
   const addExternal = async (
     payload: DatabasePageDragPayload,
@@ -122,8 +123,14 @@ export function useDatabaseKanbanCardDrag<
     option: Option,
   ) => {
     try {
-      manualPlacement.request(() =>
-        input.addDraggedPageRow(payload, position, option.groupValue, input.groupProperty),
+      manualPlacement.request((clearSortViewId) =>
+        input.addDraggedPageRow(
+          payload,
+          position,
+          option.groupValue,
+          input.groupProperty,
+          clearSortViewId,
+        ),
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Couldn't add card");

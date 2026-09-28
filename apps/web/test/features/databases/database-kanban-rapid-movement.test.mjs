@@ -63,7 +63,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(controller, /manualPlacement\.request/);
     assert.match(
       await readSource("/src/features/databases/views/state/manual-record-placement.tsx"),
-      /await clearSort\(\)[\s\S]*run\(pending\.run\)/,
+      /await pending\.run\(viewId\)/,
     );
     assert.match(geometry, /new ResizeObserver/);
     assert.match(geometry, /input\.getOptionItems/);

@@ -110,15 +110,20 @@ export function register({ assert, loadModule, test }) {
       assert.equal(board.read().pending, false);
 
       await tick();
-      board.setSorted(async () => {
-        throw new Error("Sort save failed");
-      });
+      board.setSorted();
       board.drag("a", "Done", "Done", 0);
       assert.equal(board.hasSortConfirmation(), true);
       await board.confirm();
       await tick();
-      assert.equal(board.requests.length, 4, "a failed sort clear must not send a row move");
-      assert.equal(board.hasSortConfirmation(), true, "failed sort clear remains retryable");
+      assert.equal(board.requests.length, 5, "sort clearing and movement use one command");
+      assert.equal(board.requests[4].command.clearSortViewId, "view-1");
+      board.requests[4].reject(new Error("Placement failed"));
+      await tick();
+      assert.deepEqual(
+        board.read().order,
+        ["c", "b", "a"],
+        "rejected compound drops only its preview",
+      );
     } finally {
       board?.unmount();
       await new Promise((resolve) => setTimeout(resolve, 0));

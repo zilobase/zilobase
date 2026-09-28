@@ -10,13 +10,14 @@ export function useRecordDrops(input: {
   const changeRow = useChangeDatabaseRow();
   return {
     isPending: changeRow.isPending,
-    submitMove(move: RecordDrop) {
+    submitMove(move: RecordDrop, clearSortViewId?: string) {
       if (!input.databaseId || !input.hostDatabaseId) return;
       changeRow.mutate(
         {
           databaseId: input.hostDatabaseId,
           dataSourceId: input.databaseId,
           rowId: move.rowId,
+          ...(clearSortViewId ? { clearSortViewId } : {}),
           placement: { afterRowId: move.afterRowId, beforeRowId: move.beforeRowId },
           ...(move.pageTitle !== undefined ? { title: move.pageTitle } : {}),
           ...(move.group

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   databaseCommandAckSchema,
   databaseMutationChangesSchema,
@@ -18,6 +18,7 @@ import {
   databaseCommandReceipt,
   databaseActorState,
   databaseDataSource,
+  databaseView,
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
@@ -196,6 +197,17 @@ export async function executeDatabaseCommand<TResult = unknown>(
       let primaryHostVersion: number | null = null;
       const sourceVersions: Record<string, number> = {};
       if (input.scope.dataSourceId) {
+        const transferSource =
+          input.request.command.type === "row.place" ? input.request.command.source : undefined;
+        const sourceIds = [
+          ...new Set([
+            input.scope.dataSourceId,
+            ...(transferSource ? [transferSource.dataSourceId] : []),
+          ]),
+        ].sort();
+        // Link validation and revision writes must observe the state after acquiring
+        // the same source lanes used by concurrent link/unlink and host commands.
+        for (const sourceId of sourceIds) await lockDatabaseRowOrdering(tx, sourceId);
         const [linked] = await tx
           .select({ dataSourceId: databaseDataSource.dataSourceId })
           .from(databaseDataSource)
@@ -208,8 +220,6 @@ export async function executeDatabaseCommand<TResult = unknown>(
           .limit(1);
         if (!linked) throw new ServiceMutationError("Data source is not linked", 404);
 
-        const transferSource =
-          input.request.command.type === "row.place" ? input.request.command.source : undefined;
         if (transferSource) {
           const [sourceLink] = await tx
             .select()
@@ -223,15 +233,6 @@ export async function executeDatabaseCommand<TResult = unknown>(
             .limit(1);
           if (!sourceLink) throw new ServiceMutationError("Source is not linked", 404);
         }
-        // Lock every touched source in the same order before taking version row locks.
-        // A->B and B->A transfers must never hold opposite halves of the lock set.
-        const sourceIds = [
-          ...new Set([
-            input.scope.dataSourceId,
-            ...(transferSource ? [transferSource.dataSourceId] : []),
-          ]),
-        ].sort();
-        for (const sourceId of sourceIds) await lockDatabaseRowOrdering(tx, sourceId);
         for (const sourceId of sourceIds) {
           const [versionedSource] = await tx
             .update(dataSource)
@@ -245,6 +246,63 @@ export async function executeDatabaseCommand<TResult = unknown>(
         input.request.command.type !== "database.create" &&
         input.request.command.type !== "database.favorite"
       ) {
+        // Host writes lock their linked sources before the host row. Source commands
+        // later fan out host versions in sorted order, so the opposite order deadlocks.
+        const lifecycle =
+          input.request.command.type === "database.archive" ||
+          input.request.command.type === "database.restore";
+        let lockedSources: string[];
+        if (lifecycle) {
+          const [host] = await tx
+            .select({ workspaceId: database.workspaceId })
+            .from(database)
+            .where(eq(database.id, input.scope.databaseId))
+            .limit(1);
+          if (!host) throw new ServiceMutationError("Database not found", 404);
+          // A database tree can span multiple owned sources; reserve the workspace's
+          // source lanes before discovering/mutating that tree inside domain services.
+          lockedSources = (
+            await tx
+              .select({ id: dataSource.id })
+              .from(dataSource)
+              .where(eq(dataSource.workspaceId, host.workspaceId))
+          ).map(({ id }) => id);
+        } else {
+          lockedSources = (
+            await tx
+              .select({ dataSourceId: databaseDataSource.dataSourceId })
+              .from(databaseDataSource)
+              .where(eq(databaseDataSource.databaseId, input.scope.databaseId))
+          ).map(({ dataSourceId }) => dataSourceId);
+          if ("dataSourceId" in input.request.command)
+            lockedSources.push(input.request.command.dataSourceId);
+        }
+        for (const sourceId of [...new Set(lockedSources)].sort())
+          await lockDatabaseRowOrdering(tx, sourceId);
+        if (
+          input.request.command.type === "view.update" &&
+          input.request.command.patch.configuration?.some(({ path }) => path[0] === "subItems")
+        ) {
+          const [view] = await tx
+            .select({ dataSourceId: databaseView.dataSourceId })
+            .from(databaseView)
+            .where(
+              and(
+                eq(databaseView.id, input.request.command.viewId),
+                eq(databaseView.databaseId, input.scope.databaseId),
+              ),
+            )
+            .limit(1);
+          if (!view || !lockedSources.includes(view.dataSourceId))
+            throw new ServiceMutationError("Database view not found", 404);
+          const [source] = await tx
+            .update(dataSource)
+            .set({ version: sql`${dataSource.version} + 1` })
+            .where(eq(dataSource.id, view.dataSourceId))
+            .returning({ version: dataSource.version });
+          if (!source) throw new ServiceMutationError("Data source not found", 404);
+          sourceVersions[view.dataSourceId] = source.version;
+        }
         const [versionedHost] = await tx
           .update(database)
           .set({ version: sql`${database.version} + 1` })
@@ -268,6 +326,45 @@ export async function executeDatabaseCommand<TResult = unknown>(
           input.request.command,
         ),
       );
+      if (
+        input.request.command.type === "database.archive" ||
+        input.request.command.type === "database.restore"
+      ) {
+        const affected = dispatched.mutations.map(({ databaseId }) => databaseId);
+        const sources = affected.length
+          ? await tx
+              .select({ id: dataSource.id })
+              .from(dataSource)
+              .where(inArray(dataSource.parentDatabaseId, affected))
+          : [];
+        for (const { id } of sources.sort((a, b) => a.id.localeCompare(b.id))) {
+          const [source] = await tx
+            .update(dataSource)
+            .set({ version: sql`${dataSource.version} + 1` })
+            .where(eq(dataSource.id, id))
+            .returning({ version: dataSource.version });
+          if (!source) throw new ServiceMutationError("Data source not found", 404);
+          sourceVersions[id] = source.version;
+          const links = await tx
+            .select({ databaseId: databaseDataSource.databaseId })
+            .from(databaseDataSource)
+            .where(eq(databaseDataSource.dataSourceId, id));
+          for (const { databaseId } of links) {
+            const mutation = dispatched.mutations.find((item) => item.databaseId === databaseId);
+            if (mutation) {
+              mutation.requiresReset = true;
+              mutation.areas = [...new Set([...mutation.areas, "records" as const])];
+            } else
+              dispatched.mutations.push({
+                databaseId,
+                dataSourceId: null,
+                areas: ["records"],
+                changes: {},
+                requiresReset: true,
+              });
+          }
+        }
+      }
       if (input.request.command.type === "database.favorite") {
         const [state] = await tx
           .insert(databaseActorState)

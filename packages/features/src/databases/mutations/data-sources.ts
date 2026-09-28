@@ -80,38 +80,24 @@ export function useLinkDatabaseDataSource() {
       name,
       type,
     }: LinkDatabaseDataSourceInput) => {
-      const cachedSource = findDataSourceBootstrap(queryClient, dataSourceId)?.dataSources.find(
-        ({ id }) => id === dataSourceId,
-      );
-      const dataSource = cachedSource
-        ? null
-        : ((
-            await controller.execute({
-              command: {
-                afterId: null,
-                beforeId: null,
-                dataSourceId,
-                type: "dataSource.link",
-              },
-              databaseId,
-            })
-          ).result as DataSourceEntity);
-      const view = (
+      const result = (
         await controller.execute({
-          command: {
-            afterViewId: null,
-            beforeViewId: null,
-            config: config ?? null,
-            dataSourceId,
-            name: name?.trim() || dataSource?.name || cachedSource?.name || "Table",
-            type: "view.create",
-            viewType: type?.trim() || "table",
-          },
           databaseId,
+          command: {
+            type: "dataSource.link",
+            dataSourceId,
+            afterId: null,
+            beforeId: null,
+            view: {
+              name: name?.trim() || "",
+              type: type?.trim() || "table",
+              config: config ?? null,
+            },
+          },
         })
-      ).result as DatabaseViewEntity;
+      ).result as { dataSource: DataSourceEntity; view: DatabaseViewEntity };
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
-      return { dataSource, view };
+      return result;
     },
   });
 }

@@ -146,6 +146,19 @@ export class DatabaseController {
     if (typeof navigator !== "undefined" && navigator.onLine === false)
       return Promise.reject(new OfflineError());
     const id = crypto.randomUUID();
+    if (
+      (input.command.type === "row.change" || input.command.type === "row.place") &&
+      input.command.clearSortViewId
+    )
+      metadataEffects = [
+        ...metadataEffects,
+        {
+          hostId: input.databaseId,
+          kind: "view",
+          id: input.command.clearSortViewId,
+          configuration: [{ operation: "set", path: ["sorts"], value: [] }],
+        },
+      ];
     if (input.command.type === "database.create") input = { ...input, databaseId: id };
     const interaction: DatabaseIntention = { id, effects, metadataEffects, status: "queued" };
     const sources = [
@@ -196,7 +209,9 @@ export class DatabaseController {
     const blocked = new Map<string, boolean>();
     for (const job of this.jobs.values()) {
       const exclusive = (resource: string) =>
-        !resource.startsWith("host:") || !job.input.dataSourceId;
+        !resource.startsWith("host:") ||
+        !job.input.dataSourceId ||
+        ("clearSortViewId" in job.input.command && !!job.input.command.clearSortViewId);
       const canStart =
         job.interaction.status === "queued" &&
         !job.resources.some(

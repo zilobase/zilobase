@@ -81,9 +81,6 @@ export function mountRecordDrops(container: HTMLElement) {
   };
   let version: number | null = 1;
   let sorted = false;
-  let clearSort: () => Promise<unknown> = async () => {
-    sorted = false;
-  };
   const property = {
     id: "status",
     property: { id: "status", type: "status" },
@@ -213,7 +210,7 @@ export function mountRecordDrops(container: HTMLElement) {
               createElement(ManualRecordPlacementProvider, {
                 editable: true,
                 sorted,
-                clearSort: () => clearSort(),
+                viewId: "view-1",
                 children: createElement(Capture),
               }),
             ),
@@ -260,9 +257,8 @@ export function mountRecordDrops(container: HTMLElement) {
       version = nextVersion;
       render();
     },
-    setSorted: (save: () => Promise<unknown>) => {
+    setSorted: () => {
       sorted = true;
-      clearSort = save;
       render();
     },
     confirm: () => manual.confirm(),

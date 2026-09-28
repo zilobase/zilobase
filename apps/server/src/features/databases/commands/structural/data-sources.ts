@@ -17,7 +17,7 @@ import type { DatabaseCommandContext, DatabaseCommandDispatchResult } from "../f
 import { getDataSourceEntity, getDatabaseViewEntity } from "../metadata-entities";
 import { sourceMutations } from "../source-command-state";
 import { resolveNeighborIndex, updateLinkPositions } from "./ordering";
-import { orderedViews } from "./views";
+import { orderedViews, viewCreate } from "./views";
 
 export async function dataSourceUpdate(
   context: DatabaseCommandContext,
@@ -140,38 +140,50 @@ export async function dataSourceLink(
     .from(databaseDataSource)
     .where(eq(databaseDataSource.databaseId, host.id))
     .orderBy(asc(databaseDataSource.position), asc(databaseDataSource.dataSourceId));
-  if (links.some(({ id }) => id === source.id)) {
-    throw new ServiceMutationError("Data source is already linked", 409);
-  }
+  const alreadyLinked = links.some(({ id }) => id === source.id);
   const placement = resolveNeighborIndex({
     afterId: command.afterId,
     beforeId: command.beforeId,
     ids: links.map(({ id }) => id),
   });
   const now = new Date();
-  await context.transaction.insert(databaseDataSource).values({
-    createdAt: now,
-    databaseId: host.id,
-    dataSourceId: source.id,
-    linkedById: context.actorId,
-    position: placement.index,
-    updatedAt: now,
-  });
-  placement.ids.splice(placement.index, 0, source.id);
-  await updateLinkPositions(context, host.id, placement.ids, now);
+  if (!alreadyLinked) {
+    await context.transaction.insert(databaseDataSource).values({
+      createdAt: now,
+      databaseId: host.id,
+      dataSourceId: source.id,
+      linkedById: context.actorId,
+      position: placement.index,
+      updatedAt: now,
+    });
+    placement.ids.splice(placement.index, 0, source.id);
+    await updateLinkPositions(context, host.id, placement.ids, now);
+  }
   const entity = await getDataSourceEntity(context, host.id, source.id);
   const entities = [];
   for (const id of placement.ids) entities.push(await getDataSourceEntity(context, host.id, id));
+  const createdView = await viewCreate(context, {
+    type: "view.create",
+    dataSourceId: source.id,
+    afterViewId: null,
+    beforeViewId: null,
+    name: command.view.name.trim() || source.name,
+    viewType: command.view.type,
+    config: command.view.config,
+  });
   return {
     mutations: [
       {
-        areas: ["dataSources"],
-        changes: { dataSources: entities },
+        areas: ["dataSources", "views"],
+        changes: {
+          dataSources: entities,
+          views: createdView.mutations.flatMap(({ changes }) => changes.views ?? []),
+        },
         databaseId: host.id,
         dataSourceId: source.id,
       },
     ],
-    result: entity,
+    result: { dataSource: entity, view: createdView.result },
   };
 }
 

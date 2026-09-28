@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-type PlacementAction = () => void | Promise<unknown>;
+type PlacementAction = (clearSortViewId?: string) => void | Promise<unknown>;
 type ManualPlacement = {
   request: (action: PlacementAction) => void;
   pending: boolean;
@@ -16,12 +16,12 @@ export function ManualRecordPlacementProvider({
   children,
   editable,
   sorted,
-  clearSort,
+  viewId,
 }: {
   children: ReactNode;
   editable: boolean;
   sorted: boolean;
-  clearSort: () => Promise<unknown>;
+  viewId: string | null | undefined;
 }) {
   const [pending, setPending] = useState<{ run: PlacementAction } | null>(null);
   const [clearing, setClearing] = useState(false);
@@ -63,12 +63,12 @@ export function ManualRecordPlacementProvider({
       saving.current = true;
       setClearing(true);
       try {
-        await clearSort();
-        if (!active.current || !editableRef.current) return;
-        run(pending.run);
+        if (!viewId) return;
+        await pending.run(viewId);
         setPending(null);
-      } catch {
-        if (active.current) toast.error("Couldn't clear sort");
+      } catch (error) {
+        if (active.current)
+          toast.error(error instanceof Error ? error.message : "Couldn't move row");
       } finally {
         saving.current = false;
         if (active.current) setClearing(false);

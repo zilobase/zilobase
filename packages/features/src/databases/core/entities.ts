@@ -177,6 +177,9 @@ const databaseUpdateCommandSchema = z
 const dataSourceLinkCommandSchema = z
   .object({
     dataSourceId: entityIdSchema,
+    view: z
+      .object({ name: z.string(), type: z.string().trim().min(1).max(64), config: z.unknown() })
+      .strict(),
     ...neighborFields,
     type: z.literal("dataSource.link"),
   })
@@ -378,6 +381,7 @@ const templateApplyCommandSchema = z
 
 export const changeRowCommandSchema = z
   .object({
+    clearSortViewId: entityIdSchema.optional(),
     placement: z
       .object({
         afterRowId: nullableEntityIdSchema,
@@ -403,6 +407,7 @@ export type ChangeRowCommand = z.infer<typeof changeRowCommandSchema>;
 
 const rowPlaceCommandSchema = z
   .object({
+    clearSortViewId: entityIdSchema.optional(),
     hierarchy: changeRowCommandSchema.shape.hierarchy,
     afterRowId: nullableEntityIdSchema,
     beforeRowId: nullableEntityIdSchema,

@@ -141,6 +141,7 @@ test("link commands require view access to the source", async () => {
         beforeId: null,
         dataSourceId: "source-2",
         type: "dataSource.link",
+        view: { name: "Table", type: "table", config: {} },
       },
       commandId: "command-link",
       protocolVersion: 2,

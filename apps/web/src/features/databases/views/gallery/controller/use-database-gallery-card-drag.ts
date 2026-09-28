@@ -37,6 +37,7 @@ type DatabaseGalleryCardDragInput = {
     position: number,
     groupValue?: string,
     groupProperty?: DatabasePropertyListItem | null,
+    clearSortViewId?: string,
   ) => void | Promise<void>;
   databaseId: string | null | undefined;
   hostDatabaseId: string | null | undefined;
@@ -141,12 +142,13 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
       if (input.databaseId && externalPayload) {
         event.preventDefault();
         event.stopPropagation();
-        manualPlacement.request(() =>
+        manualPlacement.request((clearSortViewId) =>
           input.addDraggedPageRow(
             externalPayload,
             getAnchoredRowInsertPosition(input.items, anchorRows, target.targetIndex),
             section?.groupValue,
             section ? input.groupProperty : undefined,
+            clearSortViewId,
           ),
         );
         clearDrag();
@@ -182,9 +184,10 @@ export function useDatabaseGalleryCardDrag(input: DatabaseGalleryCardDragInput) 
       const anchors =
         groupedMove ?? (rowIds ? getDatabaseRowMoveAnchors(rowIds, draggedRowId) : null);
       if (anchors)
-        manualPlacement.request(() =>
+        manualPlacement.request((clearSortViewId) =>
           reorderRows.mutate(
             {
+              ...(clearSortViewId ? { clearSortViewId } : {}),
               databaseId: input.hostDatabaseId!,
               dataSourceId: input.databaseId!,
               rowId: draggedRowId,

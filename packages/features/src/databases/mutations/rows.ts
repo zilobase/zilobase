@@ -9,6 +9,7 @@ import { useDatabaseController, submitRecordChange } from "../interactions/react
 import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
 
 type AddRowInput = {
+  clearSortViewId?: string;
   afterRowId?: string | null;
   beforeRowId?: string | null;
   databaseId: string;
@@ -159,6 +160,7 @@ export function useAddDatabaseRow() {
           dataSourceId: scope.dataSourceId,
           command: {
             type: "row.place",
+            ...(variables.clearSortViewId ? { clearSortViewId: variables.clearSortViewId } : {}),
             ...anchors,
             pageId: variables.pageId,
             parentRowId,

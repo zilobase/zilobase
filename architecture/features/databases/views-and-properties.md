@@ -32,7 +32,7 @@ Automations reuse the concrete condition editor, menu-option contract, property 
 
 [View-type transitions](../../../apps/web/src/features/databases/views/model/view-type-transition.ts) calculate grouping and hidden-property changes without mutation or UI state. Converting a board to a table removes the grouping field and restores its visibility; explicit visibility selections and unrelated config survive. Timeline conversion still resolves or creates the required date property asynchronously before saving.
 
-[View commands](../../../apps/web/src/features/databases/records/view-commands.ts) retain the existing command interface, mutation ordering, pending/editability guards and latest-config cache callbacks. The controller supplies notification and clipboard effects; commands no longer import toast presentation or read browser globals. The date resolver owns asynchronous property discovery/creation and reports failure through the supplied feedback. Filter/sort/configuration updates retain their existing timing and distinct `mutate`/`mutateAsync` semantics.
+[View commands](../../../apps/web/src/features/databases/records/view-commands.ts) read pending configuration from the session controller and submit sparse configuration changes through it. They retain pending/editability guards and receive notification and clipboard effects, without importing toast presentation or reading browser globals. The date resolver owns asynchronous property discovery/creation and reports failure through the supplied feedback. Manual placement includes any confirmed sort clearing in its single record command.
 
 The [command tests](../../../apps/web/test/features/databases/database-view-commands.test.mjs) cover 32 existing row, filter, visibility, property, form, timeline and view-type scenarios. [Boundary tests](../../../apps/web/test/features/databases/database-command-boundary.test.mjs) additionally verify pure-model dependency reachability, presentation shape, clipboard feedback and date-creation failure. React view state and toolbar orchestration remain in their documented owners; interaction refactoring must keep these behavioral tests intact.
 
@@ -82,8 +82,10 @@ contains only server snapshots, never speculative rows or versions.
 
 The [manual placement provider](../../../apps/web/src/features/databases/views/state/manual-record-placement.tsx)
 owns one clear-sort policy and [confirmation dialog](../../../apps/web/src/features/databases/views/components/database-manual-placement-dialog.tsx)
-for all renderers, including external drops. Cancellation or failed sort clearing
-never submits a row write; a view change cancels the pending action. List supports
+for all renderers, including external drops. Confirmation adds `clearSortViewId` to
+the placement command; sort clearing and placement share one optimistic intention,
+one transaction and one receipt. Rejection removes both previews. Cancellation
+submits nothing, and a view change cancels the pending action. List supports
 sorted drag through this confirmation instead of disabling reordering. Gallery
 uses the grouped-drop intention model for writable group changes, preserving
 the source section for multi-select cards. Timeline dates and resizes continue
@@ -93,7 +95,7 @@ not request manual-order confirmation.
 [Lifecycle tests](../../../apps/web/test/features/databases/database-kanban-move-lifecycle.test.mjs)
 mount the actual drag and mutation hooks with controlled responses, covering slow
 saves, stale refreshes, fast drops before the first frame, rapid moves, isolated
-rollback and failed sort clearing.
+rejection and atomic sort-clear placement.
 
 The [Kanban edge-scroll hook](../../../apps/web/src/features/databases/views/kanban/controller/use-kanban-edge-scroll.ts) scrolls the board horizontally while a database page is held near its visible left or right edge. A frame loop keeps scrolling with a stationary pointer and accelerates toward the edge. It supports internal cards and external database-page drags, clamps to scroll limits, and stops on drop, cancellation, leaving the board or window, blur, and unmount.
 

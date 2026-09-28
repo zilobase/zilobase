@@ -4,11 +4,49 @@ import type { HostDatabaseCommand } from "@zilobase/features/databases/contracts
 
 import { databaseDataSource, databaseView } from "../../../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../../../shared/errors/service-mutation-error";
-import type { DatabaseCommandContext, DatabaseCommandDispatchResult } from "../framework";
+import type {
+  DatabaseCommandContext,
+  DatabaseCommandDispatchResult,
+  DatabaseCommandMutation,
+} from "../framework";
 import { getDatabaseViewEntity } from "../metadata-entities";
 import { sourceMutations } from "../source-command-state";
 import { resolveNeighborIndex, updateViewPositions } from "./ordering";
 import { ensureSubItemRelations } from "./sub-items";
+
+/** Executed in the row command transaction, never as a separate pre-drop write. */
+export async function clearViewSort(
+  context: DatabaseCommandContext,
+  viewId: string,
+): Promise<DatabaseCommandMutation> {
+  const [view] = await context.transaction
+    .select()
+    .from(databaseView)
+    .where(
+      and(
+        eq(databaseView.id, viewId),
+        eq(databaseView.databaseId, context.databaseId),
+        eq(databaseView.dataSourceId, context.dataSourceId!),
+      ),
+    )
+    .limit(1);
+  if (!view) throw new ServiceMutationError("Database view not found", 404);
+  await context.transaction
+    .update(databaseView)
+    .set({
+      config: applyConfigurationChanges(view.config, [
+        { operation: "set", path: ["sorts"], value: [] },
+      ]),
+      updatedAt: new Date(),
+    })
+    .where(eq(databaseView.id, view.id));
+  return {
+    databaseId: context.databaseId,
+    dataSourceId: context.dataSourceId,
+    areas: ["views"],
+    changes: { views: [await getDatabaseViewEntity(context, view.id)] },
+  };
+}
 
 export async function orderedViews(context: DatabaseCommandContext) {
   return context.transaction
@@ -85,8 +123,9 @@ export async function viewUpdate(
   const config = command.patch.configuration
     ? applyConfigurationChanges(view.config, command.patch.configuration)
     : undefined;
-  const subItemSetup =
-    config !== undefined ? await ensureSubItemRelations(context, view.dataSourceId, config) : null;
+  const subItemSetup = command.patch.configuration?.some(({ path }) => path[0] === "subItems")
+    ? await ensureSubItemRelations(context, view.dataSourceId, config)
+    : null;
   await context.transaction
     .update(databaseView)
     .set({

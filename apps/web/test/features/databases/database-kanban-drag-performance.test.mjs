@@ -23,7 +23,7 @@ export function register({ assert, readSource, test }) {
     const controller = await readSource(
       "/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts",
     );
-    assert.match(controller, /input\.submitMove\(move\)/);
+    assert.match(controller, /input\.submitMove\(move, clearSortViewId\)/);
     assert.match(controller, /useKanbanGeometry\(input\)/);
     assert.doesNotMatch(controller, /useMoveDatabaseRow|setDroppedRows|onOptimisticAccepted/);
   });

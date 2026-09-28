@@ -83,13 +83,15 @@ function commandApi(sent: Array<{ path: string; request: DatabaseCommandRequest 
     const result =
       command.type === "database.update"
         ? host
-        : command.type === "view.create"
-          ? view
-          : command.type.startsWith("property.")
-            ? property
-            : command.type.startsWith("template.")
-              ? { archivedAt: null, id: "template-1", name: "Default", template: {} }
-              : source;
+        : command.type === "dataSource.link"
+          ? { dataSource: source, view }
+          : command.type === "view.create"
+            ? view
+            : command.type.startsWith("property.")
+              ? property
+              : command.type.startsWith("template.")
+                ? { archivedAt: null, id: "template-1", name: "Default", template: {} }
+                : source;
     return {
       commandId: request.commandId,
       event: {
@@ -150,7 +152,7 @@ test("database and data-source metadata hooks execute scoped v2 commands", async
   }
 });
 
-test("linking a data source creates its initial view through host commands", async () => {
+test("linking a data source and its initial view submits one atomic command", async () => {
   const sent: Array<{ path: string; request: DatabaseCommandRequest }> = [];
   const { mutation, queryClient } = createMutationTestRuntime(
     useLinkDatabaseDataSource,
@@ -167,7 +169,7 @@ test("linking a data source creates its initial view through host commands", asy
     assert.equal(result.view.id, "view-2");
     assert.deepEqual(
       sent.map(({ request }) => request.command.type),
-      ["dataSource.link", "view.create"],
+      ["dataSource.link"],
     );
     assert.ok(sent.every(({ path }) => path === "/databases/database-1/commands"));
   } finally {

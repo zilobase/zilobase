@@ -15,6 +15,7 @@ import {
   database,
   databaseCommandReceipt,
   databaseActorState,
+  databaseDataSource,
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
@@ -60,6 +61,7 @@ function transactionHarness(
     linked?: boolean;
     receipt?: Record<string, unknown>;
     sourceVersion?: number;
+    lifecycle?: boolean;
   } = {},
 ) {
   const inserts = new Map<unknown, unknown[]>();
@@ -70,6 +72,12 @@ function transactionHarness(
   const rowsFor = (table: unknown) => {
     if (table === databaseCommandReceipt) {
       return options.receipt ? [options.receipt] : [];
+    }
+    if (options.lifecycle) {
+      if (table === database) return [{ workspaceId: "workspace-1" }];
+      if (table === dataSource) return [{ id: "source-1" }];
+      if (table === databaseDataSource)
+        return [{ databaseId: "database-1" }, { databaseId: "linked-host" }];
     }
     return options.linked === false ? [] : [{ dataSourceId: "source-1" }];
   };
@@ -103,6 +111,9 @@ function transactionHarness(
           return {
             where() {
               return {
+                then(resolve: (value: ReturnType<typeof rowsFor>) => unknown) {
+                  return Promise.resolve(resolve(rowsFor(table)));
+                },
                 for() {
                   return {
                     async limit() {
@@ -277,7 +288,7 @@ test("execution locks the command ID and atomically stores its event and receipt
     },
   );
 
-  assert.equal(harness.execute.mock.calls.length, 1);
+  assert.equal(harness.execute.mock.calls.length, 2);
   assert.equal(dispatchMock.mock.calls[0]?.[0].commandId, "command-1");
   assert.ok(ack.event);
   assert.equal(ack.event.eventId, "event-1");
@@ -410,6 +421,81 @@ test("source commands verify host linkage and increment the source version", asy
     /Data source is not linked/,
   );
 });
+
+test("sub-item configuration reserves the source before the host and confirms both clocks", async () => {
+  const harness = transactionHarness({ databaseVersions: [5], sourceVersion: 3 });
+  const ack = await executeDatabaseCommand(
+    {
+      actorId: "user-1",
+      scope: { databaseId: "database-1", dataSourceId: null },
+      request: {
+        commandId: "setup",
+        protocolVersion: 2,
+        command: {
+          type: "view.update",
+          viewId: "view-1",
+          patch: {
+            configuration: [{ operation: "set", path: ["subItems"], value: { enabled: true } }],
+          },
+        },
+      },
+    },
+    {
+      database: harness.database as never,
+      dispatch: (async (context) => ({
+        result: {},
+        mutations: [
+          {
+            databaseId: context.databaseId,
+            dataSourceId: "source-1",
+            areas: ["views", "properties"],
+            changes: {},
+          },
+        ],
+      })) as DatabaseCommandDispatcher,
+    },
+  );
+  assert.deepEqual(harness.updates.slice(0, 2), [dataSource, database]);
+  assert.deepEqual(ack.sourceVersions, { "source-1": 3 });
+  assert.equal(ack.event?.version, 5);
+});
+
+test.each(["database.archive", "database.restore"] as const)(
+  "%s advances owned source clocks and resets linked hosts once",
+  async (type) => {
+    const harness = transactionHarness({
+      lifecycle: true,
+      databaseVersions: [5, 8],
+      sourceVersion: 3,
+    });
+    const ack = await executeDatabaseCommand(
+      {
+        actorId: "user-1",
+        scope: { databaseId: "database-1", dataSourceId: null },
+        request: { commandId: "lifecycle", protocolVersion: 2, command: { type } },
+      },
+      {
+        database: harness.database as never,
+        dispatch: (async () => ({
+          result: {},
+          mutations: [
+            { databaseId: "database-1", dataSourceId: null, areas: ["databases"], changes: {} },
+          ],
+        })) as DatabaseCommandDispatcher,
+      },
+    );
+    assert.deepEqual(ack.sourceVersions, { "source-1": 3 });
+    assert.equal(ack.event?.requiresReset, true);
+    const events = harness.inserts.get(databaseMutationEvent) as Array<{
+      databaseId: string;
+    }>;
+    assert.deepEqual(events.map(({ databaseId }) => databaseId).sort(), [
+      "database-1",
+      "linked-host",
+    ]);
+    assert.equal(harness.execute.mock.calls.length, 2);
+  },
+);
 
 test("a linked source version is incremented before its handler builds entities", async () => {
   const harness = transactionHarness({ databaseVersions: [7], sourceVersion: 3 });

@@ -100,6 +100,7 @@ export type DatabaseViewProviderValue = {
     position: number,
     groupValue?: string,
     groupProperty?: DatabasePropertyListItem | null,
+    clearSortViewId?: string,
   ) => void | Promise<void>;
   addKanbanView: () => void;
   addListView: () => void;
@@ -553,7 +554,7 @@ function UndoableDatabaseViewProvider({
                 key={[value.hostDatabaseId, value.databaseId, value.activeView?.id].join(":")}
                 editable={value.editable}
                 sorted={value.activeDatabaseSorts.length > 0}
-                clearSort={() => value.saveDatabaseSorts([])}
+                viewId={value.activeView?.id}
               >
                 {children}
                 <DatabaseManualPlacementDialog />

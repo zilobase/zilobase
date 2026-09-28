@@ -385,6 +385,7 @@ export function getDatabaseViewCommands({
       position: number,
       groupValue?: string,
       groupPropertyOverride?: DatabasePropertyListItem | null,
+      clearSortViewId?: string,
     ) => {
       if (!editable || !databaseId) {
         return;
@@ -411,6 +412,7 @@ export function getDatabaseViewCommands({
             databaseId: viewDatabaseId,
             dataSourceId: databaseId,
             rowId: dragPayload.rowId,
+            ...(clearSortViewId ? { clearSortViewId } : {}),
             placement: {
               afterRowId: remaining[index - 1]?.id ?? null,
               beforeRowId: remaining[index]?.id ?? null,
@@ -455,6 +457,7 @@ export function getDatabaseViewCommands({
           ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           ...(groupValues.size > 0 ? { initialValues: [...groupValues.values()] } : {}),
           pageId: dragPayload.pageId,
+          ...(clearSortViewId ? { clearSortViewId } : {}),
           afterRowId: items[position - 1]?.id ?? null,
           beforeRowId: items[position]?.id ?? null,
           sourceHostDatabaseId: dragPayload.hostDatabaseId,

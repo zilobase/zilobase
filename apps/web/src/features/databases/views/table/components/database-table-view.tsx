@@ -595,7 +595,7 @@ export function DatabaseTableView() {
         }
       : null;
   };
-  const applyRowMove = (nextMove: RowMove) => {
+  const applyRowMove = (nextMove: RowMove, clearSortViewId?: string) => {
     if (!databaseId || !hostDatabaseId) return;
     const { parentPropertyId, subItemPropertyId } = subItemsSettings;
     moveRow.mutate(
@@ -603,6 +603,7 @@ export function DatabaseTableView() {
         databaseId: hostDatabaseId,
         dataSourceId: databaseId,
         rowId: nextMove.rowId,
+        ...(clearSortViewId ? { clearSortViewId } : {}),
         placement: { afterRowId: nextMove.afterRowId, beforeRowId: nextMove.beforeRowId },
         ...(nextMove.pageTitle !== undefined ? { title: nextMove.pageTitle } : {}),
         ...(nextMove.group
@@ -1616,10 +1617,12 @@ export function DatabaseTableView() {
           function moveInternalRow() {
             const nextMove = getDraggedRowMove();
 
-            if (nextMove) manualPlacement.request(() => applyRowMove(nextMove));
+            if (nextMove)
+              manualPlacement.request((clearSortViewId) => applyRowMove(nextMove, clearSortViewId));
           }
           function insertExternalRow(
             dragPayload: NonNullable<ReturnType<typeof getDatabasePageDragPayload>>,
+            clearSortViewId?: string,
           ) {
             if (isTableGrouped) {
               const target = groupRowDropTargetRef.current;
@@ -1633,19 +1636,25 @@ export function DatabaseTableView() {
                   getAnchoredRowInsertPosition(rows, section.rows, target.localTargetIndex),
                   section.groupValue,
                   groupProperty,
+                  clearSortViewId,
                 );
               }
             } else {
               addDraggedPageRow(
                 dragPayload,
                 getAnchoredRowInsertPosition(rows, visibleRows, resolvedRowTarget?.index ?? 0),
+                undefined,
+                undefined,
+                clearSortViewId,
               );
             }
           }
           if (draggedRowId) {
             moveInternalRow();
           } else if (dragPayload) {
-            manualPlacement.request(() => insertExternalRow(dragPayload));
+            manualPlacement.request((clearSortViewId) =>
+              insertExternalRow(dragPayload, clearSortViewId),
+            );
           }
           clearRowDrag();
         }}
