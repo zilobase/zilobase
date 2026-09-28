@@ -89,15 +89,17 @@ export async function executeDatabaseCommand(
     }
     try {
       const ack = databaseCommandAckSchema.parse(raw);
-      if (ack.commandId !== commandId || ack.event.commandId !== commandId) {
+      if (ack.commandId !== commandId || (ack.event && ack.event.commandId !== commandId)) {
         throw new Error("ack id mismatch");
       }
-      if (ack.event.databaseId !== input.databaseId) {
+      if ((ack.event?.databaseId ?? ack.privateConfirmation?.databaseId) !== input.databaseId) {
         throw new Error("ack scope mismatch");
       }
-      if (input.dataSourceId && ack.event.dataSourceId !== input.dataSourceId) {
+      if (input.dataSourceId && ack.event?.dataSourceId !== input.dataSourceId) {
         throw new Error("ack scope mismatch");
       }
+      if ((input.command.type === "database.favorite") !== (ack.event === null))
+        throw new Error("ack visibility mismatch");
       endPending(targets, null);
       return ack;
     } catch (error) {

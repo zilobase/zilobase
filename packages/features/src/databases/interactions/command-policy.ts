@@ -1,12 +1,19 @@
 import type { DatabaseCommand } from "../core/entities";
 
 export type CommandPolicy = {
-  scope: "host" | "source";
+  scope: "workspace" | "host" | "source";
   preview: "record" | "metadata" | "confirmed";
 };
 
 /** Exhaustive ownership registry; adding a command requires declaring its policy. */
 export const databaseCommandPolicies = {
+  "database.create": { scope: "workspace", preview: "confirmed" },
+  "database.archive": { scope: "host", preview: "confirmed" },
+  "database.restore": { scope: "host", preview: "confirmed" },
+  "database.favorite": { scope: "host", preview: "metadata" },
+  "access.upsert": { scope: "host", preview: "confirmed" },
+  "access.remove": { scope: "host", preview: "confirmed" },
+  "database.publish": { scope: "host", preview: "confirmed" },
   "database.update": { scope: "host", preview: "metadata" },
   "dataSource.create": { scope: "host", preview: "confirmed" },
   "dataSource.link": { scope: "host", preview: "confirmed" },

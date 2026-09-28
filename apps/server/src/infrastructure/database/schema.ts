@@ -51,6 +51,7 @@ export {
   dataSource,
   databaseDataSource,
   databaseCommandReceipt,
+  databaseActorState,
   databaseMutationEvent,
   databaseRealtimeOutbox,
   databaseAccess,

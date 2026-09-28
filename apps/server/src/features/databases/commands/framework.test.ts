@@ -14,6 +14,7 @@ import {
   dataSource,
   database,
   databaseCommandReceipt,
+  databaseActorState,
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
@@ -73,11 +74,23 @@ function transactionHarness(
     execute,
     insert(table: unknown) {
       return {
-        async values(value: unknown) {
+        values(value: unknown) {
           inserts.set(table, [
             ...(inserts.get(table) ?? []),
             ...(Array.isArray(value) ? value : [value]),
           ]);
+          return {
+            then(resolve: (value: undefined) => unknown) {
+              return Promise.resolve(resolve(undefined));
+            },
+            onConflictDoUpdate() {
+              return {
+                async returning() {
+                  return [{ revision: 1 }];
+                },
+              };
+            },
+          };
         },
       };
     },
@@ -143,6 +156,75 @@ beforeEach(() => {
   background.dispatch.mockResolvedValue(true);
 });
 
+test("private favorite receipts advance only the actor revision and never publish an event", async () => {
+  const harness = transactionHarness();
+  const acknowledgement = await executeDatabaseCommand(
+    {
+      actorId: "user-1",
+      scope: { databaseId: "database-1", dataSourceId: null },
+      request: {
+        commandId: "favorite-1",
+        protocolVersion: 2,
+        command: { type: "database.favorite", favorite: true },
+      },
+    },
+    {
+      database: harness.database as never,
+      dispatch: (async () => ({
+        result: { isFavorite: true },
+        mutations: [],
+      })) as DatabaseCommandDispatcher,
+    },
+  );
+  assert.equal(acknowledgement.event, null);
+  assert.deepEqual(acknowledgement.privateConfirmation, { databaseId: "database-1", revision: 1 });
+  assert.equal(harness.inserts.has(databaseActorState), true);
+  assert.equal(harness.inserts.has(databaseCommandReceipt), true);
+  assert.equal(harness.inserts.has(databaseMutationEvent), false);
+  assert.equal(harness.inserts.has(databaseRealtimeOutbox), false);
+  assert.deepEqual(harness.updates, []);
+});
+
+test("rejected authorization does not write revisions, dispatch or receipts", async () => {
+  const harness = transactionHarness();
+  const dispatch = vi.fn();
+  await assert.rejects(
+    executeDatabaseCommand(
+      { actorId: "user-1", request, scope: { databaseId: "database-1", dataSourceId: null } },
+      {
+        database: harness.database as never,
+        dispatch: dispatch as DatabaseCommandDispatcher,
+        authorize: async () => {
+          throw new Error("Forbidden");
+        },
+      },
+    ),
+    /Forbidden/,
+  );
+  assert.equal(dispatch.mock.calls.length, 0);
+  assert.deepEqual(harness.updates, []);
+  assert.equal(harness.inserts.size, 0);
+});
+
+test("a failed command never runs registered post-commit delivery", async () => {
+  const harness = transactionHarness();
+  const delivery = vi.fn();
+  await assert.rejects(
+    executeDatabaseCommand(
+      { actorId: "user-1", request, scope: { databaseId: "database-1", dataSourceId: null } },
+      {
+        database: harness.database as never,
+        dispatch: (async (context) => {
+          context.afterCommit!(delivery);
+          throw new Error("Rejected");
+        }) as DatabaseCommandDispatcher,
+      },
+    ),
+    /Rejected/,
+  );
+  assert.equal(delivery.mock.calls.length, 0);
+});
+
 test("command hashes are stable across object key order and include route scope", async () => {
   const reordered: DatabaseCommandRequest = {
     ...request,
@@ -191,6 +273,7 @@ test("execution locks the command ID and atomically stores its event and receipt
 
   assert.equal(harness.execute.mock.calls.length, 1);
   assert.equal(dispatchMock.mock.calls[0]?.[0].commandId, "command-1");
+  assert.ok(ack.event);
   assert.equal(ack.event.eventId, "event-1");
   assert.equal(ack.event.version, 5);
   assert.equal(harness.inserts.get(databaseMutationEvent)?.length, 1);
@@ -388,6 +471,7 @@ test("oversized changesets produce a reset event instead of truncated data", asy
     },
   );
 
+  assert.ok(ack.event);
   assert.equal(ack.event.requiresReset, true);
   assert.deepEqual(ack.event.changes, {});
 });

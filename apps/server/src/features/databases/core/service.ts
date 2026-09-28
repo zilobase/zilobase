@@ -10,6 +10,10 @@ import {
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
+  deliverAfterCommit,
+  type AfterCommit,
+} from "../../../infrastructure/database/after-commit";
+import {
   database,
   databaseDataSource,
   databaseRow,
@@ -83,6 +87,7 @@ async function resolveCreationTeamspace(
 }
 
 export async function createDatabaseService(input: {
+  afterCommit?: AfterCommit;
   config?: Record<string, unknown>;
   defaultViewIcon?: string;
   icon?: string;
@@ -180,7 +185,10 @@ export async function createDatabaseService(input: {
     }
     return enqueueNavigationInvalidation(tx, input.workspaceId);
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
+  await deliverAfterCommit(
+    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
+    input.afterCommit,
+  );
 
   return {
     databaseId,
@@ -206,6 +214,7 @@ export async function createDatabaseService(input: {
 }
 
 export async function deleteDatabaseService(input: {
+  afterCommit?: AfterCommit;
   databaseId: string;
   env?: RuntimeEnv;
   userId: string;
@@ -221,6 +230,7 @@ export async function deleteDatabaseService(input: {
   }
 
   const deleted = await softDeleteDatabaseTree({
+    afterCommit: input.afterCommit,
     databaseId: existing.id,
     env: input.env,
     workspaceId: existing.workspaceId,
@@ -247,6 +257,7 @@ export async function deleteDatabaseService(input: {
 }
 
 export async function restoreDatabaseService(input: {
+  afterCommit?: AfterCommit;
   databaseId: string;
   env?: RuntimeEnv;
   userId: string;
@@ -342,7 +353,10 @@ export async function restoreDatabaseService(input: {
       restoredPageIds: restoredPages.map((record) => record.id),
     };
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
+  await deliverAfterCommit(
+    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
+    input.afterCommit,
+  );
 
   const restoredRecord = {
     ...existing,

@@ -1,5 +1,7 @@
 import {
   databaseCommandRequestSchema,
+  databaseCreationCommandSchema,
+  databaseLifecycleCommandSchema,
   dataSourceCommandSchema,
   hostDatabaseCommandSchema,
 } from "@zilobase/features/databases/contracts";
@@ -16,12 +18,15 @@ import {
   executeDatabaseCommand,
   RowMoveConflictError,
 } from "../commands/framework";
+import { rejectMismatchedPinnedWorkspace } from "../../auth/oauth-access";
 import { recordDatabaseCounter, recordDatabaseHistogram } from "../observability";
 import { canAccessPageInWorkspace } from "../../access";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 export const databaseCommandRoutes = new Hono<AppBindings>();
-const databaseWorkspace = pinnedResourceMiddleware(getDatabaseRecord);
+const databaseWorkspace = pinnedResourceMiddleware((id) =>
+  getDatabaseRecord(id, { includeDeleted: true }),
+);
 
 async function commandResponse(c: Context<AppBindings>, dataSourceId: string | null) {
   const authenticated = await readAuthenticatedJson(c);
@@ -33,33 +38,41 @@ async function commandResponse(c: Context<AppBindings>, dataSourceId: string | n
 
   const databaseId = c.req.param("id");
   if (!databaseId) return c.json({ error: "Database ID is required" }, 400);
-  await requireDatabaseEditAccess(databaseId, authenticated.user.id);
-  if (dataSourceId) {
-    const target = await requireDataSourceEditAccess(dataSourceId, authenticated.user.id);
-    if (request.command.type === "row.place") {
-      const { source, pageId } = request.command;
-      if (source) {
-        await requireDatabaseEditAccess(source.databaseId, authenticated.user.id);
-        const origin = await requireDataSourceEditAccess(
-          source.dataSourceId,
-          authenticated.user.id,
-        );
-        if (origin.workspaceId !== target.workspaceId)
-          throw new ServiceMutationError("Transfers must stay in the same workspace", 403);
+  const authorize = async () => {
+    if (databaseLifecycleCommandSchema.safeParse(request.command).success) return;
+    await requireDatabaseEditAccess(databaseId, authenticated.user.id);
+    if (dataSourceId) {
+      const target = await requireDataSourceEditAccess(dataSourceId, authenticated.user.id);
+      if (request.command.type === "row.place") {
+        const { source, pageId } = request.command;
+        if (source) {
+          await requireDatabaseEditAccess(source.databaseId, authenticated.user.id);
+          const origin = await requireDataSourceEditAccess(
+            source.dataSourceId,
+            authenticated.user.id,
+          );
+          if (origin.workspaceId !== target.workspaceId)
+            throw new ServiceMutationError("Transfers must stay in the same workspace", 403);
+        }
+        if (
+          pageId &&
+          !(await canAccessPageInWorkspace(
+            pageId,
+            target.workspaceId,
+            authenticated.user.id,
+            "edit",
+          ))
+        ) {
+          throw new ServiceMutationError("Forbidden", 403);
+        }
       }
-      if (
-        pageId &&
-        !(await canAccessPageInWorkspace(pageId, target.workspaceId, authenticated.user.id, "edit"))
-      ) {
-        throw new ServiceMutationError("Forbidden", 403);
-      }
+    } else if (
+      request.command.type === "dataSource.link" ||
+      request.command.type === "view.setDataSource"
+    ) {
+      await requireDataSourceAccess(request.command.dataSourceId, authenticated.user.id, "view");
     }
-  } else if (
-    request.command.type === "dataSource.link" ||
-    request.command.type === "view.setDataSource"
-  ) {
-    await requireDataSourceAccess(request.command.dataSourceId, authenticated.user.id, "view");
-  }
+  };
 
   const startedAt = performance.now();
   const metricAttributes = {
@@ -74,7 +87,7 @@ async function commandResponse(c: Context<AppBindings>, dataSourceId: string | n
         request,
         scope: { databaseId, dataSourceId },
       },
-      { dispatch: dispatchDatabaseCommand },
+      { dispatch: dispatchDatabaseCommand, authorize },
     );
     recordDatabaseHistogram("acknowledgement_latency_ms", performance.now() - startedAt, {
       ...metricAttributes,
@@ -121,4 +134,24 @@ databaseCommandRoutes.post("/:id/data-sources/:dataSourceId/commands", databaseW
   return dataSourceId
     ? commandResponse(c, dataSourceId)
     : c.json({ error: "Data source ID is required" }, 400);
+});
+
+// A creation command has no existing host; its command ID is its reserved host identity.
+databaseCommandRoutes.post("/commands", async (c) => {
+  const authenticated = await readAuthenticatedJson(c);
+  if (!authenticated.ok) return authenticated.response;
+  const request = databaseCommandRequestSchema.parse(authenticated.body);
+  const command = databaseCreationCommandSchema.parse(request.command);
+  const mismatch = rejectMismatchedPinnedWorkspace(c, command.workspaceId);
+  if (mismatch) return mismatch;
+  const acknowledgement = await executeDatabaseCommand(
+    {
+      actorId: authenticated.user.id,
+      env: c.env,
+      request: { ...request, command },
+      scope: { databaseId: request.commandId, dataSourceId: null },
+    },
+    { dispatch: dispatchDatabaseCommand },
+  );
+  return c.json(acknowledgement, 201);
 });

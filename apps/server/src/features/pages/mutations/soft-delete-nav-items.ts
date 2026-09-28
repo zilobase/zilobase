@@ -1,6 +1,10 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "../../../infrastructure/database";
+import {
+  deliverAfterCommit,
+  type AfterCommit,
+} from "../../../infrastructure/database/after-commit";
 import { dataSource, database, databaseRow, page } from "../../../infrastructure/database/schema";
 import { loadWorkspacePageGraph } from "../graph/loader";
 import type { RuntimeEnv } from "../../../shared/config/config";
@@ -49,12 +53,14 @@ function collectNestedDatabaseTree(
 }
 
 async function softDeleteRecords({
+  afterCommit,
   databaseIds,
   userId,
   pageIds,
   workspaceId,
   env,
 }: {
+  afterCommit?: AfterCommit;
   databaseIds: string[];
   env?: RuntimeEnv;
   userId: string;
@@ -108,7 +114,10 @@ async function softDeleteRecords({
     return enqueueNavigationInvalidation(tx, workspaceId, { committedAt: now });
   });
 
-  await publishCommittedNavigationInvalidation(navigationEvent, env);
+  await deliverAfterCommit(
+    () => publishCommittedNavigationInvalidation(navigationEvent, env),
+    afterCommit,
+  );
 
   return now;
 }
@@ -156,11 +165,13 @@ export async function softDeletePageTree({
 }
 
 export async function softDeleteDatabaseTree({
+  afterCommit,
   databaseId,
   workspaceId,
   userId,
   env,
 }: {
+  afterCommit?: AfterCommit;
   databaseId: string;
   env?: RuntimeEnv;
   workspaceId: string;
@@ -186,6 +197,7 @@ export async function softDeleteDatabaseTree({
   const deletedDatabaseIds = [...databaseIds];
 
   const deletedAt = await softDeleteRecords({
+    afterCommit,
     databaseIds: deletedDatabaseIds,
     userId,
     pageIds: deletedPageIds,

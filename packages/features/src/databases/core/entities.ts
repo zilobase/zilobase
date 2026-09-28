@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  databaseCreationCommandSchema,
+  databaseLifecycleCommandSchema,
+} from "./lifecycle-commands";
 
 const entityIdSchema = z.string().trim().min(1).max(128);
 const timestampSchema = z.string().datetime({ offset: true });
@@ -246,6 +250,7 @@ const viewSetDataSourceCommandSchema = z
   .strict();
 
 export const hostDatabaseCommandSchema = z.discriminatedUnion("type", [
+  ...databaseLifecycleCommandSchema.options,
   databaseUpdateCommandSchema,
   dataSourceCreateCommandSchema,
   dataSourceLinkCommandSchema,
@@ -437,7 +442,11 @@ export const dataSourceCommandSchema = z.discriminatedUnion("type", [
 ]);
 export type DataSourceCommand = z.infer<typeof dataSourceCommandSchema>;
 
-export const databaseCommandSchema = z.union([hostDatabaseCommandSchema, dataSourceCommandSchema]);
+export const databaseCommandSchema = z.union([
+  hostDatabaseCommandSchema,
+  dataSourceCommandSchema,
+  databaseCreationCommandSchema,
+]);
 export type DatabaseCommand = z.infer<typeof databaseCommandSchema>;
 
 export const databaseCommandRequestSchema = z
@@ -509,11 +518,22 @@ export type DatabaseMutationFeedResponse = z.infer<typeof databaseMutationFeedRe
 export const databaseCommandAckSchema = z
   .object({
     commandId: entityIdSchema,
-    event: databaseMutationEventV2Schema,
+    event: databaseMutationEventV2Schema.nullable(),
+    privateConfirmation: z
+      .object({ databaseId: entityIdSchema, revision: positiveVersionSchema })
+      .strict()
+      .optional(),
     result: z.unknown(),
     sourceVersions: z.record(entityIdSchema, versionSchema),
   })
-  .strict();
+  .strict()
+  .refine(
+    (ack) =>
+      ack.event !== null
+        ? ack.privateConfirmation === undefined
+        : ack.privateConfirmation !== undefined,
+    "Acknowledgement must have exactly one confirmation scope",
+  );
 type ParsedDatabaseCommandAck = z.infer<typeof databaseCommandAckSchema>;
 export type DatabaseCommandAck<TResult = unknown> = Omit<ParsedDatabaseCommandAck, "result"> & {
   result: TResult;

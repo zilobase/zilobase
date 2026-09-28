@@ -722,6 +722,13 @@
       "when": 1790380800000,
       "tag": "0105_remove_mail",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1790553600000,
+      "tag": "0106_database_private_receipts",
+      "breakpoints": true
     }
   ]
 }

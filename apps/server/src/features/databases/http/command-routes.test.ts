@@ -6,6 +6,7 @@ import type { AppBindings } from "../../../shared/types";
 import { attachHttpRouteErrorHandler } from "../../../shared/http/route-error";
 
 const mocks = vi.hoisted(() => ({
+  authorized: vi.fn(),
   execute: vi.fn(),
   getDatabase: vi.fn(),
   requireDatabase: vi.fn(),
@@ -78,7 +79,11 @@ const acknowledgement = {
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
-  mocks.execute.mockResolvedValue(acknowledgement);
+  mocks.execute.mockImplementation(async (_input, dependencies) => {
+    await dependencies.authorize?.();
+    mocks.authorized();
+    return acknowledgement;
+  });
   mocks.requireDatabase.mockResolvedValue({ id: "database-1" });
   mocks.requireSource.mockResolvedValue({ id: "source-1", workspaceId: "workspace" });
   mocks.canEditPage.mockResolvedValue(true);
@@ -254,15 +259,15 @@ test("transfers authorize both hosts and sources plus the existing page", async 
   assert.deepEqual(mocks.canEditPage.mock.calls, [["page-1", "workspace", "user-1", "edit"]]);
   assert.equal(mocks.execute.mock.calls.length, 1);
 });
-test("transfers reject cross-workspace sources before entering the transaction", async () => {
+test("transfers reject cross-workspace sources before domain dispatch", async () => {
   mocks.requireSource
     .mockResolvedValueOnce({ workspaceId: "workspace" })
     .mockResolvedValueOnce({ workspaceId: "other" });
   assert.equal((await postTransfer()).status, 403);
-  assert.equal(mocks.execute.mock.calls.length, 0);
+  assert.equal(mocks.authorized.mock.calls.length, 0);
 });
 test("placing an existing page requires page edit permission", async () => {
   mocks.canEditPage.mockResolvedValue(false);
   assert.equal((await postTransfer()).status, 403);
-  assert.equal(mocks.execute.mock.calls.length, 0);
+  assert.equal(mocks.authorized.mock.calls.length, 0);
 });

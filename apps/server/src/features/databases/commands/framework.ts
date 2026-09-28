@@ -10,11 +10,13 @@ import {
   type DatabaseMutationEventV2,
 } from "@zilobase/features/databases/contracts";
 
-import { db, type Database } from "../../../infrastructure/database";
+import { db, runWithDb, type Database } from "../../../infrastructure/database";
+import type { AfterCommit } from "../../../infrastructure/database/after-commit";
 import {
   dataSource,
   database,
   databaseCommandReceipt,
+  databaseActorState,
   databaseDataSource,
   databaseMutationEvent,
   databaseRealtimeOutbox,
@@ -53,6 +55,7 @@ export type DatabaseCommandDispatchResult<TResult = unknown> = {
 };
 
 export type DatabaseCommandContext = DatabaseCommandScope & {
+  afterCommit?: AfterCommit;
   actorId: string;
   commandId: string;
   transaction: DatabaseTransaction;
@@ -66,6 +69,7 @@ export type DatabaseCommandDispatcher = <TResult>(
 type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 type FrameworkDependencies = {
+  authorize?: () => Promise<void>;
   database?: Pick<Database, "transaction">;
   dispatch: DatabaseCommandDispatcher;
   now?: () => Date;
@@ -149,6 +153,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
   const randomUUID = dependencies.randomUUID ?? (() => crypto.randomUUID());
   const automationWindows: Array<{ availableAt: Date; id: string }> = [];
   let agentTriggerFacts: DatabaseAutomationMutationFactCandidate[] = [];
+  const deliveries: Array<() => Promise<unknown>> = [];
 
   const metricAttributes = {
     operation: input.request.command.type,
@@ -184,6 +189,9 @@ export async function executeDatabaseCommand<TResult = unknown>(
         };
       }
 
+      await runWithDb(tx, async () => {
+        await dependencies.authorize?.();
+      });
       let primaryHostVersion: number | null = null;
       const sourceVersions: Record<string, number> = {};
       if (input.scope.dataSourceId) {
@@ -232,7 +240,10 @@ export async function executeDatabaseCommand<TResult = unknown>(
           if (!versionedSource) throw new ServiceMutationError("Data source not found", 404);
           sourceVersions[sourceId] = versionedSource.version;
         }
-      } else {
+      } else if (
+        input.request.command.type !== "database.create" &&
+        input.request.command.type !== "database.favorite"
+      ) {
         const [versionedHost] = await tx
           .update(database)
           .set({ version: sql`${database.version} + 1` })
@@ -242,16 +253,54 @@ export async function executeDatabaseCommand<TResult = unknown>(
         primaryHostVersion = versionedHost.version;
       }
 
-      const dispatched = await dependencies.dispatch<TResult>(
-        {
+      const dispatched = await runWithDb(tx, () =>
+        dependencies.dispatch<TResult>(
+          {
+            afterCommit: (operation) => deliveries.push(operation),
+            actorId: input.actorId,
+            commandId: input.request.commandId,
+            databaseId: input.scope.databaseId,
+            dataSourceId: input.scope.dataSourceId,
+            transaction: tx,
+          },
+          input.request.command,
+        ),
+      );
+      if (input.request.command.type === "database.favorite") {
+        const [state] = await tx
+          .insert(databaseActorState)
+          .values({
+            id: randomUUID(),
+            databaseId: input.scope.databaseId,
+            actorId: input.actorId,
+            revision: 1,
+          })
+          .onConflictDoUpdate({
+            target: [databaseActorState.databaseId, databaseActorState.actorId],
+            set: { revision: sql`${databaseActorState.revision} + 1` },
+          })
+          .returning({ revision: databaseActorState.revision });
+        if (!state) throw new Error("Missing actor confirmation");
+        const acknowledgement = databaseCommandAckSchema.parse({
+          commandId: input.request.commandId,
+          event: null,
+          sourceVersions: {},
+          result: dispatched.result,
+          privateConfirmation: { databaseId: input.scope.databaseId, revision: state.revision },
+        }) as DatabaseCommandAck<TResult>;
+        await tx.insert(databaseCommandReceipt).values({
+          acknowledgement,
           actorId: input.actorId,
           commandId: input.request.commandId,
+          createdAt: now,
           databaseId: input.scope.databaseId,
-          dataSourceId: input.scope.dataSourceId,
-          transaction: tx,
-        },
-        input.request.command,
-      );
+          dataSourceId: null,
+          eventId: null,
+          expiresAt: new Date(now.getTime() + COMMAND_RECEIPT_RETENTION_MS),
+          requestHash,
+        });
+        return { acknowledgement, eventIds: [] as string[] };
+      }
       agentTriggerFacts = dispatched.automationFacts ?? [];
       if (agentTriggerFacts.length) {
         await captureDatabaseAutomationMutationFacts(
@@ -384,6 +433,16 @@ export async function executeDatabaseCommand<TResult = unknown>(
           }),
         );
       }
+    }
+  }
+  for (const deliver of deliveries) {
+    try {
+      await deliver();
+    } catch (error) {
+      console.error(
+        "Database committed delivery failed",
+        error instanceof Error ? error.name : "UnknownError",
+      );
     }
   }
   return committed.acknowledgement;

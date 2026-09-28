@@ -155,9 +155,7 @@ export const databaseCommandReceipt = pgTable(
     }),
     actorId: text("actor_id").notNull(),
     requestHash: text("request_hash").notNull(),
-    eventId: text("event_id")
-      .notNull()
-      .references(() => databaseMutationEvent.id, { onDelete: "cascade" }),
+    eventId: text("event_id").references(() => databaseMutationEvent.id, { onDelete: "cascade" }),
     acknowledgement: jsonb("acknowledgement").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -166,6 +164,21 @@ export const databaseCommandReceipt = pgTable(
     index("database_command_receipt_database_created_idx").on(table.databaseId, table.createdAt),
     index("database_command_receipt_retention_idx").on(table.expiresAt),
   ],
+);
+
+export const databaseActorState = pgTable(
+  "database_actor_state",
+  {
+    id: text("id").primaryKey(),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull().default(0),
+  },
+  (table) => [uniqueIndex("database_actor_state_owner_unique").on(table.databaseId, table.actorId)],
 );
 
 export const databaseAccess = pgTable(

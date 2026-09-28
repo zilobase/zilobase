@@ -79,6 +79,15 @@ The [v2 read service](../../../apps/server/src/features/databases/read/service.t
 
 ## Authorization and persistence
 
+Database creation also has a workspace-scoped `POST /databases/commands`
+boundary. Lifecycle, access, publication and favorite operations are recognized
+commands. Their domain services execute inside the receipt transaction; navigation
+delivery is deferred until commit. Favorites advance `database_actor_state` and
+produce a private confirmation instead of a mutation journal/realtime event.
+The forward migration allows a private receipt without an event foreign key.
+Authorization for new host/source commands executes after receipt lookup and before
+revision writes, so receipt replay cannot accidentally perform the mutation twice.
+
 OAuth database routes require `databases.read` or `databases.write` and bind the requested resource to the granted workspace before existing ACL checks. Reads load the database host, while source-scoped commands validate the linked data source through the command framework. Creation validates the body workspace. [Token resource middleware](../../../apps/server/src/features/auth/pinned-resource-middleware.ts) is attached per endpoint so Hono composition cannot apply a database loader to a later source-scoped command route. [Route regression tests](../../../apps/server/src/features/databases/http/routes.test.ts) exercise both scopes.
 
 A database is page-backed; data sources, rows, views and property values are separate persisted concepts. Rows use a required `NUMERIC(30,10)` order key with active uniqueness per data source. [Shared order-key utilities](../../../packages/features/src/databases/core/order-key.ts) encode the decimal as a scaled bigint for deterministic cross-runtime midpoint calculation. Inserts and moves take a transaction-scoped source advisory lock; precision exhaustion rebalances keys at intervals of 1024. Moves normally change one fractional key, while `page_item_placement.position` remains the compatibility projection for navigation; visible anchors are resolved against the complete canonical source order, so filtered-out rows retain their relative ordering. The [v2 persistence migration](../../../apps/server/drizzle/0090_database_mutation_journal.sql) also adds the durable versioned mutation journal and idempotent command receipts; command traffic and internal producers write journal events plus delivery references through the shared commit path. Resource and data-source access checks constrain mutations. Formula and value rules also have shared implementations.

@@ -77,6 +77,7 @@ test("retry-once uses SAME commandId and SAME body on network failure", async ()
   });
   assert.equal(calls, 2);
   assert.equal(bodies[0], bodies[1]);
+  assert.ok(ack.event);
   assert.equal(ack.commandId, ack.event.commandId);
   clearPendingStateForTests();
 });

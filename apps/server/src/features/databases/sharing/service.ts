@@ -3,6 +3,10 @@ import { and, asc, eq } from "drizzle-orm";
 import { normalizeAccessLevel } from "../../access";
 import { db } from "../../../infrastructure/database";
 import {
+  deliverAfterCommit,
+  type AfterCommit,
+} from "../../../infrastructure/database/after-commit";
+import {
   aiAgentProfile,
   databaseAccess,
   member,
@@ -37,6 +41,7 @@ export async function upsertDatabaseAccessRuleService(input: {
   body: unknown;
   databaseId: string;
   env?: RuntimeEnv;
+  afterCommit?: AfterCommit;
   userId: string;
 }) {
   const existing = await requireDatabaseAccess(input.databaseId, input.userId, "full");
@@ -152,7 +157,10 @@ export async function upsertDatabaseAccessRuleService(input: {
       rule,
     };
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
+  await deliverAfterCommit(
+    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
+    input.afterCommit,
+  );
 
   return { access: rule };
 }
@@ -160,6 +168,7 @@ export async function upsertDatabaseAccessRuleService(input: {
 export async function deletePublicDatabaseAccessService(input: {
   databaseId: string;
   env?: RuntimeEnv;
+  afterCommit?: AfterCommit;
   userId: string;
 }) {
   const existing = await requireDatabaseAccess(input.databaseId, input.userId, "full");
@@ -176,7 +185,10 @@ export async function deletePublicDatabaseAccessService(input: {
       );
     return enqueueNavigationInvalidation(tx, existing.workspaceId);
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
+  await deliverAfterCommit(
+    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
+    input.afterCommit,
+  );
 
   return { access: null };
 }
@@ -184,6 +196,7 @@ export async function deletePublicDatabaseAccessService(input: {
 export async function deleteDatabaseAccessRuleService(input: {
   databaseId: string;
   env?: RuntimeEnv;
+  afterCommit?: AfterCommit;
   ruleId: string;
   userId: string;
 }) {
@@ -195,7 +208,10 @@ export async function deleteDatabaseAccessRuleService(input: {
       .where(and(eq(databaseAccess.id, input.ruleId), eq(databaseAccess.databaseId, existing.id)));
     return enqueueNavigationInvalidation(tx, existing.workspaceId);
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
+  await deliverAfterCommit(
+    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
+    input.afterCommit,
+  );
 
   return { access: null };
 }
