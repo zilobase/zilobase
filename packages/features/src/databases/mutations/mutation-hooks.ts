@@ -17,12 +17,7 @@ export {
   useReplaceDatabaseViewDataSource,
   useUnlinkDatabaseDataSource,
 } from "./data-sources";
-export {
-  updateDatabaseViewInNavigation,
-  useUpdateDatabaseView,
-  useAddDatabaseView,
-  useDeleteDatabaseView,
-} from "./views";
+export { useUpdateDatabaseView, useAddDatabaseView, useDeleteDatabaseView } from "./views";
 export {
   type ApplyDatabaseTemplateInput,
   useAddDatabaseProperty,

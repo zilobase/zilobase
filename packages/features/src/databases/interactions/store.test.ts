@@ -5,6 +5,7 @@ import type { ApiFetcher } from "../../shared/api-fetcher";
 import { DatabaseController } from "./store";
 import { DatabaseCommandUnconfirmedError, DatabaseReconciliationError } from "../mutations/execute";
 import { databaseAccessQueryKey } from "../queries/queries";
+import { pagesQueryKey, pageQueryKey } from "../../pages/queries";
 
 function harness() {
   const requests: Array<{
@@ -190,6 +191,121 @@ test("access receipt recovery invalidates only the confirmed host's access snaps
     await tick();
     assert.equal(h.client.getQueryState(key)?.isInvalidated, true);
     assert.equal(h.client.getQueryState(unrelatedKey)?.isInvalidated, false);
+    assert.equal(h.store.commandState.get({ hostDatabaseId: "host" }).error, null);
+  } finally {
+    h.close();
+  }
+});
+
+for (const lifecycle of ["archive", "restore"] as const) {
+  test(`recovered database ${lifecycle} reconciles descendants and navigation only in its session`, async () => {
+    const h = harness();
+    const active = ["db", "session", "child", "bootstrap", null, false];
+    const trash = ["db", "session", "child", "bootstrap", null, true];
+    const other = ["db", "other-session", "child", "bootstrap", null, false];
+    const page = pageQueryKey("child-page");
+    const nav = pagesQueryKey("workspace");
+    const unrelated = pagesQueryKey("unrelated");
+    for (const key of [active, trash, other, page, nav, unrelated]) h.client.setQueryData(key, {});
+    try {
+      const rejected = assert.rejects(
+        h.store.execute({ databaseId: "host", command: { type: `database.${lifecycle}` } }),
+        DatabaseCommandUnconfirmedError,
+      );
+      h.requests[0]!.reject(new TypeError("network"));
+      await tick();
+      h.requests[1]!.reject(new TypeError("network"));
+      await rejected;
+      assert.ok(h.client.getQueryState(active));
+      assert.equal(h.client.getQueryState(nav)?.isInvalidated, false);
+      h.store.retryUnconfirmed();
+      assert.equal(h.requests[2]!.body, h.requests[0]!.body);
+      h.ack(2, 2, "source", {
+        database: { workspaceId: "workspace" },
+        ...(lifecycle === "archive"
+          ? { deletedDatabaseIds: ["host", "child"], deletedPageIds: ["child-page"] }
+          : { restoredDatabaseIds: ["host", "child"], restoredPageIds: ["child-page"] }),
+      });
+      await tick();
+      assert.equal(h.client.getQueryState(nav)?.isInvalidated, true);
+      assert.equal(h.client.getQueryState(unrelated)?.isInvalidated, false);
+      assert.equal(h.client.getQueryState(other)?.isInvalidated, false);
+      assert.equal(h.client.getQueryState(trash)?.isInvalidated, true);
+      if (lifecycle === "archive") {
+        assert.equal(h.client.getQueryState(active), undefined);
+        assert.equal(h.client.getQueryState(page), undefined);
+      } else {
+        assert.equal(h.client.getQueryState(active)?.isInvalidated, true);
+        assert.equal(h.client.getQueryState(page)?.isInvalidated, true);
+      }
+      assert.equal(h.store.commandState.get({ hostDatabaseId: "host" }).error, null);
+    } finally {
+      h.close();
+    }
+  });
+}
+
+test("view confirmation refreshes navigation without patching confirmed cache contents", async () => {
+  const h = harness();
+  const nav = pagesQueryKey("workspace");
+  const snapshot = { pages: [], placements: [], databases: [{ id: "host", name: "Saved" }] };
+  h.client.setQueryData(nav, snapshot);
+  try {
+    const saved = h.store.execute({
+      databaseId: "host",
+      command: { type: "view.update", viewId: "view", patch: { name: "Renamed" } },
+    });
+    h.ack(0);
+    await saved;
+    assert.equal(h.client.getQueryState(nav)?.isInvalidated, true);
+    assert.equal(h.client.getQueryData(nav), snapshot);
+  } finally {
+    h.close();
+  }
+});
+
+test("creation succeeds without waiting for navigation and reports its refresh failure separately", async () => {
+  const h = harness();
+  const original = h.client.invalidateQueries.bind(h.client);
+  let rejectRefresh!: (error: Error) => void;
+  h.client.invalidateQueries = (filters, options) =>
+    filters?.queryKey?.[0] === "pages"
+      ? new Promise((_, reject) => {
+          rejectRefresh = reject;
+        })
+      : original(filters, options);
+  try {
+    const saved = h.store.execute({
+      databaseId: "workspace",
+      command: { type: "database.create", workspaceId: "workspace", name: "New", standalone: true },
+    });
+    const { commandId } = JSON.parse(h.requests[0]!.body);
+    h.requests[0]!.resolve({
+      commandId,
+      sourceVersions: {},
+      result: {},
+      event: {
+        actorId: "user",
+        areas: ["databases"],
+        changes: {},
+        commandId,
+        committedAt: new Date().toISOString(),
+        databaseId: commandId,
+        dataSourceId: null,
+        eventId: commandId,
+        protocolVersion: 2,
+        type: "database.mutation",
+        version: 1,
+      },
+    });
+    await saved;
+    assert.equal(h.store.commandState.get({ hostDatabaseId: commandId }).isPending, false);
+    rejectRefresh(new Error("Navigation unavailable"));
+    await tick();
+    assert.ok(
+      h.store.commandState.get({ hostDatabaseId: commandId }).error instanceof
+        DatabaseReconciliationError,
+    );
   } finally {
     h.close();
   }

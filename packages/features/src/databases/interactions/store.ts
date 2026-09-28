@@ -20,7 +20,7 @@ import {
 } from "../mutations/execute";
 import { DatabaseCommandState, targetsForCommand } from "../mutations/pending";
 import { invalidateDatabaseQueries } from "../mutations/invalidate";
-import { databaseAccessQueryKey } from "../queries/queries";
+import { refreshConfirmedDatabaseReads } from "./confirmation";
 import type { PageNavigationPayload } from "../../pages/contracts";
 import { favoriteNeedsProjection, isNavigationSnapshot } from "./favorites";
 import {
@@ -325,7 +325,7 @@ export class DatabaseController {
       this.jobs.delete(job.interaction.id);
       job.release(null);
       job.resolve(ack);
-      this.refresh(job);
+      this.refresh(job, ack);
       this.collect();
       this.pump();
     } catch (cause) {
@@ -374,63 +374,34 @@ export class DatabaseController {
       this.refresh(job);
     }
   }
-  private refresh(job: Job) {
-    if (job.interaction.status === "committed" && job.interaction.favorite) {
-      void this.queryClient
-        .invalidateQueries(
-          {
-            predicate: (query) =>
-              query.queryKey[0] === "pages" &&
-              query.queryKey[2] === "nav" &&
-              isNavigationSnapshot(query.state.data) &&
-              query.state.data.databases.some(({ id }) => id === job.input.databaseId),
-          },
-          { throwOnError: true },
-        )
-        .catch((cause) => {
-          if (!this.disposed)
-            this.commandState.report(
-              targetsForCommand(job.input),
-              new DatabaseReconciliationError(cause),
-            );
-        });
-    }
-    if (
-      job.interaction.status === "committed" &&
-      (job.input.command.type === "access.upsert" ||
-        job.input.command.type === "access.remove" ||
-        job.input.command.type === "database.publish")
-    ) {
-      // Receipt recovery has no surviving useMutation success callback. All
-      // confirmations must refresh this read model through its session owner.
-      void this.queryClient
-        .invalidateQueries(
-          { queryKey: databaseAccessQueryKey(job.input.databaseId) },
-          { throwOnError: true },
-        )
-        .catch((cause) => {
-          if (!this.disposed)
-            this.commandState.report(
-              targetsForCommand(job.input),
-              new DatabaseReconciliationError(cause),
-            );
-        });
-    }
+  private refresh(job: Job, ack?: DatabaseCommandAck) {
     const hosts = new Set([job.input.databaseId]);
+    const sources = new Set([...job.sources, ...Object.keys(ack?.sourceVersions ?? {})]);
     if (job.input.command.type === "row.place" && job.input.command.source)
       hosts.add(job.input.command.source.databaseId);
     for (const query of this.queryClient
       .getQueryCache()
       .findAll({ queryKey: ["db", this.sessionId] })) {
-      if (query.queryKey[3] === "window" && job.sources.includes(String(query.queryKey[4])))
+      if (query.queryKey[3] === "window" && sources.has(String(query.queryKey[4])))
         hosts.add(String(query.queryKey[2]));
       const bootstrap = databaseBootstrapResponseSchema.safeParse(query.state.data);
-      if (
-        bootstrap.success &&
-        bootstrap.data.dataSources.some(({ id }) => job.sources.includes(id))
-      )
+      if (bootstrap.success && bootstrap.data.dataSources.some(({ id }) => sources.has(id)))
         hosts.add(bootstrap.data.database.id);
     }
+    if (ack)
+      void refreshConfirmedDatabaseReads(
+        this.queryClient,
+        this.sessionId,
+        job.input,
+        ack,
+        hosts,
+      ).catch((cause) => {
+        if (!this.disposed)
+          this.commandState.report(
+            targetsForCommand(job.input),
+            new DatabaseReconciliationError(cause),
+          );
+      });
     for (const host of hosts) {
       invalidateDatabaseQueries(this.queryClient, this.sessionId, host);
       // React Query normally swallows refetch failures. Explicitly surface them,

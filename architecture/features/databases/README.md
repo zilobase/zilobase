@@ -106,9 +106,14 @@ snapshots. They survive receipt recovery and remain until each mounted consumer 
 the actor revision; stale inactive snapshots are evicted. Navigation reads preserve a
 newer cached revision only for the same actor. There is no favorite success-callback
 cache patch or separate rollback state.
-All lifecycle/access client hooks submit through the session controller. Access
-read invalidation belongs to the controller's confirmation path, including recovered
-receipts; a failed refresh reports synchronization failure without rejecting the save. The former
+All lifecycle/access client hooks submit through the session controller. Navigation,
+lifecycle descendant cleanup and access read invalidation belong to the controller's
+[confirmation path](../../../packages/features/src/databases/interactions/confirmation.ts),
+including recovered receipts. Archive evicts active-only database snapshots only in
+the current session; restore refreshes both active and trash reads. Navigation is
+refetched for affected workspaces, never patched from an unversioned view or creation
+success callback. A failed refresh reports synchronization failure without rejecting
+or delaying the save. A confirmed retry clears its earlier unconfirmed error. The former
 direct creation, archive, restore, favorite and access write routes are removed;
 `GET /:id/access` remains the access read boundary. Delivery failures leave the durable
 outbox retryable and do not turn a committed receipt into a failed write.
@@ -135,9 +140,10 @@ block records its editor removal and database lifecycle transition as one undo
 entry. Ctrl+Z restores both while that page's undo entry exists, and redo
 removes both again. Direct full-page trash access retains the explicit
 [database restore control](../../../apps/web/src/features/databases/core/database-trash-restore-button.tsx).
-Restore clears the deletion batch and invalidates every active and trash-aware
-bootstrap/window key through [shared item-action cache handling](../../../packages/features/src/shared/item-action-cache.ts),
-without relying on a realtime refresh.
+Restore clears the deletion batch. Database-command confirmation invalidates every
+active and trash-aware bootstrap/window key in the session without relying on realtime;
+ordinary page lifecycle actions retain their
+[shared item-action cache handling](../../../packages/features/src/shared/item-action-cache.ts).
 
 Runtime topology, retention, recovery, metrics, and failure diagnosis are in
 the [database operations guide](../../../docs/databases/operations.md).

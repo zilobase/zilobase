@@ -56,7 +56,7 @@ export class DatabaseCommandState {
       const current = this.get(target);
       const pendingCount = Math.max(0, current.pendingCount - 1);
       this.states.set(pendingKeyForTarget(target), {
-        error: error ?? current.error,
+        error: error === undefined ? current.error : error,
         isPending: pendingCount > 0,
         pendingCount,
       });
