@@ -4,19 +4,20 @@ import {
   type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
 import {
   databaseRecordWindowResponseSchema,
+  type DatabaseBootstrapResponse,
   type DatabaseInitialPageSize,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
 } from "../core/entities";
 import { getDatabaseInitialPageSize } from "../views/view-evaluation";
+import { databaseViewQueryHash } from "../views/query-hash";
 import {
   cachedWindowMaxVersion,
-  databaseBootstrapQueryKey,
   databaseWindowQueryKey,
   type DatabaseBootstrapScope,
   type DatabaseWindowScope,
@@ -64,6 +65,7 @@ export function recordWindowPath(
     limit: String(window.limit),
     offset: "0",
     viewId: scope.viewId,
+    expectedQueryHash: scope.queryHash,
   });
   if (scope.includeDeleted) query.set("includeDeleted", "1");
   if (window.snapshot) query.set("snapshot", window.snapshot);
@@ -82,20 +84,33 @@ export async function fetchRecordWindow(
   queryKey?: readonly unknown[],
   signal?: AbortSignal,
 ): Promise<DatabaseRecordWindowResponse> {
+  const read = async (page: RecordWindowPageParam) => {
+    try {
+      const response = databaseRecordWindowResponseSchema.parse(
+        await apiFetch<DatabaseRecordWindowResponse>(recordWindowPath(scope, page), { signal }),
+      );
+      if (response.queryHash !== scope.queryHash) throw new DatabaseViewQueryChangedError();
+      return response;
+    } catch (error) {
+      if (!isViewQueryChangedError(error)) throw error;
+      // The old hash must never receive rows evaluated using a newer saved view.
+      // Refresh metadata so every consumer can switch to the confirmed query key.
+      if (queryClient && queryKey)
+        void queryClient
+          .invalidateQueries({
+            queryKey: ["db", queryKey[1], scope.databaseId, "bootstrap"],
+          })
+          .catch(() => undefined);
+      throw new DatabaseViewQueryChangedError();
+    }
+  };
   let incoming: DatabaseRecordWindowResponse;
   try {
-    incoming = databaseRecordWindowResponseSchema.parse(
-      await apiFetch<DatabaseRecordWindowResponse>(recordWindowPath(scope, window), { signal }),
-    );
+    incoming = await read(window);
   } catch (error) {
     if (!isWindowStaleError(error)) throw error;
     // Retry ONCE with snapshot cleared. If second fails, throw.
-    incoming = databaseRecordWindowResponseSchema.parse(
-      await apiFetch<DatabaseRecordWindowResponse>(
-        recordWindowPath(scope, { limit: window.limit, snapshot: undefined }),
-        { signal },
-      ),
-    );
+    incoming = await read({ limit: window.limit, snapshot: undefined });
   }
   // Prefer-newest guard: discard stale incoming when cache is newer.
   if (queryClient && queryKey) {
@@ -107,6 +122,23 @@ export async function fetchRecordWindow(
     }
   }
   return incoming;
+}
+
+export class DatabaseViewQueryChangedError extends Error {
+  readonly code = "VIEW_QUERY_CHANGED";
+  constructor() {
+    super("The saved database view query has changed; refresh its configuration");
+    this.name = "DatabaseViewQueryChangedError";
+  }
+}
+
+function isViewQueryChangedError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; status?: unknown; body?: { code?: unknown } };
+  return (
+    candidate.code === "VIEW_QUERY_CHANGED" ||
+    (candidate.status === 409 && candidate.body?.code === "VIEW_QUERY_CHANGED")
+  );
 }
 
 export function isWindowStaleError(error: unknown): boolean {
@@ -152,6 +184,7 @@ export function databaseWindowQueryOptions(
   return infiniteQueryOptions({
     queryKey,
     staleTime: 30_000,
+    retry: (failures, error) => !isViewQueryChangedError(error) && failures < 2,
     initialPageParam: { limit: pageSize, snapshot: undefined },
     queryFn: async ({ pageParam, signal }): Promise<DatabaseRecordWindowResponse> =>
       fetchRecordWindow(apiFetch, scope, pageParam, queryClient, queryKey, signal),
@@ -183,33 +216,65 @@ export async function prefetchDatabaseWindow(
   );
 }
 
-function resolvePageSize(
+/** Select untouched, session-scoped metadata, never an optimistic view projection. */
+export function confirmedWindowBootstrap(
   queryClient: QueryClient,
   sessionId: string,
-  scope: DatabaseViewScope,
-): DatabaseInitialPageSize {
-  const bootstrap = queryClient.getQueryData<{
-    database: { config: unknown };
-    views: Array<{ config: unknown; id: string }>;
-  }>(databaseBootstrapQueryKey(sessionId, scope));
-  const view = bootstrap?.views.find((candidate) => candidate.id === scope.viewId);
-  return getDatabaseInitialPageSize(view?.config ?? bootstrap?.database.config);
+  scope: Omit<DatabaseViewScope, "queryHash"> | null,
+): DatabaseBootstrapResponse | undefined {
+  if (!scope) return undefined;
+  let newest: DatabaseBootstrapResponse | undefined;
+  for (const [key, bootstrap] of queryClient.getQueriesData<DatabaseBootstrapResponse>({
+    queryKey: ["db", sessionId, scope.databaseId, "bootstrap"],
+  })) {
+    if (key[5] !== (scope.includeDeleted === true) || !bootstrap) continue;
+    if (bootstrap.database.id !== scope.databaseId) continue;
+    if (!newest || bootstrap.database.version > newest.database.version) newest = bootstrap;
+  }
+  return newest;
 }
 
-export function useDatabaseRecords(scope: DatabaseViewScope | null): DatabaseRecordHookWindow {
+export function useDatabaseRecords(
+  requestedScope: Omit<DatabaseViewScope, "queryHash"> | null,
+): DatabaseRecordHookWindow {
   const { apiFetch, queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
 
-  // Keep key stable: use first resolved pageSize for this hook instance.
-  // Changing view pageSize requires remount / view switch.
-  const pageSizeRef = useRef<DatabaseInitialPageSize | null>(null);
-  if (scope && pageSizeRef.current === null) {
-    pageSizeRef.current = resolvePageSize(queryClient, sessionId, scope);
-  }
-  if (!scope && pageSizeRef.current === null) {
-    pageSizeRef.current = 50;
-  }
-  const pageSize = pageSizeRef.current ?? 50;
+  const hostId = requestedScope?.databaseId;
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        const key = event.query.queryKey;
+        // Observer registration and record-query creation can occur during another
+        // component's render. Only actual metadata changes affect this snapshot.
+        if (
+          (event.type === "updated" || event.type === "removed") &&
+          key[0] === "db" &&
+          key[1] === sessionId &&
+          key[2] === hostId &&
+          key[3] === "bootstrap"
+        )
+          notify();
+      }),
+    [queryClient, sessionId, hostId],
+  );
+  const getSnapshot = () => confirmedWindowBootstrap(queryClient, sessionId, requestedScope);
+  const bootstrap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const view = bootstrap?.views.find(
+    ({ id, dataSourceId }) =>
+      id === requestedScope?.viewId && dataSourceId === requestedScope.dataSourceId,
+  );
+  const scope =
+    requestedScope && view
+      ? {
+          ...requestedScope,
+          queryHash: databaseViewQueryHash(
+            view.config ?? bootstrap?.database.config,
+            requestedScope.includeDeleted,
+          ),
+        }
+      : null;
+  const pageSize = getDatabaseInitialPageSize(view?.config ?? bootstrap?.database.config);
 
   const queryKey = scope ? databaseWindowQueryKey(sessionId, scope) : null;
 
@@ -258,7 +323,7 @@ export function useDatabaseRecords(scope: DatabaseViewScope | null): DatabaseRec
       pageSize: 50,
       records: [],
       scope: null,
-      status: "idle",
+      status: requestedScope ? "loading" : "idle",
       totalCount: 0,
     };
   }

@@ -115,6 +115,7 @@ test("bootstrap preserves the host database deletion state", () => {
 
 test("record windows require complete atomic records and snapshot versions", () => {
   const parsed = databaseRecordWindowResponseSchema.parse({
+    queryHash: "q1",
     databaseVersion: 5,
     dataSourceVersion: 8,
     hasMore: false,

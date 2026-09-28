@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { databaseViewQueryHash } from "@zilobase/features/databases/query-hash";
 
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import {
   DatabaseWindowStaleError,
+  DatabaseViewQueryChangedError,
   getDatabaseBootstrapService,
   getDatabaseExportService,
   getDatabaseRecordWindowService,
@@ -371,6 +373,33 @@ test("database exports reject a mismatched requested data source", async () => {
       } as never,
     ),
     (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
+  );
+});
+
+test("record windows validate the expected saved query inside the read snapshot", async () => {
+  const model = readModel();
+  const input = {
+    databaseId: "database-1",
+    dataSourceId: "source-1",
+    existingRecord: databaseRecord(),
+    viewId: "view-1",
+    expectedQueryHash: databaseViewQueryHash(model.views[0]?.config),
+  };
+  const dependencies = {
+    getPayload: vi.fn(),
+    loadReadModel: vi.fn(async () => model),
+    requireAccess: vi.fn(),
+  } as never;
+  const first = await getDatabaseRecordWindowService(input, dependencies);
+  assert.equal(first.queryHash, input.expectedQueryHash);
+  await assert.rejects(
+    getDatabaseRecordWindowService({ ...input, includeDeleted: true }, dependencies),
+    DatabaseViewQueryChangedError,
+  );
+  model.views[0]!.config = { sorts: [{ column: "name", direction: "descending" }] };
+  await assert.rejects(
+    getDatabaseRecordWindowService({ ...input, snapshot: first.snapshot }, dependencies),
+    DatabaseViewQueryChangedError,
   );
 });
 

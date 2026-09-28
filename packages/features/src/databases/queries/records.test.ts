@@ -2,19 +2,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 
-import { databaseWindowQueryKey } from "./keys";
+import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "./keys";
 import {
   fetchRecordWindow,
+  confirmedWindowBootstrap,
+  databaseWindowQueryOptions,
+  DatabaseViewQueryChangedError,
   isWindowStaleError,
   prefetchDatabaseWindow,
   selectSameSourcePlaceholder,
 } from "./records";
-import type { DatabaseRecordWindowResponse } from "../core/entities";
+import type { DatabaseBootstrapResponse, DatabaseRecordWindowResponse } from "../core/entities";
+import type { ApiFetcher } from "../../shared/api-fetcher";
 
 function windowResponse(
   overrides: Partial<DatabaseRecordWindowResponse> = {},
 ): DatabaseRecordWindowResponse {
   return {
+    queryHash: "q1",
     databaseVersion: 5,
     dataSourceVersion: 2,
     hasMore: false,
@@ -77,6 +82,92 @@ test("record window uses growing limit with offset 0", async () => {
   assert.match(seen[0]!, /offset=0/);
   assert.match(seen[0]!, /viewId=view-1/);
   assert.match(seen[0]!, /snapshot=snapshot-1/);
+  assert.match(seen[0]!, /expectedQueryHash=q1/);
+});
+
+test("changed query responses never enter the old cache or retry its obsolete hash", async () => {
+  for (const mode of ["response", "conflict", "continuation"] as const) {
+    const client = new QueryClient();
+    const key = databaseWindowQueryKey("session-1", scope);
+    const metadataKey = databaseBootstrapQueryKey("session-1", scope);
+    const otherSessionKey = databaseBootstrapQueryKey("other-session", scope);
+    client.setQueryData(metadataKey, { marker: "metadata" });
+    client.setQueryData(otherSessionKey, { marker: "private" });
+    const original = {
+      pages: [windowResponse()],
+      pageParams: [{ limit: 50, snapshot: undefined }],
+    };
+    client.setQueryData(key, original);
+    let calls = 0;
+    const fetch = (async () => {
+      calls++;
+      if (mode === "continuation" && calls === 1) throw { code: "WINDOW_STALE" };
+      if (mode !== "response") throw { status: 409, body: { code: "VIEW_QUERY_CHANGED" } };
+      return windowResponse({ queryHash: "q2" });
+    }) as ApiFetcher;
+    try {
+      await assert.rejects(
+        client.fetchInfiniteQuery({
+          ...databaseWindowQueryOptions(fetch, "session-1", scope, 50, client),
+          staleTime: 0,
+        }),
+        DatabaseViewQueryChangedError,
+      );
+      assert.equal(calls, mode === "continuation" ? 2 : 1);
+      assert.deepEqual(client.getQueryData(key), original);
+      assert.equal(client.getQueryState(metadataKey)?.isInvalidated, true);
+      assert.equal(client.getQueryState(otherSessionKey)?.isInvalidated, false);
+    } finally {
+      client.clear();
+    }
+  }
+});
+
+test("record scope selects newest confirmed metadata without crossing session or deleted scope", () => {
+  const client = new QueryClient();
+  const now = "2026-09-29T00:00:00.000Z";
+  const snapshot: DatabaseBootstrapResponse = {
+    database: {
+      id: scope.databaseId,
+      version: 1,
+      config: {},
+      name: "Database",
+      pageId: null,
+      workspaceId: "workspace",
+      accessLevel: "full",
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+    dataSources: [],
+    properties: [],
+    views: [],
+  };
+  const rootKey = databaseBootstrapQueryKey("session-1", { databaseId: scope.databaseId });
+  client.setQueryData(rootKey, snapshot);
+  client.setQueryData(databaseBootstrapQueryKey("other-session", scope), {
+    ...snapshot,
+    database: { ...snapshot.database, version: 100 },
+  });
+  client.setQueryData(databaseBootstrapQueryKey("session-1", { ...scope, includeDeleted: true }), {
+    ...snapshot,
+    database: { ...snapshot.database, version: 200 },
+  });
+  try {
+    assert.equal(
+      confirmedWindowBootstrap(client, "session-1", scope),
+      client.getQueryData(rootKey),
+    );
+    const viewKey = databaseBootstrapQueryKey("session-1", scope);
+    client.setQueryData(viewKey, { ...snapshot, database: { ...snapshot.database, version: 2 } });
+    assert.equal(
+      confirmedWindowBootstrap(client, "session-1", scope),
+      client.getQueryData(viewKey),
+    );
+    assert.equal(confirmedWindowBootstrap(client, "absent", scope), undefined);
+  } finally {
+    client.clear();
+  }
 });
 
 test("WINDOW_STALE retries once without snapshot then throws", async () => {

@@ -172,18 +172,12 @@ export function useDatabaseViewController({
     bootstrap?.views.find(({ id }) => id === resolvedActiveViewId)?.dataSourceId ??
     bootstrap?.dataSources[0]?.id ??
     null;
-  const activeQueryHash = databaseViewQueryHash(
-    bootstrapState.serverData?.views.find(({ id }) => id === resolvedActiveViewId)?.config ??
-      bootstrapState.serverData?.database.config,
-    includeDeletedDatabases,
-  );
   const recordWindow = useDatabaseRecords(
     databaseId && !databaseDeleted && resolvedActiveViewId && activeDataSourceId
       ? {
           databaseId,
           dataSourceId: activeDataSourceId,
           includeDeleted: includeDeletedDatabases,
-          queryHash: activeQueryHash,
           viewId: resolvedActiveViewId,
         }
       : null,
@@ -288,7 +282,10 @@ export function useDatabaseViewController({
           databaseId,
           dataSourceId: view.dataSourceId,
           includeDeleted: includeDeletedDatabases,
-          queryHash: databaseViewQueryHash(view.config, includeDeletedDatabases),
+          queryHash: databaseViewQueryHash(
+            view.config ?? bootstrapState.serverData?.database.config,
+            includeDeletedDatabases,
+          ),
           viewId: view.id,
         },
         getDatabaseInitialPageSize(view.config ?? bootstrap.database.config),

@@ -129,6 +129,10 @@
       "types": "./src/databases/views/view-evaluation.ts",
       "default": "./src/databases/views/view-evaluation.ts"
     },
+    "./databases/query-hash": {
+      "types": "./src/databases/views/query-hash.ts",
+      "default": "./src/databases/views/query-hash.ts"
+    },
     "./meetings": {
       "types": "./src/meetings/index.ts",
       "default": "./src/meetings/index.ts"

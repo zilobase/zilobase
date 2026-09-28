@@ -145,6 +145,7 @@ export type DatabaseBootstrapResponse = z.infer<typeof databaseBootstrapResponse
 
 export const databaseRecordWindowResponseSchema = z
   .object({
+    queryHash: z.string().trim().min(1).max(64),
     databaseVersion: versionSchema,
     dataSourceVersion: versionSchema,
     hasMore: z.boolean(),
@@ -550,6 +551,7 @@ const protocolErrorBase = {
 };
 
 export const databaseProtocolErrorSchema = z.discriminatedUnion("code", [
+  z.object({ ...protocolErrorBase, code: z.literal("VIEW_QUERY_CHANGED") }).strict(),
   z
     .object({
       ...protocolErrorBase,

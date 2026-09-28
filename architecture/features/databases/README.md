@@ -38,7 +38,12 @@ web database surface keeps one QueryClient photocopy of the notebook:
 Record windows are keyed by view query hash (`dataSourceId` plus normalized
 filters/sorts), so sibling views that differ only in presentation share one
 cached window; `viewId` selects the server-side evaluation, never the cache
-key. Switching views within one data source keeps the previous rows visible
+key. Record requests require `expectedQueryHash`; responses include `queryHash`.
+The server compares the expected hash with its saved view inside the repeatable-read
+snapshot before evaluation. `VIEW_QUERY_CHANGED` rejects a mismatched request;
+the client also validates successful response hashes, refreshes bootstrap metadata,
+and never retries the obsolete hash or caches mismatched rows.
+Switching views within one data source keeps the previous rows visible
 while the new hash loads, and tabs prefetch on hover/focus with idle
 prefetch for same-source siblings.
 Postgres remains the only truth and the host `database.version` is the clock.
@@ -183,6 +188,12 @@ Full configuration objects are accepted only for creation and template applicati
 The view controller reads its latest pending configuration from the session controller;
 there is no separate latest-view configuration cache. Record fetches and prefetches use
 the confirmed bootstrap configuration while loaded rows use the projected configuration.
+The shared record hook owns query identity for every consumer, including sidebar,
+page navigation, relation and layout previews. Callers select host/source/view, not a
+hash derived from projected metadata. The hook observes the newest matching
+session/deleted-scope bootstrap snapshot; pending view configuration cannot select
+a fetch key. The server-safe `@zilobase/features/databases/query-hash` entrypoint
+exposes the same normalization and hashing used by the client.
 
 The interactive client consumes bootstrap plus record windows directly through [`DatabaseViewData`](../../../apps/web/src/features/databases/views/model/database-controller-state.ts) (canonical host bootstrap, active source, filtered records); the monolithic composed payload is gone. The position-based row/value export shape remains only as the [`DatabaseExportPayload`](../../../packages/features/src/databases/core/export-payload.ts) wire contract behind `GET /:id/export` and derived AI/task context, never as client state. Realtime-only state (presence, version watermarks) stays out of QueryClient entirely.
 

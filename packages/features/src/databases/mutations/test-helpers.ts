@@ -203,6 +203,7 @@ export function setTestDatabaseClientState(
         ),
       }));
     const window: DatabaseRecordWindowResponse = {
+      queryHash: databaseViewQueryHash(view.config),
       databaseVersion: payload.database.version,
       dataSourceVersion: source.version,
       hasMore: false,

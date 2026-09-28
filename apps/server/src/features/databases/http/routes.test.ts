@@ -122,6 +122,7 @@ test("v2 record route forwards exact windows and deleted scope", async () => {
     workspaceId: "workspace-1",
   };
   const window = {
+    queryHash: "q1",
     databaseVersion: 1,
     dataSourceVersion: 1,
     hasMore: false,
@@ -135,12 +136,13 @@ test("v2 record route forwards exact windows and deleted scope", async () => {
 
   const response = await appWithUser().request(
     "/databases/database-1/data-sources/source-1/records" +
-      "?viewId=view-1&offset=25&limit=25&snapshot=current&includeDeleted=1",
+      "?viewId=view-1&offset=25&limit=25&snapshot=current&includeDeleted=1&expectedQueryHash=q1",
   );
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), window);
   assert.deepEqual(mocks.recordWindow.mock.calls[0]?.[0], {
+    expectedQueryHash: "q1",
     databaseId: "database-1",
     dataSourceId: "source-1",
     existingRecord: record,
@@ -162,7 +164,7 @@ test("v2 record route exposes stale-window and source/view conflicts", async () 
   });
   mocks.recordWindow.mockRejectedValueOnce(new DatabaseWindowStaleError("fresh-snapshot"));
   const stale = await appWithUser().request(
-    "/databases/database-1/data-sources/source-1/records?limit=50&snapshot=old",
+    "/databases/database-1/data-sources/source-1/records?limit=50&snapshot=old&expectedQueryHash=q1",
   );
   assert.equal(stale.status, 409);
   assert.deepEqual(await stale.json(), {
@@ -175,9 +177,29 @@ test("v2 record route exposes stale-window and source/view conflicts", async () 
     new ServiceMutationError("Database view not found", 404),
   );
   const mismatch = await appWithUser().request(
-    "/databases/database-1/data-sources/source-1/records?viewId=foreign-view",
+    "/databases/database-1/data-sources/source-1/records?viewId=foreign-view&expectedQueryHash=q1",
   );
   assert.equal(mismatch.status, 404);
+});
+
+test("record reads require a query identity and expose saved-query conflicts", async () => {
+  const { DatabaseViewQueryChangedError } = await import("../read/service");
+  mocks.databaseRecord.mockResolvedValue({
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  const path = "/databases/database-1/data-sources/source-1/records";
+  for (const query of ["", "?expectedQueryHash=", `?expectedQueryHash=${"q".repeat(65)}`])
+    assert.equal((await appWithUser().request(path + query)).status, 400);
+  assert.equal(mocks.recordWindow.mock.calls.length, 0);
+  mocks.recordWindow.mockRejectedValueOnce(new DatabaseViewQueryChangedError());
+  const response = await appWithUser().request(path + "?expectedQueryHash=q1");
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), {
+    code: "VIEW_QUERY_CHANGED",
+    error: "The saved database view query has changed",
+  });
 });
 
 test("v2 reads support published databases and bounded collection windows", async () => {
@@ -202,6 +224,7 @@ test("v2 reads support published databases and bounded collection windows", asyn
   assert.equal((await publicApp.request("/databases/database-1/bootstrap")).status, 200);
 
   mocks.recordWindow.mockResolvedValue({
+    queryHash: "q1",
     databaseVersion: 1,
     dataSourceVersion: 1,
     hasMore: false,
@@ -211,13 +234,13 @@ test("v2 reads support published databases and bounded collection windows", asyn
     totalCount: 0,
   });
   const collectionWindow = await appWithUser().request(
-    "/databases/database-1/data-sources/source-1/records?limit=51",
+    "/databases/database-1/data-sources/source-1/records?limit=51&expectedQueryHash=q1",
   );
   assert.equal(collectionWindow.status, 200);
   assert.equal(mocks.recordWindow.mock.calls[0]?.[0]?.limit, 51);
 
   const invalid = await appWithUser().request(
-    "/databases/database-1/data-sources/source-1/records?limit=1002",
+    "/databases/database-1/data-sources/source-1/records?limit=1002&expectedQueryHash=q1",
   );
   assert.equal(invalid.status, 400);
   assert.equal(mocks.recordWindow.mock.calls.length, 1);

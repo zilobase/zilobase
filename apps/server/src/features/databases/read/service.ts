@@ -16,6 +16,7 @@ import {
   evaluateDatabaseRecordsForView,
   getDatabaseInitialPageSize,
 } from "@zilobase/features/databases/view-evaluation";
+import { databaseViewQueryHash } from "@zilobase/features/databases/query-hash";
 
 import { canAccessDatabaseRecord, getEffectiveDatabaseAccessForRecord } from "../../access";
 import { db } from "../../../infrastructure/database";
@@ -88,6 +89,15 @@ export class DatabaseWindowStaleError extends ServiceMutationError {
   constructor(readonly currentSnapshot: string) {
     super("The database record window is stale", 409);
     this.name = "DatabaseWindowStaleError";
+  }
+}
+
+export class DatabaseViewQueryChangedError extends ServiceMutationError {
+  readonly code = "VIEW_QUERY_CHANGED" as const;
+
+  constructor() {
+    super("The saved database view query has changed", 409);
+    this.name = "DatabaseViewQueryChangedError";
   }
 }
 
@@ -461,6 +471,7 @@ export async function getDatabaseRecordWindowService(
     now?: Date;
     offset?: number;
     snapshot?: string;
+    expectedQueryHash?: string;
     timezone?: string;
     userId?: string;
     viewId?: string;
@@ -493,6 +504,10 @@ export async function getDatabaseRecordWindowService(
     const limit = input.limit ?? getDatabaseInitialPageSize(view?.config ?? record.config);
     validateWindowLimit(limit);
 
+    const queryHash = databaseViewQueryHash(view?.config ?? record.config, input.includeDeleted);
+    if (input.expectedQueryHash !== undefined && input.expectedQueryHash !== queryHash)
+      throw new DatabaseViewQueryChangedError();
+
     const snapshot = windowSnapshot({
       databaseVersion: record.version,
       dataSourceVersion: source.version,
@@ -516,6 +531,7 @@ export async function getDatabaseRecordWindowService(
     const requested = evaluated.slice(offset, offset + limit + 1);
 
     return {
+      queryHash,
       databaseVersion: record.version,
       dataSourceVersion: source.version,
       hasMore: requested.length > limit,

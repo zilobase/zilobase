@@ -49,6 +49,8 @@ The data-affecting slice of a Database view config: normalized filters,
 sorts, and the deleted-rows flag, excluding presentation (view type,
 grouping, visibility, layout). Views with equal hashes evaluate the same
 rows and share one cached record window.
+Record reads validate that expected hash against the saved view and return the
+evaluated hash; pending filter/sort projections never define a server fetch key.
 
 ### Page
 

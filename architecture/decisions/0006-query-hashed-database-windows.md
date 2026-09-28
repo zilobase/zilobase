@@ -29,16 +29,22 @@ data (`selectSameSourcePlaceholder`); rows from another source are never
 reused as placeholder. Tabs prefetch on hover/focus and same-source siblings
 prefetch when idle (`prefetchDatabaseWindow`), skipping cached windows.
 Invalidation, poke comparison, `WINDOW_STALE` retry, and prefer-newest guards
-are unchanged — they operate on the `["db", sessionId, hostId]` prefix, which
-is preserved.
+operate on the `["db", sessionId, hostId]` prefix, which is preserved.
+Every record request supplies `expectedQueryHash`, checked against the saved view
+in the server read transaction; every response carries its evaluated `queryHash`.
+On `VIEW_QUERY_CHANGED`, the client rejects the payload and refreshes bootstrap
+instead of retrying the obsolete hash. The record hook derives fetch identity from
+confirmed session metadata for all consumers, while optimistic view changes remain
+presentation projections until their saved query is available.
 
 ## Alternatives
 
 Keeping per-view keys preserves the skeleton on every switch. Full
 client-side evaluation (fetch raw rows once, filter locally) gives wrong
-pagination once the row set exceeds the window. A server `queryHash` parameter
-would decouple fetch identity too but needs validation and versioning for no
-v1 benefit.
+pagination once the row set exceeds the window. Trusting only the client hash can
+cache rows under the wrong filters when a saved view changes before a request is
+evaluated. The validated request/response query identity closes that race without
+accepting client-supplied filter definitions as saved views.
 
 ## Consequences
 

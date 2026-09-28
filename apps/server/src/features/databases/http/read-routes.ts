@@ -20,6 +20,7 @@ import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
 import {
   DatabaseWindowStaleError,
+  DatabaseViewQueryChangedError,
   MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
   getDatabaseExportService,
@@ -119,6 +120,14 @@ databaseReadRoutes.get("/:id/data-sources/:dataSourceId/records", resourceWorksp
   const readable = await readableDatabase(c, c.req.param("id"), includeDeleted);
   if (readable instanceof Response) return readable;
 
+  const expectedQueryHash = c.req.query("expectedQueryHash");
+  if (
+    !expectedQueryHash ||
+    expectedQueryHash.length > 64 ||
+    expectedQueryHash.trim() !== expectedQueryHash
+  )
+    return c.json({ error: "Invalid expected query hash" }, 400);
+
   const snapshot = c.req.query("snapshot") || undefined;
   if (snapshot && snapshot.length > 2_048) {
     return c.json({ error: "Invalid snapshot" }, 400);
@@ -144,11 +153,14 @@ databaseReadRoutes.get("/:id/data-sources/:dataSourceId/records", resourceWorksp
       limit,
       offset,
       snapshot,
+      expectedQueryHash,
       userId: readable.user?.id,
       viewId: c.req.query("viewId") || undefined,
     });
     return c.json(window);
   } catch (error) {
+    if (error instanceof DatabaseViewQueryChangedError)
+      return c.json({ code: error.code, error: error.message }, 409);
     if (error instanceof DatabaseWindowStaleError) {
       return c.json(
         {
