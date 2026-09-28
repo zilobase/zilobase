@@ -20,6 +20,7 @@ import {
 } from "../mutations/execute";
 import { DatabaseCommandState, targetsForCommand } from "../mutations/pending";
 import { invalidateDatabaseQueries } from "../mutations/invalidate";
+import { databaseAccessQueryKey } from "../queries/queries";
 import {
   projectRecordInteractions,
   remapRecordIdentity,
@@ -352,6 +353,27 @@ export class DatabaseController {
     }
   }
   private refresh(job: Job) {
+    if (
+      job.interaction.status === "committed" &&
+      (job.input.command.type === "access.upsert" ||
+        job.input.command.type === "access.remove" ||
+        job.input.command.type === "database.publish")
+    ) {
+      // Receipt recovery has no surviving useMutation success callback. All
+      // confirmations must refresh this read model through its session owner.
+      void this.queryClient
+        .invalidateQueries(
+          { queryKey: databaseAccessQueryKey(job.input.databaseId) },
+          { throwOnError: true },
+        )
+        .catch((cause) => {
+          if (!this.disposed)
+            this.commandState.report(
+              targetsForCommand(job.input),
+              new DatabaseReconciliationError(cause),
+            );
+        });
+    }
     const hosts = new Set([job.input.databaseId]);
     if (job.input.command.type === "row.place" && job.input.command.source)
       hosts.add(job.input.command.source.databaseId);

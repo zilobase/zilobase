@@ -3,7 +3,8 @@ import { test } from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { DatabaseController } from "./store";
-import { DatabaseCommandUnconfirmedError } from "../mutations/execute";
+import { DatabaseCommandUnconfirmedError, DatabaseReconciliationError } from "../mutations/execute";
+import { databaseAccessQueryKey } from "../queries/queries";
 
 function harness() {
   const requests: Array<{
@@ -161,6 +162,57 @@ test("lost responses retain intentions, block dependencies and retry the exact r
     assert.equal(h.requests.length, 4);
     h.ack(3, 3);
     await next;
+  } finally {
+    h.close();
+  }
+});
+
+test("access receipt recovery invalidates only the confirmed host's access snapshot", async () => {
+  const h = harness();
+  const key = databaseAccessQueryKey("host");
+  const unrelatedKey = databaseAccessQueryKey("other");
+  h.client.setQueryData(key, { access: [] });
+  h.client.setQueryData(unrelatedKey, { access: [] });
+  try {
+    const failed = h.store.execute({
+      databaseId: "host",
+      command: { type: "access.remove", ruleId: "rule" },
+    });
+    const rejection = assert.rejects(failed, DatabaseCommandUnconfirmedError);
+    h.requests[0]!.reject(new TypeError("network"));
+    await tick();
+    h.requests[1]!.reject(new TypeError("network"));
+    await rejection;
+    assert.equal(h.client.getQueryState(key)?.isInvalidated, false);
+    h.store.retryUnconfirmed();
+    assert.equal(h.requests[2]!.body, h.requests[0]!.body);
+    h.ack(2);
+    await tick();
+    assert.equal(h.client.getQueryState(key)?.isInvalidated, true);
+    assert.equal(h.client.getQueryState(unrelatedKey)?.isInvalidated, false);
+  } finally {
+    h.close();
+  }
+});
+
+test("access refresh failure is synchronization failure, not a rejected committed command", async () => {
+  const h = harness();
+  const original = h.client.invalidateQueries.bind(h.client);
+  h.client.invalidateQueries = (filters, options) =>
+    filters?.queryKey?.[0] === "database"
+      ? Promise.reject(new Error("Refresh unavailable"))
+      : original(filters, options);
+  try {
+    const saved = h.store.execute({
+      databaseId: "host",
+      command: { type: "database.publish", published: true },
+    });
+    h.ack(0);
+    await saved;
+    await tick();
+    const state = h.store.commandState.get({ hostDatabaseId: "host" });
+    assert.equal(state.isPending, false);
+    assert.ok(state.error instanceof DatabaseReconciliationError);
   } finally {
     h.close();
   }
