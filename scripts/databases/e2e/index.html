@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Database controller browser verification</title>
+    <style>
+      [data-column] {
+        display: inline-flex;
+        vertical-align: top;
+        flex-direction: column;
+        gap: 8px;
+        width: 240px;
+        min-height: 260px;
+        margin: 24px;
+        padding: 8px;
+        background: #eee;
+      }
+      [data-row] {
+        height: 40px;
+        background: white;
+        border: 1px solid #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="board"></div>
+    <div id="queries"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

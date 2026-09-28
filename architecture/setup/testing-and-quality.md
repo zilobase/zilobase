@@ -33,6 +33,14 @@ Earlier migrations narrowed desktop/offline cross-imports, web feature imports o
 
 Shared mutation tests render real hooks with React DOM's server renderer and execute their MutationObservers against an isolated QueryClient. The renderer is a test dependency pinned to the web workspace's existing version. These tests cover optimistic writes before transport, rollback of source/target caches, publication invalidation, and template navigation refresh; the latter replaces the old source-string assertion.
 
+The [database browser suite](../../scripts/databases/e2e/controller.spec.mjs), invoked
+with `npm run test:databases:browser`, runs installed Chrome against isolated Vite
+fixtures. It exercises native Kanban drag events with delayed acknowledgements and
+stale reads, mounted table/Kanban query identity, and local demo receipt replay. The
+fixtures use real controller/drag/query code with controlled transports; this is not
+a full signed-in application walkthrough or a substitute for PostgreSQL verification.
+It loads no environment files and makes no writes to development databases.
+
 Pull requests and main pushes run `verify:core`, lint, and the complete `verify:architecture` suite in one CI job with PostgreSQL. Superseded CI runs are cancelled. The separate backend, web/package, and community-boundary workflows have been consolidated into this job to share dependency installation and keep one core check.
 
 The [self-host suite](../../.github/workflows/selfhost.yml) (Compose, packaged desktop, and upgrade) and [Community Helm suite](../../.github/workflows/community-helm.yml) run only through manual dispatch before releases or deployment changes. They no longer run on every PR, main push, or nightly; operators must trigger them for the candidate ref and review their results.

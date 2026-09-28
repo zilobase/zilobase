@@ -45,7 +45,17 @@ export function usePageNavigation(
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
   });
   const data = useProjectedDatabaseNavigation(query.data);
-  return { ...query, data };
+  return {
+    data,
+    error: query.error,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    status: query.status,
+    refetch: query.refetch,
+  };
 }
 
 export function useZilobaseAiPages(workspaceId: string | null | undefined) {

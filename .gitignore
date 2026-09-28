@@ -60,6 +60,9 @@ target
 # Calendar browser acceptance artifacts
 .dev/calendar-e2e-results/
 
+# Database browser acceptance artifacts
+.dev/database-e2e-results/
+
 # Generated renderer snapshot for calendar benchmark comparisons
 .dev/calendar-baseline/
 

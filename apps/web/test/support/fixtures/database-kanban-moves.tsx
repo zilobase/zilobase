@@ -178,6 +178,8 @@ export function mountRecordDrops(container: HTMLElement) {
             key: option.id,
             ref: drag.getColumnRef(option.id),
             "data-column": option.groupValue,
+            onDragOver: (event) => drag.dragOver(option, event),
+            onDrop: (event) => drag.drop(option, event),
           },
           (columns.get(option.groupValue) ?? []).map((row) =>
             createElement(
@@ -186,6 +188,9 @@ export function mountRecordDrops(container: HTMLElement) {
                 key: row.id,
                 ref: drag.getCardRef(option.id, row.id),
                 "data-row": row.id,
+                draggable: true,
+                onDragStart: (event) => drag.startDrag(row, option, event),
+                onDragEnd: () => drag.clearDrag(),
               },
               row.id,
             ),
