@@ -24,6 +24,7 @@ export async function dispatchLifecycleCommand(
     databaseId: context.databaseId,
     userId: context.actorId,
     afterCommit: context.afterCommit,
+    env: context.env,
   };
   let result: unknown;
   let affected = [context.databaseId];
@@ -34,6 +35,7 @@ export async function dispatchLifecycleCommand(
         userId: context.actorId,
         newDatabaseId: context.databaseId,
         afterCommit: context.afterCommit,
+        env: context.env,
       });
       const payload = await getDatabaseExportPayload(created.databaseId, context.actorId);
       if (!payload) throw new ServiceMutationError("Database not found", 404);

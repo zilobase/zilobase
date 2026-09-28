@@ -5,6 +5,7 @@ import { beforeEach, test, vi } from "vitest";
 import type { AppBindings } from "../../../shared/types";
 
 const mocks = vi.hoisted(() => ({
+  executeCommand: vi.fn(),
   databaseRecord: vi.fn(),
   createDatabase: vi.fn(),
   databasePayload: vi.fn(),
@@ -17,6 +18,10 @@ const mocks = vi.hoisted(() => ({
   mutationFeed: vi.fn(),
   deleteDatabase: vi.fn(),
   restoreDatabase: vi.fn(),
+}));
+vi.mock("../commands/framework", async (original) => ({
+  ...(await original<typeof import("../commands/framework")>()),
+  executeDatabaseCommand: mocks.executeCommand,
 }));
 vi.mock("../../access", async (original) => ({
   ...(await original<typeof import("../../access")>()),
@@ -246,40 +251,30 @@ test("mutation catch-up validates and forwards the version window", async () => 
 });
 
 test("embedded database creation preserves an omitted teamspace for parent inheritance", async () => {
-  mocks.createDatabase.mockResolvedValue({
-    databaseId: "database-1",
+  mocks.executeCommand.mockResolvedValue({ commandId: "creation-id" });
+  const command = {
+    type: "database.create",
     name: "New database",
-    parentPlacement: null,
-  });
-  mocks.databasePayload.mockResolvedValue({
-    database: {
-      id: "database-1",
-      pageId: "page-1",
-      teamspaceId: "teamspace-1",
-      workspaceId: "workspace-1",
-    },
-    views: [],
-  });
-
-  const response = await appWithUser().request("/databases", {
+    pageId: "page-1",
+    workspaceId: "workspace-1",
+    standalone: false,
+  };
+  const response = await appWithUser().request("/databases/commands", {
     body: JSON.stringify({
-      name: "New database",
-      pageId: "page-1",
-      workspaceId: "workspace-1",
+      command,
+      commandId: "creation-id",
+      protocolVersion: 2,
     }),
     headers: { "content-type": "application/json" },
     method: "POST",
   });
 
   assert.equal(response.status, 201);
-  assert.deepEqual(mocks.createDatabase.mock.calls[0]?.[0], {
+  assert.deepEqual(mocks.executeCommand.mock.calls[0]?.[0], {
+    actorId: "user-1",
     env: undefined,
-    name: "New database",
-    pageId: "page-1",
-    standalone: false,
-    teamspaceId: undefined,
-    userId: "user-1",
-    workspaceId: "workspace-1",
+    request: { command, commandId: "creation-id", protocolVersion: 2 },
+    scope: { databaseId: "creation-id", dataSourceId: null },
   });
 });
 
@@ -297,7 +292,7 @@ test("OAuth database routes bind database and data-source IDs to the granted wor
   for (const [method, path] of [
     ["GET", "/databases/database-1/bootstrap"],
     ["GET", "/databases/database-1/published"],
-    ["DELETE", "/databases/database-1"],
+    ["POST", "/databases/database-1/commands"],
     ["GET", "/databases/database-1/automations"],
   ]) {
     assert.equal((await app.request(path!, { method })).status, 403, path);
@@ -305,12 +300,30 @@ test("OAuth database routes bind database and data-source IDs to the granted wor
   assert.equal(mocks.deleteDatabase.mock.calls.length, 0);
   assert.equal(
     (
-      await app.request("/databases", {
+      await app.request("/databases/commands", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId: "other" }),
+        body: JSON.stringify({
+          commandId: "creation-id",
+          protocolVersion: 2,
+          command: { type: "database.create", workspaceId: "other", name: "New", standalone: true },
+        }),
       })
     ).status,
     403,
   );
+});
+
+test("obsolete direct database writes are not routed", async () => {
+  for (const [method, path] of [
+    ["POST", "/databases"],
+    ["DELETE", "/databases/database-1"],
+    ["POST", "/databases/database-1/restore"],
+    ["PUT", "/databases/database-1/favorite"],
+    ["DELETE", "/databases/database-1/favorite"],
+    ["PUT", "/databases/database-1/access"],
+    ["DELETE", "/databases/database-1/access/public"],
+    ["DELETE", "/databases/database-1/access/rule-1"],
+  ])
+    assert.equal((await appWithUser().request(path!, { method })).status, 404, path);
 });

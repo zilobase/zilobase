@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { test } from "vitest";
 import type { AppBindings } from "../../../shared/types";
-import { databaseCreateRoutes } from "./core-routes";
+import { databaseCommandRoutes } from "./command-routes";
 import { databaseAutomationRoutes } from "../../automations/http/routes";
 
 function app(authenticated: boolean) {
@@ -20,11 +20,11 @@ function app(authenticated: boolean) {
         });
       await next();
     })
-    .route("/create", databaseCreateRoutes)
+    .route("/create", databaseCommandRoutes)
     .route("/automation", databaseAutomationRoutes);
 }
 test("database transport authenticates before JSON validation", async () => {
-  for (const [path, method] of [["/create", "POST"]]) {
+  for (const [path, method] of [["/create/commands", "POST"]]) {
     const request = (authenticated: boolean, body: string) =>
       app(authenticated).request(path, {
         method,

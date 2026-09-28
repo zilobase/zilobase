@@ -56,6 +56,7 @@ export type DatabaseCommandDispatchResult<TResult = unknown> = {
 
 export type DatabaseCommandContext = DatabaseCommandScope & {
   afterCommit?: AfterCommit;
+  env?: RuntimeEnv;
   actorId: string;
   commandId: string;
   transaction: DatabaseTransaction;
@@ -257,6 +258,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
         dependencies.dispatch<TResult>(
           {
             afterCommit: (operation) => deliveries.push(operation),
+            env: input.env,
             actorId: input.actorId,
             commandId: input.request.commandId,
             databaseId: input.scope.databaseId,
@@ -416,7 +418,10 @@ export async function executeDatabaseCommand<TResult = unknown>(
           }),
         ),
       ]),
-    );
+    ).catch((error) => {
+      // The durable outbox remains retryable; delivery cannot reject a committed receipt.
+      console.error("Database command delivery deferred", error);
+    });
     if (agentTriggerFacts.length) {
       try {
         const { dispatchDatabaseAgentMutationFacts } =

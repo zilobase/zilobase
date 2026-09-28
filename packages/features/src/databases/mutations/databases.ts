@@ -37,13 +37,20 @@ type SetDatabaseFavoriteResponse = {
   workspaceId: string;
 };
 export function useCreateDatabase() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async (input: CreateDatabaseInput) => {
-      return apiFetch<CreateDatabaseResponse>("/databases", {
-        method: "POST",
-        body: JSON.stringify(input),
+      const ack = await controller.execute({
+        databaseId: input.workspaceId,
+        command: {
+          ...input,
+          type: "database.create",
+          name: input.name ?? "New database",
+          standalone: input.standalone ?? false,
+        },
       });
+      return ack.result as CreateDatabaseResponse;
     },
     onSuccess: async (payload) => {
       if (!payload.database.pageId) {
@@ -52,7 +59,7 @@ export function useCreateDatabase() {
         });
         return;
       }
-      // POST /databases always returns navDelta; apply it directly.
+      // Creation confirms its navigation delta in the same receipt.
       applyNavigationDeltaToCache(queryClient, payload.database.workspaceId, payload.navDelta);
     },
   });
@@ -88,12 +95,12 @@ type RestoreDatabaseResult = {
   restoredPageIds: string[];
 };
 export function useDeleteDatabase() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async (databaseId: string) =>
-      apiFetch<DeleteDatabaseResult>(`/databases/${databaseId}`, {
-        method: "DELETE",
-      }),
+      (await controller.execute({ databaseId, command: { type: "database.archive" } }))
+        .result as DeleteDatabaseResult,
     onSuccess: async (result) =>
       invalidateDeletedItems({
         workspaceId: result.database?.workspaceId,
@@ -103,12 +110,12 @@ export function useDeleteDatabase() {
   });
 }
 export function useRestoreDatabase() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async (databaseId: string) =>
-      apiFetch<RestoreDatabaseResult>(`/databases/${databaseId}/restore`, {
-        method: "POST",
-      }),
+      (await controller.execute({ databaseId, command: { type: "database.restore" } }))
+        .result as RestoreDatabaseResult,
     onSuccess: async (result) =>
       invalidateRestoredItems({
         workspaceId: result.database.workspaceId,
@@ -118,12 +125,16 @@ export function useRestoreDatabase() {
   });
 }
 export function useSetDatabaseFavorite() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, isFavorite }: SetDatabaseFavoriteInput) =>
-      apiFetch<SetDatabaseFavoriteResponse>(`/databases/${databaseId}/favorite`, {
-        method: isFavorite ? "PUT" : "DELETE",
-      }),
+      (
+        await controller.execute({
+          databaseId,
+          command: { type: "database.favorite", favorite: isFavorite },
+        })
+      ).result as SetDatabaseFavoriteResponse,
     onSuccess: async (result) => {
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(result.workspaceId) },

@@ -84,6 +84,10 @@ boundary. Lifecycle, access, publication and favorite operations are recognized
 commands. Their domain services execute inside the receipt transaction; navigation
 delivery is deferred until commit. Favorites advance `database_actor_state` and
 produce a private confirmation instead of a mutation journal/realtime event.
+All lifecycle/access client hooks submit through the session controller. The former
+direct creation, archive, restore, favorite and access write routes are removed;
+`GET /:id/access` remains the access read boundary. Delivery failures leave the durable
+outbox retryable and do not turn a committed receipt into a failed write.
 The forward migration allows a private receipt without an event foreign key.
 Authorization for new host/source commands executes after receipt lookup and before
 revision writes, so receipt replay cannot accidentally perform the mutation twice.

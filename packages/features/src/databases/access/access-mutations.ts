@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { useDatabaseController } from "../interactions/react";
 import { useZilobaseFeatures } from "../../shared/context";
 import { databaseAccessQueryKey } from "../queries/queries";
 
@@ -10,13 +11,12 @@ type DatabaseAccessInput = {
 };
 
 export function useUpsertDatabaseAccess() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, ...body }: DatabaseAccessInput) =>
-      apiFetch(`/databases/${databaseId}/access`, {
-        method: "PUT",
-        body: JSON.stringify(body),
-      }),
+      (await controller.execute({ databaseId, command: { type: "access.upsert", ...body } }))
+        .result,
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
         queryKey: databaseAccessQueryKey(variables.databaseId),
@@ -26,12 +26,11 @@ export function useUpsertDatabaseAccess() {
 }
 
 export function useDeleteDatabaseAccess() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, ruleId }: { databaseId: string; ruleId: string }) =>
-      apiFetch(`/databases/${databaseId}/access/${ruleId}`, {
-        method: "DELETE",
-      }),
+      (await controller.execute({ databaseId, command: { type: "access.remove", ruleId } })).result,
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
         queryKey: databaseAccessQueryKey(variables.databaseId),
@@ -41,21 +40,16 @@ export function useDeleteDatabaseAccess() {
 }
 
 export function useSetDatabasePublished() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, isPublished }: { databaseId: string; isPublished: boolean }) =>
-      apiFetch(`/databases/${databaseId}/access${isPublished ? "" : "/public"}`, {
-        method: isPublished ? "PUT" : "DELETE",
-        ...(isPublished
-          ? {
-              body: JSON.stringify({
-                accessLevel: "view",
-                targetId: "*",
-                targetType: "public",
-              }),
-            }
-          : {}),
-      }),
+      (
+        await controller.execute({
+          databaseId,
+          command: { type: "database.publish", published: isPublished },
+        })
+      ).result,
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
         queryKey: databaseAccessQueryKey(variables.databaseId),
