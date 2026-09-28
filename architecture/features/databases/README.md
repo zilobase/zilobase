@@ -155,6 +155,15 @@ through the same session controller. Bootstrap hooks project metadata intentions
 over server snapshots, and source schema writes share record ordering lanes.
 Host-wide mutations form barriers across the source writes visible through that host.
 
+Metadata update commands accept `patch.configuration`, a bounded list of explicit
+path assignments/removals, not a replacement `config`. Editors compute changes against
+the configuration they displayed. The server applies those same operations to the
+locked current entity, and bootstrap projections apply them to untouched snapshots.
+Full configuration objects are accepted only for creation and template application.
+The view controller reads its latest pending configuration from the session controller;
+there is no separate latest-view configuration cache. Record fetches and prefetches use
+the confirmed bootstrap configuration while loaded rows use the projected configuration.
+
 The interactive client consumes bootstrap plus record windows directly through [`DatabaseViewData`](../../../apps/web/src/features/databases/views/model/database-controller-state.ts) (canonical host bootstrap, active source, filtered records); the monolithic composed payload is gone. The position-based row/value export shape remains only as the [`DatabaseExportPayload`](../../../packages/features/src/databases/core/export-payload.ts) wire contract behind `GET /:id/export` and derived AI/task context, never as client state. Realtime-only state (presence, version watermarks) stays out of QueryClient entirely.
 
 TanStack Query owns database bootstrap/windows, authentication, access/sharing,

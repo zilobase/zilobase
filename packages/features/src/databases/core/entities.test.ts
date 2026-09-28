@@ -14,6 +14,34 @@ import {
 
 const now = "2026-09-14T10:00:00.000Z";
 
+test("metadata update commands require sparse configuration operations", () => {
+  for (const command of [
+    { type: "database.update" },
+    { type: "dataSource.update" },
+    { type: "view.update", viewId: "view" },
+    { type: "property.update", propertyId: "property" },
+  ]) {
+    const request = { commandId: "command", protocolVersion: 2 };
+    assert.equal(
+      databaseCommandRequestSchema.safeParse({
+        ...request,
+        command: { ...command, patch: { config: { emoji: "pin" } } },
+      }).success,
+      false,
+    );
+    assert.equal(
+      databaseCommandRequestSchema.safeParse({
+        ...request,
+        command: {
+          ...command,
+          patch: { configuration: [{ operation: "set", path: ["emoji"], value: "pin" }] },
+        },
+      }).success,
+      true,
+    );
+  }
+});
+
 const host = {
   accessLevel: "edit" as const,
   config: {},

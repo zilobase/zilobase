@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { configurationChangesSchema } from "../interactions/configuration";
 import {
   databaseCreationCommandSchema,
   databaseLifecycleCommandSchema,
@@ -164,7 +165,7 @@ const databaseUpdateCommandSchema = z
   .object({
     patch: z
       .object({
-        config: z.unknown().optional(),
+        configuration: configurationChangesSchema.optional(),
         name: z.string().optional(),
       })
       .strict()
@@ -214,7 +215,7 @@ const viewUpdateCommandSchema = z
   .object({
     patch: z
       .object({
-        config: z.unknown().optional(),
+        configuration: configurationChangesSchema.optional(),
         name: z.string().optional(),
         type: z.string().trim().min(1).max(64).optional(),
       })
@@ -267,7 +268,7 @@ const dataSourceUpdateCommandSchema = z
   .object({
     patch: z
       .object({
-        config: z.unknown().optional(),
+        configuration: configurationChangesSchema.optional(),
         name: z.string().optional(),
       })
       .strict()
@@ -291,7 +292,7 @@ const propertyUpdateCommandSchema = z
   .object({
     patch: z
       .object({
-        config: z.unknown().optional(),
+        configuration: configurationChangesSchema.optional(),
         name: z.string().optional(),
         type: z.string().trim().min(1).max(64).optional(),
         visible: z.boolean().optional(),

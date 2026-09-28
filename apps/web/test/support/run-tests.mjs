@@ -191,6 +191,9 @@ function aliasPlugin() {
       build.onResolve({ filter: /^@zilobase\/features\/databases\/order-key$/ }, () => ({
         path: join(workspaceDir, "packages/features/src", "databases/core/order-key.ts"),
       }));
+      build.onResolve({ filter: /^@zilobase\/features\/databases\/record-interactions$/ }, () => ({
+        path: join(workspaceDir, "packages/features/src", "databases/interactions/index.ts"),
+      }));
       build.onResolve({ filter: /^@\// }, async (args) => ({
         path: await resolveAliasPath(join(srcDir, args.path.slice(2))),
       }));

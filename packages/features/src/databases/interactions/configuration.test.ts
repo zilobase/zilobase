@@ -33,3 +33,16 @@ test("configuration boundary rejects prototype keys, unbounded paths and non-JSO
   );
   assert.equal(({} as Record<string, unknown>).polluted, undefined);
 });
+
+test("drafts omit optional fields without sending undefined JSON or spurious removals", () => {
+  const changes = diffConfiguration(
+    { optional: undefined },
+    {
+      optional: undefined,
+      summaries: { page: { name: "Task", metadata: undefined } },
+    },
+  );
+  assert.deepEqual(changes, [
+    { operation: "set", path: ["summaries"], value: { page: { name: "Task" } } },
+  ]);
+});

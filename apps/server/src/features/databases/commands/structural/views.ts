@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
+import { applyConfigurationChanges } from "@zilobase/features/databases/record-interactions";
 import type { HostDatabaseCommand } from "@zilobase/features/databases/contracts";
 
 import { databaseDataSource, databaseView } from "../../../../infrastructure/database/schema";
@@ -81,16 +82,15 @@ export async function viewUpdate(
     )
     .limit(1);
   if (!view) throw new ServiceMutationError("Database view not found", 404);
+  const config = command.patch.configuration
+    ? applyConfigurationChanges(view.config, command.patch.configuration)
+    : undefined;
   const subItemSetup =
-    command.patch.config !== undefined
-      ? await ensureSubItemRelations(context, view.dataSourceId, command.patch.config)
-      : null;
+    config !== undefined ? await ensureSubItemRelations(context, view.dataSourceId, config) : null;
   await context.transaction
     .update(databaseView)
     .set({
-      ...(command.patch.config !== undefined
-        ? { config: subItemSetup?.config ?? command.patch.config }
-        : {}),
+      ...(config !== undefined ? { config: subItemSetup?.config ?? config } : {}),
       ...(command.patch.name !== undefined ? { name: command.patch.name } : {}),
       ...(command.patch.type !== undefined ? { type: command.patch.type } : {}),
       updatedAt: new Date(),

@@ -27,7 +27,10 @@ import {
 } from "./framework";
 
 const request: DatabaseCommandRequest = {
-  command: { patch: { config: { b: 2, a: 1 } }, type: "database.update" },
+  command: {
+    patch: { configuration: [{ operation: "set", path: ["layout"], value: { b: 2, a: 1 } }] },
+    type: "database.update",
+  },
   commandId: "command-1",
   protocolVersion: 2,
 };
@@ -228,7 +231,10 @@ test("a failed command never runs registered post-commit delivery", async () => 
 test("command hashes are stable across object key order and include route scope", async () => {
   const reordered: DatabaseCommandRequest = {
     ...request,
-    command: { patch: { config: { a: 1, b: 2 } }, type: "database.update" },
+    command: {
+      patch: { configuration: [{ operation: "set", path: ["layout"], value: { a: 1, b: 2 } }] },
+      type: "database.update",
+    },
   };
   const host = { databaseId: "database-1", dataSourceId: null };
   assert.equal(

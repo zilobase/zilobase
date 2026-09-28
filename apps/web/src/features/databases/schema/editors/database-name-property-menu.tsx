@@ -1,3 +1,4 @@
+import { diffConfiguration } from "@zilobase/features/databases/record-interactions";
 import {
   ArrowDownUp,
   ArrowLeftToLine,
@@ -93,7 +94,7 @@ export function DatabaseNamePropertyMenu({
     }
 
     updateDatabase.mutate({
-      config: getMergedNameColumnConfig(config, nextConfig),
+      configuration: diffConfiguration(config, getMergedNameColumnConfig(config, nextConfig)),
       databaseId,
     });
   };
@@ -104,12 +105,15 @@ export function DatabaseNamePropertyMenu({
     }
 
     updateDatabase.mutate({
-      config: getMergedDatabaseConfig(config, {
-        sorts: upsertDatabaseSort(currentSorts, {
-          column: "name",
-          direction,
+      configuration: diffConfiguration(
+        config,
+        getMergedDatabaseConfig(config, {
+          sorts: upsertDatabaseSort(currentSorts, {
+            column: "name",
+            direction,
+          }),
         }),
-      }),
+      ),
       databaseId,
     });
   };

@@ -122,7 +122,7 @@ test("database and data-source metadata hooks execute scoped v2 commands", async
       name: "Roadmap",
     });
     await sourceRuntime.mutation.mutateAsync({
-      config: { setupDismissed: true },
+      configuration: [{ operation: "set", path: ["setupDismissed"], value: true }],
       databaseId: "data-source-1",
     });
     assert.deepEqual(
@@ -138,7 +138,7 @@ test("database and data-source metadata hooks execute scoped v2 commands", async
         [
           "/databases/database-1/data-sources/data-source-1/commands",
           {
-            patch: { config: { setupDismissed: true } },
+            patch: { configuration: [{ operation: "set", path: ["setupDismissed"], value: true }] },
             type: "dataSource.update",
           },
         ],

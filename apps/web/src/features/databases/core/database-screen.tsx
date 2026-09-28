@@ -364,10 +364,7 @@ export function DatabaseMainPane({
 
     const input = {
       databaseId: headingRecord.id,
-      config: {
-        ...((headingRecord.config ?? {}) as Record<string, unknown>),
-        cover: nextCover,
-      },
+      configuration: [{ operation: "set" as const, path: ["cover"], value: nextCover }],
     };
 
     if (hasMultipleDataSources) updateDatabase.mutate(input);
@@ -383,10 +380,7 @@ export function DatabaseMainPane({
 
     const input = {
       databaseId: headingRecord.id,
-      config: {
-        ...((headingRecord.config ?? {}) as Record<string, unknown>),
-        emoji: nextEmoji,
-      },
+      configuration: [{ operation: "set" as const, path: ["emoji"], value: nextEmoji }],
     };
 
     if (hasMultipleDataSources) updateDatabase.mutate(input);

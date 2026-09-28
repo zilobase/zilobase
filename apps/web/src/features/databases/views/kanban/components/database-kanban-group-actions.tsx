@@ -1,3 +1,4 @@
+import { diffConfiguration } from "@zilobase/features/databases/record-interactions";
 import { useEffect, useState } from "react";
 import { useUpdateDatabaseView } from "@zilobase/features/databases/react";
 import { useDeletePage } from "@zilobase/features/pages/react";
@@ -70,7 +71,10 @@ export function useKanbanGroupActions(options: KanbanGroupOption[]) {
       {
         databaseId: activeView.databaseId,
         databaseViewId: activeView.id,
-        config: updateKanbanGroupSettings(activeView.config, propertyId, patch),
+        configuration: diffConfiguration(
+          activeView.config,
+          updateKanbanGroupSettings(activeView.config, propertyId, patch),
+        ),
       },
       { onError: () => toast.error("Couldn't update groups") },
     );

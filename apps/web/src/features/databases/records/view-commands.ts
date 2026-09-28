@@ -1,3 +1,4 @@
+import { diffConfiguration } from "@zilobase/features/databases/record-interactions";
 import type { Dispatch, SetStateAction } from "react";
 import {
   getConvertedViewConfig,
@@ -106,7 +107,6 @@ export function getDatabaseViewCommands({
   setSortPickerOpen,
   getLatestViewConfig,
   getSourcePropertyMode,
-  setLatestViewConfig,
 }: {
   activeDatabaseFilters: DatabasePropertyFilterConfig[];
   activeDatabaseSorts: DatabaseSortConfig[];
@@ -136,7 +136,6 @@ export function getDatabaseViewCommands({
   getSourcePropertyMode?: (
     dragPayload: DatabasePageDragPayload,
   ) => Promise<"duplicate" | "match" | null>;
-  setLatestViewConfig?: (databaseId: string, databaseViewId: string, config: unknown) => void;
 }) {
   const {
     addDatabaseView,
@@ -181,9 +180,12 @@ export function getDatabaseViewCommands({
     setShowSortPill(nextSorts.length > 0);
 
     return updateDatabaseView.mutateAsync({
-      config: getMergedDatabaseConfig(activeView.config, {
-        sorts: nextSorts.length > 0 ? nextSorts : undefined,
-      }),
+      configuration: diffConfiguration(
+        activeView.config,
+        getMergedDatabaseConfig(activeView.config, {
+          sorts: nextSorts.length > 0 ? nextSorts : undefined,
+        }),
+      ),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
@@ -195,9 +197,12 @@ export function getDatabaseViewCommands({
     }
 
     updateDatabaseView.mutate({
-      config: getMergedDatabaseConfig(activeView.config, {
-        filters: nextFilters.length > 0 ? nextFilters : undefined,
-      }),
+      configuration: diffConfiguration(
+        activeView.config,
+        getMergedDatabaseConfig(activeView.config, {
+          filters: nextFilters.length > 0 ? nextFilters : undefined,
+        }),
+      ),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
@@ -211,9 +216,12 @@ export function getDatabaseViewCommands({
     }
 
     updateDatabaseView.mutate({
-      config: getMergedDatabaseConfig(activeView.config, {
-        conditionalColors: nextConditionalColors.length > 0 ? nextConditionalColors : undefined,
-      }),
+      configuration: diffConfiguration(
+        activeView.config,
+        getMergedDatabaseConfig(activeView.config, {
+          conditionalColors: nextConditionalColors.length > 0 ? nextConditionalColors : undefined,
+        }),
+      ),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
@@ -254,9 +262,12 @@ export function getDatabaseViewCommands({
     }
 
     updateDatabaseView.mutate({
-      config: getMergedDatabaseConfig(activeView.config, {
-        datePropertyId: datePropertyId ?? undefined,
-      }),
+      configuration: diffConfiguration(
+        activeView.config,
+        getMergedDatabaseConfig(activeView.config, {
+          datePropertyId: datePropertyId ?? undefined,
+        }),
+      ),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
@@ -276,9 +287,8 @@ export function getDatabaseViewCommands({
       },
     });
 
-    setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
     updateDatabaseView.mutate({
-      config: nextConfig,
+      configuration: diffConfiguration(currentConfig, nextConfig),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
@@ -298,9 +308,8 @@ export function getDatabaseViewCommands({
       },
     });
 
-    setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
     updateDatabaseView.mutate({
-      config: nextConfig,
+      configuration: diffConfiguration(currentConfig, nextConfig),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
@@ -742,9 +751,8 @@ export function getDatabaseViewCommands({
         });
       }
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -849,9 +857,8 @@ export function getDatabaseViewCommands({
         propertyOrder,
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -863,9 +870,12 @@ export function getDatabaseViewCommands({
       }
 
       updateDatabase.mutate({
-        config: getMergedDatabaseConfig(databaseConfig, {
-          emoji: nextEmoji,
-        }),
+        configuration: diffConfiguration(
+          databaseConfig,
+          getMergedDatabaseConfig(databaseConfig, {
+            emoji: nextEmoji,
+          }),
+        ),
         databaseId,
       });
     },
@@ -905,10 +915,13 @@ export function getDatabaseViewCommands({
             undefined;
 
           updateDatabaseView.mutate({
-            config: getMergedDatabaseConfig(activeView.config, {
-              datePropertyId,
-              ...(groupPropertyId ? { groupPropertyId } : {}),
-            }),
+            configuration: diffConfiguration(
+              activeView.config,
+              getMergedDatabaseConfig(activeView.config, {
+                datePropertyId,
+                ...(groupPropertyId ? { groupPropertyId } : {}),
+              }),
+            ),
             databaseId: viewDatabaseId ?? databaseId,
             databaseViewId: activeView.id,
             type,
@@ -927,10 +940,8 @@ export function getDatabaseViewCommands({
         properties,
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
-
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
         type,
@@ -952,9 +963,8 @@ export function getDatabaseViewCommands({
         },
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -980,9 +990,8 @@ export function getDatabaseViewCommands({
         },
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -1001,9 +1010,8 @@ export function getDatabaseViewCommands({
         },
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -1022,9 +1030,8 @@ export function getDatabaseViewCommands({
         },
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -1035,7 +1042,10 @@ export function getDatabaseViewCommands({
       }
 
       updateDatabase.mutate({
-        config: getMergedNameColumnConfig(databaseConfig, config),
+        configuration: diffConfiguration(
+          databaseConfig,
+          getMergedNameColumnConfig(databaseConfig, config),
+        ),
         databaseId,
       });
     },
@@ -1092,9 +1102,8 @@ export function getDatabaseViewCommands({
         hiddenPropertyIds: [...hiddenPropertyIds],
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -1110,9 +1119,8 @@ export function getDatabaseViewCommands({
         showPropertyTitles: !getShowPropertyTitles(currentConfig),
       });
 
-      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: nextConfig,
+        configuration: diffConfiguration(currentConfig, nextConfig),
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -1152,7 +1160,7 @@ export function getDatabaseViewCommands({
       }
 
       return updateProperty.mutateAsync({
-        config: nextConfig,
+        configuration: diffConfiguration(currentPropertyConfig, nextConfig),
         databaseId,
         databasePropertyId,
       });

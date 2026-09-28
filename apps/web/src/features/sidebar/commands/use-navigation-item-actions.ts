@@ -126,10 +126,7 @@ export function useNavigationItemActions({
       updateDatabase.mutate(
         {
           databaseId,
-          config: {
-            ...((databasePayload.database.config ?? {}) as Record<string, unknown>),
-            locked: !locked,
-          },
+          configuration: [{ operation: "set", path: ["locked"], value: !locked }],
         },
         { onError },
       );

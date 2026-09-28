@@ -50,7 +50,7 @@ export function diffConfiguration(previous: unknown, next: unknown): Configurati
     for (const field of new Set([...Object.keys(before), ...Object.keys(after)])) {
       const nextPath = [...path, field];
       if (!(field in after) || after[field] === undefined) {
-        if (field in before) changes.push({ operation: "remove", path: nextPath });
+        if (before[field] !== undefined) changes.push({ operation: "remove", path: nextPath });
       } else if (JSON.stringify(before[field]) !== JSON.stringify(after[field])) {
         const value = after[field];
         if (
@@ -62,10 +62,27 @@ export function diffConfiguration(previous: unknown, next: unknown): Configurati
           !Array.isArray(before[field])
         )
           visit(object(before[field]), object(value), nextPath);
-        else changes.push({ operation: "set", path: nextPath, value: z.json().parse(value) });
+        else
+          changes.push({
+            operation: "set",
+            path: nextPath,
+            value: z.json().parse(omitUndefinedFields(value)),
+          });
       }
     }
   };
   visit(object(previous), object(next), []);
   return configurationChangesSchema.parse(changes);
+}
+
+/** Editor drafts may contain optional fields; the wire contract is strict JSON. */
+function omitUndefinedFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(omitUndefinedFields);
+  if (value !== null && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, field]) => field !== undefined)
+        .map(([key, field]) => [key, omitUndefinedFields(field)]),
+    );
+  return value;
 }

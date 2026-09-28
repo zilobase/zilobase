@@ -1,6 +1,13 @@
 const databaseId = "database-1";
 
 export function register({ assert, loadModule, test }) {
+  let diffConfiguration;
+  let applyConfigurationChanges;
+  test("load configuration operations", async () => {
+    ({ diffConfiguration, applyConfigurationChanges } = await loadModule(
+      "/packages/features/src/databases/interactions/configuration.ts",
+    ));
+  });
   test("database view commands place an imported row in its Kanban group", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/features/databases/records/view-commands.ts",
@@ -156,13 +163,16 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: {
-            emoji: "📌",
-            sorts: [
-              { column: "name", direction: "ascending" },
-              { column: "property-1", direction: "ascending" },
-            ],
-          },
+          configuration: diffConfiguration(
+            { emoji: "📌" },
+            {
+              emoji: "📌",
+              sorts: [
+                { column: "name", direction: "ascending" },
+                { column: "property-1", direction: "ascending" },
+              ],
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
@@ -210,29 +220,32 @@ export function register({ assert, loadModule, test }) {
 
     commands.createDatabaseFilter("database-property-status");
 
-    const filter = updateDatabaseView.calls[0][0].config.filters[0];
+    const filter = applyConfigurationChanges({}, updateDatabaseView.calls[0][0].configuration)
+      .filters[0];
 
     assert.match(filter.id, /^filter-/);
     assert.deepEqual(
       {
         ...updateDatabaseView.calls[0][0],
-        config: {
-          ...updateDatabaseView.calls[0][0].config,
-          filters: [{ ...filter, id: "filter-id" }],
-        },
+        configuration: [
+          { operation: "set", path: ["filters"], value: [{ ...filter, id: "filter-id" }] },
+        ],
       },
       {
-        config: {
-          emoji: "pin",
-          filters: [
-            {
-              id: "filter-id",
-              operator: "is",
-              propertyId: "database-property-status",
-              values: [],
-            },
-          ],
-        },
+        configuration: diffConfiguration(
+          { emoji: "pin" },
+          {
+            emoji: "pin",
+            filters: [
+              {
+                id: "filter-id",
+                operator: "is",
+                propertyId: "database-property-status",
+                values: [],
+              },
+            ],
+          },
+        ),
         databaseId,
         databaseViewId: "view-1",
       },
@@ -289,17 +302,20 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: {
-            emoji: "pin",
-            filters: [
-              {
-                id: "filter-name",
-                operator: "is",
-                propertyId: "database-property-status",
-                values: [],
-              },
-            ],
-          },
+          configuration: diffConfiguration(
+            { emoji: "pin" },
+            {
+              emoji: "pin",
+              filters: [
+                {
+                  id: "filter-name",
+                  operator: "is",
+                  propertyId: "database-property-status",
+                  values: [],
+                },
+              ],
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
@@ -362,29 +378,32 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: {
-            emoji: "pin",
-            filters: [
-              {
-                id: "filter-c",
-                operator: "contains",
-                propertyId: "name",
-                values: ["charlie"],
-              },
-              {
-                id: "filter-a",
-                operator: "contains",
-                propertyId: "name",
-                values: ["alpha"],
-              },
-              {
-                id: "filter-b",
-                operator: "contains",
-                propertyId: "name",
-                values: ["beta"],
-              },
-            ],
-          },
+          configuration: diffConfiguration(
+            { emoji: "pin" },
+            {
+              emoji: "pin",
+              filters: [
+                {
+                  id: "filter-c",
+                  operator: "contains",
+                  propertyId: "name",
+                  values: ["charlie"],
+                },
+                {
+                  id: "filter-a",
+                  operator: "contains",
+                  propertyId: "name",
+                  values: ["alpha"],
+                },
+                {
+                  id: "filter-b",
+                  operator: "contains",
+                  propertyId: "name",
+                  values: ["beta"],
+                },
+              ],
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
@@ -432,7 +451,7 @@ export function register({ assert, loadModule, test }) {
     commands.togglePropertyVisibility("database-property-2");
 
     assert.deepEqual(updateDatabaseView.calls[0][0], {
-      config: { hiddenPropertyIds: [] },
+      configuration: diffConfiguration({}, { hiddenPropertyIds: [] }),
       databaseId,
       databaseViewId: "view-1",
     });
@@ -443,7 +462,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/records/view-commands.ts",
     );
     const updateDatabaseView = createMutation();
-    const latestConfigs = [];
+
     const properties = [
       createProperty("database-property-a", "property-a", "A", "text"),
       createProperty("database-property-b", "property-b", "B", "text"),
@@ -473,9 +492,6 @@ export function register({ assert, loadModule, test }) {
       setShowFilterPill: () => {},
       setShowSortPill: () => {},
       setSortPickerOpen: () => {},
-      setLatestViewConfig: (nextDatabaseId, viewId, config) => {
-        latestConfigs.push({ config, nextDatabaseId, viewId });
-      },
     });
 
     commands.saveDatabasePropertyOrder([
@@ -489,35 +505,24 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: {
-            emoji: "pin",
-            propertyOrder: [
-              "database-property-b",
-              "name",
-              "database-property-a",
-              "database-property-c",
-            ],
-          },
+          configuration: diffConfiguration(
+            { emoji: "pin" },
+            {
+              emoji: "pin",
+              propertyOrder: [
+                "database-property-b",
+                "name",
+                "database-property-a",
+                "database-property-c",
+              ],
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
       ],
     ]);
-    assert.deepEqual(latestConfigs, [
-      {
-        config: {
-          emoji: "pin",
-          propertyOrder: [
-            "database-property-b",
-            "name",
-            "database-property-a",
-            "database-property-c",
-          ],
-        },
-        nextDatabaseId: databaseId,
-        viewId: "view-1",
-      },
-    ]);
+    assert.equal("config" in updateDatabaseView.calls[0][0], false);
   });
 
   test("database view commands compose rapid property visibility toggles", async () => {
@@ -525,7 +530,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/records/view-commands.ts",
     );
     const updateDatabaseView = createMutation();
-    const latestConfigs = new Map();
+
     const properties = [
       createProperty("database-property-1", "property-1", "Text", "text"),
       createProperty("database-property-2", "property-2", "Owner", "text"),
@@ -543,8 +548,11 @@ export function register({ assert, loadModule, test }) {
       },
       databaseId,
       editable: true,
-      getLatestViewConfig: (nextDatabaseId, viewId, fallbackConfig) =>
-        latestConfigs.get(`${nextDatabaseId}:${viewId}`) ?? fallbackConfig,
+      getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
+        updateDatabaseView.calls.reduce(
+          (config, [input]) => applyConfigurationChanges(config, input.configuration ?? []),
+          fallbackConfig,
+        ),
       isKanbanView: false,
       items: [],
       kanbanGroupProperty: null,
@@ -553,9 +561,7 @@ export function register({ assert, loadModule, test }) {
       properties,
       setActiveViewId: () => {},
       setFilterPickerOpen: () => {},
-      setLatestViewConfig: (nextDatabaseId, viewId, config) => {
-        latestConfigs.set(`${nextDatabaseId}:${viewId}`, config);
-      },
+
       setShowFilterPill: () => {},
       setShowSortPill: () => {},
       setSortPickerOpen: () => {},
@@ -568,14 +574,20 @@ export function register({ assert, loadModule, test }) {
       updateDatabaseView.calls.map(([input]) => input),
       [
         {
-          config: { hiddenPropertyIds: ["database-property-1"] },
+          configuration: diffConfiguration(
+            { hiddenPropertyIds: [] },
+            { hiddenPropertyIds: ["database-property-1"] },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
         {
-          config: {
-            hiddenPropertyIds: ["database-property-1", "database-property-2"],
-          },
+          configuration: diffConfiguration(
+            { hiddenPropertyIds: [] },
+            {
+              hiddenPropertyIds: ["database-property-1", "database-property-2"],
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
@@ -673,10 +685,7 @@ export function register({ assert, loadModule, test }) {
     });
 
     assert.deepEqual(updateProperty.calls[0][0], {
-      config: {
-        ...relationConfig,
-        wrapContent: true,
-      },
+      configuration: [{ operation: "set", path: ["wrapContent"], value: true }],
       databaseId,
       databasePropertyId: "database-property-relation",
     });
@@ -788,14 +797,17 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: { emoji: "📌", groupPropertyId: "property-status" },
+          configuration: diffConfiguration(
+            { emoji: "📌" },
+            { emoji: "📌", groupPropertyId: "property-status" },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
       ],
       [
         {
-          config: { emoji: "📌" },
+          configuration: diffConfiguration({ emoji: "📌" }, { emoji: "📌" }),
           databaseId,
           databaseViewId: "view-1",
         },
@@ -808,7 +820,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/records/view-commands.ts",
     );
     const updateDatabaseView = createMutation();
-    let latestViewConfig;
+
     const statusProperty = createProperty(
       "database-property-status",
       "property-status",
@@ -845,7 +857,10 @@ export function register({ assert, loadModule, test }) {
       databaseId,
       editable: true,
       getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
-        latestViewConfig ?? fallbackConfig,
+        updateDatabaseView.calls.reduce(
+          (config, [input]) => applyConfigurationChanges(config, input.configuration ?? []),
+          fallbackConfig,
+        ),
       isKanbanView: true,
       items: [],
       kanbanGroupProperty: statusProperty,
@@ -854,9 +869,7 @@ export function register({ assert, loadModule, test }) {
       properties,
       setActiveViewId: () => {},
       setFilterPickerOpen: () => {},
-      setLatestViewConfig: (_databaseId, _viewId, config) => {
-        latestViewConfig = config;
-      },
+
       setShowFilterPill: () => {},
       setShowSortPill: () => {},
       setSortPickerOpen: () => {},
@@ -866,7 +879,19 @@ export function register({ assert, loadModule, test }) {
     commands.togglePropertyVisibility("database-property-owner");
 
     assert.deepEqual(
-      updateDatabaseView.calls.map(([input]) => input.config),
+      updateDatabaseView.calls.reduce(
+        (configs, [input]) => [
+          ...configs,
+          applyConfigurationChanges(
+            configs.at(-1) ?? {
+              groupPropertyId: "property-status",
+              hiddenPropertyIds: ["database-property-status", "database-property-notes"],
+            },
+            input.configuration,
+          ),
+        ],
+        [],
+      ),
       [
         {
           groupPropertyId: "property-owner",
@@ -930,33 +955,39 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: {
-            conditionalColors: [
-              {
-                applyTo: "entire-row",
-                color: "green",
-                filter: {
-                  id: "conditional-filter-name",
-                  operator: "contains",
-                  propertyId: "name",
-                  values: ["launch"],
+          configuration: diffConfiguration(
+            { emoji: "pin" },
+            {
+              conditionalColors: [
+                {
+                  applyTo: "entire-row",
+                  color: "green",
+                  filter: {
+                    id: "conditional-filter-name",
+                    operator: "contains",
+                    propertyId: "name",
+                    values: ["launch"],
+                  },
+                  id: "conditional-color-name",
+                  style: "page-background",
                 },
-                id: "conditional-color-name",
-                style: "page-background",
-              },
-            ],
-            emoji: "pin",
-          },
+              ],
+              emoji: "pin",
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
       ],
       [
         {
-          config: {
-            conditionalColors: undefined,
-            emoji: "pin",
-          },
+          configuration: diffConfiguration(
+            { emoji: "pin" },
+            {
+              conditionalColors: undefined,
+              emoji: "pin",
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
         },
@@ -1136,11 +1167,14 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: {
-            emoji: "pin",
-            groupPropertyId: "property-status",
-            hiddenPropertyIds: ["database-property-1"],
-          },
+          configuration: diffConfiguration(
+            { emoji: "pin" },
+            {
+              emoji: "pin",
+              groupPropertyId: "property-status",
+              hiddenPropertyIds: ["database-property-1"],
+            },
+          ),
           databaseId,
           databaseViewId: "view-1",
           type: "kanban",
@@ -1200,10 +1234,17 @@ export function register({ assert, loadModule, test }) {
     commands.setViewType("table");
 
     assert.deepEqual(updateDatabaseView.calls[0][0], {
-      config: {
-        emoji: "pin",
-        hiddenPropertyIds: ["database-property-notes"],
-      },
+      configuration: diffConfiguration(
+        {
+          emoji: "pin",
+          groupPropertyId: "property-status",
+          hiddenPropertyIds: ["database-property-status", "database-property-notes"],
+        },
+        {
+          emoji: "pin",
+          hiddenPropertyIds: ["database-property-notes"],
+        },
+      ),
       databaseId,
       databaseViewId: "view-1",
       type: "table",
@@ -1439,16 +1480,19 @@ export function register({ assert, loadModule, test }) {
     });
 
     assert.deepEqual(updateDatabaseView.calls[0][0], {
-      config: {
-        chart: {
-          color: "purple",
-          groupByPropertyId: "property-status",
-          omitZeroValues: false,
-          type: "pie",
-          valueColors: {},
+      configuration: diffConfiguration(
+        { filters: [] },
+        {
+          chart: {
+            color: "purple",
+            groupByPropertyId: "property-status",
+            omitZeroValues: false,
+            type: "pie",
+            valueColors: {},
+          },
+          filters: [],
         },
-        filters: [],
-      },
+      ),
       databaseId,
       databaseViewId: "view-chart",
     });
@@ -1496,22 +1540,25 @@ export function register({ assert, loadModule, test }) {
     commands.updateNameColumnConfig({ showPageIcon: false });
 
     assert.deepEqual(updateDatabaseView.calls[0][0], {
-      config: {
-        filters: [],
-        layout: {
-          cardLayout: "list",
-          cardPreview: "none",
-          cardSize: "large",
-          fullLinePropertyIds: ["database-property-status"],
-          showVerticalLines: true,
-          wrapAllContent: true,
+      configuration: diffConfiguration(
+        { filters: [] },
+        {
+          filters: [],
+          layout: {
+            cardLayout: "list",
+            cardPreview: "none",
+            cardSize: "large",
+            fullLinePropertyIds: ["database-property-status"],
+            showVerticalLines: true,
+            wrapAllContent: true,
+          },
         },
-      },
+      ),
       databaseId,
       databaseViewId: "view-gallery",
     });
     assert.deepEqual(updateDatabase.calls[0][0], {
-      config: { nameColumn: { showPageIcon: false } },
+      configuration: [{ operation: "set", path: ["nameColumn"], value: { showPageIcon: false } }],
       databaseId,
     });
   });
@@ -1663,7 +1710,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/records/view-commands.ts",
     );
     const updateDatabaseView = createMutation();
-    let latestViewConfig;
+
     const commands = getDatabaseViewCommands({
       notify: { error: () => {}, success: () => {} },
       copyViewLink: async () => {},
@@ -1685,7 +1732,10 @@ export function register({ assert, loadModule, test }) {
       databaseId,
       editable: true,
       getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
-        latestViewConfig ?? fallbackConfig,
+        updateDatabaseView.calls.reduce(
+          (config, [input]) => applyConfigurationChanges(config, input.configuration ?? []),
+          fallbackConfig,
+        ),
       isKanbanView: false,
       items: [],
       kanbanGroupProperty: null,
@@ -1697,9 +1747,6 @@ export function register({ assert, loadModule, test }) {
       setShowFilterPill: () => {},
       setShowSortPill: () => {},
       setSortPickerOpen: () => {},
-      setLatestViewConfig: (_databaseId, _viewId, config) => {
-        latestViewConfig = config;
-      },
     });
 
     commands.updateDatabaseFormShareSettings({ anonymousResponses: false });
@@ -1709,26 +1756,31 @@ export function register({ assert, loadModule, test }) {
       updateDatabaseView.calls.map(([input]) => input),
       [
         {
-          config: {
-            hiddenPropertyIds: ["property-rollup"],
-            formShare: {
-              anonymousResponses: false,
-              fillAccess: "workspace",
-              submissionAccess: "none",
+          configuration: diffConfiguration(
+            {
+              hiddenPropertyIds: ["property-rollup"],
+              formShare: {
+                anonymousResponses: true,
+                fillAccess: "workspace",
+                submissionAccess: "none",
+              },
             },
-          },
+            {
+              hiddenPropertyIds: ["property-rollup"],
+              formShare: {
+                anonymousResponses: false,
+                fillAccess: "workspace",
+                submissionAccess: "none",
+              },
+            },
+          ),
           databaseId,
           databaseViewId: "view-form",
         },
         {
-          config: {
-            hiddenPropertyIds: ["property-rollup"],
-            formShare: {
-              anonymousResponses: false,
-              fillAccess: "workspace",
-              submissionAccess: "comment",
-            },
-          },
+          configuration: [
+            { operation: "set", path: ["formShare", "submissionAccess"], value: "comment" },
+          ],
           databaseId,
           databaseViewId: "view-form",
         },
@@ -1741,7 +1793,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/records/view-commands.ts",
     );
     const updateDatabaseView = createMutation();
-    let latestViewConfig;
+
     const commands = getDatabaseViewCommands({
       notify: { error: () => {}, success: () => {} },
       copyViewLink: async () => {},
@@ -1765,7 +1817,10 @@ export function register({ assert, loadModule, test }) {
       databaseId,
       editable: true,
       getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
-        latestViewConfig ?? fallbackConfig,
+        updateDatabaseView.calls.reduce(
+          (config, [input]) => applyConfigurationChanges(config, input.configuration ?? []),
+          fallbackConfig,
+        ),
       isKanbanView: false,
       items: [],
       kanbanGroupProperty: null,
@@ -1777,9 +1832,6 @@ export function register({ assert, loadModule, test }) {
       setShowFilterPill: () => {},
       setShowSortPill: () => {},
       setSortPickerOpen: () => {},
-      setLatestViewConfig: (_databaseId, _viewId, config) => {
-        latestViewConfig = config;
-      },
     });
 
     commands.updateDatabaseFormHeaderSettings({ title: "Project request" });
@@ -1788,7 +1840,25 @@ export function register({ assert, loadModule, test }) {
     });
 
     assert.deepEqual(
-      updateDatabaseView.calls.map(([input]) => input.config),
+      updateDatabaseView.calls.reduce(
+        (configs, [input]) => [
+          ...configs,
+          applyConfigurationChanges(
+            configs.at(-1) ?? {
+              formHeader: {
+                cover: "",
+                description: "",
+                icon: "",
+                iconPosition: "inline",
+                title: "",
+              },
+              hiddenPropertyIds: ["property-rollup"],
+            },
+            input.configuration,
+          ),
+        ],
+        [],
+      ),
       [
         {
           formHeader: {
@@ -1906,15 +1976,18 @@ export function register({ assert, loadModule, test }) {
     commands.addDatabaseRow(undefined, undefined, "parent-row");
 
     assert.deepEqual(updateDatabaseView.calls[0][0], {
-      config: {
-        emoji: "pin",
-        subItems: {
-          display: "nested",
-          enabled: true,
-          filter: "parents-only",
-          property: "sub-item",
+      configuration: diffConfiguration(
+        { emoji: "pin" },
+        {
+          emoji: "pin",
+          subItems: {
+            display: "nested",
+            enabled: true,
+            filter: "parents-only",
+            property: "sub-item",
+          },
         },
-      },
+      ),
       databaseId,
       databaseViewId: "view-1",
     });

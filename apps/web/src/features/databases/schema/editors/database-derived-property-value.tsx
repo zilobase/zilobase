@@ -322,7 +322,11 @@ export function DatabaseRelationPropertyValue({
     reciprocalUpdates.forEach((update) => {
       if (update.config && update.databasePropertyId) {
         updateProperty.mutate({
-          config: update.config,
+          configuration: diffConfiguration(
+            relatedViewData?.bootstrap.properties.find(({ id }) => id === update.databasePropertyId)
+              ?.property.config,
+            update.config,
+          ),
           databaseId: update.databaseId,
           databasePropertyId: update.databasePropertyId,
         });
@@ -457,3 +461,4 @@ function getRelationPageSummary(
 
   return pageSummary as RelationPageSummary;
 }
+import { diffConfiguration } from "@zilobase/features/databases/record-interactions";

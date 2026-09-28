@@ -1,3 +1,4 @@
+import type { ConfigurationChange } from "../interactions/configuration";
 import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
@@ -8,7 +9,7 @@ import type { DatabaseViewEntity } from "../core/entities";
 import { findDataSourceBootstrap } from "./scope";
 import { invalidateDatabaseQueries } from "./invalidate";
 type UpdateDatabaseViewInput = {
-  config?: unknown;
+  configuration?: ConfigurationChange[];
   databaseId: string;
   databaseViewId: string;
   name?: string;
@@ -27,7 +28,8 @@ type DeleteDatabaseViewInput = {
 };
 export function updateDatabaseViewInNavigation(
   navigation: PageNavigationPayload | undefined,
-  input: UpdateDatabaseViewInput & {
+  input: Omit<UpdateDatabaseViewInput, "configuration"> & {
+    config?: unknown;
     updatedAt?: string;
   },
 ) {

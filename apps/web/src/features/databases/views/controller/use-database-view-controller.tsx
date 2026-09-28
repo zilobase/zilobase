@@ -1,3 +1,4 @@
+import { diffConfiguration } from "@zilobase/features/databases/record-interactions";
 import {
   useCallback,
   useEffect,
@@ -54,7 +55,7 @@ import type {
 } from "../state/database-view-context";
 import { getDatabaseViewCommands } from "../../records/view-commands";
 import { getDatabaseViewModel } from "../components/database-view-model";
-import { readLatestViewConfig, writeLatestViewConfig } from "../model/view-config-cache";
+import { useDatabaseController } from "@zilobase/features/databases/react";
 import {
   composeDatabaseViewData,
   getDatabaseDataSourceSummaries,
@@ -106,6 +107,7 @@ export function useDatabaseViewController({
   showTitle = true,
   pageId = null,
 }: DatabaseViewProps) {
+  const databaseController = useDatabaseController();
   const updateDatabase = useUpdateDataSource();
   const applyDataSourceTemplate = useApplyDatabaseTemplate();
   const createDataSource = useCreateDatabaseDataSource();
@@ -150,7 +152,6 @@ export function useDatabaseViewController({
   const [filterPickerOpen, setFilterPickerOpen] = useState(false);
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [dataSourceSetupOpen, setDataSourceSetupOpen] = useState(false);
-  const latestViewConfigRef = useRef(new Map<string, unknown>());
   const isControlledActiveView = Boolean(onActiveViewIdChange);
   const dataSources = useMemo(
     () =>
@@ -180,8 +181,8 @@ export function useDatabaseViewController({
     bootstrap?.dataSources[0]?.id ??
     null;
   const activeQueryHash = databaseViewQueryHash(
-    bootstrap?.views.find(({ id }) => id === resolvedActiveViewId)?.config ??
-      bootstrap?.database.config,
+    bootstrapState.serverData?.views.find(({ id }) => id === resolvedActiveViewId)?.config ??
+      bootstrapState.serverData?.database.config,
     includeDeletedDatabases,
   );
   const recordWindow = useDatabaseRecords(
@@ -285,7 +286,7 @@ export function useDatabaseViewController({
   const prefetchDatabaseView = useCallback(
     (viewId: string) => {
       if (!databaseId || !bootstrap || viewId === resolvedActiveViewId) return;
-      const view = bootstrap.views.find((candidate) => candidate.id === viewId);
+      const view = bootstrapState.serverData?.views.find((candidate) => candidate.id === viewId);
       if (!view) return;
       void prefetchDatabaseWindow(
         queryClient,
@@ -304,6 +305,7 @@ export function useDatabaseViewController({
     [
       apiFetch,
       bootstrap,
+      bootstrapState.serverData,
       databaseId,
       includeDeletedDatabases,
       queryClient,
@@ -415,9 +417,12 @@ export function useDatabaseViewController({
     subItemMigrationRequestsRef.current.add(requestKey);
     updateDatabaseView.mutate(
       {
-        config: getMergedDatabaseConfig(activeView.config, {
-          subItems: subItemsSettings,
-        }),
+        configuration: diffConfiguration(
+          activeView.config,
+          getMergedDatabaseConfig(activeView.config, {
+            subItems: subItemsSettings,
+          }),
+        ),
         databaseId,
         databaseViewId: activeView.id,
       },
@@ -480,35 +485,14 @@ export function useDatabaseViewController({
     }
   }, [activeDatabaseFilters.length]);
 
-  useEffect(() => {
-    if (!updateDatabaseView.isPending) {
-      latestViewConfigRef.current.clear();
-    }
-  }, [activeViewData?.bootstrap.views, updateDatabaseView.isPending]);
-
   const getLatestViewConfig = useCallback(
     (nextDatabaseId: string, databaseViewId: string, fallbackConfig: unknown) => {
-      return readLatestViewConfig({
-        cache: latestViewConfigRef.current,
-        databaseId: nextDatabaseId,
-        databaseViewId,
-        fallbackConfig,
-        views: activeViewData?.bootstrap.views,
-      });
+      return (
+        databaseController.bootstrap(nextDatabaseId)?.views.find(({ id }) => id === databaseViewId)
+          ?.config ?? fallbackConfig
+      );
     },
-    [activeViewData?.bootstrap.views],
-  );
-
-  const setLatestViewConfig = useCallback(
-    (nextDatabaseId: string, databaseViewId: string, config: unknown) => {
-      writeLatestViewConfig({
-        cache: latestViewConfigRef.current,
-        config,
-        databaseId: nextDatabaseId,
-        databaseViewId,
-      });
-    },
-    [],
+    [databaseController],
   );
 
   const getSourcePropertyMode = useCallback(async (_dragPayload: DatabasePageDragPayload) => {
@@ -728,7 +712,10 @@ export function useDatabaseViewController({
     }
 
     updateDatabaseView.mutate({
-      config: getMergedDatabaseConfig(sourceView.config, { icon: nextIcon }),
+      configuration: diffConfiguration(
+        sourceView.config,
+        getMergedDatabaseConfig(sourceView.config, { icon: nextIcon }),
+      ),
       databaseId,
       databaseViewId: sourceView.id,
     });
@@ -822,7 +809,6 @@ export function useDatabaseViewController({
     setSortPickerOpen,
     getLatestViewConfig,
     getSourcePropertyMode,
-    setLatestViewConfig,
   });
 
   const handleDatabaseBlockDragOver = (event: ReactDragEvent<HTMLDivElement>) => {

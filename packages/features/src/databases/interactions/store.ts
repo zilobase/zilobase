@@ -418,6 +418,12 @@ export class DatabaseController {
       .findAll({ queryKey: ["db", this.sessionId] })) {
       if (query.queryKey[3] === "window" && job.sources.includes(String(query.queryKey[4])))
         hosts.add(String(query.queryKey[2]));
+      const bootstrap = databaseBootstrapResponseSchema.safeParse(query.state.data);
+      if (
+        bootstrap.success &&
+        bootstrap.data.dataSources.some(({ id }) => job.sources.includes(id))
+      )
+        hosts.add(bootstrap.data.database.id);
     }
     for (const host of hosts) {
       invalidateDatabaseQueries(this.queryClient, this.sessionId, host);

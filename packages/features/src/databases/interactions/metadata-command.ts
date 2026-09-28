@@ -1,7 +1,6 @@
 import type { DatabaseCommandInput } from "../mutations/execute";
 import type { DatabaseBootstrapResponse } from "../core/entities";
 import type { MetadataEffect } from "./metadata";
-import { diffConfiguration } from "./configuration";
 
 /** Build only deterministic previews; server-derived transformations stay pending. */
 export function metadataEffectsForCommand(
@@ -13,23 +12,21 @@ export function metadataEffectsForCommand(
   if (!snapshot) return [];
   switch (command.type) {
     case "database.update": {
-      const { config, ...patch } = command.patch;
+      const { configuration, ...patch } = command.patch;
       return [
         {
           ...base,
           kind: "database",
           id: input.databaseId,
           patch,
-          ...(config !== undefined
-            ? { configuration: diffConfiguration(snapshot.database.config, config) }
-            : {}),
+          ...(configuration !== undefined ? { configuration } : {}),
         },
       ];
     }
     case "dataSource.update": {
       const source = snapshot.dataSources.find(({ id }) => id === input.dataSourceId);
       if (!source) return [];
-      const { config, ...patch } = command.patch;
+      const { configuration, ...patch } = command.patch;
       return [
         {
           ...base,
@@ -37,32 +34,28 @@ export function metadataEffectsForCommand(
           id: source.id,
           dataSourceId: source.id,
           patch,
-          ...(config !== undefined
-            ? { configuration: diffConfiguration(source.config, config) }
-            : {}),
+          ...(configuration !== undefined ? { configuration } : {}),
         },
       ];
     }
     case "view.update": {
       const view = snapshot.views.find(({ id }) => id === command.viewId);
       if (!view) return [];
-      const { config, ...patch } = command.patch;
+      const { configuration, ...patch } = command.patch;
       return [
         {
           ...base,
           kind: "view",
           id: view.id,
           patch,
-          ...(config !== undefined
-            ? { configuration: diffConfiguration(view.config, config) }
-            : {}),
+          ...(configuration !== undefined ? { configuration } : {}),
         },
       ];
     }
     case "property.update": {
       const column = snapshot.properties.find(({ id }) => id === command.propertyId);
       if (!column || (command.patch.type && command.patch.type !== column.property.type)) return [];
-      const { config, visible, width, ...propertyPatch } = command.patch;
+      const { configuration, visible, width, ...propertyPatch } = command.patch;
       return [
         {
           ...base,
@@ -74,9 +67,7 @@ export function metadataEffectsForCommand(
             ...(visible !== undefined ? { visible } : {}),
             ...(width !== undefined ? { width } : {}),
           },
-          ...(config !== undefined
-            ? { propertyConfiguration: diffConfiguration(column.property.config, config) }
-            : {}),
+          ...(configuration !== undefined ? { propertyConfiguration: configuration } : {}),
         },
       ];
     }

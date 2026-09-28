@@ -78,7 +78,9 @@ test("view.update sets up sub-item properties and publishes them with the view",
     {
       type: "view.update",
       viewId: "view-1",
-      patch: { config: requestedConfig },
+      patch: {
+        configuration: [{ operation: "set", path: ["subItems"], value: requestedConfig.subItems }],
+      },
     } as never,
   );
 

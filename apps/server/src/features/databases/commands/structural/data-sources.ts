@@ -1,4 +1,5 @@
 import { and, asc, eq, sql } from "drizzle-orm";
+import { applyConfigurationChanges } from "@zilobase/features/databases/record-interactions";
 import type {
   DataSourceCommand,
   HostDatabaseCommand,
@@ -23,11 +24,15 @@ export async function dataSourceUpdate(
   command: Extract<DataSourceCommand, { type: "dataSource.update" }>,
 ) {
   const now = new Date();
+  const previous = await getDataSourceEntity(context, context.databaseId, context.dataSourceId!);
   await context.transaction
     .update(dataSource)
     .set({
-      ...(command.patch.config !== undefined
-        ? { config: command.patch.config, configVersion: sql`${dataSource.configVersion} + 1` }
+      ...(command.patch.configuration
+        ? {
+            config: applyConfigurationChanges(previous.config, command.patch.configuration),
+            configVersion: sql`${dataSource.configVersion} + 1`,
+          }
         : {}),
       ...(command.patch.name !== undefined ? { name: command.patch.name } : {}),
       updatedAt: now,

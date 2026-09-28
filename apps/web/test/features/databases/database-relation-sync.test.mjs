@@ -1,4 +1,10 @@
 export function register({ assert, loadModule, test }) {
+  let applyConfigurationChanges;
+  test("load relation configuration operations", async () => {
+    ({ applyConfigurationChanges } = await loadModule(
+      "/packages/features/src/databases/interactions/configuration.ts",
+    ));
+  });
   test("two-way relation updates the reciprocal database", async () => {
     const { getRelationReciprocalUpdates } = await loadModule(
       "/src/features/databases/schema/relations/model/database-relation-sync.ts",
@@ -132,11 +138,7 @@ export function register({ assert, loadModule, test }) {
     });
 
     assert.deepEqual(update, {
-      config: relationConfig({
-        relatedDatabaseId: "database-a",
-        relatedPropertyId: "property-a",
-        twoWayRelation: false,
-      }),
+      configuration: [{ operation: "set", path: ["relation", "twoWayRelation"], value: false }],
       databaseId: "database-b",
       databasePropertyId: "database-property-b",
     });
@@ -171,12 +173,7 @@ export function register({ assert, loadModule, test }) {
     });
 
     assert.deepEqual(update, {
-      config: relationConfig({
-        relatedDatabaseId: "database-a",
-        relatedPropertyId: "property-a",
-        syncStatus: "not_synced",
-        twoWayRelation: true,
-      }),
+      configuration: [{ operation: "set", path: ["relation", "twoWayRelation"], value: true }],
       databaseId: "database-b",
       databasePropertyId: "database-property-b",
     });
@@ -263,10 +260,10 @@ export function register({ assert, loadModule, test }) {
       ],
     );
     assert.deepEqual(
-      plan?.configUpdates.map(({ databaseId, databasePropertyId, config }) => ({
+      plan?.configUpdates.map(({ databaseId, databasePropertyId, configuration }) => ({
         databaseId,
         databasePropertyId,
-        syncStatus: config.relation.syncStatus,
+        syncStatus: applyConfigurationChanges({}, configuration).relation.syncStatus,
       })),
       [
         {
@@ -281,7 +278,11 @@ export function register({ assert, loadModule, test }) {
         },
       ],
     );
-    assert.equal(plan?.configUpdates[1]?.config.pageSummaries?.["page-a"]?.name, "Alpha");
+    assert.equal(
+      applyConfigurationChanges({}, plan.configUpdates[1].configuration).pageSummaries?.["page-a"]
+        ?.name,
+      "Alpha",
+    );
   });
 
   test("relation repair plan mirrors source over related", async () => {

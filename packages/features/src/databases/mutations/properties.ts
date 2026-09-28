@@ -1,3 +1,4 @@
+import type { ConfigurationChange } from "../interactions/configuration";
 import { useDatabaseController } from "../interactions/react";
 import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
@@ -35,7 +36,7 @@ export type ApplyDatabaseTemplateInput = {
 type UpdatePropertyInput = {
   databaseId: string;
   databasePropertyId: string;
-  config?: unknown;
+  configuration?: ConfigurationChange[];
   name?: string;
   type?: string;
   visible?: boolean;

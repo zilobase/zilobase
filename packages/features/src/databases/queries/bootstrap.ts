@@ -10,6 +10,7 @@ export type DatabaseScope = DatabaseBootstrapScope;
 
 export type DatabaseBootstrapHookState = {
   data?: DatabaseBootstrapResponse;
+  serverData?: DatabaseBootstrapResponse;
   error: Error | null;
   refetch: () => Promise<unknown>;
   scope: DatabaseScope | null;
@@ -85,6 +86,7 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
 
   return {
     data: projected,
+    serverData: query.data,
     error,
     refetch: () => queryClient.refetchQueries({ exact: true, queryKey }),
     scope,

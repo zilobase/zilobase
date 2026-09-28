@@ -1,3 +1,4 @@
+import { diffConfiguration } from "@zilobase/features/databases/record-interactions";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownToLine,
@@ -430,9 +431,12 @@ export function DatabaseSetupCard({
       !getDatabaseSetupDismissed(databasePayload.activeDataSource.config)
     ) {
       await updateDatabase.mutateAsync({
-        config: getMergedDatabaseConfig(databasePayload.activeDataSource.config, {
-          setupDismissed: true,
-        }),
+        configuration: diffConfiguration(
+          databasePayload.activeDataSource.config,
+          getMergedDatabaseConfig(databasePayload.activeDataSource.config, {
+            setupDismissed: true,
+          }),
+        ),
         databaseId: databasePayload.activeDataSource.id,
       });
     }
@@ -508,9 +512,12 @@ export function DatabaseSetupCard({
             type: sourceView.viewType,
           });
           await updateDatabase.mutateAsync({
-            config: getMergedDatabaseConfig(activeDataSource.config, {
-              setupDismissed: true,
-            }),
+            configuration: diffConfiguration(
+              activeDataSource.config,
+              getMergedDatabaseConfig(activeDataSource.config, {
+                setupDismissed: true,
+              }),
+            ),
             databaseId: activeDataSource.id,
           });
           setupDismissedPersisted = true;

@@ -160,7 +160,7 @@ export function register({ assert, appPath, test }) {
     dbActions.lock.toggle();
     assert.deepEqual(calls.at(-1), [
       "UpdateDatabase",
-      { databaseId: "db", config: { locked: false, keep: "config" } },
+      { databaseId: "db", configuration: [{ operation: "set", path: ["locked"], value: false }] },
     ]);
     dbActions.favorite.toggle();
     assert.deepEqual(calls.at(-1), [

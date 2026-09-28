@@ -55,6 +55,7 @@ export { resolveCellCommandScope, resolveDataSourceCommandScope } from "./mutati
 export type { DatabaseScope } from "./queries/bootstrap";
 export type { DatabaseViewScope, DatabaseWindowFetchScope } from "./queries/records";
 export {
+  useDatabaseController,
   useChangeDatabaseRow,
   useProjectedDatabaseRecords,
   useDatabaseInteractionRecovery,

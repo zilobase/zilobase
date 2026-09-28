@@ -1,3 +1,4 @@
+import type { ConfigurationChange } from "../interactions/configuration";
 import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
@@ -24,7 +25,7 @@ type CreateDatabaseResponse = {
 export type UpdateDatabaseInput = {
   databaseId: string;
   name?: string;
-  config?: unknown;
+  configuration?: ConfigurationChange[];
 };
 type SetDatabaseFavoriteInput = {
   databaseId: string;

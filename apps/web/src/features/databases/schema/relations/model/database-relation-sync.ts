@@ -1,3 +1,7 @@
+import {
+  diffConfiguration,
+  type ConfigurationChange,
+} from "@zilobase/features/databases/record-interactions";
 import { parsePropertyValue, toStringArray } from "../../property-values";
 import type { DatabaseViewData } from "../../../views/model/database-controller-state";
 
@@ -77,7 +81,7 @@ export type RelationLimitTrimUpdate = {
 };
 
 export type RelationConfigUpdate = {
-  config: unknown;
+  configuration: ConfigurationChange[];
   databaseId: string;
   databasePropertyId: string;
 };
@@ -106,9 +110,9 @@ export function getRelationTwoWayConfigUpdate({
 
   return relatedProperty
     ? {
-        config: getRelationConfigWithTwoWayRelation(
+        configuration: diffConfiguration(
           relatedProperty.property.config,
-          nextTwoWayRelation,
+          getRelationConfigWithTwoWayRelation(relatedProperty.property.config, nextTwoWayRelation),
         ),
         databaseId: relatedDatabaseId,
         databasePropertyId: relatedProperty.id,
@@ -190,14 +194,20 @@ export function getRelationRepairMutationPlan({
   return {
     configUpdates: [
       {
-        config: getRelationConfigWithSyncStatus(nextConfig, "synced"),
+        configuration: diffConfiguration(
+          propertyConfig,
+          getRelationConfigWithSyncStatus(nextConfig, "synced"),
+        ),
         databaseId,
         databasePropertyId,
       },
       ...(relatedProperty
         ? [
             {
-              config: getRelationConfigWithSyncStatus(nextRelatedConfig, "synced"),
+              configuration: diffConfiguration(
+                relatedProperty.property.config,
+                getRelationConfigWithSyncStatus(nextRelatedConfig, "synced"),
+              ),
               databaseId: relatedDatabaseId,
               databasePropertyId: relatedProperty.id,
             },

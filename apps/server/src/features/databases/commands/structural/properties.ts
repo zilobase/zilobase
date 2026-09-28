@@ -1,4 +1,5 @@
 import { and, asc, eq, gte, isNotNull, isNull, sql } from "drizzle-orm";
+import { applyConfigurationChanges } from "@zilobase/features/databases/record-interactions";
 import type {
   DataSourceCommand,
   DatabasePropertyEntity,
@@ -106,8 +107,13 @@ export async function propertyUpdate(
   await context.transaction
     .update(pageProperty)
     .set({
-      ...(command.patch.config !== undefined
-        ? { config: normalizePropertyConfig(type, command.patch.config) }
+      ...(command.patch.configuration
+        ? {
+            config: normalizePropertyConfig(
+              type,
+              applyConfigurationChanges(record.property.config, command.patch.configuration),
+            ),
+          }
         : {}),
       ...(command.patch.name !== undefined ? { name: command.patch.name } : {}),
       ...(command.patch.type !== undefined ? { type } : {}),
