@@ -97,6 +97,15 @@ boundary. Lifecycle, access, publication and favorite operations are recognized
 commands. Their domain services execute inside the receipt transaction; navigation
 delivery is deferred until commit. Favorites advance `database_actor_state` and
 produce a private confirmation instead of a mutation journal/realtime event.
+Favorite commands reserve an actor/host lane before writing the value and incrementing
+its revision. The private receipt carries the actor identity. Authenticated navigation
+reads select favorite value and actor revision in one SQL statement, and return an
+`actorState` envelope that never belongs to workspace navigation deltas.
+Favorite intentions project through the same session controller over navigation
+snapshots. They survive receipt recovery and remain until each mounted consumer observes
+the actor revision; stale inactive snapshots are evicted. Navigation reads preserve a
+newer cached revision only for the same actor. There is no favorite success-callback
+cache patch or separate rollback state.
 All lifecycle/access client hooks submit through the session controller. Access
 read invalidation belongs to the controller's confirmation path, including recovered
 receipts; a failed refresh reports synchronization failure without rejecting the save. The former

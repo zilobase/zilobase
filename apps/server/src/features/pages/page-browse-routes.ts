@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 import {
@@ -15,6 +15,7 @@ import { rejectMismatchedPinnedWorkspace } from "../auth/oauth-access";
 import { db } from "../../infrastructure/database";
 import {
   database,
+  databaseActorState,
   dataSource,
   databaseDataSource,
   databaseRow,
@@ -134,7 +135,15 @@ pageBrowseRoutes.get("/", async (c) => {
         .from(itemVisit)
         .where(and(eq(itemVisit.workspaceId, workspaceId), eq(itemVisit.userId, user.id))),
       db
-        .select()
+        .select({
+          ...getTableColumns(database),
+          // One statement observes the private favorite and its revision together.
+          favoriteValue: sql<boolean>`exists (select 1 from ${favorite} where ${favorite.databaseId} = ${database.id} and ${favorite.userId} = ${user.id})`,
+          actorRevision:
+            sql<number>`coalesce((select ${databaseActorState.revision} from ${databaseActorState} where ${databaseActorState.databaseId} = ${database.id} and ${databaseActorState.actorId} = ${user.id}), 0)`.mapWith(
+              Number,
+            ),
+        })
         .from(database)
         .where(
           and(
@@ -209,11 +218,6 @@ pageBrowseRoutes.get("/", async (c) => {
   const sharedPageIds = new Set(sharedPageRows.map((row) => row.pageId));
   const favoritePageIds = new Set(
     favoriteRows.map((row) => row.pageId).filter((pageId): pageId is string => Boolean(pageId)),
-  );
-  const favoriteDatabaseIds = new Set(
-    favoriteRows
-      .map((row) => row.databaseId)
-      .filter((databaseId): databaseId is string => Boolean(databaseId)),
   );
   const visitsByKey = new Map(
     visitRows.map((visit) => [`${visit.itemKind}:${visit.itemId}`, visit.lastVisitedAt]),
@@ -365,7 +369,11 @@ pageBrowseRoutes.get("/", async (c) => {
       primarySourceByDatabaseId.set(sourceLink.databaseId, sourceLink);
     }
   }
-  type ActiveDatabasePayload = (typeof activeDatabases)[number] & {
+  type ActiveDatabasePayload = Omit<
+    (typeof activeDatabases)[number],
+    "actorRevision" | "favoriteValue"
+  > & {
+    actorState: { actorId: string; revision: number; isFavorite: boolean };
     createdBy: (typeof creatorRows)[number] | null;
     dataSourceConfig: unknown;
     deletedBy: (typeof creatorRows)[number] | null;
@@ -376,15 +384,17 @@ pageBrowseRoutes.get("/", async (c) => {
   const databasePayloads: ActiveDatabasePayload[] = [];
 
   for (const record of activeDatabases) {
+    const { actorRevision, favoriteValue, ...publicRecord } = record;
     const views = [...(viewsByDatabaseId.get(record.id) ?? [])].sort(
       (first, second) => first.position - second.position,
     );
 
     databasePayloads.push({
-      ...record,
+      ...publicRecord,
+      actorState: { actorId: user.id, revision: actorRevision, isFavorite: favoriteValue },
       createdBy: record.createdById ? (creatorsById.get(record.createdById) ?? null) : null,
       deletedBy: record.deletedById ? (creatorsById.get(record.deletedById) ?? null) : null,
-      isFavorite: favoriteDatabaseIds.has(record.id),
+      isFavorite: favoriteValue,
       lastVisitedAt: visitsByKey.get(`database:${record.id}`) ?? null,
       dataSourceConfig: primarySourceByDatabaseId.get(record.id)?.config ?? null,
       views,

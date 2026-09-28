@@ -25,3 +25,5 @@ and reconciles each consumer against its own confirmed revision.
 
 The client and server ship together. No fallback controller, dual-write path or obsolete
 write contract is retained. Existing persisted user data is preserved.
+The exported `applyDatabaseFavoriteToNav` cache patcher is removed, including its
+specific public-export baseline entries; consumers use controller projection instead.

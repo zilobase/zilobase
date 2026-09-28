@@ -1,6 +1,7 @@
 import type {
   ZilobaseAiMode,
   PageDatabase,
+  PageNavigationPayload,
   PageItemPlacement,
   Page,
   ZilobaseAiPageSummary,
@@ -23,6 +24,7 @@ import {
 } from "../shared/api-errors";
 import type { ApiFetcher } from "../shared/api-fetcher";
 import type { EmbeddedItemsOpenAs } from "./item-relationships";
+import { preferNewestDatabaseActorState } from "../databases/interactions/favorites";
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -129,7 +131,7 @@ export const pagesQueryOptions = (
     // Router guards await this same query imperatively. Do not consume the
     // observer-owned signal or a temporary React unsubscribe can cancel the
     // promise that is still required by the router.
-    queryFn: async () => {
+    queryFn: async ({ client, queryKey }) => {
       if (!workspaceId) {
         return { databases: [], pages: [], placements: [] };
       }
@@ -150,11 +152,14 @@ export const pagesQueryOptions = (
           pages: Page[];
         }>(`/pages?${params.toString()}`, { method: "GET" });
 
-        return {
-          databases: result.databases ?? [],
-          pages: result.pages,
-          placements: result.placements ?? [],
-        };
+        return preferNewestDatabaseActorState(
+          {
+            databases: result.databases ?? [],
+            pages: result.pages,
+            placements: result.placements ?? [],
+          },
+          client.getQueryData<PageNavigationPayload>(queryKey),
+        );
       } catch (error) {
         if (
           typeof error === "object" &&

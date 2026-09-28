@@ -184,14 +184,23 @@ test("private favorite receipts advance only the actor revision and never publis
     },
     {
       database: harness.database as never,
-      dispatch: (async () => ({
-        result: { isFavorite: true },
-        mutations: [],
-      })) as DatabaseCommandDispatcher,
+      dispatch: (async () => {
+        assert.equal(
+          harness.execute.mock.calls.length,
+          2,
+          "command and actor lanes lock before the private value write",
+        );
+        assert.equal(harness.inserts.has(databaseActorState), false);
+        return { result: { isFavorite: true }, mutations: [] };
+      }) as DatabaseCommandDispatcher,
     },
   );
   assert.equal(acknowledgement.event, null);
-  assert.deepEqual(acknowledgement.privateConfirmation, { databaseId: "database-1", revision: 1 });
+  assert.deepEqual(acknowledgement.privateConfirmation, {
+    databaseId: "database-1",
+    actorId: "user-1",
+    revision: 1,
+  });
   assert.equal(harness.inserts.has(databaseActorState), true);
   assert.equal(harness.inserts.has(databaseCommandReceipt), true);
   assert.equal(harness.inserts.has(databaseMutationEvent), false);

@@ -3,10 +3,9 @@ import { useDatabaseController } from "../interactions/react";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import { invalidateDeletedItems, invalidateRestoredItems } from "../../shared/item-action-cache";
-import { applyDatabaseFavoriteToNav, type NavDelta } from "../../pages/nav-delta";
+import type { NavDelta } from "../../pages/nav-delta";
 import { applyNavigationDeltaToCache } from "../../pages/navigation-realtime";
 import { pagesNavRootQueryKey, pagesQueryKey } from "../../pages/queries";
-import type { PageNavigationPayload } from "../../pages/contracts";
 import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
 import { invalidateDatabaseQueries } from "./invalidate";
@@ -126,7 +125,6 @@ export function useRestoreDatabase() {
 }
 export function useSetDatabaseFavorite() {
   const controller = useDatabaseController();
-  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, isFavorite }: SetDatabaseFavoriteInput) =>
       (
@@ -135,15 +133,5 @@ export function useSetDatabaseFavorite() {
           command: { type: "database.favorite", favorite: isFavorite },
         })
       ).result as SetDatabaseFavoriteResponse,
-    onSuccess: async (result) => {
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(result.workspaceId) },
-        (current) =>
-          applyDatabaseFavoriteToNav(current, {
-            id: result.databaseId,
-            isFavorite: result.isFavorite,
-          }),
-      );
-    },
   });
 }

@@ -24,6 +24,11 @@ Writes can change hierarchy, database associations and navigation state. Preserv
 
 Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [React entrypoint](../../../packages/features/src/pages/react.ts) exports each operation family directly; the page root exposes contracts and pure query builders, not hooks. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
 
+The navigation hook composes database favorite intentions from the shared database
+controller; page state remains page-owned. Authenticated [navigation reads](../../../apps/server/src/features/pages/page-browse-routes.ts)
+return each database's favorite value and actor revision from one statement. Private
+actor envelopes appear only on these reads, not on workspace navigation deltas.
+
 ## Verification and change points
 
 Start with [the existing tests or model](../../../packages/features/src/pages/content-state.test.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).

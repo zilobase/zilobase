@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  applyDatabaseFavoriteToNav,
-  applyItemVisitToNav,
-  applyPageFavoriteToNav,
-} from "./nav-delta";
+import { applyNavDelta, applyItemVisitToNav, applyPageFavoriteToNav } from "./nav-delta";
 import type { Page, PageDatabase, PageNavigationPayload } from "./contracts";
 
 const createdAt = "2026-06-01T00:00:00.000Z";
@@ -78,8 +74,8 @@ test("applyPageFavoriteToNav patches page favorite state", () => {
   assert.equal(next?.pages[1]?.name, "Updated");
 });
 
-test("applyDatabaseFavoriteToNav patches database favorite state", () => {
-  const next = applyDatabaseFavoriteToNav(
+test("public database deltas preserve actor-private favorite state", () => {
+  const next = applyNavDelta(
     createNavigation(
       [createPage("page-1")],
       [
@@ -96,16 +92,19 @@ test("applyDatabaseFavoriteToNav patches database favorite state", () => {
       ],
     ),
     {
-      createdAt,
-      id: "database-1",
-      isFavorite: true,
-      name: "Tasks",
-      workspaceId: "org-1",
-      pageId: "page-1",
-      updatedAt: createdAt,
-      views: [],
+      upsertDatabases: [
+        {
+          createdAt,
+          id: "database-1",
+          name: "Tasks",
+          workspaceId: "org-1",
+          pageId: "page-1",
+          updatedAt: createdAt,
+          views: [],
+        },
+      ],
     },
   );
 
-  assert.equal(next?.databases[0]?.isFavorite, true);
+  assert.equal(next?.databases[0]?.isFavorite, false);
 });

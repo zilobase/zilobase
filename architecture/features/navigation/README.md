@@ -26,6 +26,14 @@ Calendar sidebar controls share the content pane's Calendar controller through a
 
 Hierarchy changes and workspace switches invalidate navigation state. Preserve expansion, ordering, recency, selected view and realtime reconciliation while separating actions from rendering.
 
+Database favorites are projected over navigation GET snapshots by the session database
+controller, not patched into QueryClient. [Favorite projection](../../../packages/features/src/databases/interactions/favorites.ts)
+compares the receipt's actor-private revision with each navigation consumer's
+`actorState`. Confirmed reads retain newer private state when an older response arrives,
+without retaining stale public labels. [Navigation deltas](../../../packages/features/src/pages/nav-delta.ts)
+cannot overwrite actor state or database favorites. Page favorites and visits retain
+their page-owned mutation paths.
+
 ## Verification and change points
 
 Start with [the existing tests or model](../../../packages/features/src/pages/navigation-realtime.test.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).

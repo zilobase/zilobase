@@ -8432,10 +8432,6 @@
       "value": true,
       "type": true
     },
-    "applyDatabaseFavoriteToNav": {
-      "value": true,
-      "type": false
-    },
     "applyItemVisitToNav": {
       "value": true,
       "type": false
@@ -8857,10 +8853,6 @@
     "ActiveWorkspaceMismatchError": {
       "value": true,
       "type": true
-    },
-    "applyDatabaseFavoriteToNav": {
-      "value": true,
-      "type": false
     },
     "applyItemVisitToNav": {
       "value": true,
@@ -9436,10 +9428,6 @@
     }
   },
   "@zilobase/features:./pages/nav-delta:types": {
-    "applyDatabaseFavoriteToNav": {
-      "value": true,
-      "type": false
-    },
     "applyItemVisitToNav": {
       "value": true,
       "type": false
@@ -9458,10 +9446,6 @@
     }
   },
   "@zilobase/features:./pages/nav-delta:default": {
-    "applyDatabaseFavoriteToNav": {
-      "value": true,
-      "type": false
-    },
     "applyItemVisitToNav": {
       "value": true,
       "type": false

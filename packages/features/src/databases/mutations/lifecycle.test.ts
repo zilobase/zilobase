@@ -53,7 +53,7 @@ function transport(
               version: 1,
             },
       ...(request.command.type === "database.favorite"
-        ? { privateConfirmation: { databaseId: id, revision: 1 } }
+        ? { privateConfirmation: { databaseId: id, actorId: "actor", revision: 1 } }
         : {}),
       sourceVersions: {},
       result,

@@ -8,6 +8,8 @@ import type {
 import { projectDatabaseMetadata } from "./metadata";
 import { useDatabaseSessionId } from "../queries/session";
 import { databaseController } from "./store";
+import type { PageNavigationPayload } from "../../pages/contracts";
+import { projectDatabaseFavorites } from "./favorites";
 import { projectRecordInteractions, type RecordEffect } from "./model";
 import { changeRecordHierarchy } from "./hierarchy";
 import type { DatabaseCommandTarget } from "../mutations/pending";
@@ -45,6 +47,28 @@ export function useProjectedDatabaseBootstrap(snapshot: DatabaseBootstrapRespons
   }, [controller]);
   return useMemo(
     () => (snapshot ? projectDatabaseMetadata(snapshot, intentions) : undefined),
+    [snapshot, intentions],
+  );
+}
+
+export function useProjectedDatabaseNavigation(snapshot: PageNavigationPayload | undefined) {
+  const controller = useDatabaseController();
+  const intentions = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  );
+  const key = useRef({});
+  useEffect(() => {
+    if (snapshot) controller.observeNavigation(key.current, snapshot);
+    else controller.unobserve(key.current);
+  }, [controller, snapshot]);
+  useEffect(() => {
+    const token = key.current;
+    return () => controller.unobserve(token);
+  }, [controller]);
+  return useMemo(
+    () => (snapshot ? projectDatabaseFavorites(snapshot, intentions) : undefined),
     [snapshot, intentions],
   );
 }

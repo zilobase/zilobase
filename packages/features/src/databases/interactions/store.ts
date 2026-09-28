@@ -21,6 +21,8 @@ import {
 import { DatabaseCommandState, targetsForCommand } from "../mutations/pending";
 import { invalidateDatabaseQueries } from "../mutations/invalidate";
 import { databaseAccessQueryKey } from "../queries/queries";
+import type { PageNavigationPayload } from "../../pages/contracts";
+import { favoriteNeedsProjection, isNavigationSnapshot } from "./favorites";
 import {
   projectRecordInteractions,
   remapRecordIdentity,
@@ -48,6 +50,7 @@ export class DatabaseController {
   private jobs = new Map<string, Job>();
   private windows = new Map<object, Window>();
   private bootstrapWindows = new Map<object, DatabaseBootstrapResponse>();
+  private navigationWindows = new Map<object, PageNavigationPayload>();
   private identities = new Map<string, string>();
   private pageIdentities = new Map<string, string>();
   private disposed = false;
@@ -82,11 +85,17 @@ export class DatabaseController {
   unobserve(key: object) {
     this.windows.delete(key);
     this.bootstrapWindows.delete(key);
+    this.navigationWindows.delete(key);
     this.collect();
   }
 
   observeBootstrap(key: object, snapshot: DatabaseBootstrapResponse) {
     this.bootstrapWindows.set(key, snapshot);
+    this.collect();
+  }
+
+  observeNavigation(key: object, snapshot: PageNavigationPayload) {
+    this.navigationWindows.set(key, snapshot);
     this.collect();
   }
 
@@ -161,7 +170,15 @@ export class DatabaseController {
         },
       ];
     if (input.command.type === "database.create") input = { ...input, databaseId: id };
-    const interaction: DatabaseIntention = { id, effects, metadataEffects, status: "queued" };
+    const interaction: DatabaseIntention = {
+      id,
+      effects,
+      metadataEffects,
+      status: "queued",
+      ...(input.command.type === "database.favorite"
+        ? { favorite: { hostId: input.databaseId, value: input.command.favorite } }
+        : {}),
+    };
     const sources = [
       ...new Set([
         ...(input.dataSourceId ? [input.dataSourceId] : []),
@@ -296,6 +313,11 @@ export class DatabaseController {
       job.interaction = {
         ...job.interaction,
         status: "committed",
+        ...(job.interaction.favorite && ack.privateConfirmation
+          ? {
+              favorite: { ...job.interaction.favorite, confirmation: ack.privateConfirmation },
+            }
+          : {}),
         sourceVersions: ack.sourceVersions,
         hostVersions: ack.event ? { [ack.event.databaseId]: ack.event.version } : {},
       };
@@ -353,6 +375,26 @@ export class DatabaseController {
     }
   }
   private refresh(job: Job) {
+    if (job.interaction.status === "committed" && job.interaction.favorite) {
+      void this.queryClient
+        .invalidateQueries(
+          {
+            predicate: (query) =>
+              query.queryKey[0] === "pages" &&
+              query.queryKey[2] === "nav" &&
+              isNavigationSnapshot(query.state.data) &&
+              query.state.data.databases.some(({ id }) => id === job.input.databaseId),
+          },
+          { throwOnError: true },
+        )
+        .catch((cause) => {
+          if (!this.disposed)
+            this.commandState.report(
+              targetsForCommand(job.input),
+              new DatabaseReconciliationError(cause),
+            );
+        });
+    }
     if (
       job.interaction.status === "committed" &&
       (job.input.command.type === "access.upsert" ||
@@ -422,6 +464,21 @@ export class DatabaseController {
       const keep = this.snapshot.filter((interaction) => {
         if (interaction.status !== "committed") return true;
         let stale = false;
+        if (interaction.favorite) {
+          for (const snapshot of this.navigationWindows.values())
+            if (favoriteNeedsProjection(interaction.favorite, snapshot)) stale = true;
+          for (const query of this.queryClient.getQueryCache().findAll({ queryKey: ["pages"] })) {
+            if (
+              query.queryKey[2] !== "nav" ||
+              !isNavigationSnapshot(query.state.data) ||
+              !favoriteNeedsProjection(interaction.favorite, query.state.data)
+            )
+              continue;
+            if (!query.isActive() && query.state.fetchStatus === "idle")
+              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
+            else stale = true;
+          }
+        }
         for (const effect of interaction.metadataEffects ?? []) {
           for (const snapshot of this.bootstrapWindows.values())
             if (metadataNeedsProjection(effect, interaction, snapshot)) stale = true;
@@ -467,6 +524,7 @@ export class DatabaseController {
     this.jobs.clear();
     this.windows.clear();
     this.bootstrapWindows.clear();
+    this.navigationWindows.clear();
     this.identities.clear();
     this.pageIdentities.clear();
     this.commandState.clear();

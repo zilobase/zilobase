@@ -15,6 +15,7 @@ import {
   zilobaseAiPagesQueryOptions,
 } from "./queries";
 import type { PagesDeletedFilter } from "./contracts";
+import { useProjectedDatabaseNavigation } from "../databases/interactions/react";
 
 export function usePages(
   workspaceId: string | null | undefined,
@@ -37,12 +38,14 @@ export function usePageNavigation(
 ) {
   const { apiFetch } = useZilobaseFeatures();
 
-  return useQuery({
+  const query = useQuery({
     ...pagesQueryOptions(apiFetch, workspaceId, {
       deleted: options?.deleted,
     }),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
   });
+  const data = useProjectedDatabaseNavigation(query.data);
+  return { ...query, data };
 }
 
 export function useZilobaseAiPages(workspaceId: string | null | undefined) {

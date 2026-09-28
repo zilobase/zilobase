@@ -196,6 +196,13 @@ export async function executeDatabaseCommand<TResult = unknown>(
       });
       let primaryHostVersion: number | null = null;
       const sourceVersions: Record<string, number> = {};
+      if (input.request.command.type === "database.favorite") {
+        // Serialize the private value and its revision together, before the domain
+        // write. Locking only the revision afterward can label an interleaved value.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${`database-actor:${input.actorId}:${input.scope.databaseId}`}, 0))`,
+        );
+      }
       if (input.scope.dataSourceId) {
         const transferSource =
           input.request.command.type === "row.place" ? input.request.command.source : undefined;
@@ -385,7 +392,11 @@ export async function executeDatabaseCommand<TResult = unknown>(
           event: null,
           sourceVersions: {},
           result: dispatched.result,
-          privateConfirmation: { databaseId: input.scope.databaseId, revision: state.revision },
+          privateConfirmation: {
+            databaseId: input.scope.databaseId,
+            actorId: input.actorId,
+            revision: state.revision,
+          },
         }) as DatabaseCommandAck<TResult>;
         await tx.insert(databaseCommandReceipt).values({
           acknowledgement,

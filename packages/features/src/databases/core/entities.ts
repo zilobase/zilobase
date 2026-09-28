@@ -527,7 +527,11 @@ export const databaseCommandAckSchema = z
     commandId: entityIdSchema,
     event: databaseMutationEventV2Schema.nullable(),
     privateConfirmation: z
-      .object({ databaseId: entityIdSchema, revision: positiveVersionSchema })
+      .object({
+        databaseId: entityIdSchema,
+        actorId: entityIdSchema,
+        revision: positiveVersionSchema,
+      })
       .strict()
       .optional(),
     result: z.unknown(),

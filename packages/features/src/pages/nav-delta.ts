@@ -4,7 +4,7 @@ export type NavDelta = {
   removeDatabaseIds?: string[];
   removePlacementIds?: string[];
   removePageIds?: string[];
-  upsertDatabases?: PageDatabase[];
+  upsertDatabases?: Omit<PageDatabase, "actorState" | "isFavorite">[];
   upsertPlacements?: PageItemPlacement[];
   upsertPages?: Page[];
 };
@@ -46,7 +46,13 @@ export function applyNavDelta(
   }
 
   for (const database of delta.upsertDatabases ?? []) {
-    databases = upsertById(databases, database);
+    // Workspace deltas cannot replace a viewer's actor-private state.
+    const {
+      actorState: _actorState,
+      isFavorite: _isFavorite,
+      ...publicDatabase
+    } = database as PageDatabase;
+    databases = upsertById(databases, publicDatabase);
   }
 
   for (const placement of delta.upsertPlacements ?? []) {
@@ -94,22 +100,6 @@ export function applyPageFavoriteToNav(navigation: PageNavigationPayload | undef
     ...navigation,
     pages: navigation.pages.map((current) =>
       current.id === page.id ? { ...current, ...page, isFavorite: page.isFavorite } : current,
-    ),
-  };
-}
-
-export function applyDatabaseFavoriteToNav(
-  navigation: PageNavigationPayload | undefined,
-  database: PageDatabase | Pick<PageDatabase, "id" | "isFavorite">,
-) {
-  if (!navigation) {
-    return navigation;
-  }
-
-  return {
-    ...navigation,
-    databases: navigation.databases.map((current) =>
-      current.id === database.id ? { ...current, isFavorite: database.isFavorite } : current,
     ),
   };
 }

@@ -16,6 +16,8 @@ export type PageDatabaseView = {
 
 export type PageDatabase = {
   id: string;
+  /** Authenticated navigation reads only; never part of a public navigation delta. */
+  actorState?: { actorId: string; revision: number; isFavorite: boolean };
   workspaceId: string;
   pageId: string | null;
   teamspaceId?: string | null;
