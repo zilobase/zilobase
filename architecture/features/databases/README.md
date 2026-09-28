@@ -7,6 +7,8 @@
 - [packages/features/src/databases](../../../packages/features/src/databases)
 
 Shared database code is grouped by boundary inside `packages/features/src/databases`:
+`interactions/` owns the pure sparse record-intention projection and identity
+remapping model; see [ADR 0011](../../decisions/0011-shared-record-interactions.md).
 `core/` (entities, ordering, telemetry), `schema/` (filter, property types,
 formula), `views/` (appearance, view evaluation), `records/` (snapshots,
 row-page host resolution), `access/` (sharing writes), `queries/` (session
