@@ -44,7 +44,7 @@ export function DatabaseFilterControl() {
   ) : (
     <Button
       aria-label={showFilterPill ? "Hide filter pill" : "Show filter pill"}
-      className={showFilterPill ? "text-content-primary" : "text-content-secondary"}
+      className="text-action-primary hover:text-action-primary active:text-action-primary aria-expanded:text-action-primary"
       onClick={toggleFilterPillVisibility}
       size="icon"
       type="button"

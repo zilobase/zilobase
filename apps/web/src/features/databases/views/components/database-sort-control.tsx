@@ -44,7 +44,7 @@ export function DatabaseSortControl() {
   ) : (
     <Button
       aria-label={showSortPill ? "Hide sort pill" : "Show sort pill"}
-      className={showSortPill ? "text-content-primary" : "text-content-secondary"}
+      className="text-action-primary hover:text-action-primary active:text-action-primary aria-expanded:text-action-primary"
       onClick={toggleSortPillVisibility}
       size="icon"
       type="button"

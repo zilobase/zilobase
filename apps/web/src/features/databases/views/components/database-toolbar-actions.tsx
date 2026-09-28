@@ -88,7 +88,6 @@ export function DatabaseToolbarActions({
               automationsEnabled ? () => setAutomationManagerOpen(true) : undefined
             }
           />
-          <DatabaseRowCreationControl onPreviewForm={onPreviewForm} />
         </>
       ) : canRestoreDeleted && deletedDatabaseId ? (
         <DatabaseTrashRestoreButton databaseId={deletedDatabaseId} />
@@ -97,7 +96,7 @@ export function DatabaseToolbarActions({
         <Button
           aria-label="Expand database"
           asChild
-          className="database-expand-button"
+          className="database-expand-button text-content-secondary"
           size="icon"
           type="button"
           variant="ghost"
@@ -112,6 +111,7 @@ export function DatabaseToolbarActions({
           </Link>
         </Button>
       ) : null}
+      {editable ? <DatabaseRowCreationControl onPreviewForm={onPreviewForm} /> : null}
     </div>
   );
 }
