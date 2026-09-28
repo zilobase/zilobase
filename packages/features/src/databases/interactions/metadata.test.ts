@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { DatabaseBootstrapResponse } from "../core/entities";
 import { projectDatabaseMetadata, type MetadataIntention } from "./metadata";
+import { metadataEffectsForCommand } from "./metadata-command";
 
 export function metadataSnapshot(hostId = "host"): DatabaseBootstrapResponse {
   const time = "2026-09-28T00:00:00.000Z";
@@ -49,6 +50,35 @@ export function metadataSnapshot(hostId = "host"): DatabaseBootstrapResponse {
     ],
   };
 }
+
+test("sub-item setup waits for confirmed schema while unrelated view edits preview immediately", () => {
+  const snapshot = metadataSnapshot();
+  const effects = metadataEffectsForCommand(
+    {
+      databaseId: "host",
+      command: {
+        type: "view.update",
+        viewId: "view",
+        patch: {
+          name: "Renamed",
+          configuration: [
+            { operation: "set", path: ["subItems"], value: { enabled: true } },
+            { operation: "set", path: ["layout", "wrap"], value: true },
+          ],
+        },
+      },
+    },
+    snapshot,
+  );
+  const projected = projectDatabaseMetadata(snapshot, [{ metadataEffects: effects }]);
+  assert.equal(projected.views[0]!.name, "Renamed");
+  assert.deepEqual(projected.views[0]!.config, {
+    filters: ["old"],
+    sorts: ["name"],
+    layout: { wrap: true },
+  });
+  assert.equal(snapshot.views[0]!.name, "Table");
+});
 
 test("metadata intentions compose without mutating server snapshots or rolling back another field", () => {
   const snapshot = metadataSnapshot();

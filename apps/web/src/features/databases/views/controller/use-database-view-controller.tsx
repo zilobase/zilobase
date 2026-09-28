@@ -1,12 +1,5 @@
 import { diffConfiguration } from "@zilobase/features/databases/record-interactions";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent as ReactDragEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState, type DragEvent as ReactDragEvent } from "react";
 
 import { useSession } from "@zilobase/features/auth/react";
 import { useZilobaseFeatures } from "@zilobase/features";
@@ -122,7 +115,6 @@ export function useDatabaseViewController({
   const addRow = useAddDatabaseRow();
   const updateValue = useUpdateDatabasePropertyValue();
   const changeRow = useChangeDatabaseRow();
-  const subItemMigrationRequestsRef = useRef(new Set<string>());
   const { data: hostPage } = usePage(pageId, {
     refetchOnMount: false,
   });
@@ -399,47 +391,6 @@ export function useDatabaseViewController({
     visibleProperties,
     visiblePropertyCount,
   } = viewModel;
-  useEffect(() => {
-    if (
-      !editable ||
-      !databaseId ||
-      !activeDatabaseId ||
-      !activeView?.id ||
-      !subItemsSettings.enabled ||
-      (subItemsSettings.parentPropertyId && subItemsSettings.subItemPropertyId)
-    ) {
-      return;
-    }
-
-    const requestKey = `${activeDatabaseId}:${activeView.id}`;
-    if (subItemMigrationRequestsRef.current.has(requestKey)) return;
-
-    subItemMigrationRequestsRef.current.add(requestKey);
-    updateDatabaseView.mutate(
-      {
-        configuration: diffConfiguration(
-          activeView.config,
-          getMergedDatabaseConfig(activeView.config, {
-            subItems: subItemsSettings,
-          }),
-        ),
-        databaseId,
-        databaseViewId: activeView.id,
-      },
-      {
-        onError: () => {
-          subItemMigrationRequestsRef.current.delete(requestKey);
-        },
-      },
-    );
-  }, [
-    activeDatabaseId,
-    activeView?.config,
-    activeView?.id,
-    editable,
-    subItemsSettings,
-    updateDatabaseView,
-  ]);
   useEffect(() => {
     const nextDatabaseTitle = activeViewData?.activeDataSource?.name;
 

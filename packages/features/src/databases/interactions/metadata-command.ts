@@ -42,13 +42,16 @@ export function metadataEffectsForCommand(
       const view = snapshot.views.find(({ id }) => id === command.viewId);
       if (!view) return [];
       const { configuration, ...patch } = command.patch;
+      // Setup may create reciprocal schema and reconcile existing record values.
+      // Keep that server-derived slice confirmed-only while previewing unrelated edits.
+      const previewConfiguration = configuration?.filter(({ path }) => path[0] !== "subItems");
       return [
         {
           ...base,
           kind: "view",
           id: view.id,
           patch,
-          ...(configuration !== undefined ? { configuration } : {}),
+          ...(previewConfiguration !== undefined ? { configuration: previewConfiguration } : {}),
         },
       ];
     }
