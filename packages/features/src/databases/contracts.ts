@@ -5,3 +5,4 @@
  */
 export * from "./core/entities";
 export * from "./core/fixtures";
+export * from "./core/lifecycle-commands";

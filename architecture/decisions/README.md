@@ -13,3 +13,4 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Mandatory Redis bus for Node realtime](0009-mandatory-node-realtime-redis.md)
 - [Bundled S3 service is RustFS](0010-bundled-s3-is-rustfs.md)
 - [Shared database record interactions](0011-shared-record-interactions.md)
+- [Unified database mutation ownership](0012-unified-database-mutations.md)
