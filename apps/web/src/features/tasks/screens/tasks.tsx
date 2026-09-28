@@ -1070,12 +1070,14 @@ async function createTaskDatabase({
     properties.map((property) => [property.name.toLowerCase(), property.type]),
   );
 
+  if (!payload.activeDataSource) throw new Error("Created task database has no active source");
   await applyTemplate.mutateAsync({
     config: getMergedDatabaseConfig(payload.database.config, {
       emoji: template?.emoji ?? "✅",
       setupDismissed: true,
     }),
-    databaseId: payload.database.id,
+    databaseId: payload.activeDataSource.id,
+    hostDatabaseId: payload.database.id,
     name,
     properties,
     rows: (template?.sampleRows ?? []).map((sampleRow) => ({

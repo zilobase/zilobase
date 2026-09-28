@@ -132,6 +132,7 @@ export type PagePropertiesPayload = {
 
 export type PagePropertyPresenceTarget = {
   databaseId: string;
+  dataSourceId: string;
   propertyIds: string[];
   rowId: string;
 };

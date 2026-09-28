@@ -25,10 +25,10 @@ type ReplaceDatabaseViewDataSourceInput = {
 };
 export function useUpdateDataSource() {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId: dataSourceId, ...patch }: UpdateDatabaseInput) => {
-      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, dataSourceId);
+      const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, dataSourceId);
       const ack = await controller.execute({
         command: { patch, type: "dataSource.update" },
         databaseId: scope.hostDatabaseId,

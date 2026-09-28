@@ -60,7 +60,7 @@ export class DatabaseController {
 
   constructor(
     private queryClient: QueryClient,
-    private sessionId: string,
+    readonly sessionId: string,
     private apiFetch: ApiFetcher,
   ) {
     this.unsubscribe = queryClient.getQueryCache().subscribe(() => this.collect());
@@ -518,6 +518,30 @@ export class DatabaseController {
 }
 
 const sessions = new WeakMap<QueryClient, Map<string, DatabaseController>>();
+const owners = new WeakMap<DatabaseController, { count: number }>();
+
+/** Deferred disposal tolerates StrictMode's setup/cleanup/setup cycle. */
+export function retainDatabaseController(
+  queryClient: QueryClient,
+  sessionId: string,
+  apiFetch: ApiFetcher,
+) {
+  const controller = databaseController(queryClient, sessionId, apiFetch);
+  const owner = owners.get(controller) ?? { count: 0 };
+  owners.set(controller, owner);
+  owner.count++;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    owner.count--;
+    queueMicrotask(() => {
+      if (owner.count || sessions.get(queryClient)?.get(sessionId) !== controller) return;
+      disposeDatabaseController(queryClient, sessionId);
+      queryClient.removeQueries({ queryKey: ["db", sessionId] });
+    });
+  };
+}
 export function databaseController(
   queryClient: QueryClient,
   sessionId: string,

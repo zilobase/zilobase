@@ -83,12 +83,12 @@ function useDatabaseTemplateMutation<
       },
 >(command: (input: TInput) => TCommand) {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async (input: TInput) => {
-      const scope = await resolveDataSourceCommandScope(
+      const scope = resolveDataSourceCommandScope(
         queryClient,
-        apiFetch,
+        controller.sessionId,
         input.databaseId,
         input.hostDatabaseId,
       );

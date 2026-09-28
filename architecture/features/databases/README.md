@@ -214,6 +214,18 @@ session/deleted-scope bootstrap snapshot; pending view configuration cannot sele
 a fetch key. The server-safe `@zilobase/features/databases/query-hash` entrypoint
 exposes the same normalization and hashing used by the client.
 
+Filter and sort editors compose edits against that latest projected configuration,
+identifying rendered entries by filter ID or sort column rather than shifted array
+positions. Source-command scope resolution searches only the controller's session;
+unloaded sources require an explicit host ID. A host ID is never interpreted as a
+source ID. Provider ownership is reference-counted with deferred disposal so React
+StrictMode reattachment preserves pending work while final unmount clears only
+that session's controller and database queries.
+
+Controlled view selection notifies its owner in the event handler, outside React
+state updater functions; uncontrolled selection updates only local state. Switching
+presentation never creates another mutation owner.
+
 The interactive client consumes bootstrap plus record windows directly through [`DatabaseViewData`](../../../apps/web/src/features/databases/views/model/database-controller-state.ts) (canonical host bootstrap, active source, filtered records); the monolithic composed payload is gone. The position-based row/value export shape remains only as the [`DatabaseExportPayload`](../../../packages/features/src/databases/core/export-payload.ts) wire contract behind `GET /:id/export` and derived AI/task context, never as client state. Realtime-only state (presence, version watermarks) stays out of QueryClient entirely.
 
 TanStack Query owns database bootstrap/windows, authentication, access/sharing,

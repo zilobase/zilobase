@@ -8,6 +8,51 @@ export function register({ assert, loadModule, test }) {
       "/packages/features/src/databases/interactions/configuration.ts",
     ));
   });
+  test("rapid filter and sort additions compose from controller configuration before rerender", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/records/view-commands.ts",
+    );
+    const updateDatabaseView = createMutation();
+    const properties = [createProperty("status-column", "status-field", "Status", "status")];
+    const latest = () =>
+      updateDatabaseView.calls.reduce(
+        (config, [input]) => applyConfigurationChanges(config, input.configuration),
+        {},
+      );
+    const commands = getDatabaseViewCommands({
+      notify: { error() {}, success() {} },
+      copyViewLink: async () => {},
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: { config: {}, id: "view-1", name: "Table", type: "table" },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateDatabaseView }),
+      viewData: createViewData({ properties }),
+      properties,
+      getLatestViewConfig: latest,
+      setActiveViewId() {},
+      setFilterPickerOpen() {},
+      setShowFilterPill() {},
+      setShowSortPill() {},
+      setSortPickerOpen() {},
+    });
+    commands.createDatabaseFilter("name");
+    commands.createDatabaseFilter("status-column");
+    commands.createDatabaseSort("name");
+    commands.createDatabaseSort("status-column");
+    assert.deepEqual(
+      latest().filters.map(({ propertyId }) => propertyId),
+      ["name", "status-column"],
+    );
+    assert.deepEqual(
+      latest().sorts.map(({ column }) => column),
+      ["name", "status-column"],
+    );
+  });
   test("database view commands place an imported row in its Kanban group", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/features/databases/records/view-commands.ts",

@@ -1,9 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createContext, useContext, useEffect, useRef, type PropsWithChildren } from "react";
+import { createContext, useContext, useEffect, type PropsWithChildren } from "react";
 
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { guardPendingDatabaseWrites } from "../mutations/beforeunload";
-import { databaseController, disposeDatabaseController } from "../interactions/store";
+import { databaseController, retainDatabaseController } from "../interactions/store";
 
 const DatabaseSessionContext = createContext<string | null>(null);
 
@@ -18,17 +18,10 @@ export type DbProviderProps = PropsWithChildren<{
 }>;
 
 export function DbProvider({ children, queryClient, sessionId, apiFetch }: DbProviderProps) {
-  const previousSessionRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const current = sessionId ?? "public";
-    const previous = previousSessionRef.current;
-    if (previous && previous !== current) {
-      disposeDatabaseController(queryClient, previous);
-      queryClient.removeQueries({ queryKey: ["db", previous] });
-    }
-    previousSessionRef.current = current;
-  }, [queryClient, sessionId]);
+  useEffect(
+    () => retainDatabaseController(queryClient, sessionId ?? "public", apiFetch),
+    [queryClient, sessionId, apiFetch],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;

@@ -251,17 +251,13 @@ export function useDatabaseViewController({
   const activeViewTabId = resolvedActiveViewId;
   const setSelectedActiveViewId = useCallback<DatabaseViewProviderValue["setActiveViewId"]>(
     (value) => {
+      if (isControlledActiveView) {
+        const nextViewId = typeof value === "function" ? value(resolvedActiveViewId) : value;
+        if (nextViewId !== resolvedActiveViewId) onActiveViewIdChange?.(nextViewId);
+        return;
+      }
       setActiveViewId((currentViewId) => {
-        const nextViewId =
-          typeof value === "function"
-            ? value(isControlledActiveView ? resolvedActiveViewId : currentViewId)
-            : value;
-
-        if (nextViewId !== currentViewId) {
-          onActiveViewIdChange?.(nextViewId);
-        }
-
-        return nextViewId;
+        return typeof value === "function" ? value(currentViewId) : value;
       });
     },
     [isControlledActiveView, onActiveViewIdChange, resolvedActiveViewId],

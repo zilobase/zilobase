@@ -12,6 +12,7 @@ type AddPropertyInput = {
   type?: string;
 };
 export type ApplyDatabaseTemplateInput = {
+  hostDatabaseId?: string;
   config: unknown;
   databaseId: string;
   name: string;
@@ -50,10 +51,10 @@ type DuplicatePropertyInput = {
 };
 export function useAddDatabaseProperty() {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ config, databaseId, name, position, type }: AddPropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
       const anchors = resolvePropertyCreateAnchors(
         controller.bootstrap(scope.hostDatabaseId)?.properties ?? [],
         scope.dataSourceId,
@@ -76,10 +77,15 @@ export function useAddDatabaseProperty() {
 }
 export function useApplyDatabaseTemplate() {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
-    mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
-      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+    mutationFn: async ({ databaseId, hostDatabaseId, ...input }: ApplyDatabaseTemplateInput) => {
+      const scope = resolveDataSourceCommandScope(
+        queryClient,
+        controller.sessionId,
+        databaseId,
+        hostDatabaseId,
+      );
       const ack = await controller.execute({
         command: { ...input, type: "template.apply" },
         databaseId: scope.hostDatabaseId,
@@ -94,10 +100,10 @@ export function useApplyDatabaseTemplate() {
 }
 export function useUpdateDatabaseProperty() {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, databasePropertyId, ...patch }: UpdatePropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
       const ack = await controller.execute({
         command: {
           patch,
@@ -113,10 +119,10 @@ export function useUpdateDatabaseProperty() {
 }
 export function useDeleteDatabaseProperty() {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, databasePropertyId }: DeletePropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
       const ack = await controller.execute({
         command: {
           propertyId: databasePropertyId,
@@ -131,14 +137,14 @@ export function useDeleteDatabaseProperty() {
 }
 export function useDuplicateDatabaseProperty() {
   const controller = useDatabaseController();
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({
       databaseId,
       databasePropertyId,
       includeValues = false,
     }: DuplicatePropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
       const ack = await controller.execute({
         command: {
           includeValues,

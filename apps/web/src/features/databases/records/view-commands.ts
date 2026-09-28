@@ -34,6 +34,9 @@ import {
 import type { DatabasePageDragPayload } from "../interactions/database-page-drop";
 import {
   getDatabaseFilterOperatorsForType,
+  getDatabaseFilters,
+  getDatabaseSorts,
+  isDatabaseFilterGroup,
   getDatabaseLayoutSettings,
   getDatabaseSubItemsSettings,
   getMergedDatabaseConfig,
@@ -178,11 +181,12 @@ export function getDatabaseViewCommands({
     }
 
     setShowSortPill(nextSorts.length > 0);
+    const currentConfig = latestConfig();
 
     return updateDatabaseView.mutateAsync({
       configuration: diffConfiguration(
-        activeView.config,
-        getMergedDatabaseConfig(activeView.config, {
+        currentConfig,
+        getMergedDatabaseConfig(currentConfig, {
           sorts: nextSorts.length > 0 ? nextSorts : undefined,
         }),
       ),
@@ -196,10 +200,11 @@ export function getDatabaseViewCommands({
       return;
     }
 
+    const currentConfig = latestConfig();
     updateDatabaseView.mutate({
       configuration: diffConfiguration(
-        activeView.config,
-        getMergedDatabaseConfig(activeView.config, {
+        currentConfig,
+        getMergedDatabaseConfig(currentConfig, {
           filters: nextFilters.length > 0 ? nextFilters : undefined,
         }),
       ),
@@ -248,8 +253,19 @@ export function getDatabaseViewCommands({
     };
   };
 
+  const latestConfig = () =>
+    activeView && databaseId && getLatestViewConfig
+      ? getLatestViewConfig(viewDatabaseId ?? databaseId, activeView.id, activeView.config)
+      : activeView?.config;
+  const latestSorts = () =>
+    getLatestViewConfig ? getDatabaseSorts(latestConfig()) : activeDatabaseSorts;
   const getPlainDatabaseFilters = () =>
-    activeDatabaseFilters.map(({ id, operator, propertyId, values }) => ({
+    (getLatestViewConfig
+      ? getDatabaseFilters(latestConfig()).filter(
+          (filter): filter is DatabasePropertyFilterConfig => !isDatabaseFilterGroup(filter),
+        )
+      : activeDatabaseFilters
+    ).map(({ id, operator, propertyId, values }) => ({
       id,
       operator: getValidDatabaseFilterOperator(operator, getFilterPropertyType(propertyId)),
       propertyId,
@@ -774,7 +790,7 @@ export function getDatabaseViewCommands({
     },
     createDatabaseSort: (field: string) => {
       saveDatabaseSorts([
-        ...activeDatabaseSorts.map(({ column, direction }) => ({
+        ...latestSorts().map(({ column, direction }) => ({
           column,
           direction,
         })),
@@ -786,7 +802,7 @@ export function getDatabaseViewCommands({
       setSortPickerOpen(false);
     },
     createDatabaseFilter: (field: string) => {
-      if (activeDatabaseFilters.some((filter) => filter.propertyId === field)) {
+      if (getPlainDatabaseFilters().some((filter) => filter.propertyId === field)) {
         setShowFilterPill(true);
         setFilterPickerOpen(false);
         return;
@@ -798,7 +814,9 @@ export function getDatabaseViewCommands({
     },
     removeDatabaseFilter: (index: number) => {
       saveDatabaseFilters(
-        getPlainDatabaseFilters().filter((_, filterIndex) => filterIndex !== index),
+        getPlainDatabaseFilters().filter(
+          (filter) => filter.id !== activeDatabaseFilters[index]?.id,
+        ),
       );
     },
     reorderDatabaseFilters: (filterIds: string[]) => {
@@ -815,8 +833,8 @@ export function getDatabaseViewCommands({
     },
     removeDatabaseSort: (index: number) => {
       saveDatabaseSorts(
-        activeDatabaseSorts.flatMap(({ column, direction }, sortIndex) =>
-          sortIndex === index ? [] : [{ column, direction }],
+        latestSorts().flatMap(({ column, direction }) =>
+          column === activeDatabaseSorts[index]?.column ? [] : [{ column, direction }],
         ),
       );
     },
@@ -1170,15 +1188,17 @@ export function getDatabaseViewCommands({
     },
     updateDatabaseSort: (index: number, patch: Partial<DatabaseSortConfig>) => {
       saveDatabaseSorts(
-        activeDatabaseSorts.map(({ column, direction }, sortIndex) =>
-          sortIndex === index ? { column, direction, ...patch } : { column, direction },
+        latestSorts().map(({ column, direction }) =>
+          column === activeDatabaseSorts[index]?.column
+            ? { column, direction, ...patch }
+            : { column, direction },
         ),
       );
     },
     updateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => {
       saveDatabaseFilters(
-        getPlainDatabaseFilters().map((filter, filterIndex) => {
-          if (filterIndex !== index) {
+        getPlainDatabaseFilters().map((filter) => {
+          if (filter.id !== activeDatabaseFilters[index]?.id) {
             return filter;
           }
 

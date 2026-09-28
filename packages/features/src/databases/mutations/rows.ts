@@ -36,14 +36,14 @@ type UpdatePropertyValueInput = {
 };
 
 export function useAddDatabaseRow() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   const store = useDatabaseController();
   return useMutation({
     networkMode: "always",
     mutationFn: async (variables: AddRowInput) => {
-      const scope = await resolveDataSourceCommandScope(
+      const scope = resolveDataSourceCommandScope(
         queryClient,
-        apiFetch,
+        store.sessionId,
         variables.databaseId,
         variables.hostDatabaseId,
       );
@@ -53,9 +53,9 @@ export function useAddDatabaseRow() {
       });
       const sourceScope =
         variables.sourceDataSourceId && variables.sourceRowId
-          ? await resolveDataSourceCommandScope(
+          ? resolveDataSourceCommandScope(
               queryClient,
-              apiFetch,
+              store.sessionId,
               variables.sourceDataSourceId,
               variables.sourceHostDatabaseId,
             )
@@ -63,9 +63,13 @@ export function useAddDatabaseRow() {
       const sourceRecord = sourceScope
         ? store.records(sourceScope.dataSourceId).find(({ id }) => id === variables.sourceRowId)
         : undefined;
-      const targetBootstrap = findDataSourceBootstrap(queryClient, scope.dataSourceId);
+      const targetBootstrap = findDataSourceBootstrap(
+        queryClient,
+        store.sessionId,
+        scope.dataSourceId,
+      );
       const sourceBootstrap = sourceScope
-        ? findDataSourceBootstrap(queryClient, sourceScope.dataSourceId)
+        ? findDataSourceBootstrap(queryClient, store.sessionId, sourceScope.dataSourceId)
         : null;
       const valuesByPropertyId = variables.initialValues
         ? Object.fromEntries(
@@ -174,25 +178,20 @@ export function useAddDatabaseRow() {
         temporaryId,
       );
 
-      if (variables.pageId) {
-        void queryClient.invalidateQueries({ queryKey: ["pages"] }).catch(() => {
-          // Navigation refresh must not delay or reject an already committed row.
-        });
-      }
       return ack.result as DatabaseRecordEntity;
     },
   });
 }
 
 export function useUpdateDatabasePropertyValue() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   const store = useDatabaseController();
   return useMutation({
     networkMode: "always",
     mutationFn: async (input: UpdatePropertyValueInput) => {
-      const scope = await resolveDataSourceCommandScope(
+      const scope = resolveDataSourceCommandScope(
         queryClient,
-        apiFetch,
+        store.sessionId,
         input.databaseId,
         input.hostDatabaseId,
       );
@@ -216,14 +215,14 @@ export function useRestoreDatabaseRow() {
 }
 
 function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   const store = useDatabaseController();
   return useMutation({
     networkMode: "always",
     mutationFn: async (input: { databaseId: string; hostDatabaseId?: string; rowId: string }) => {
-      const scope = await resolveDataSourceCommandScope(
+      const scope = resolveDataSourceCommandScope(
         queryClient,
-        apiFetch,
+        store.sessionId,
         input.databaseId,
         input.hostDatabaseId,
       );

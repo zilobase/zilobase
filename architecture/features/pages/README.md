@@ -47,6 +47,10 @@ Page width and embedded-item placement are viewer preferences; obsolete page-met
 
 ## Page loading and presentation
 
+Page-property presence targets carry both host and source IDs. Property edits submit
+to the database controller using that explicit scope; membership properties are
+matched by source, not merely by host, so linked sources cannot be confused.
+
 The page route selects authenticated, guest or public presentation from the existing route context. [Authenticated composition](../../../apps/web/src/features/pages/screens/authenticated-page.tsx) retains workspace gates for both main and side panes. [Shared-page composition](../../../apps/web/src/features/pages/publication/shared-page.tsx) owns its resettable pane provider and guest/public chrome, preserving the different read-only flags and delayed side-pane mounting. Breadcrumb labels use the canonical icon/label formatter.
 
 [PageEditorPane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) keeps page queries, commands, metadata drafts and editor integration local to the pane. [Editability rules](../../../apps/web/src/features/pages/pane/page-editability.ts) distinguish body edits from comment permissions: locks stop body edits, while read-only views and deleted pages stop both. Editor-level collaboration guards remain separate.

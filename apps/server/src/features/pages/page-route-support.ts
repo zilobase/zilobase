@@ -43,6 +43,7 @@ export const getPagePropertyPayload = async (
   const memberships = await db
     .selectDistinct({
       databaseId: dataSource.parentDatabaseId,
+      dataSourceId: dataSource.id,
       rowId: databaseRow.id,
       version: database.version,
     })
@@ -60,6 +61,7 @@ export const getPagePropertyPayload = async (
     db
       .select({
         databaseId: dataSource.parentDatabaseId,
+        dataSourceId: dataSource.id,
         property: pageProperty,
       })
       .from(databaseRow)
@@ -94,12 +96,13 @@ export const getPagePropertyPayload = async (
   const databaseVersions = Object.fromEntries(
     accessibleMemberships.map(({ databaseId, version }) => [databaseId, version]),
   );
-  const presenceTargets = accessibleMemberships.map(({ databaseId, rowId }) => ({
+  const presenceTargets = accessibleMemberships.map(({ databaseId, dataSourceId, rowId }) => ({
     databaseId,
+    dataSourceId,
     propertyIds: [
       ...new Set(
         databaseProperties
-          .filter((item) => item.databaseId === databaseId)
+          .filter((item) => item.dataSourceId === dataSourceId)
           .map(({ property }) => property.id),
       ),
     ],

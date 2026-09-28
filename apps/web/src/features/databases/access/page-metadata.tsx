@@ -19,11 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { usePageEditorComments } from "@/features/comments/index";
 import { useSession } from "@zilobase/features/auth/react";
 import { type DatabasePresenceCollaborator } from "@zilobase/features/databases";
-import {
-  resolveCellCommandScope,
-  useChangeDatabaseRow,
-  useDatabaseRealtime,
-} from "@zilobase/features/databases/react";
+import { useChangeDatabaseRow, useDatabaseRealtime } from "@zilobase/features/databases/react";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { usePagePersonAccessTargets, usePageProperties } from "@zilobase/features/pages/react";
 import { usePageCommentsSnapshot } from "@/features/comments/index";
@@ -259,7 +255,7 @@ export function PageMetadata({
     enableComments && layoutConfig?.discussionsVisible !== false && pageId && session?.user,
   );
   const commentsSnapshot = usePageCommentsSnapshot(commentsEnabled ? pageId : null);
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const { queryClient } = useZilobaseFeatures();
   const changeRow = useChangeDatabaseRow();
   const cover = coverProp ?? localCover;
   const description = descriptionProp ?? localDescription;
@@ -364,7 +360,7 @@ export function PageMetadata({
       presenceTargets[0];
     const hostDatabaseId = databaseId ?? target?.databaseId;
     const rowId = target?.rowId;
-    if (!hostDatabaseId || !rowId) {
+    if (!hostDatabaseId || !rowId || !target?.dataSourceId) {
       return;
     }
 
@@ -375,10 +371,9 @@ export function PageMetadata({
 
     void (async () => {
       try {
-        const scope = await resolveCellCommandScope(queryClient, apiFetch, hostDatabaseId, rowId);
         await changeRow.mutateAsync({
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
+          databaseId: hostDatabaseId,
+          dataSourceId: target.dataSourceId,
           rowId,
           valuesByPropertyId: { [propertyId]: serializePropertyValue(propertyType, value) },
         });
