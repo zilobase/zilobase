@@ -47,7 +47,10 @@ PostgreSQL, Valkey and object storage. It holds real command requests to verify 
 Kanban drag and Table property edits project across view switches before transport,
 then checks persistence after acknowledgement and reload. It also rejects React
 render-phase parent updates during view switching. This covers local command
-reconciliation, not multi-client realtime delivery or deployed upgrade behavior.
+reconciliation and delivery to a second independent browser over a real realtime
+socket, without manual refresh, including catch-up after an offline interval.
+It rejects background lane errors as well.
+Deployed upgrade behavior is verified separately by `test:selfhost:upgrade`.
 Prerequisites and cleanup are described in the [database runbook](../../docs/databases/operations.md#deployment-and-verification).
 
 Pull requests and main pushes run `verify:core`, lint, and the complete `verify:architecture` suite in one CI job with PostgreSQL. Superseded CI runs are cancelled. The separate backend, web/package, and community-boundary workflows have been consolidated into this job to share dependency installation and keep one core check.

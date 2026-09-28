@@ -42,7 +42,6 @@ describe("feature route composition", () => {
 
   it("preserves every database endpoint and its registration order", () => {
     expect(inventory(databaseRoutes)).toEqual([
-      "POST /",
       "GET /:id/bootstrap",
       "GET /:id/export",
       "GET /:id/data-sources/:dataSourceId/records",
@@ -51,6 +50,7 @@ describe("feature route composition", () => {
       "GET /:id/published",
       "POST /:id/commands",
       "POST /:id/data-sources/:dataSourceId/commands",
+      "POST /commands",
       "GET /:databaseId/automation-capability",
       "GET /:databaseId/automations",
       "POST /:databaseId/automations/validate",
@@ -70,13 +70,6 @@ describe("feature route composition", () => {
       "GET /:databaseId/automation-slack/connections/:connectionId/channels",
       "DELETE /:databaseId/automation-slack/connections/:connectionId",
       "GET /:id/access",
-      "PUT /:id/access",
-      "DELETE /:id/access/public",
-      "DELETE /:id/access/:ruleId",
-      "PUT /:id/favorite",
-      "DELETE /:id",
-      "POST /:id/restore",
-      "DELETE /:id/favorite",
     ]);
   });
 });

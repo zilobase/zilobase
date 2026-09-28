@@ -12,6 +12,12 @@ The Node coordinator catches maintenance and lane-timer recalculation failures d
 
 Feature implementations own leases, receipts, authorization and durable status. Dispatch success is not equivalent to feature completion. Retries preserve task identity and availableAt semantics; terminal outcomes differ from thrown execution errors.
 
+Node lane drains, maintenance and timer queries use independent database scopes.
+A timer or PostgreSQL notification may inherit the async context of a request;
+reusing that request's database scope would invalidate background work when the
+request completes. The Node adapter API exposes the independent-scope runner for
+this boundary. Notification writes themselves remain in their caller's scope.
+
 For `realtime.database`, the committed journal event is canonical and the
 outbox contains only delivery state. HTTP acknowledgement does not wait for
 delivery. The feature handler drains the reference and returns retry while it

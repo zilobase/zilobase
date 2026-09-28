@@ -213,6 +213,30 @@ try {
   await page.getByText("Board", { exact: true }).filter({ visible: true }).first().click();
   await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
   console.info("Real Kanban view loaded.");
+  const peerContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await peerContext.addCookies(
+    [...jar.cookies].map(([name, value]) => ({ name, value, url: webOrigin })),
+  );
+  const peer = await peerContext.newPage();
+  const peerFrames = [];
+  peer.on("pageerror", (error) => errors.push(error.message));
+  peer.on("websocket", (socket) => {
+    if (!socket.url().includes("database-collaboration")) return;
+    socket.on("framereceived", ({ payload }) => {
+      try {
+        peerFrames.push(JSON.parse(String(payload)));
+      } catch {}
+    });
+  });
+  await peer.goto(`${webOrigin}/d/${host}`);
+  const peerAlpha = peer
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Alpha browser row" })
+    .getByRole("checkbox", { name: "Done value" });
+  await expect(peerAlpha).not.toBeChecked();
+  await expect
+    .poll(() => peerFrames.some((frame) => frame.type === "realtime.ready"), { timeout: 20000 })
+    .toBe(true);
   let release;
   let held = new Promise((resolve) => {
     release = resolve;
@@ -235,6 +259,7 @@ try {
   await alphaCard.dragTo(checkedColumn, { targetPosition: { x: 120, y: 60 } });
   await expect.poll(() => intercepted).toBe(true);
   await expect(checkedColumn.getByText("Alpha browser row", { exact: true })).toBeVisible();
+  await expect(peerAlpha).not.toBeChecked();
   await page.getByRole("tab", { name: "Table", exact: true }).click();
   await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
   await expect(
@@ -251,6 +276,14 @@ try {
   );
   release();
   assert.ok((await saved).ok());
+  await expect(peerAlpha).toBeChecked({ timeout: 20000 });
+  assert.ok(
+    peerFrames.some((frame) => frame.type === "database.mutation"),
+    "Peer must receive a database mutation frame",
+  );
+  console.info(
+    "A second independent browser received the committed drag over realtime without reload.",
+  );
   await page.reload();
   await page.getByRole("tab", { name: "Board", exact: true }).click();
   await expect(checkedColumn.getByText("Alpha browser row", { exact: true })).toBeVisible();
@@ -276,15 +309,54 @@ try {
   );
   release();
   assert.ok((await propertySaved).ok());
+  await expect(
+    peer
+      .locator("tr[data-database-row-id]")
+      .filter({ hasText: "Beta browser row" })
+      .getByRole("checkbox", { name: "Done value" }),
+  ).toBeChecked({ timeout: 20000 });
   await page.reload();
   await page.getByRole("tab", { name: "Board", exact: true }).click();
   await expect(checkedColumn.getByText("Beta browser row", { exact: true })).toBeVisible();
   console.info(
     "Table property edit projected into Kanban before transport and persisted after reload.",
   );
+  const readyFrames = peerFrames.filter((frame) => frame.type === "realtime.ready").length;
+  await peerContext.setOffline(true);
+  await expect.poll(() => peer.evaluate(() => navigator.onLine)).toBe(false);
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  const gammaSaved = page.waitForResponse(
+    (response) => response.url().endsWith(sourcePath) && response.request().method() === "POST",
+  );
+  await page
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Gamma browser row" })
+    .getByRole("checkbox", { name: "Done value" })
+    .click();
+  assert.ok((await gammaSaved).ok());
+  await peerContext.setOffline(false);
+  await expect
+    .poll(() => peerFrames.filter((frame) => frame.type === "realtime.ready").length, {
+      timeout: 20000,
+    })
+    .toBeGreaterThan(readyFrames);
+  await expect(
+    peer
+      .locator("tr[data-database-row-id]")
+      .filter({ hasText: "Gamma browser row" })
+      .getByRole("checkbox", { name: "Done value" }),
+  ).toBeChecked({ timeout: 20000 });
+  console.info(
+    "Disconnected peer caught up after reconnect without reloading or replaying writes.",
+  );
+  await page.getByRole("tab", { name: "Board", exact: true }).click();
   await mkdir(`${root}.dev/database-app-results`, { recursive: true });
   await page.screenshot({ path: `${root}.dev/database-app-results/kanban.png`, fullPage: true });
   assert.deepEqual(errors, []);
+  assert.ok(
+    !serverLog.includes('"event":"background.node_lane_operation"'),
+    "Background lane operations must not fail",
+  );
   console.info("Passed signed-in application browser verification.");
 } catch (error) {
   if (page) {

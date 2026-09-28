@@ -8,6 +8,11 @@ The [Electron package configuration](../../apps/desktop/electron-builder.yml) su
 
 ## Ownership
 
+The self-host upgrade probe seeds the previous-release image, replaces it with the
+current image, and verifies session, page and record persistence. Current record
+reads compute the required query hash from the upgraded view using the canonical
+shared evaluator; the script runs with the repository's TypeScript loader.
+
 - [Entrypoint/configuration](../../scripts/release/release.mjs)
 - [Implementation](../../scripts/release/set-version.mjs)
 - [Contributor guide or operational runbook](../../docs/self-hosting/release-checklist.md)

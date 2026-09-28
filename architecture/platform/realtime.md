@@ -32,9 +32,10 @@ bounded reconnect and structured-error policy and close with the extension.
 Other Node fanout, notification, and rate-limit features reuse the single
 runtime bus.
 
-Database clients deduplicate HTTP acknowledgements and socket echoes by event
-identity/version, fill gaps from the mutation journal, and perform a scoped
-reset when retained history cannot provide a contiguous sequence.
+Database clients compare socket versions with their cached snapshots and refetch
+the affected host. They do not merge socket changes or call the mutation-journal
+feed. Pending controller projections survive stale reads until each consumer has
+confirmed the committed revision.
 
 ## Verification
 

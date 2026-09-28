@@ -17,7 +17,9 @@ describe("database automation mutation-path audit", () => {
 
     expect(cell).toMatch(/automationFacts:[\s\S]*before: previous\?\.value/);
     expect(rows).toMatch(/rowAdded: true/);
-    expect(commands).toMatch(/if \(command\.group\)[\s\S]*writeValues/);
+    expect(commands).toMatch(
+      /const values = command\.valuesByPropertyId \?\? \{\};[\s\S]*await writeValues/,
+    );
     expect(template).toMatch(/origin: "import" as const/);
     expect(pages).toMatch(/propertyId: "name"/);
     expect(pages).toMatch(/c\.get\("authMethod"\) === "apiKey"/);

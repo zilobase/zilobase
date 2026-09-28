@@ -178,7 +178,9 @@ The runner bootstraps a test-only account, holds command transport while checkin
 cross-view previews, and reloads to verify persistence. It loads no development
 environment files and removes its uniquely named test containers and their data
 on success or failure. Screenshots go to ignored `.dev/database-app-results/`.
-This is not a multi-client realtime-delivery test.
+A second independent browser verifies the committed drag arrives through a real
+realtime socket without reload and catches up after reconnect. The test also
+rejects background lane failures.
 
 The full matrix additionally needs explicit previous/current self-host images
 and deployable Cloudflare production configuration:

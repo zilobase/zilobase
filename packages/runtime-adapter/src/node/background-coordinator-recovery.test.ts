@@ -4,15 +4,30 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   client: vi.fn(),
   database: vi.fn(),
+  independentDatabase: vi.fn(),
   maintenance: vi.fn(),
   realtime: vi.fn(),
 }));
 vi.mock("@zilobase/server/node-adapter-api", () => ({
   AI_JOB_HANDLERS: {},
+  advancePendingCalendars: vi.fn(),
   boundedErrorCode: () => "Error",
   createDbClientForUrl: mocks.client,
+  aiJob: {},
+  aiAgentRun: {},
+  calendarProviderCalendar: {},
+  databaseAutomationRun: {},
+  databaseAutomationEventWindow: {},
+  databaseRealtimeOutbox: {},
+  inProductNotificationOutbox: {},
+  navigationRealtimeOutbox: {},
   db: {
-    select: () => ({ from: () => Object.assign(Promise.resolve([]), { where: async () => [] }) }),
+    select: () => ({
+      from: () =>
+        Object.assign(Promise.resolve([]), {
+          where: () => Object.assign(Promise.resolve([]), { limit: async () => [] }),
+        }),
+    }),
   },
   drainAgentRuns: vi.fn(),
   drainDatabaseAutomationEventWindows: vi.fn(),
@@ -23,6 +38,7 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   runAiJobBatch: vi.fn(),
   runDueBackgroundMaintenance: mocks.maintenance,
   runWithDbEnv: mocks.database,
+  runWithIndependentDbEnv: mocks.independentDatabase,
 }));
 vi.mock("../capabilities", () => ({
   runWithRuntimePorts: (_ports: unknown, operation: () => unknown) => operation(),
@@ -45,6 +61,7 @@ beforeEach(() => {
   mocks.maintenance.mockReset();
   mocks.realtime.mockReset().mockResolvedValue(undefined);
   mocks.database.mockReset().mockImplementation((_env, callback) => callback());
+  mocks.independentDatabase.mockReset().mockImplementation((_env, callback) => callback());
   const client = Object.assign(new EventEmitter(), {
     connect: vi.fn().mockResolvedValue(undefined),
     query: vi.fn().mockResolvedValue(undefined),
@@ -57,6 +74,24 @@ afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+it("owns database scopes for background drains, maintenance and timer reads", async () => {
+  mocks.database.mockImplementation(() => {
+    throw new Error("Inherited request scope has closed");
+  });
+  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
+  try {
+    await coordinator.start();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(mocks.realtime).toHaveBeenCalledTimes(2);
+    expect(mocks.maintenance).toHaveBeenCalledTimes(2);
+    expect(mocks.independentDatabase).toHaveBeenCalled();
+    expect(mocks.database).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalled();
+  } finally {
+    await coordinator.stop();
+  }
 });
 
 it("survives a maintenance connection timeout at startup and retries", async () => {

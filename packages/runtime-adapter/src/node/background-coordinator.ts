@@ -11,7 +11,12 @@ import { drainDatabaseRealtimeOutbox } from "@zilobase/server/node-adapter-api";
 import { drainInProductNotificationOutbox } from "@zilobase/server/node-adapter-api";
 import { drainNavigationRealtimeOutbox } from "@zilobase/server/node-adapter-api";
 import { type RuntimeEnv } from "@zilobase/server/node-adapter-api";
-import { db, createDbClientForUrl, runWithDbEnv } from "@zilobase/server/node-adapter-api";
+import {
+  db,
+  createDbClientForUrl,
+  runWithDbEnv,
+  runWithIndependentDbEnv,
+} from "@zilobase/server/node-adapter-api";
 import {
   aiJob,
   aiAgentRun,
@@ -78,7 +83,7 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
     if (stopping) return;
     return runWithRuntimePorts(ports, async () => {
       try {
-        await runWithDbEnv(env, async () => {
+        await runWithIndependentDbEnv(env, async () => {
           const concurrency = laneConcurrency(env, lane);
           if (lane === "fast") {
             await settleLaneOperations(lane, [
@@ -153,7 +158,7 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
     return runWithRuntimePorts(ports, async () => {
       try {
         await Promise.allSettled(LANES.map((lane) => drainLane(lane)));
-        await runWithDbEnv(env, () => runDueBackgroundMaintenance({ env, workerId }));
+        await runWithIndependentDbEnv(env, () => runDueBackgroundMaintenance({ env, workerId }));
         await recalculateLaneTimers();
       } catch (error) {
         // A database outage must not terminate startup or a timer callback.
@@ -170,7 +175,7 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
   };
 
   const recalculateLaneTimers = () =>
-    runWithDbEnv(env, async () => {
+    runWithIndependentDbEnv(env, async () => {
       await Promise.all(
         LANES.map(async (lane) => {
           const next = await nextLaneDueAt(lane);

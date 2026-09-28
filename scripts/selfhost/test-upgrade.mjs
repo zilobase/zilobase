@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { CookieJar } from "./cookie-jar.mjs";
+import { databaseViewQueryHash } from "@zilobase/features/databases/query-hash";
 
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
@@ -110,7 +111,7 @@ try {
   assert.equal(databaseBootstrap.data.dataSources[0].id, dataSourceId);
   const recordWindow = await requestJson(
     `/databases/${databaseId}/data-sources/${dataSourceId}/records` +
-      `?viewId=${viewId}&offset=0&limit=50`,
+      `?viewId=${viewId}&offset=0&limit=50&expectedQueryHash=${databaseViewQueryHash(databaseBootstrap.data.views.find((view) => view.id === viewId).config)}`,
     { jar, method: "GET" },
   );
   assert.equal(recordWindow.data.totalCount, 1);
