@@ -62,6 +62,8 @@ target
 
 # Database browser acceptance artifacts
 .dev/database-e2e-results/
+.dev/database-app-results/
+.dev/database-app-cache/
 
 # Generated renderer snapshot for calendar benchmark comparisons
 .dev/calendar-baseline/

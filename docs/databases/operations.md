@@ -166,6 +166,20 @@ to or reset the development database. The inner verification script rejects miss
 URLs, non-loopback hosts, other database names and nonempty databases. This does not
 replace a deployed upgrade test or full-browser verification.
 
+For a signed-in full-application drag/property walkthrough, also install Chrome and
+cache `valkey/valkey:8-alpine` and `rustfs/rustfs:1.0.0` locally. Keep loopback ports
+1495–1497 free, then run:
+
+```sh
+npm run test:databases:app-browser
+```
+
+The runner bootstraps a test-only account, holds command transport while checking
+cross-view previews, and reloads to verify persistence. It loads no development
+environment files and removes its uniquely named test containers and their data
+on success or failure. Screenshots go to ignored `.dev/database-app-results/`.
+This is not a multi-client realtime-delivery test.
+
 The full matrix additionally needs explicit previous/current self-host images
 and deployable Cloudflare production configuration:
 

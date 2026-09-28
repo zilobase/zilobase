@@ -1,0 +1,316 @@
+import assert from "node:assert/strict";
+import { execFile, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { promisify } from "node:util";
+import { setTimeout } from "node:timers/promises";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { mkdir } from "node:fs/promises";
+import { chromium, expect } from "@playwright/test";
+import { CookieJar, createApiClient } from "../selfhost/api-conformance.mjs";
+
+const root = fileURLToPath(new URL("../../", import.meta.url));
+const exec = promisify(execFile);
+const runId = randomUUID();
+const containers = [];
+const apiOrigin = "http://127.0.0.1:1497";
+const webOrigin = "http://127.0.0.1:1496";
+let server, vite, browser, page;
+let serverLog = "";
+
+async function container(image, port, args = [], command = []) {
+  const name = `zilobase-browser-${containers.length}-${runId}`;
+  await exec("docker", [
+    "run",
+    "--pull=never",
+    "--rm",
+    "--name",
+    name,
+    "-p",
+    `127.0.0.1::${port}`,
+    ...args,
+    "-d",
+    image,
+    ...command,
+  ]);
+  containers.push(name);
+  const { stdout } = await exec("docker", ["port", name, `${port}/tcp`]);
+  assert.match(stdout.trim(), /^127\.0\.0\.1:\d+$/);
+  return stdout.trim();
+}
+async function waitFor(check, label) {
+  for (let i = 0; i < 150; i++) {
+    try {
+      if (await check()) return;
+    } catch {}
+    await setTimeout(200);
+  }
+  throw new Error(`Timed out waiting for ${label}`);
+}
+
+try {
+  const postgres = await container("postgres:17.10-alpine", 5432, [
+    "--tmpfs",
+    "/var/lib/postgresql/data",
+    "-e",
+    "POSTGRES_PASSWORD=browser-test-only",
+    "-e",
+    "POSTGRES_DB=zilobase_browser_verify",
+  ]);
+  const redis = await container("valkey/valkey:8-alpine", 6379);
+  const storage = await container(
+    "rustfs/rustfs:1.0.0",
+    9000,
+    ["-e", "RUSTFS_ACCESS_KEY=browser-test", "-e", "RUSTFS_SECRET_KEY=browser-test-only-secret"],
+    ["/data"],
+  );
+  const storageRequire = createRequire(`${root}packages/runtime-adapter/package.json`);
+  const { S3Client, CreateBucketCommand } = await import(
+    pathToFileURL(storageRequire.resolve("@aws-sdk/client-s3"))
+  );
+  const s3 = new S3Client({
+    endpoint: `http://${storage}`,
+    forcePathStyle: true,
+    region: "auto",
+    credentials: { accessKeyId: "browser-test", secretAccessKey: "browser-test-only-secret" },
+  });
+  await waitFor(async () => {
+    await s3.send(new CreateBucketCommand({ Bucket: "browser-verification" }));
+    return true;
+  }, "isolated object storage");
+  s3.destroy();
+  await waitFor(async () => {
+    await exec("docker", [
+      "exec",
+      containers[0],
+      "pg_isready",
+      "-h",
+      "127.0.0.1",
+      "-U",
+      "postgres",
+    ]);
+    return true;
+  }, "isolated PostgreSQL");
+  const token = randomUUID() + randomUUID();
+  const env = {
+    PATH: process.env.PATH,
+    NODE_ENV: "development",
+    HOST: "127.0.0.1",
+    PORT: "1497",
+    BACKGROUND_HEALTH_PORT: "1495",
+    DATABASE_URL: `postgres://postgres:browser-test-only@${postgres}/zilobase_browser_verify`,
+    REALTIME_REDIS_URL: `redis://${redis}`,
+    BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
+    BETTER_AUTH_URL: webOrigin,
+    CLIENT_URL: webOrigin,
+    ZILOBASE_BOOTSTRAP_TOKEN: token,
+    ZILOBASE_AUTO_MIGRATE: "true",
+    ZILOBASE_ENV_FILE: "/dev/null",
+    ZILOBASE_PROCESS_ROLE: "all",
+    S3_ENDPOINT: `http://${storage}`,
+    S3_PUBLIC_ENDPOINT: `http://${storage}`,
+    S3_ACCESS_KEY_ID: "browser-test",
+    S3_SECRET_ACCESS_KEY: "browser-test-only-secret",
+    S3_BUCKET_NAME: "browser-verification",
+  };
+  server = spawn(`${root}node_modules/.bin/tsx`, ["apps/server/src/entrypoints/serverful.ts"], {
+    cwd: root,
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  for (const stream of [server.stdout, server.stderr])
+    stream.on("data", (chunk) => {
+      serverLog = (serverLog + chunk).slice(-16000);
+    });
+  await waitFor(async () => (await fetch(`${apiOrigin}/ready`)).ok, "application server");
+  process.env.VITE_BACKEND_PROXY_TARGET = apiOrigin;
+  process.env.VITE_API_URL = apiOrigin;
+  const require = createRequire(`${root}apps/web/package.json`);
+  const { createServer } = await import(pathToFileURL(require.resolve("vite")));
+  vite = await createServer({
+    root: `${root}apps/web`,
+    configFile: `${root}apps/web/vite.config.ts`,
+    envDir: false,
+    cacheDir: `${root}.dev/database-app-cache`,
+    server: { host: "127.0.0.1", port: 1496, strictPort: true, open: false },
+  });
+  await vite.listen();
+  const api = createApiClient({ internalOrigin: apiOrigin, publicOrigin: webOrigin });
+  const email = "controller-browser@example.test",
+    password = randomUUID() + "-Aa1!";
+  const setup = await api.bootstrapInstance({
+    bootstrapToken: token,
+    email,
+    password,
+    name: "Controller Browser",
+    workspaceName: "Controller verification",
+  });
+  const jar = new CookieJar();
+  await api.signIn({ email, password, jar });
+  const command = async (path, command) => {
+    const response = await api.requestJson(path, {
+      jar,
+      method: "POST",
+      body: { protocolVersion: 2, commandId: randomUUID(), command },
+    });
+    assert.ok(response.response.ok, JSON.stringify(response.data));
+    return response.data.result;
+  };
+  const created = await command("/databases/commands", {
+    type: "database.create",
+    workspaceId: setup.data.workspaceId,
+    name: "Browser tasks",
+    standalone: true,
+  });
+  const host = created.database.id,
+    source = created.activeDataSource.id;
+  const sourcePath = `/databases/${host}/data-sources/${source}/commands`;
+  await command(sourcePath, {
+    type: "dataSource.update",
+    patch: { configuration: [{ operation: "set", path: ["setupDismissed"], value: true }] },
+  });
+  const status = await command(sourcePath, {
+    type: "property.create",
+    name: "Done",
+    propertyType: "checkbox",
+    config: {},
+    afterPropertyId: null,
+    beforePropertyId: null,
+  });
+  for (const title of ["Alpha browser row", "Beta browser row", "Gamma browser row"])
+    await command(sourcePath, {
+      type: "row.place",
+      title,
+      afterRowId: null,
+      beforeRowId: null,
+      parentRowId: null,
+    });
+  await command(`/databases/${host}/commands`, {
+    type: "view.create",
+    name: "Board",
+    viewType: "kanban",
+    dataSourceId: source,
+    config: { groupPropertyId: status.property.id },
+    afterViewId: null,
+    beforeViewId: null,
+  });
+  browser = await chromium.launch({ channel: "chrome", headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await context.addCookies(
+    [...jar.cookies].map(([name, value]) => ({ name, value, url: webOrigin })),
+  );
+  page = await context.newPage();
+  page.setDefaultTimeout(20000);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("Cannot update a component"))
+      errors.push(message.text());
+  });
+  await page.goto(`${webOrigin}/d/${host}`);
+  await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
+  console.info("Signed-in application loaded real PostgreSQL records.");
+  await page.getByText("Board", { exact: true }).filter({ visible: true }).first().click();
+  await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
+  console.info("Real Kanban view loaded.");
+  let release;
+  let held = new Promise((resolve) => {
+    release = resolve;
+  });
+  let intercepted = false;
+  await page.route(`**${sourcePath}`, async (route) => {
+    if (
+      route.request().method() === "POST" &&
+      route.request().postDataJSON().command.type === "row.change"
+    ) {
+      intercepted = true;
+      await held;
+    }
+    await route.continue();
+  });
+  const checkedColumn = page
+    .locator(".database-kanban-column")
+    .filter({ has: page.getByText("Checked", { exact: true }) });
+  const alphaCard = page.locator(".database-kanban-card").filter({ hasText: "Alpha browser row" });
+  await alphaCard.dragTo(checkedColumn, { targetPosition: { x: 120, y: 60 } });
+  await expect.poll(() => intercepted).toBe(true);
+  await expect(checkedColumn.getByText("Alpha browser row", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
+  await expect(
+    page
+      .locator("tr[data-database-row-id]")
+      .filter({ hasText: "Alpha browser row" })
+      .getByRole("checkbox")
+      .last(),
+  ).toBeChecked();
+  await page.getByRole("tab", { name: "Board", exact: true }).click();
+  await expect(checkedColumn.getByText("Alpha browser row", { exact: true })).toBeVisible();
+  const saved = page.waitForResponse(
+    (response) => response.url().endsWith(sourcePath) && response.request().method() === "POST",
+  );
+  release();
+  assert.ok((await saved).ok());
+  await page.reload();
+  await page.getByRole("tab", { name: "Board", exact: true }).click();
+  await expect(checkedColumn.getByText("Alpha browser row", { exact: true })).toBeVisible();
+  console.info(
+    "Native drag projected before transport, survived view switches, and persisted after reload.",
+  );
+  held = new Promise((resolve) => {
+    release = resolve;
+  });
+  intercepted = false;
+  await page.getByRole("tab", { name: "Table", exact: true }).click();
+  const betaCheckbox = page
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Beta browser row" })
+    .getByRole("checkbox", { name: "Done value" });
+  await betaCheckbox.click();
+  await expect.poll(() => intercepted).toBe(true);
+  await expect(betaCheckbox).toBeChecked();
+  await page.getByRole("tab", { name: "Board", exact: true }).click();
+  await expect(checkedColumn.getByText("Beta browser row", { exact: true })).toBeVisible();
+  const propertySaved = page.waitForResponse(
+    (response) => response.url().endsWith(sourcePath) && response.request().method() === "POST",
+  );
+  release();
+  assert.ok((await propertySaved).ok());
+  await page.reload();
+  await page.getByRole("tab", { name: "Board", exact: true }).click();
+  await expect(checkedColumn.getByText("Beta browser row", { exact: true })).toBeVisible();
+  console.info(
+    "Table property edit projected into Kanban before transport and persisted after reload.",
+  );
+  await mkdir(`${root}.dev/database-app-results`, { recursive: true });
+  await page.screenshot({ path: `${root}.dev/database-app-results/kanban.png`, fullPage: true });
+  assert.deepEqual(errors, []);
+  console.info("Passed signed-in application browser verification.");
+} catch (error) {
+  if (page) {
+    console.error(
+      (
+        await page
+          .locator("body")
+          .innerText()
+          .catch(() => "")
+      ).slice(0, 4000),
+    );
+    await mkdir(`${root}.dev/database-app-results`, { recursive: true });
+    await page
+      .screenshot({ path: `${root}.dev/database-app-results/failure.png`, fullPage: true })
+      .catch(() => {});
+  }
+  console.error(serverLog.replaceAll(/(postgres|redis):\/\/\S+/g, "$1://[test service]"));
+  throw error;
+} finally {
+  await browser?.close();
+  await vite?.close();
+  if (server && server.exitCode === null) {
+    server.kill("SIGTERM");
+    await Promise.race([new Promise((resolve) => server.once("exit", resolve)), setTimeout(5000)]);
+    if (server.exitCode === null) server.kill("SIGKILL");
+  }
+  for (const name of containers.reverse()) await exec("docker", ["stop", "--time", "1", name]);
+  console.info("Removed isolated browser-test services; development data was untouched.");
+}

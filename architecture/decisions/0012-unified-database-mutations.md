@@ -1,6 +1,6 @@
 # Unified database mutation ownership
 
-Status: accepted; implementation cutover in progress. Extends ADR 0011 to all database writes.
+Status: accepted and implemented. Extends ADR 0011 to all database writes.
 
 ## Decision
 

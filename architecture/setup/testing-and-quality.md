@@ -41,6 +41,15 @@ fixtures use real controller/drag/query code with controlled transports; this is
 a full signed-in application walkthrough or a substitute for PostgreSQL verification.
 It loads no environment files and makes no writes to development databases.
 
+The [signed-in application walkthrough](../../scripts/databases/test-app-browser.mjs)
+(`npm run test:databases:app-browser`) starts the actual application against disposable
+PostgreSQL, Valkey and object storage. It holds real command requests to verify native
+Kanban drag and Table property edits project across view switches before transport,
+then checks persistence after acknowledgement and reload. It also rejects React
+render-phase parent updates during view switching. This covers local command
+reconciliation, not multi-client realtime delivery or deployed upgrade behavior.
+Prerequisites and cleanup are described in the [database runbook](../../docs/databases/operations.md#deployment-and-verification).
+
 Pull requests and main pushes run `verify:core`, lint, and the complete `verify:architecture` suite in one CI job with PostgreSQL. Superseded CI runs are cancelled. The separate backend, web/package, and community-boundary workflows have been consolidated into this job to share dependency installation and keep one core check.
 
 The [self-host suite](../../.github/workflows/selfhost.yml) (Compose, packaged desktop, and upgrade) and [Community Helm suite](../../.github/workflows/community-helm.yml) run only through manual dispatch before releases or deployment changes. They no longer run on every PR, main push, or nightly; operators must trigger them for the candidate ref and review their results.
