@@ -32,6 +32,7 @@ function cellInput(value: unknown, overrides: Record<string, unknown> = {}) {
         type: "database.mutation",
         version: 1,
       },
+      sourceVersions: {},
       result: {},
     };
   }) as ApiFetcher;

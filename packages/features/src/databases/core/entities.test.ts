@@ -9,7 +9,7 @@ import {
   databaseMutationFeedResponseSchema,
   databaseProtocolErrorSchema,
   databaseRecordWindowResponseSchema,
-  moveRowCommandSchema,
+  changeRowCommandSchema,
 } from "./entities";
 
 const now = "2026-09-14T10:00:00.000Z";
@@ -108,26 +108,23 @@ test("record windows require complete atomic records and snapshot versions", () 
 
 test("row movement uses anchors and rejects legacy row id arrays", () => {
   assert.deepEqual(
-    moveRowCommandSchema.parse({
-      afterRowId: "row-3",
-      beforeRowId: "row-2",
+    changeRowCommandSchema.parse({
+      placement: { afterRowId: "row-3", beforeRowId: "row-2" },
       rowId: "row-1",
-      type: "row.move",
+      type: "row.change",
     }),
     {
-      afterRowId: "row-3",
-      beforeRowId: "row-2",
+      placement: { afterRowId: "row-3", beforeRowId: "row-2" },
       rowId: "row-1",
-      type: "row.move",
+      type: "row.change",
     },
   );
   assert.equal(
-    moveRowCommandSchema.safeParse({
-      afterRowId: null,
-      beforeRowId: null,
+    changeRowCommandSchema.safeParse({
+      placement: { afterRowId: null, beforeRowId: null },
       rowId: "row-1",
       rowIds: ["row-1"],
-      type: "row.move",
+      type: "row.change",
     }).success,
     false,
   );
@@ -170,6 +167,7 @@ test("events and acknowledgements require complete v2 entity changes", () => {
     databaseCommandAckSchema.parse({
       commandId: "command-1",
       event,
+      sourceVersions: {},
       result: { record },
     }).commandId,
     "command-1",

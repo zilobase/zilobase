@@ -370,31 +370,48 @@ const templateApplyCommandSchema = z
   })
   .strict();
 
-export const moveRowCommandSchema = z
+export const changeRowCommandSchema = z
   .object({
-    afterRowId: nullableEntityIdSchema,
-    beforeRowId: nullableEntityIdSchema,
-    group: z
+    placement: z
       .object({
-        propertyId: entityIdSchema,
-        value: z.unknown(),
+        afterRowId: nullableEntityIdSchema,
+        beforeRowId: nullableEntityIdSchema,
       })
       .strict()
       .optional(),
+    hierarchy: z
+      .object({
+        parentRowId: nullableEntityIdSchema,
+        parentPropertyId: entityIdSchema,
+        subItemPropertyId: entityIdSchema,
+      })
+      .strict()
+      .optional(),
+    title: z.string().optional(),
+    valuesByPropertyId: z.record(entityIdSchema, z.unknown()).optional(),
     rowId: entityIdSchema,
-    type: z.literal("row.move"),
+    type: z.literal("row.change"),
   })
   .strict();
-export type MoveRowCommand = z.infer<typeof moveRowCommandSchema>;
+export type ChangeRowCommand = z.infer<typeof changeRowCommandSchema>;
 
-const rowCreateCommandSchema = z
+const rowPlaceCommandSchema = z
   .object({
     afterRowId: nullableEntityIdSchema,
     beforeRowId: nullableEntityIdSchema,
     pageId: entityIdSchema.optional(),
     parentRowId: nullableEntityIdSchema,
-    title: z.string(),
-    type: z.literal("row.create"),
+    title: z.string().optional(),
+    source: z
+      .object({
+        databaseId: entityIdSchema,
+        dataSourceId: entityIdSchema,
+        rowId: entityIdSchema,
+        propertyMode: z.enum(["match", "duplicate"]),
+      })
+      .strict()
+      .optional(),
+    type: z.literal("row.place"),
     valuesByPropertyId: z.record(entityIdSchema, z.unknown()).optional(),
   })
   .strict();
@@ -422,8 +439,8 @@ export const dataSourceCommandSchema = z.discriminatedUnion("type", [
   ...propertyStateCommandSchema.options,
   ...templateWriteCommandSchema.options,
   templateApplyCommandSchema,
-  rowCreateCommandSchema,
-  moveRowCommandSchema,
+  rowPlaceCommandSchema,
+  changeRowCommandSchema,
   ...rowStateCommandSchema.options,
   cellSetCommandSchema,
 ]);
@@ -503,6 +520,7 @@ export const databaseCommandAckSchema = z
     commandId: entityIdSchema,
     event: databaseMutationEventV2Schema,
     result: z.unknown(),
+    sourceVersions: z.record(entityIdSchema, versionSchema),
   })
   .strict();
 type ParsedDatabaseCommandAck = z.infer<typeof databaseCommandAckSchema>;

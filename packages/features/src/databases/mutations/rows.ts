@@ -81,15 +81,34 @@ export function useAddDatabaseRow() {
         ...variables,
         databaseId: scope.dataSourceId,
       });
+      const sourceScope =
+        variables.sourceDataSourceId && variables.sourceRowId
+          ? await resolveDataSourceCommandScope(
+              queryClient,
+              apiFetch,
+              variables.sourceDataSourceId,
+              variables.sourceHostDatabaseId,
+            )
+          : undefined;
       const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
         executeDatabaseCommand(apiFetch, {
           command: {
             afterRowId: anchors.afterRowId,
             beforeRowId: anchors.beforeRowId,
             pageId: variables.pageId,
+            ...(sourceScope && sourceScope.dataSourceId !== scope.dataSourceId
+              ? {
+                  source: {
+                    databaseId: sourceScope.hostDatabaseId,
+                    dataSourceId: sourceScope.dataSourceId,
+                    rowId: variables.sourceRowId!,
+                    propertyMode: variables.sourcePropertyMode ?? "match",
+                  },
+                }
+              : {}),
             parentRowId: variables.parentRowId ?? null,
             title: variables.title ?? "Untitled",
-            type: "row.create",
+            type: "row.place",
             valuesByPropertyId: variables.initialValues
               ? Object.fromEntries(
                   variables.initialValues.map(({ propertyId, value }) => [propertyId, value]),
@@ -101,26 +120,8 @@ export function useAddDatabaseRow() {
         }),
       );
 
-      if (
-        variables.sourceDataSourceId &&
-        variables.sourceDataSourceId !== variables.databaseId &&
-        variables.sourceRowId
-      ) {
-        const sourceScope = await resolveDataSourceCommandScope(
-          queryClient,
-          apiFetch,
-          variables.sourceDataSourceId,
-          variables.sourceHostDatabaseId,
-        );
-        await runSerialized(orderingSerializationKey(sourceScope.dataSourceId), () =>
-          executeDatabaseCommand(apiFetch, {
-            command: { rowId: variables.sourceRowId!, type: "row.archive" },
-            databaseId: sourceScope.hostDatabaseId,
-            dataSourceId: sourceScope.dataSourceId,
-          }),
-        );
+      if (sourceScope)
         invalidateDatabaseQueries(queryClient, sessionId, sourceScope.hostDatabaseId);
-      }
 
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
 
@@ -163,18 +164,14 @@ export function useMoveDatabaseRow() {
         const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
           executeDatabaseCommand(apiFetch, {
             command: {
-              afterRowId: input.afterRowId,
-              beforeRowId: input.beforeRowId,
+              placement: { afterRowId: input.afterRowId, beforeRowId: input.beforeRowId },
               ...(input.groupPropertyId
                 ? {
-                    group: {
-                      propertyId: input.groupPropertyId,
-                      value: input.groupValue,
-                    },
+                    valuesByPropertyId: { [input.groupPropertyId]: input.groupValue },
                   }
                 : {}),
               rowId: input.rowId,
-              type: "row.move",
+              type: "row.change",
             },
             databaseId: scope.hostDatabaseId,
             dataSourceId: scope.dataSourceId,

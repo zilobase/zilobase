@@ -17,5 +17,6 @@ export const databaseMutationEventV2Fixture = {
 export const databaseCommandAckV2Fixture = {
   commandId: databaseMutationEventV2Fixture.commandId,
   event: databaseMutationEventV2Fixture,
+  sourceVersions: {},
   result: { recordId: "fixture-row" },
 } as const satisfies DatabaseCommandAck<{ recordId: string }>;

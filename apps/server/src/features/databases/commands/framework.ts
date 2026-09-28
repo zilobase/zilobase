@@ -24,6 +24,7 @@ import type { RuntimeEnv } from "../../../shared/config/config";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
+import { lockDatabaseRowOrdering } from "../core/position-service";
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
@@ -184,6 +185,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
       }
 
       let primaryHostVersion: number | null = null;
+      const sourceVersions: Record<string, number> = {};
       if (input.scope.dataSourceId) {
         const [linked] = await tx
           .select({ dataSourceId: databaseDataSource.dataSourceId })
@@ -197,12 +199,39 @@ export async function executeDatabaseCommand<TResult = unknown>(
           .limit(1);
         if (!linked) throw new ServiceMutationError("Data source is not linked", 404);
 
-        const [versionedSource] = await tx
-          .update(dataSource)
-          .set({ version: sql`${dataSource.version} + 1` })
-          .where(eq(dataSource.id, input.scope.dataSourceId))
-          .returning({ version: dataSource.version });
-        if (!versionedSource) throw new ServiceMutationError("Data source not found", 404);
+        const transferSource =
+          input.request.command.type === "row.place" ? input.request.command.source : undefined;
+        if (transferSource) {
+          const [sourceLink] = await tx
+            .select()
+            .from(databaseDataSource)
+            .where(
+              and(
+                eq(databaseDataSource.databaseId, transferSource.databaseId),
+                eq(databaseDataSource.dataSourceId, transferSource.dataSourceId),
+              ),
+            )
+            .limit(1);
+          if (!sourceLink) throw new ServiceMutationError("Source is not linked", 404);
+        }
+        // Lock every touched source in the same order before taking version row locks.
+        // A->B and B->A transfers must never hold opposite halves of the lock set.
+        const sourceIds = [
+          ...new Set([
+            input.scope.dataSourceId,
+            ...(transferSource ? [transferSource.dataSourceId] : []),
+          ]),
+        ].sort();
+        for (const sourceId of sourceIds) await lockDatabaseRowOrdering(tx, sourceId);
+        for (const sourceId of sourceIds) {
+          const [versionedSource] = await tx
+            .update(dataSource)
+            .set({ version: sql`${dataSource.version} + 1` })
+            .where(eq(dataSource.id, sourceId))
+            .returning({ version: dataSource.version });
+          if (!versionedSource) throw new ServiceMutationError("Data source not found", 404);
+          sourceVersions[sourceId] = versionedSource.version;
+        }
       } else {
         const [versionedHost] = await tx
           .update(database)
@@ -300,6 +329,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
         commandId: input.request.commandId,
         event: primaryEvent,
         result: dispatched.result,
+        sourceVersions,
       }) as DatabaseCommandAck<TResult>;
 
       await tx.insert(databaseCommandReceipt).values({

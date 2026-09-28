@@ -238,6 +238,7 @@ function hookAck(commandId: string) {
       type: "database.mutation",
       version: 1,
     },
+    sourceVersions: {},
     result: hookRecord,
   };
 }

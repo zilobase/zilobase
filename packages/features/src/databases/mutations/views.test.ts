@@ -38,6 +38,7 @@ function commandApi(inspect: (request: DatabaseCommandRequest, path: string) => 
         type: "database.mutation",
         version,
       },
+      sourceVersions: {},
       result: view,
     } as T;
   };

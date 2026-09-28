@@ -54,6 +54,7 @@ function commandApi(inspect: (request: DatabaseCommandRequest, path: string) => 
         type: "database.mutation",
         version: 1,
       },
+      sourceVersions: {},
       result: record,
     } as T;
   };
@@ -95,7 +96,7 @@ for (const operation of ["move", "value"] as const) {
         await mutateAsync({ databaseId: "data-source-1", ...anchors });
       }
       assert.equal(sent[0]?.protocolVersion, 2);
-      assert.equal(sent[0]?.command.type, operation === "value" ? "cell.set" : "row.move");
+      assert.equal(sent[0]?.command.type, operation === "value" ? "cell.set" : "row.change");
     } finally {
       queryClient.clear();
     }
@@ -124,7 +125,7 @@ test("adding a row sends initial values atomically and returns the created recor
       beforeRowId: null,
       parentRowId: null,
       title: "Added",
-      type: "row.create",
+      type: "row.place",
       valuesByPropertyId: { "property-status": "Done" },
     });
   } finally {
@@ -151,7 +152,7 @@ test("rapid row moves serialize per source in order", async () => {
     useMoveDatabaseRow,
     commandApi((request, path) => {
       paths.push(path);
-      assert.equal(request.command.type, "row.move");
+      assert.equal(request.command.type, "row.change");
     }),
   );
   setTestDatabaseClientState(queryClient, original);
@@ -325,7 +326,7 @@ test("grouped row move patches the group cell before commit", async () => {
     releaseGate = resolve;
   });
   const inner = commandApi((request) => {
-    assert.equal(request.command.type, "row.move");
+    assert.equal(request.command.type, "row.change");
   });
   const { mutation, queryClient } = createMutationTestRuntime(useMoveDatabaseRow, (async <T>(
     path: string,

@@ -106,6 +106,7 @@ function commandApi(sent: Array<{ path: string; request: DatabaseCommandRequest 
         version,
       },
       result,
+      sourceVersions: {},
     } as T;
   };
 }

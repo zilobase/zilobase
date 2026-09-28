@@ -17,6 +17,8 @@ import {
   RowMoveConflictError,
 } from "../commands/framework";
 import { recordDatabaseCounter, recordDatabaseHistogram } from "../observability";
+import { canAccessPageInWorkspace } from "../../access";
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 export const databaseCommandRoutes = new Hono<AppBindings>();
 const databaseWorkspace = pinnedResourceMiddleware(getDatabaseRecord);
@@ -33,7 +35,25 @@ async function commandResponse(c: Context<AppBindings>, dataSourceId: string | n
   if (!databaseId) return c.json({ error: "Database ID is required" }, 400);
   await requireDatabaseEditAccess(databaseId, authenticated.user.id);
   if (dataSourceId) {
-    await requireDataSourceEditAccess(dataSourceId, authenticated.user.id);
+    const target = await requireDataSourceEditAccess(dataSourceId, authenticated.user.id);
+    if (request.command.type === "row.place") {
+      const { source, pageId } = request.command;
+      if (source) {
+        await requireDatabaseEditAccess(source.databaseId, authenticated.user.id);
+        const origin = await requireDataSourceEditAccess(
+          source.dataSourceId,
+          authenticated.user.id,
+        );
+        if (origin.workspaceId !== target.workspaceId)
+          throw new ServiceMutationError("Transfers must stay in the same workspace", 403);
+      }
+      if (
+        pageId &&
+        !(await canAccessPageInWorkspace(pageId, target.workspaceId, authenticated.user.id, "edit"))
+      ) {
+        throw new ServiceMutationError("Forbidden", 403);
+      }
+    }
   } else if (
     request.command.type === "dataSource.link" ||
     request.command.type === "view.setDataSource"

@@ -22,6 +22,7 @@ function ackFor(commandId: string, overrides: Record<string, unknown> = {}) {
       version: 1,
       ...overrides,
     },
+    sourceVersions: {},
     result: {},
   };
 }

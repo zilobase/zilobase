@@ -46,6 +46,7 @@ const replayAck: DatabaseCommandAck = {
     type: "database.mutation",
     version: 4,
   },
+  sourceVersions: {},
   result: { saved: true },
 };
 
@@ -169,6 +170,7 @@ test("execution locks the command ID and atomically stores its event and receipt
         dataSourceId: null,
       },
     ],
+    sourceVersions: {},
     result: { saved: true },
   }));
   const dispatch = dispatchMock as unknown as DatabaseCommandDispatcher;
@@ -218,6 +220,7 @@ test("committed commands enqueue delivery without publishing a socket event inli
         dataSourceId: null,
       },
     ],
+    sourceVersions: {},
     result: null,
   })) as DatabaseCommandDispatcher;
   await executeDatabaseCommand(
@@ -332,6 +335,7 @@ test("a linked source version is incremented before its handler builds entities"
           dataSourceId: context.dataSourceId,
         },
       ],
+      sourceVersions: {},
       result: null,
     };
   });
@@ -368,6 +372,7 @@ test("oversized changesets produce a reset event instead of truncated data", asy
         dataSourceId: null,
       },
     ],
+    sourceVersions: {},
     result: null,
   })) as DatabaseCommandDispatcher;
   const ack = await executeDatabaseCommand(

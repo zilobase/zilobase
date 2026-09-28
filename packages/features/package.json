@@ -117,6 +117,10 @@
       "types": "./src/databases/views/appearance.ts",
       "default": "./src/databases/views/appearance.ts"
     },
+    "./databases/record-interactions": {
+      "types": "./src/databases/interactions/index.ts",
+      "default": "./src/databases/interactions/index.ts"
+    },
     "./databases/order-key": {
       "types": "./src/databases/core/order-key.ts",
       "default": "./src/databases/core/order-key.ts"

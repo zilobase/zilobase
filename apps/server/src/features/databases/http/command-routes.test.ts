@@ -66,6 +66,7 @@ const acknowledgement = {
     type: "database.mutation",
     version: 1,
   },
+  sourceVersions: {},
   result: null,
 };
 
@@ -188,10 +189,9 @@ test("row move conflicts expose the rejected row ID", async () => {
     {
       body: JSON.stringify({
         command: {
-          afterRowId: "row-b",
-          beforeRowId: "row-a",
+          placement: { afterRowId: "row-b", beforeRowId: "row-a" },
           rowId: "row-1",
-          type: "row.move",
+          type: "row.change",
         },
         commandId: "command-move",
         protocolVersion: 2,

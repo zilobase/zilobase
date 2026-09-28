@@ -37,6 +37,7 @@ export type DatabaseCommandInput = {
 };
 
 export type ExecuteDatabaseCommandOptions = {
+  commandId?: string;
   pendingTarget?: DatabaseCommandTarget;
 };
 
@@ -49,7 +50,7 @@ export async function executeDatabaseCommand(
     throw new OfflineError();
   }
 
-  const commandId = crypto.randomUUID();
+  const commandId = opts?.commandId ?? crypto.randomUUID();
   const endpoint =
     `/databases/${encodeURIComponent(input.databaseId)}` +
     (input.dataSourceId

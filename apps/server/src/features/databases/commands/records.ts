@@ -35,6 +35,8 @@ import {
   type DatabaseCommandMutation,
   RowMoveConflictError,
 } from "./framework";
+import { inheritDatabaseRowProperties } from "../records/import";
+import { changeRecordHierarchy } from "@zilobase/features/databases/record-interactions";
 import { getDatabaseRecordEntity } from "./record-entity";
 
 type OrderedRow = {
@@ -222,7 +224,7 @@ async function writeValues(
 
 async function createRow(
   context: DatabaseCommandContext,
-  command: Extract<DataSourceCommand, { type: "row.create" }>,
+  command: Extract<DataSourceCommand, { type: "row.place" }>,
 ): Promise<DatabaseCommandDispatchResult<DatabaseRecordEntity>> {
   const source = await sourceRecord(context);
   await lockDatabaseRowOrdering(context.transaction, source.id);
@@ -263,10 +265,13 @@ async function createRow(
   if (command.pageId && !existingPage) throw new ServiceMutationError("Page not found", 404);
 
   if (existingPage) {
-    await context.transaction
-      .update(page)
-      .set({ name: command.title, updatedAt: now })
-      .where(eq(page.id, pageId));
+    if (rows.some((row) => row.pageId === pageId))
+      throw new ServiceMutationError("Page already belongs to this source", 409);
+    if (command.title !== undefined)
+      await context.transaction
+        .update(page)
+        .set({ name: command.title ?? "Untitled", updatedAt: now })
+        .where(eq(page.id, pageId));
   } else {
     await context.transaction.insert(page).values({
       content: null,
@@ -275,7 +280,7 @@ async function createRow(
       hasContent: false,
       id: pageId,
       metadata: null,
-      name: command.title,
+      name: command.title ?? "Untitled",
       type: "pageblock",
       updatedAt: now,
       url: "#",
@@ -299,6 +304,41 @@ async function createRow(
     parentRowId: command.parentRowId,
     updatedAt: now,
   });
+  let transferred: DatabaseCommandDispatchResult<DatabaseRecordEntity> | undefined;
+  if (command.source) {
+    if (!command.pageId || command.source.dataSourceId === source.id)
+      throw new ServiceMutationError("Invalid transfer source", 400);
+    const sourceContext = {
+      ...context,
+      databaseId: command.source.databaseId,
+      dataSourceId: command.source.dataSourceId,
+    };
+    const origin = await sourceRecord(sourceContext);
+    if (origin.workspaceId !== source.workspaceId)
+      throw new ServiceMutationError("Transfers must stay in the same workspace", 403);
+    const sourceRow = await getDatabaseRecordEntity(
+      context.transaction,
+      origin.id,
+      command.source.rowId,
+    );
+    if (sourceRow.pageId !== pageId)
+      throw new ServiceMutationError("Source row does not match the page", 400);
+    await inheritDatabaseRowProperties(
+      {
+        now,
+        pageId,
+        sourceDataSourceId: origin.id,
+        sourcePropertyMode: command.source.propertyMode,
+        targetDataSourceId: source.id,
+        workspaceId: source.workspaceId,
+      },
+      context.transaction,
+    );
+    transferred = await setRowArchived(sourceContext, {
+      type: "row.archive",
+      rowId: command.source.rowId,
+    });
+  }
   await writeValues(context, pageId, values, now);
 
   const rowIds = [...placement.rows.map(({ id }) => id)];
@@ -321,41 +361,126 @@ async function createRow(
   });
 
   const record = await getDatabaseRecordEntity(context.transaction, source.id, rowId);
-  return {
-    mutations: await mutationForHosts(context, record, { records: [record] }),
-    result: record,
-  };
+  const mutations = await mutationForHosts(context, record, { records: [record] });
+  if (transferred) {
+    // Property import may change metadata. One reset event per linked host also
+    // handles hosts displaying both sources without leaking duplicate events.
+    const byHost = new Map(mutations.map((mutation) => [mutation.databaseId, mutation]));
+    for (const mutation of transferred.mutations)
+      if (!byHost.has(mutation.databaseId)) byHost.set(mutation.databaseId, mutation);
+    return {
+      mutations: [...byHost.values()].map((mutation) => ({
+        ...mutation,
+        areas: ["records", "properties"],
+        requiresReset: true,
+        changes: {},
+      })),
+      result: record,
+    };
+  }
+  return { mutations, result: record };
 }
 
-async function moveRow(
+async function changeRow(
   context: DatabaseCommandContext,
-  command: Extract<DataSourceCommand, { type: "row.move" }>,
+  command: Extract<DataSourceCommand, { type: "row.change" }>,
 ): Promise<DatabaseCommandDispatchResult<DatabaseRecordEntity>> {
   const source = await sourceRecord(context);
   await lockDatabaseRowOrdering(context.transaction, source.id);
   const rows = await activeRows(context, source.id);
   const row = rows.find(({ id }) => id === command.rowId);
   if (!row) throw new RowMoveConflictError(command.rowId);
-  const placement = resolveAnchoredRowIndex({ ...command, rows });
+  const placement = command.placement
+    ? resolveAnchoredRowIndex({ ...command.placement, rowId: command.rowId, rows })
+    : null;
   const now = new Date();
-  const orderKey = await allocateOrderKey(
-    context,
-    source.id,
-    placement.rows as OrderedRow[],
-    placement.index,
-    now,
-  );
-
-  if (command.group) {
-    const values = { [command.group.propertyId]: command.group.value };
-    await propertiesForValues(context, source, values);
-    await writeValues(context, row.pageId, values, now);
-    await context.transaction.update(page).set({ updatedAt: now }).where(eq(page.id, row.pageId));
+  const orderKey = placement
+    ? await allocateOrderKey(
+        context,
+        source.id,
+        placement.rows as OrderedRow[],
+        placement.index,
+        now,
+      )
+    : row.orderKey;
+  const values = command.valuesByPropertyId ?? {};
+  await propertiesForValues(context, source, values);
+  await writeValues(context, row.pageId, values, now);
+  await context.transaction
+    .update(page)
+    .set({ updatedAt: now, ...(command.title !== undefined ? { name: command.title } : {}) })
+    .where(eq(page.id, row.pageId));
+  const changedRowIds = new Set([row.id]);
+  if (command.hierarchy) {
+    const { parentPropertyId, subItemPropertyId } = command.hierarchy;
+    const properties = await propertiesForValues(context, source, {
+      [parentPropertyId]: [],
+      [subItemPropertyId]: [],
+    });
+    const parent = properties.find(({ id }) => id === parentPropertyId);
+    const child = properties.find(({ id }) => id === subItemPropertyId);
+    const config = (property: typeof parent) =>
+      property?.config as
+        | {
+            subItems?: { role?: string };
+            relation?: { relatedPropertyId?: string; relatedDataSourceId?: string };
+          }
+        | undefined;
+    if (
+      parentPropertyId === subItemPropertyId ||
+      parent?.type !== "relation" ||
+      child?.type !== "relation" ||
+      config(parent)?.subItems?.role !== "parent-item" ||
+      config(child)?.subItems?.role !== "sub-item" ||
+      config(parent)?.relation?.relatedPropertyId !== subItemPropertyId ||
+      config(child)?.relation?.relatedPropertyId !== parentPropertyId ||
+      config(parent)?.relation?.relatedDataSourceId !== source.id ||
+      config(child)?.relation?.relatedDataSourceId !== source.id
+    ) {
+      throw new ServiceMutationError("Invalid sub-item relation pair", 400);
+    }
+    const storedValues = rows.length
+      ? await context.transaction
+          .select()
+          .from(pagePropertyValue)
+          .where(
+            and(
+              inArray(
+                pagePropertyValue.pageId,
+                rows.map(({ pageId }) => pageId),
+              ),
+              inArray(pagePropertyValue.propertyId, [parentPropertyId, subItemPropertyId]),
+            ),
+          )
+      : [];
+    let changes;
+    try {
+      changes = changeRecordHierarchy({
+        ...command.hierarchy,
+        rowId: row.id,
+        rows,
+        values: storedValues,
+      });
+    } catch (error) {
+      throw new ServiceMutationError(
+        error instanceof Error ? error.message : "Invalid hierarchy",
+        400,
+      );
+    }
+    for (const change of changes) {
+      await writeValues(context, change.pageId, { [change.propertyId]: change.value }, now);
+      await context.transaction
+        .update(databaseRow)
+        .set({ updatedAt: now, lastEditedById: context.actorId })
+        .where(eq(databaseRow.id, change.rowId));
+      changedRowIds.add(change.rowId);
+    }
   }
   await context.transaction
     .update(databaseRow)
     .set({
-      ...(command.group ? { lastEditedById: context.actorId } : {}),
+      lastEditedById: context.actorId,
+      ...(command.hierarchy ? { parentRowId: command.hierarchy.parentRowId } : {}),
       orderKey,
       updatedAt: now,
     })
@@ -367,18 +492,22 @@ async function moveRow(
       ),
     );
 
-  const rowIds = placement.rows.map(({ id }) => id);
-  rowIds.splice(placement.index, 0, row.id);
-  await updateDatabaseRowPlacementPositions(
-    context.transaction,
-    source.parentDatabaseId,
-    rowIds,
-    now,
+  if (placement) {
+    const rowIds = placement.rows.map(({ id }) => id);
+    rowIds.splice(placement.index, 0, row.id);
+    await updateDatabaseRowPlacementPositions(
+      context.transaction,
+      source.parentDatabaseId,
+      rowIds,
+      now,
+    );
+  }
+  const records = await Promise.all(
+    [...changedRowIds].map((id) => getDatabaseRecordEntity(context.transaction, source.id, id)),
   );
-  const record = await getDatabaseRecordEntity(context.transaction, source.id, row.id);
   return {
-    mutations: await mutationForHosts(context, record, { records: [record] }),
-    result: record,
+    mutations: await mutationForHosts(context, records[0], { records }),
+    result: records[0],
   };
 }
 
@@ -513,10 +642,10 @@ export async function dispatchRowOrCellCommand(
   command: DataSourceCommand,
 ) {
   switch (command.type) {
-    case "row.create":
+    case "row.place":
       return createRow(context, command);
-    case "row.move":
-      return moveRow(context, command);
+    case "row.change":
+      return changeRow(context, command);
     case "row.archive":
     case "row.restore":
       return setRowArchived(context, command);
