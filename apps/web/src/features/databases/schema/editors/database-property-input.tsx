@@ -336,7 +336,9 @@ export function getNumberDisplayValue(value: string, config: unknown): ReactNode
       ) : (
         <span className="flex-1" />
       )}
-      <span className={`relative inline-flex size-8 shrink-0 ${colorToken.textClass}`}>
+      <span
+        className={`relative inline-flex size-8 shrink-0 items-center justify-center ${colorToken.textClass}`}
+      >
         <svg aria-hidden="true" className="size-6" viewBox="0 0 24 24">
           <circle
             cx="12"

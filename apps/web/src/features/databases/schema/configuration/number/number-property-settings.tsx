@@ -82,7 +82,7 @@ export function NumberPropertySettings({
         })}
       </div>
       {showVisualOptions ? (
-        <div className="space-y-3 rounded-md border border-stroke-default bg-surface-subtle px-3 py-3">
+        <>
           <PropertySettingSubmenu
             icon={
               <span
@@ -95,9 +95,10 @@ export function NumberPropertySettings({
             options={numberColorOptions}
             selectedValue={getColorTokenValue(config.numberDisplayColor)}
           />
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-content-primary">Divide by</label>
+          <label className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm text-content-primary">
+            <span>Divide by</span>
             <Input
+              className="w-20 text-right"
               defaultValue={String(config.numberDisplayDivideBy)}
               inputMode="decimal"
               onBlur={(event) => {
@@ -115,10 +116,9 @@ export function NumberPropertySettings({
                 }
               }}
             />
-          </div>
+          </label>
           <DropDrawerItem
             aria-pressed={config.numberDisplayShowNumber}
-            className="rounded-md border border-transparent px-0 hover:bg-transparent focus:bg-transparent"
             onSelect={(event) => {
               event.preventDefault();
               onUpdateConfig({
@@ -134,7 +134,7 @@ export function NumberPropertySettings({
               tabIndex={-1}
             />
           </DropDrawerItem>
-        </div>
+        </>
       ) : null}
     </div>
   );

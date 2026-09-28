@@ -184,7 +184,8 @@ function DropdownMenuContent({
           menuSurfaceVariants(),
           menuViewportClassName,
           className,
-          activePanel && "flex w-max max-w-[min(20rem,calc(100vw-1rem))] flex-col overflow-hidden",
+          activePanel &&
+            "flex w-max min-w-72 max-w-[min(20rem,calc(100vw-1rem))] flex-col overflow-hidden",
         )}
         {...props}
       >
