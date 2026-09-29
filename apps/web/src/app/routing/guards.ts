@@ -15,6 +15,8 @@ import { getMostRecentItemPath } from "@/features/library/model/recent-navigatio
 import { decidePublishedShareAccess } from "@/features/pages/publication/published-share-access";
 import { readCachedPageDetail } from "@/features/editor/collaboration/page-document-cache";
 import { getConnectivityState } from "@/platform/network/connectivity";
+import { hydratePageReadCache } from "@/features/pages/cache/page-read-cache";
+import type { PageDetail } from "@zilobase/features/pages";
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000;
 
@@ -24,6 +26,7 @@ export async function applyPageShareAccess(pageId: string) {
     const cachedPage = await readCachedPageDetail(cachedSession.user.id, pageId);
     if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
       queryClient.setQueryData(pageQueryKey(pageId), cachedPage);
+      await hydrateCachedPageQueries(cachedSession, pageId, cachedPage as PageDetail);
       void queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
       return "app" as const;
     }
@@ -35,6 +38,7 @@ export async function applyPageShareAccess(pageId: string) {
     const cachedPage = await readCachedPageDetail(session.user.id, pageId);
     if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
       queryClient.setQueryData(pageQueryKey(pageId), cachedPage);
+      await hydrateCachedPageQueries(session, pageId, cachedPage as PageDetail);
       return "app" as const;
     }
   }
@@ -48,6 +52,10 @@ export async function applyPageShareAccess(pageId: string) {
       ...pageQueryOptions(apiFetch, pageId),
       staleTime: 0,
     });
+
+    if (session.user && detail?.viewerType === "member") {
+      await hydrateCachedPageQueries(session, pageId, detail);
+    }
 
     if (detail?.viewerType === "guest") return "guest" as const;
     if (detail?.viewerType === "public") return "public" as const;
@@ -67,6 +75,22 @@ export async function applyPageShareAccess(pageId: string) {
   const workspaces = await getWorkspaces();
   if (workspaces.length === 0) throw redirect({ to: "/onboarding" });
   return "app" as const;
+}
+
+async function hydrateCachedPageQueries(
+  session: SessionResponse,
+  pageId: string,
+  detail: PageDetail,
+) {
+  if (!session.user) return;
+  await hydratePageReadCache({
+    queryClient,
+    userId: session.user.id,
+    sessionId: session.session?.id ?? "public",
+    pageId,
+    workspaceId: detail.page.workspaceId,
+    databaseIds: detail.databaseIds ?? [],
+  }).catch(() => undefined);
 }
 
 export function applyDatabaseShareAccess(databaseId: string) {

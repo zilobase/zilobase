@@ -35,6 +35,7 @@ split per domain under `databases/commands/` (`records.ts`, `structural/`,
 Database routes compose bounded reads and idempotent host/source commands. The
 web database surface keeps one QueryClient photocopy of the notebook:
 `GET /bootstrap` plus `GET /records` under `["db", sessionId, hostId, …]`.
+Visited page views hydrate their last confirmed bootstrap and first record window from the [page read cache](../../../apps/web/src/features/pages/cache/page-read-cache.ts) before these queries refresh. Persisted windows retain their validated query hash and are rebound to the current authenticated session; continuation pages are fetched online.
 Record windows are keyed by view query hash (`dataSourceId` plus normalized
 filters/sorts), so sibling views that differ only in presentation share one
 cached window; `viewId` selects the server-side evaluation, never the cache

@@ -78,6 +78,7 @@ async function loadModule(path) {
     entryPoints: [sourcePath],
     external:
       sourcePath.includes("/features/calendar/") ||
+      sourcePath.includes("/features/pages/cache/") ||
       sourcePath.includes("/shared/components/calendar/") ||
       sourcePath.endsWith("/fixtures/database-kanban-moves.tsx") ||
       sourcePath.endsWith("/support/demo-transport.ts") ||

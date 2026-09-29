@@ -17,6 +17,8 @@ import {
 import type { DesktopServerReplacementDependencies } from "@/features/desktop/server/desktop-server-replacement-core";
 import { useAppStore } from "@/features/desktop/state/app-store";
 import { useAuthFlowStore } from "@/features/auth/state/auth-flow-store";
+import { clearPageSnapshotsForDeployment } from "@/features/editor/collaboration/page-document-cache";
+import { sessionQueryKey, type SessionResponse } from "@zilobase/features/auth";
 
 export function createDesktopServerReplacementDependencies(input: {
   beforeLocalCleanup: () => Promise<void>;
@@ -36,6 +38,8 @@ export function createDesktopServerReplacementDependencies(input: {
 }
 
 async function clearDesktopServerBrowserState() {
+  const userId = queryClient.getQueryData<SessionResponse>(sessionQueryKey)?.user?.id;
+  if (userId) await clearPageSnapshotsForDeployment(userId);
   queryClient.clear();
   useAppStore.getState().resetAccountState();
   useAuthFlowStore.getState().clearAuthFlow();
