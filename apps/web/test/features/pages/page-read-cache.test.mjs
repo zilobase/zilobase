@@ -13,6 +13,13 @@ export function register({ assert, loadModule, test }) {
       navigation,
       Date.now() - 60_000,
     );
+    await storage.rememberPageSnapshot(
+      "reader-1",
+      "page:page-1",
+      ["page", "page-1", "properties"],
+      { properties: [], values: [] },
+      Date.now() - 60_000,
+    );
     const client = new QueryClient();
     await cache.hydratePageReadCache({
       queryClient: client,
@@ -23,6 +30,10 @@ export function register({ assert, loadModule, test }) {
       databaseIds: [],
     });
     assert.deepEqual(client.getQueryData(["pages", "workspace-1", "nav", "active"]), navigation);
+    assert.deepEqual(client.getQueryData(["page", "page-1", "properties"]), {
+      properties: [],
+      values: [],
+    });
     const other = new QueryClient();
     await cache.hydratePageReadCache({
       queryClient: other,

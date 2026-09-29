@@ -159,7 +159,7 @@ export function PageEditorPane({
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
-  const serverActionsReadyRef = useRef(demoMode);
+  const onlineActionsReadyRef = useRef(demoMode);
   const paneRef = useRef<HTMLElement | null>(null);
   const navigationTimingRef = useRef<{
     pageId: string;
@@ -226,7 +226,7 @@ export function PageEditorPane({
 
   const deleteStructuralBlock = useCallback(
     async (request: StructuralBlockDeleteRequest) => {
-      if (!page || !pageEditable || !serverActionsReadyRef.current) {
+      if (!page || !pageEditable || !onlineActionsReadyRef.current) {
         throw new Error("Page is unavailable.");
       }
 
@@ -334,12 +334,12 @@ export function PageEditorPane({
     pageId,
     user: session?.user,
   });
-  const serverActionsReady = demoMode || collaboration.synced;
-  serverActionsReadyRef.current = serverActionsReady;
+  const onlineActionsReady = demoMode || collaboration.online;
+  onlineActionsReadyRef.current = onlineActionsReady;
   const { setTitle: setName, title: name } = useTitleDraft({
-    enabled: pageEditable && serverActionsReady,
+    enabled: pageEditable && onlineActionsReady,
     onSave: async (nextName) => {
-      if (!page || !serverActionsReadyRef.current) return;
+      if (!page || !onlineActionsReadyRef.current) return;
       await updatePage.mutateAsync({ id: page.id, name: nextName });
       onTitleChange?.(nextName);
     },
@@ -394,7 +394,7 @@ export function PageEditorPane({
     void blockCachedPage(session.user.id, pageId);
   }, [accessDenied, collaboration.status, pageId, session?.user]);
   const commentController = useMemo(() => {
-    if (!enableComments || !collaboration.provider || !collaboration.document || !session?.user) {
+    if (!enableComments || !collaboration.document || !session?.user) {
       return null;
     }
 
@@ -411,7 +411,6 @@ export function PageEditorPane({
     });
   }, [
     accessLevel,
-    collaboration.provider,
     collaboration.document,
     collaboration.canEdit,
     commentsEditable,
@@ -429,14 +428,11 @@ export function PageEditorPane({
     };
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady = demoMode || !pageEditable || collaboration.canEdit;
-  const waitingForCollaboration =
-    !demoMode && collaborationEnabled && !collaboration.error && !collaboration.document;
-
   useEffect(() => {
     const timing = navigationTimingRef.current;
     if (!timing || timing.pageId !== pageId) return;
     const milestones = [
-      ["visible", Boolean(page && !isLoading && !waitingForCollaboration)],
+      ["visible", Boolean(page && !isLoading)],
       ["editable", Boolean(page && pageEditable && liveEditingReady)],
       ["live", Boolean(page && collaboration.synced)],
     ] as const;
@@ -454,18 +450,10 @@ export function PageEditorPane({
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [
-    collaboration.synced,
-    isLoading,
-    liveEditingReady,
-    page,
-    pageEditable,
-    pageId,
-    waitingForCollaboration,
-  ]);
+  }, [collaboration.synced, isLoading, liveEditingReady, page, pageEditable, pageId]);
 
   useEffect(() => {
-    if (!focusMeetingId || isLoading || waitingForCollaboration) return;
+    if (!focusMeetingId || isLoading) return;
 
     const root = paneRef.current;
     if (!root) return;
@@ -484,9 +472,9 @@ export function PageEditorPane({
       window.clearTimeout(timeout);
       observer.disconnect();
     };
-  }, [focusMeetingId, isLoading, page?.id, waitingForCollaboration]);
+  }, [focusMeetingId, isLoading, page?.id]);
   const databaseEditingReady = canEditOnlineDatabase({
-    pageEditable: pageEditable && liveEditingReady && serverActionsReady,
+    pageEditable: pageEditable && onlineActionsReady,
   });
 
   const restoreTrashedPage = () => {
@@ -507,7 +495,7 @@ export function PageEditorPane({
   const updateCover = (nextCover: string) => {
     setCover(nextCover);
 
-    if (!page || !pageEditable || !serverActionsReady) {
+    if (!page || !pageEditable || !onlineActionsReady) {
       return;
     }
 
@@ -526,7 +514,7 @@ export function PageEditorPane({
     setEmoji(nextEmoji);
     setIconPosition(nextIconPosition);
 
-    if (!page || !pageEditable || !serverActionsReady) {
+    if (!page || !pageEditable || !onlineActionsReady) {
       return;
     }
 
@@ -543,7 +531,7 @@ export function PageEditorPane({
   const updateIconPosition = (nextPosition: PageIconPosition) => {
     setIconPosition(nextPosition);
 
-    if (!page || !pageEditable || !serverActionsReady) {
+    if (!page || !pageEditable || !onlineActionsReady) {
       return;
     }
 
@@ -744,7 +732,7 @@ export function PageEditorPane({
 
   const embedLinkedPage = useCallback(
     async (pageId: string) => {
-      if (!page || !serverActionsReady) {
+      if (!page || !onlineActionsReady) {
         return;
       }
 
@@ -754,12 +742,12 @@ export function PageEditorPane({
         kind: "page",
       });
     },
-    [embedPageItem, page, serverActionsReady],
+    [embedPageItem, onlineActionsReady, page],
   );
 
   const embedLinkedDatabase = useCallback(
     async (databaseId: string) => {
-      if (!page || !serverActionsReady) {
+      if (!page || !onlineActionsReady) {
         return;
       }
 
@@ -769,11 +757,11 @@ export function PageEditorPane({
         kind: "database",
       });
     },
-    [embedPageItem, page, serverActionsReady],
+    [embedPageItem, onlineActionsReady, page],
   );
 
   const createNestedPage = useCallback(async () => {
-    if (!page || !pageEditable || !serverActionsReady) {
+    if (!page || !pageEditable || !onlineActionsReady) {
       throw new Error("Page is required");
     }
 
@@ -784,9 +772,9 @@ export function PageEditorPane({
       workspaceId: page.workspaceId,
       parentItemId: page.id,
     });
-  }, [createPage, page, pageEditable, serverActionsReady]);
+  }, [createPage, onlineActionsReady, page, pageEditable]);
 
-  if (isLoading || waitingForCollaboration) {
+  if (isLoading) {
     return (
       <section className={cn(className, "animate-in fade-in duration-200")}>
         <PageEditorSkeleton fullWidth={Boolean(userSettings?.pageFullWidth)} />
@@ -890,9 +878,9 @@ export function PageEditorPane({
         editorContentRef={editorContentRef}
         editable={pageEditable && liveEditingReady}
         contentEditable={pageEditable && liveEditingReady}
-        metadataEditable={pageEditable && liveEditingReady && serverActionsReady}
+        metadataEditable={pageEditable && onlineActionsReady}
         structuralEditingEnabled={pageEditable && liveEditingReady}
-        commentsEditable={pageEditable && liveEditingReady && serverActionsReady && enableComments}
+        commentsEditable={commentsEditable && collaboration.canEdit && enableComments}
         databaseEditable={databaseEditingReady}
         enableComments={enableComments}
         hideEditorContent={hideEditorContent}

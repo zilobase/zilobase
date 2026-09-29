@@ -500,7 +500,7 @@ export function Editor({
         cover={cover}
         databaseId={databaseId}
         editable={metadataEditable}
-        enableComments={commentsEditable}
+        enableComments={enableComments}
         forceDiscussionsExpanded={module.type === "discussions"}
         icon={emoji}
         iconPosition={iconPosition}
@@ -635,7 +635,7 @@ export function Editor({
               cover={cover}
               databaseId={databaseId}
               editable={metadataEditable}
-              enableComments={commentsEditable}
+              enableComments={enableComments}
               icon={emoji}
               iconPosition={iconPosition}
               onCoverChange={onCoverChange}

@@ -55,6 +55,24 @@ function snapshotOf(
     if (!isObject(data) || !isObject(data.config) || data.pageId !== key[2]) return null;
     return { scope: `page:${key[2]}`, queryKey: key, data };
   }
+  if (key[0] === "page" && typeof key[1] === "string" && key[1] !== "none") {
+    if (
+      key[2] === "properties" &&
+      isObject(data) &&
+      Array.isArray(data.properties) &&
+      Array.isArray(data.values)
+    ) {
+      return { scope: `page:${key[1]}`, queryKey: key, data };
+    }
+    if (
+      key[2] === "access-targets" &&
+      isObject(data) &&
+      Array.isArray(data.guests) &&
+      Array.isArray(data.members)
+    ) {
+      return { scope: `page:${key[1]}`, queryKey: key, data };
+    }
+  }
   if (key[0] !== "db" || key[1] !== sessionId || typeof key[2] !== "string") return null;
   if (key[3] === "bootstrap") {
     const parsed = databaseBootstrapResponseSchema.safeParse(data);

@@ -12,6 +12,8 @@ The page route composition mounts browse, visit, hierarchy, sharing, content and
 
 For authenticated visits, the [route guard](../../../apps/web/src/app/routing/guards.ts) hydrates visited page data from the [read cache](../../../apps/web/src/features/pages/cache/page-read-cache.ts) before rendering. Successful server queries refresh bounded snapshots for navigation, meetings, layout, user settings and database views. Their reads are independent of the page collaboration ticket; the account- and deployment-scoped store is pruned with the Yjs page cache.
 
+The [page pane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) renders authorized page metadata and its last HTTP content while a cold Yjs document loads, then binds the collaborative document when ready. Page-body and comment edits use the bounded online Yjs bridge. Database and page metadata commands use their own online HTTP paths and permissions without waiting for the page socket; offline cached data is read only.
+
 ## Authorization and persistence
 
 OAuth page routes require `pages.read` or `pages.write`. [Token resource middleware](../../../apps/server/src/features/auth/pinned-resource-middleware.ts) binds every page ID, including published and deleted-page reads, to the granted workspace before existing ACL checks. List queries, creation and visit bodies enforce the same workspace binding. [Route regression tests](../../../apps/server/src/features/pages/page-route-access.test.ts) cover cross-workspace denials and retained ACL enforcement.
