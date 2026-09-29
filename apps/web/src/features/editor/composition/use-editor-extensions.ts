@@ -62,11 +62,12 @@ export const useEditorExtensions = ({
 
   // Tiptap's Collaboration extension binds to one Y.XmlFragment when the
   // editor is created. Recreate the editor when a meeting switches between
-  // notes, summary, and transcript, and when realtime presence becomes ready.
-  // Extensions are fixed at creation, so an editor created before its provider
-  // exists otherwise never installs CollaborationCaret.
+  // notes, summary, and transcript. Page awareness exists before transport
+  // startup; meeting awareness comes from its provider.
   const collaborationPresenceKey =
-    collaboration?.provider && collaboration.user ? "presence" : "content-only";
+    (collaboration?.awareness || collaboration?.provider?.awareness) && collaboration.user
+      ? "presence"
+      : "content-only";
   const editorLifecycleKey = collaboration
     ? `${pageId ?? "collaboration"}:${collaborationField ?? "default"}:${collaborationPresenceKey}`
     : (pageId ?? "draft");

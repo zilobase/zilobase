@@ -57,7 +57,7 @@ export function register({ readSource, assert, test }) {
     assert.match(editorExtensionHookSource, /collaborationField \?\? "default"/);
     assert.match(
       editorExtensionHookSource,
-      /collaboration\?\.provider && collaboration\.user \? "presence" : "content-only"/,
+      /collaboration\?\.awareness \|\| collaboration\?\.provider\?\.awareness/,
     );
     assert.match(meetingPageSource, /PageMetadata as PageMetadataHeader/);
     assert.match(meetingPageSource, /onCoverChange=/);

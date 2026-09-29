@@ -5,6 +5,7 @@ import {
 } from "./page-content-recovery";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Button } from "@/shared/ui/button";
 import { TrashedItemBanner } from "../components/trashed-item-banner";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
@@ -43,6 +44,12 @@ import type {
 } from "@/features/editor/core/types";
 import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/features/editor/collaboration/use-page-collaboration";
+import {
+  blockCachedPage,
+  exportCachedPageState,
+  rememberPageDetail,
+} from "@/features/editor/collaboration/page-document-cache";
+import { ApiError } from "@/platform/network/api";
 import { isHostedDemoRuntime } from "@/features/demo";
 import { canEditOnlineDatabase } from "@/features/editor/database-editability";
 import { createPageCommentController } from "@/features/comments/index";
@@ -72,6 +79,8 @@ type PageEditorPaneProps = {
   pageId: string;
 };
 
+const EMPTY_DATABASE_IDS: string[] = [];
+
 export function PageEditorPane({
   afterMetadata,
   className,
@@ -89,21 +98,26 @@ export function PageEditorPane({
   pageId,
 }: PageEditorPaneProps) {
   const demoMode = isHostedDemoRuntime();
-  const { data: page, isLoading } = usePage(pageId);
+  const { data: page, isLoading, error: pageQueryError } = usePage(pageId);
   const { data: session } = useSession();
   const { data: accessLevel } = usePageAccessLevel(pageId, {
     refetchOnMount: false,
   });
   const pageLocked = isPageLocked(page);
-  const { pageEditable, commentsEditable } = resolvePageEditability({
+  const accessDenied =
+    pageQueryError instanceof ApiError &&
+    (pageQueryError.status === 403 || pageQueryError.status === 404);
+  const { pageEditable: permittedPageEditable, commentsEditable } = resolvePageEditability({
     readOnly,
     locked: pageLocked,
     deletedAt: page?.deletedAt,
     accessLevel,
   });
-  const { data: pageDatabaseIds = [] } = usePageDatabaseIds(pageId, {
+  const pageEditable = permittedPageEditable && !accessDenied;
+  const { data: pageDatabaseIdsData } = usePageDatabaseIds(pageId, {
     refetchOnMount: false,
   });
+  const pageDatabaseIds = pageDatabaseIdsData ?? EMPTY_DATABASE_IDS;
   const { data: navigation } = usePageNavigation(page?.workspaceId);
   const { data: meetingsPayload } = useWorkspaceMeetings(page?.workspaceId);
   const effectiveDatabaseId = databaseId ?? pageDatabaseIds[0] ?? null;
@@ -132,6 +146,7 @@ export function PageEditorPane({
   const contentSaveTimeoutRef = useRef<number | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
   const lastPageBlockIdsRef = useRef<Set<string>>(new Set());
+  const pendingPageEmbedRemovalsRef = useRef<Set<string>>(new Set());
   const requestedDatabaseEmbedKeysRef = useRef<Set<string>>(new Set());
   const pendingContentRef = useRef<unknown>(null);
   // Database/meeting creation publishes navigation data before the async editor
@@ -143,7 +158,16 @@ export function PageEditorPane({
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
+  const serverActionsReadyRef = useRef(demoMode);
   const paneRef = useRef<HTMLElement | null>(null);
+  const navigationTimingRef = useRef({
+    pageId,
+    startedAt: performance.now(),
+    measured: new Set<string>(),
+  });
+  if (navigationTimingRef.current.pageId !== pageId) {
+    navigationTimingRef.current = { pageId, startedAt: performance.now(), measured: new Set() };
+  }
   const { getEditorHandle, registerEditor, unregisterEditor } = usePageEditorRegistry();
 
   const handleStructuralInsertionPendingChange = useCallback((pending: boolean) => {
@@ -197,7 +221,7 @@ export function PageEditorPane({
 
   const deleteStructuralBlock = useCallback(
     async (request: StructuralBlockDeleteRequest) => {
-      if (!page || !pageEditable) {
+      if (!page || !pageEditable || !serverActionsReadyRef.current) {
         throw new Error("Page is unavailable.");
       }
 
@@ -250,17 +274,6 @@ export function PageEditorPane({
   const [emoji, setEmoji] = useState("");
   const [iconPosition, setIconPosition] = useState<PageIconPosition>("top");
   const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
-  const { setTitle: setName, title: name } = useTitleDraft({
-    enabled: pageEditable,
-    onSave: async (nextName) => {
-      if (!page) return;
-      await updatePage.mutateAsync({ id: page.id, name: nextName });
-      onTitleChange?.(nextName);
-    },
-    sourceId: page?.id ?? null,
-    sourceTitle: page?.name ?? "",
-  });
-
   const flushContentSaveTimeout = useCallback(() => {
     if (contentSaveTimeoutRef.current === null) {
       return;
@@ -306,54 +319,83 @@ export function PageEditorPane({
     return flushContentSaveTimeout;
   }, [flushContentSaveTimeout, pageId]);
 
-  useEffect(() => {
-    if (!pageEditable || !page || !navigation) {
-      return;
-    }
-
-    const placedDatabaseIds = new Set(getPlacedDatabaseIds(navigation.placements, page.id));
-
-    for (const databaseId of extractDatabaseIds(page.content)) {
-      const requestKey = `${page.id}:${databaseId}`;
-
-      if (
-        placedDatabaseIds.has(databaseId) ||
-        requestedDatabaseEmbedKeysRef.current.has(requestKey)
-      ) {
-        continue;
-      }
-
-      requestedDatabaseEmbedKeysRef.current.add(requestKey);
-      void embedPageItem
-        .mutateAsync({
-          hostPageId: page.id,
-          itemId: databaseId,
-          kind: "database",
-        })
-        .catch(() => {
-          requestedDatabaseEmbedKeysRef.current.delete(requestKey);
-        });
-    }
-  }, [embedPageItem, navigation, page, pageEditable]);
-
   const collaborationEnabled =
     !demoMode &&
+    !accessDenied &&
     Boolean(pageEditable || (enableComments && session?.user && page && !page.deletedAt));
   const collaboration = usePageCollaboration({
     enabled: collaborationEnabled,
     localOnly: demoMode,
     pageId,
     user: session?.user,
-    workspaceId: page?.workspaceId,
   });
+  const serverActionsReady = demoMode || collaboration.synced;
+  serverActionsReadyRef.current = serverActionsReady;
+  const { setTitle: setName, title: name } = useTitleDraft({
+    enabled: pageEditable && serverActionsReady,
+    onSave: async (nextName) => {
+      if (!page || !serverActionsReadyRef.current) return;
+      await updatePage.mutateAsync({ id: page.id, name: nextName });
+      onTitleChange?.(nextName);
+    },
+    sourceId: page?.id ?? null,
+    sourceTitle: page?.name ?? "",
+  });
+  useEffect(() => {
+    if (!pageEditable || !page || !navigation || (!demoMode && !collaboration.synced)) return;
+    const content = demoMode ? page.content : editorInstanceRef.current?.getJSON();
+    if (!content) return;
+    const placedDatabaseIds = new Set(getPlacedDatabaseIds(navigation.placements, page.id));
+    for (const databaseId of extractDatabaseIds(content)) {
+      const requestKey = `${page.id}:${databaseId}`;
+      if (
+        placedDatabaseIds.has(databaseId) ||
+        requestedDatabaseEmbedKeysRef.current.has(requestKey)
+      ) {
+        continue;
+      }
+      requestedDatabaseEmbedKeysRef.current.add(requestKey);
+      void embedPageItem
+        .mutateAsync({ hostPageId: page.id, itemId: databaseId, kind: "database" })
+        .catch(() => requestedDatabaseEmbedKeysRef.current.delete(requestKey));
+    }
+  }, [
+    collaboration.synced,
+    demoMode,
+    editorReadyRevision,
+    embedPageItem,
+    navigation,
+    page,
+    pageEditable,
+  ]);
+  useEffect(() => {
+    if (!collaboration.entry || !page || accessDenied || collaboration.status === "blocked") return;
+    void rememberPageDetail(
+      collaboration.entry,
+      { page, accessLevel, databaseIds: pageDatabaseIds, viewerType: "member" },
+      page.workspaceId,
+    );
+  }, [
+    accessDenied,
+    accessLevel,
+    collaboration.entry,
+    collaboration.status,
+    collaboration.synced,
+    page,
+    pageDatabaseIds,
+  ]);
+  useEffect(() => {
+    if (!session?.user || (!accessDenied && collaboration.status !== "blocked")) return;
+    void blockCachedPage(session.user.id, pageId);
+  }, [accessDenied, collaboration.status, pageId, session?.user]);
   const commentController = useMemo(() => {
     if (!enableComments || !collaboration.provider || !collaboration.document || !session?.user) {
       return null;
     }
 
     return createPageCommentController({
-      canEdit: commentsEditable,
-      canModerate: pageEditable && accessLevel === "full",
+      canEdit: commentsEditable && collaboration.canEdit,
+      canModerate: pageEditable && accessLevel === "full" && collaboration.canEdit,
       document: collaboration.document,
       user: {
         email: session.user.email ?? null,
@@ -366,6 +408,7 @@ export function PageEditorPane({
     accessLevel,
     collaboration.provider,
     collaboration.document,
+    collaboration.canEdit,
     commentsEditable,
     enableComments,
     pageEditable,
@@ -380,13 +423,41 @@ export function PageEditorPane({
       commentController.destroy();
     };
   }, [commentController, commentsRegistry, pageId]);
-  const liveEditingReady =
-    demoMode || !pageEditable || Boolean(collaboration.document && !collaboration.error);
+  const liveEditingReady = demoMode || !pageEditable || collaboration.canEdit;
   const waitingForCollaboration =
-    !demoMode &&
-    collaborationEnabled &&
-    !collaboration.error &&
-    (!collaboration.document || !collaboration.provider);
+    !demoMode && collaborationEnabled && !collaboration.error && !collaboration.document;
+
+  useEffect(() => {
+    const timing = navigationTimingRef.current;
+    if (timing.pageId !== pageId) return;
+    const milestones = [
+      ["visible", Boolean(page && !isLoading && !waitingForCollaboration)],
+      ["editable", Boolean(page && pageEditable && liveEditingReady)],
+      ["live", Boolean(page && collaboration.synced)],
+    ] as const;
+    const pending = milestones.filter(([name, ready]) => ready && !timing.measured.has(name));
+    if (!pending.length) return;
+    const frame = window.requestAnimationFrame(() => {
+      for (const [name] of pending) {
+        if (timing.measured.has(name)) continue;
+        timing.measured.add(name);
+        performance.clearMeasures(`zilobase.page.${name}`);
+        performance.measure(`zilobase.page.${name}`, {
+          start: timing.startedAt,
+          end: performance.now(),
+        });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    collaboration.synced,
+    isLoading,
+    liveEditingReady,
+    page,
+    pageEditable,
+    pageId,
+    waitingForCollaboration,
+  ]);
 
   useEffect(() => {
     if (!focusMeetingId || isLoading || waitingForCollaboration) return;
@@ -410,7 +481,7 @@ export function PageEditorPane({
     };
   }, [focusMeetingId, isLoading, page?.id, waitingForCollaboration]);
   const databaseEditingReady = canEditOnlineDatabase({
-    pageEditable,
+    pageEditable: pageEditable && liveEditingReady && serverActionsReady,
   });
 
   const restoreTrashedPage = () => {
@@ -431,7 +502,7 @@ export function PageEditorPane({
   const updateCover = (nextCover: string) => {
     setCover(nextCover);
 
-    if (!page || !pageEditable) {
+    if (!page || !pageEditable || !serverActionsReady) {
       return;
     }
 
@@ -450,7 +521,7 @@ export function PageEditorPane({
     setEmoji(nextEmoji);
     setIconPosition(nextIconPosition);
 
-    if (!page || !pageEditable) {
+    if (!page || !pageEditable || !serverActionsReady) {
       return;
     }
 
@@ -467,7 +538,7 @@ export function PageEditorPane({
   const updateIconPosition = (nextPosition: PageIconPosition) => {
     setIconPosition(nextPosition);
 
-    if (!page || !pageEditable) {
+    if (!page || !pageEditable || !serverActionsReady) {
       return;
     }
 
@@ -485,7 +556,7 @@ export function PageEditorPane({
       if (!page) {
         return;
       }
-      if (!pageEditable) {
+      if (!pageEditable || (!demoMode && !collaboration.canEdit)) {
         return;
       }
 
@@ -505,12 +576,19 @@ export function PageEditorPane({
       }
 
       const nextPageBlockIds = extractPageBlockIds(content);
+      for (const retainedId of nextPageBlockIds) {
+        pendingPageEmbedRemovalsRef.current.delete(retainedId);
+      }
       const removedPageBlockIds = [...lastPageBlockIdsRef.current].filter(
         (pageId) => !nextPageBlockIds.has(pageId),
       );
 
       lastPageBlockIdsRef.current = nextPageBlockIds;
       for (const pageId of removedPageBlockIds) {
+        if (collaboration.document && !collaboration.synced) {
+          pendingPageEmbedRemovalsRef.current.add(pageId);
+          continue;
+        }
         removePageEmbed.mutate({
           hostPageId: page.id,
           itemId: pageId,
@@ -534,6 +612,8 @@ export function PageEditorPane({
     [
       clearContentSaveTimeout,
       collaboration.document,
+      collaboration.canEdit,
+      collaboration.synced,
       demoPersistenceReadyPageId,
       demoMode,
       pageEditable,
@@ -542,6 +622,16 @@ export function PageEditorPane({
       page,
     ],
   );
+
+  useEffect(() => {
+    if (!page || !collaboration.synced || pendingPageEmbedRemovalsRef.current.size === 0) return;
+    for (const itemId of pendingPageEmbedRemovalsRef.current) {
+      if (!lastPageBlockIdsRef.current.has(itemId)) {
+        removePageEmbed.mutate({ hostPageId: page.id, itemId, kind: "page" });
+      }
+    }
+    pendingPageEmbedRemovalsRef.current.clear();
+  }, [collaboration.synced, page, removePageEmbed]);
 
   useEffect(() => {
     registerEditor(
@@ -572,7 +662,7 @@ export function PageEditorPane({
   ]);
 
   useEffect(() => {
-    if (!pageEditable || !page || !navigation) {
+    if (!pageEditable || !page || !navigation || (!demoMode && !collaboration.synced)) {
       return;
     }
 
@@ -587,11 +677,13 @@ export function PageEditorPane({
       localStructuralInsertionPending: pendingStructuralInsertionsRef.current > 0,
       pageId: page.id,
       placements: navigation.placements,
-      savedContent: page.content,
+      savedContent: demoMode ? page.content : null,
     });
   }, [
     getEditorHandle,
     editorReadyRevision,
+    collaboration.synced,
+    demoMode,
     navigation,
     page,
     pageEditable,
@@ -599,7 +691,7 @@ export function PageEditorPane({
   ]);
 
   useEffect(() => {
-    if (!pageEditable || !page || !meetingsPayload) {
+    if (!pageEditable || !page || !meetingsPayload || (!demoMode && !collaboration.synced)) {
       return;
     }
 
@@ -613,7 +705,7 @@ export function PageEditorPane({
       return;
     }
 
-    const restored = recoverPageEditorContent(handle, page.content);
+    const restored = recoverPageEditorContent(handle, demoMode ? page.content : null);
     if (!restored) return;
     const { content } = restored;
 
@@ -637,6 +729,8 @@ export function PageEditorPane({
   }, [
     getEditorHandle,
     editorReadyRevision,
+    collaboration.synced,
+    demoMode,
     meetingsPayload,
     page,
     pageEditable,
@@ -645,7 +739,7 @@ export function PageEditorPane({
 
   const embedLinkedPage = useCallback(
     async (pageId: string) => {
-      if (!page) {
+      if (!page || !serverActionsReady) {
         return;
       }
 
@@ -655,12 +749,12 @@ export function PageEditorPane({
         kind: "page",
       });
     },
-    [embedPageItem, page],
+    [embedPageItem, page, serverActionsReady],
   );
 
   const embedLinkedDatabase = useCallback(
     async (databaseId: string) => {
-      if (!page) {
+      if (!page || !serverActionsReady) {
         return;
       }
 
@@ -670,11 +764,11 @@ export function PageEditorPane({
         kind: "database",
       });
     },
-    [embedPageItem, page],
+    [embedPageItem, page, serverActionsReady],
   );
 
   const createNestedPage = useCallback(async () => {
-    if (!page || !pageEditable) {
+    if (!page || !pageEditable || !serverActionsReady) {
       throw new Error("Page is required");
     }
 
@@ -685,12 +779,42 @@ export function PageEditorPane({
       workspaceId: page.workspaceId,
       parentItemId: page.id,
     });
-  }, [createPage, page, pageEditable]);
+  }, [createPage, page, pageEditable, serverActionsReady]);
 
   if (isLoading || waitingForCollaboration) {
     return (
       <section className={cn(className, "animate-in fade-in duration-200")}>
         <PageEditorSkeleton fullWidth={Boolean(userSettings?.pageFullWidth)} />
+      </section>
+    );
+  }
+
+  const recoveryUserId = session?.user?.id;
+  if (accessDenied || collaboration.status === "blocked") {
+    return (
+      <section className={cn(className, "flex flex-col items-center gap-3 px-6 py-16 text-center")}>
+        <p className="text-sm text-content-secondary">This page is no longer available.</p>
+        {recoveryUserId ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              void exportCachedPageState(recoveryUserId, pageId).then((state) => {
+                if (!state) return;
+                const blob = new Blob([Uint8Array.from(state)], {
+                  type: "application/octet-stream",
+                });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `page-${pageId}-recovery.yjs`;
+                link.click();
+                window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+              });
+            }}
+          >
+            Download local recovery copy
+          </Button>
+        ) : null}
       </section>
     );
   }
@@ -728,6 +852,15 @@ export function PageEditorPane({
           showRestore={!readOnly}
         />
       ) : null}
+      {collaborationEnabled && !collaboration.synced ? (
+        <p aria-live="polite" className="px-6 py-2 text-xs text-content-secondary">
+          {!collaboration.online
+            ? "Offline. This cached page is read only."
+            : collaboration.canEdit
+              ? "Connecting collaboration. Your edits are saved locally until the connection is ready."
+              : "Collaboration is unavailable. This page is read only until it reconnects."}
+        </p>
+      ) : null}
       <Editor
         key={page.id}
         afterMetadata={afterMetadata}
@@ -735,6 +868,7 @@ export function PageEditorPane({
           collaboration.document
             ? {
                 document: collaboration.document,
+                awareness: collaboration.awareness ?? undefined,
                 provider: collaboration.provider ?? undefined,
                 status: collaboration.status,
                 user: collaboration.user,
@@ -751,9 +885,9 @@ export function PageEditorPane({
         editorContentRef={editorContentRef}
         editable={pageEditable && liveEditingReady}
         contentEditable={pageEditable && liveEditingReady}
-        metadataEditable={pageEditable && liveEditingReady}
+        metadataEditable={pageEditable && liveEditingReady && serverActionsReady}
         structuralEditingEnabled={pageEditable && liveEditingReady}
-        commentsEditable={pageEditable && liveEditingReady && enableComments}
+        commentsEditable={pageEditable && liveEditingReady && serverActionsReady && enableComments}
         databaseEditable={databaseEditingReady}
         enableComments={enableComments}
         hideEditorContent={hideEditorContent}

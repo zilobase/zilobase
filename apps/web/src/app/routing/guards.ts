@@ -1,6 +1,10 @@
 import { redirect } from "@tanstack/react-router";
-import { pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages";
-import { sessionQueryOptions } from "@zilobase/features/auth";
+import { pageQueryKey, pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages";
+import {
+  sessionQueryKey,
+  sessionQueryOptions,
+  type SessionResponse,
+} from "@zilobase/features/auth";
 import { workspacesQueryOptions } from "@zilobase/features/workspaces";
 
 import { queryClient } from "@/app/query-client";
@@ -9,11 +13,31 @@ import { useAppStore } from "@/features/desktop/state/app-store";
 import { ApiError, NetworkUnavailableError, apiFetch } from "@/platform/network/api";
 import { getMostRecentItemPath } from "@/features/library/model/recent-navigation";
 import { decidePublishedShareAccess } from "@/features/pages/publication/published-share-access";
+import { readCachedPageDetail } from "@/features/editor/collaboration/page-document-cache";
+import { getConnectivityState } from "@/platform/network/connectivity";
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000;
 
 export async function applyPageShareAccess(pageId: string) {
+  const cachedSession = queryClient.getQueryData<SessionResponse>(sessionQueryKey);
+  if (cachedSession?.user) {
+    const cachedPage = await readCachedPageDetail(cachedSession.user.id, pageId);
+    if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
+      queryClient.setQueryData(pageQueryKey(pageId), cachedPage);
+      void queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
+      return "app" as const;
+    }
+  }
+
   const session = await getFreshSession({ optional: true });
+
+  if (session.user && getConnectivityState() === "offline") {
+    const cachedPage = await readCachedPageDetail(session.user.id, pageId);
+    if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
+      queryClient.setQueryData(pageQueryKey(pageId), cachedPage);
+      return "app" as const;
+    }
+  }
 
   if (!session.user) {
     return applyPublishedShareAccess(() => isPagePublished(pageId));
@@ -22,6 +46,7 @@ export async function applyPageShareAccess(pageId: string) {
   try {
     const detail = await queryClient.fetchQuery({
       ...pageQueryOptions(apiFetch, pageId),
+      staleTime: 0,
     });
 
     if (detail?.viewerType === "guest") return "guest" as const;

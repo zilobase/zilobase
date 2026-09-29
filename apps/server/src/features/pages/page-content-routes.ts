@@ -187,37 +187,47 @@ pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
   return c.json({ events: commits });
 });
 
-pageContentRoutes.post("/:id/collaboration-ticket", async (c) => {
+pageContentRoutes.post("/:id/collaboration-bootstrap", async (c) => {
   const authorization = await authorizePageRoute(c, "view");
   if (!authorization.ok) return authorization.response;
   const { user, record: existing, accessLevel } = authorization;
 
-  const [ticket, initialState] = await Promise.all([
-    createCollaborationTicket(
-      {
-        pageId: existing.id,
-        scope: hasAccess(accessLevel, "edit")
-          ? "read-write"
-          : hasAccess(accessLevel, "comment")
-            ? "comment"
-            : "readonly",
-        userId: user.id,
-        workspaceId: existing.workspaceId,
-      },
-      c.env,
-      {
-        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(existing.workspaceId, user.id),
-      },
-    ),
-    getOrCreateCollaborationDocumentState(existing.id),
+  const body = await readJsonBody(c.req);
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("includeState" in body) ||
+    typeof body.includeState !== "boolean"
+  ) {
+    return c.json({ error: "includeState must be a boolean" }, 400);
+  }
+
+  const [maxExpiresAt, initialState] = await Promise.all([
+    getWorkspaceRealtimeAccessExpiration(existing.workspaceId, user.id),
+    body.includeState ? getOrCreateCollaborationDocumentState(existing.id) : Promise.resolve(null),
   ]);
+  const ticket = await createCollaborationTicket(
+    {
+      pageId: existing.id,
+      scope: hasAccess(accessLevel, "edit")
+        ? "read-write"
+        : hasAccess(accessLevel, "comment")
+          ? "comment"
+          : "readonly",
+      userId: user.id,
+      workspaceId: existing.workspaceId,
+    },
+    c.env,
+    { maxExpiresAt },
+  );
   const documentName = documentNameForPage(existing.id);
   const websocketUrl = new URL(getCollaborationWebSocketUrl(c.req.raw));
   websocketUrl.searchParams.set("document", documentName);
 
+  c.header("Cache-Control", "no-store");
   return c.json({
     documentName,
-    initialState: Buffer.from(initialState).toString("base64"),
+    ...(initialState ? { initialState: Buffer.from(initialState).toString("base64") } : {}),
     websocketUrl: websocketUrl.toString(),
     ...ticket,
   });

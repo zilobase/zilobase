@@ -82,6 +82,7 @@ import { DATABASE_PAGE_DRAG_MIME } from "@/features/databases";
 import { cn } from "@/shared/lib/utils";
 import { getApiErrorMessage } from "@/platform/network/api";
 import { PageIconDisplay } from "@/features/pages/index";
+import { prefetchPageForNavigation } from "@/features/editor/collaboration/page-prefetch";
 import { getTeamspaceSidebarPermissions } from "@/features/teamspaces/model/teamspace-sidebar-permissions";
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state";
 import { getConfiguredSidebarItems } from "../model/sidebar-section-items";
@@ -151,6 +152,12 @@ export function NavPageSection({
   );
   const displayedPages = getConfiguredSidebarItems(pages, sectionId, { limit, sort });
   const getLinkProps = ({ displayName, item }: { displayName: string; item: SidebarNavItem }) => {
+    let prefetchTimer: number | undefined;
+    const prefetchPage = () => {
+      if (!item.isDatabase && !item.isDatabaseView && !item.isMeeting && item.pageId) {
+        prefetchPageForNavigation(item.pageId);
+      }
+    };
     const canDropOnDatabase = Boolean(item.isDatabase && item.databaseId && onDropPageOnDatabase);
     const handleDatabaseDragOver = (event: DragEvent<HTMLAnchorElement>) => {
       if (!canDropOnDatabase || !hasDraggedPagePayload(event)) {
@@ -210,6 +217,14 @@ export function NavPageSection({
       onDragOver: handleDatabaseDragOver,
       onDragStart: handlePageDragStart,
       onDrop: handleDatabaseDrop,
+      onPointerEnter: () => {
+        prefetchTimer = window.setTimeout(prefetchPage, 120);
+      },
+      onPointerLeave: () => window.clearTimeout(prefetchTimer),
+      onFocus: () => {
+        window.clearTimeout(prefetchTimer);
+        prefetchPage();
+      },
     };
   };
 

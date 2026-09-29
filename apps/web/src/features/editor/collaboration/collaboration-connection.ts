@@ -1,5 +1,6 @@
 import { HocuspocusProvider, type HocuspocusProviderConfiguration } from "@hocuspocus/provider";
 import * as Y from "yjs";
+import type { Awareness } from "y-protocols/awareness";
 
 import { getDesktopAuthToken } from "@/platform/auth/desktop-auth-token";
 
@@ -17,12 +18,13 @@ export type CollaborationTicket = {
 
 export function applyTicketState(document: Y.Doc, ticket: CollaborationTicket) {
   if (ticket.initialState) {
-    Y.applyUpdate(document, base64ToBytes(ticket.initialState));
+    Y.applyUpdate(document, base64ToBytes(ticket.initialState), "page-bootstrap");
   }
 }
 
 export function connectCollaborationDocument(input: {
   autoConnect?: boolean;
+  awareness?: Awareness;
   document: Y.Doc;
   onAuthenticationFailed?: (reason: string) => void;
   onStatus?: (status: "connected" | "connecting" | "disconnected") => void;
@@ -35,6 +37,7 @@ export function connectCollaborationDocument(input: {
   let currentTicket = input.ticket;
   const provider = new HocuspocusProvider({
     autoConnect: input.autoConnect ?? true,
+    awareness: input.awareness,
     WebSocketPolyfill: CollaborationWebSocket,
     document: input.document,
     name: input.ticket.documentName,

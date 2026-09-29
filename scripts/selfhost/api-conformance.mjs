@@ -234,8 +234,8 @@ export function createApiClient({
   }
 
   async function collaborationTicket(jar, pageId) {
-    const ticket = await requestJson(`/pages/${pageId}/collaboration-ticket`, {
-      body: {},
+    const ticket = await requestJson(`/pages/${pageId}/collaboration-bootstrap`, {
+      body: { includeState: true },
       jar,
       method: "POST",
     });
@@ -246,10 +246,18 @@ export function createApiClient({
     );
     assert.equal(typeof ticket.data.token, "string", "the collaboration ticket had no token");
     assert.equal(typeof ticket.data.websocketUrl, "string", "the collaboration ticket had no URL");
+    assert.equal(typeof ticket.data.initialState, "string", "cold page state was missing");
     assert.ok(
       new Date(ticket.data.expiresAt).getTime() > Date.now(),
       "the collaboration ticket was already expired",
     );
+    const warmTicket = await requestJson(`/pages/${pageId}/collaboration-bootstrap`, {
+      body: { includeState: false },
+      jar,
+      method: "POST",
+    });
+    assert.equal(warmTicket.response.status, 200);
+    assert.equal(warmTicket.data.initialState, undefined);
     return ticket.data;
   }
 

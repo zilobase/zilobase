@@ -11,10 +11,12 @@ import type { PageIconPosition } from "@zilobase/features/pages";
 import type { OpenPageOptions } from "@/features/pages";
 import type { PageCommentController } from "@/features/comments/index";
 import type * as Y from "yjs";
+import type { Awareness } from "y-protocols/awareness";
 import type { StructuralInsertionPendingChange } from "../commands/structural-insertion";
 
 export type EditorCollaboration = {
   document: Y.Doc;
+  awareness?: Awareness;
   provider?: HocuspocusProvider;
   status: "local" | "connected" | "connecting" | "disconnected" | "blocked";
   unsyncedChanges: number;

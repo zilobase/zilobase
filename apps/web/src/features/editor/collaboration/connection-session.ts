@@ -1,5 +1,6 @@
 import type { HocuspocusProvider, StatesArray } from "@hocuspocus/provider";
 import type * as Y from "yjs";
+import type { Awareness } from "y-protocols/awareness";
 import type { CollaborationTicket, connectCollaborationDocument } from "./collaboration-connection";
 import type { CollaborationStatus, CollaborationUser } from "./collaboration-contracts";
 
@@ -24,6 +25,7 @@ type ConnectionState = {
 
 export function startPageConnection({
   document,
+  awareness,
   pageId,
   preparedTicket,
   user,
@@ -31,6 +33,7 @@ export function startPageConnection({
   services,
 }: {
   document: Y.Doc;
+  awareness?: Awareness;
   pageId: string;
   preparedTicket: CollaborationTicket | null;
   user: { avatar?: string | null; color: string; id: string; name: string };
@@ -38,6 +41,7 @@ export function startPageConnection({
   services: ConnectionServices;
 }) {
   let disposed = false;
+  let denied = false;
   const controller = new AbortController();
   let activeProvider: HocuspocusProvider | null = null;
   state.status("connecting");
@@ -45,6 +49,7 @@ export function startPageConnection({
 
   const authenticationFailed = (reason: string) => {
     if (disposed) return;
+    denied = true;
     state.status("blocked");
     state.error(reason);
   };
@@ -67,10 +72,11 @@ export function startPageConnection({
     services.applyTicket(document, ticket);
     activeProvider = services.connect({
       autoConnect: false,
+      awareness,
       document,
       onAuthenticationFailed: authenticationFailed,
       onStatus: (next) => {
-        if (!disposed) state.status(next);
+        if (!disposed && !denied) state.status(next);
       },
       onUnsyncedChanges: unsyncedChanges,
       onUsers: (states) => {

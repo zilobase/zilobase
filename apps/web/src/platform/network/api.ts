@@ -117,7 +117,7 @@ function resolveRuntimeResponse(path: string, data: unknown) {
   const response = data as { websocketUrl?: unknown };
   if (typeof response.websocketUrl !== "string") return data;
 
-  if (/\/pages\/[^/]+\/collaboration-ticket(?:\?|$)/.test(path)) {
+  if (/\/pages\/[^/]+\/collaboration-bootstrap(?:\?|$)/.test(path)) {
     return {
       ...response,
       websocketUrl: resolveRuntimeWebSocketUrl(response.websocketUrl, "collaboration", server),

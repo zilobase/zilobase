@@ -135,6 +135,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(f.snapshots.users.length, 1);
     assert.equal(f.snapshots.users[0].name, "new");
     f.input().onAuthenticationFailed("revoked");
+    f.input().onStatus("disconnected");
     assert.equal(f.snapshots.status, "blocked");
     assert.equal(f.snapshots.error, "revoked");
     f.stop();

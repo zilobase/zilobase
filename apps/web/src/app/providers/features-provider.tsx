@@ -23,6 +23,13 @@ import { useAppStore } from "@/features/desktop/state/app-store";
 import { isHostedDemoRuntime, requestDemoGuard } from "@/features/demo";
 import posthog from "@/shared/lib/posthog";
 import { readOAuthQuery } from "@/features/oauth/lib/oauth-query";
+import {
+  clearCachedSession,
+  clearPageCacheForUser,
+  readCachedSession,
+  rememberCachedSession,
+} from "@/features/editor/collaboration/page-document-cache";
+import { getConnectivityState } from "@/platform/network/connectivity";
 
 function withOAuthQuery<T extends Record<string, unknown>>(input: T) {
   if (typeof window === "undefined") {
@@ -42,6 +49,11 @@ export const webAuthClient: ZilobaseAuthClient = {
         signal,
         timeoutMs: 15_000,
       });
+      if (session.user) {
+        await rememberCachedSession(session).catch(() => undefined);
+      } else {
+        await clearCachedSession().catch(() => undefined);
+      }
       recordDesktopDiagnostic("session.request", {
         duration_ms: performance.now() - startedAt,
         session_present: Boolean(session.session),
@@ -50,6 +62,10 @@ export const webAuthClient: ZilobaseAuthClient = {
       });
       return session;
     } catch (error) {
+      if (getConnectivityState() === "offline") {
+        const cached = await readCachedSession().catch(() => null);
+        if (cached) return cached;
+      }
       recordDesktopDiagnostic(
         "session.request",
         {
@@ -103,7 +119,10 @@ export const webAuthClient: ZilobaseAuthClient = {
       : authFetch<{ user: unknown }>("/email-otp/verify-email", input),
   signOut: async () => {
     if (isHostedDemoRuntime()) throw requestDemoGuard();
+    const previousSession = await readCachedSession();
     const result = await authFetch("/sign-out", {});
+    await clearCachedSession();
+    if (previousSession?.user) await clearPageCacheForUser(previousSession.user.id);
     posthog?.reset();
     await clearApiAuthToken();
     useAppStore.getState().resetAccountState();

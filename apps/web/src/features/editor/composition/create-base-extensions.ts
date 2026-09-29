@@ -102,10 +102,12 @@ export const createBaseExtensions = ({
           document: collaboration.document,
           field: collaborationField,
         }),
-        ...(collaboration.provider && collaboration.user
+        ...((collaboration.awareness ?? collaboration.provider?.awareness) && collaboration.user
           ? [
               CollaborationCaret.configure({
-                provider: collaboration.provider,
+                provider: {
+                  awareness: collaboration.awareness ?? collaboration.provider?.awareness,
+                },
                 user: collaboration.user,
               }),
             ]
