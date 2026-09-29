@@ -1,7 +1,10 @@
 import Dexie, { type EntityTable } from "dexie";
 import * as Y from "yjs";
 import type { SessionResponse } from "@zilobase/features/auth";
-import { resolveRuntimeApiOrigin } from "@/platform/server/desktop-server";
+import {
+  getSelectedDesktopServer,
+  resolveRuntimeApiOrigin,
+} from "@/platform/server/desktop-server";
 
 type CachedPage = {
   key: string;
@@ -71,7 +74,7 @@ function cacheKey(userId: string, pageId: string) {
 function deploymentKey() {
   return typeof window === "undefined"
     ? "server"
-    : `${window.location.origin}|${resolveRuntimeApiOrigin()}`;
+    : `${window.location.origin}|${getSelectedDesktopServer()?.instanceId ?? resolveRuntimeApiOrigin()}`;
 }
 
 function queueWrite(entry: PageDocumentEntry, work: () => Promise<void>) {
