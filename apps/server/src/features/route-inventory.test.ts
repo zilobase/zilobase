@@ -32,7 +32,7 @@ describe("feature route composition", () => {
       "DELETE /:id/access/:ruleId",
       "GET /:id/properties",
       "PUT /:id/properties/:propertyId/value",
-      "POST /:id/collaboration-ticket",
+      "POST /:id/collaboration-bootstrap",
       "PATCH /:id/content",
       "PATCH /:id",
       "POST /:id/restore",

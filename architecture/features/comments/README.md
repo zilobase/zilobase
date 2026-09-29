@@ -8,7 +8,7 @@
 
 ## Main flow
 
-Page comments use a Yjs-backed model and editor comment extension to connect selections with threads. Presentation and thread context live in the web feature; server collaboration can apply comment updates.
+Page comments use a Yjs-backed model and editor comment extension to connect selections with threads. Presentation and thread context live in the web feature; server collaboration can apply comment updates. The [page pane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) binds the comment controller as soon as the cached Yjs document is ready, without waiting for a provider. Online edits made during the page connection window join the same document and synchronize when collaboration connects; offline cached threads remain visible and read only.
 
 ## Authorization and persistence
 

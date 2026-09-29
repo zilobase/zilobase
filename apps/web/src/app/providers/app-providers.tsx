@@ -20,6 +20,7 @@ import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useSession } from "@zilobase/features/auth/react";
 import { DbProvider } from "@zilobase/features/databases/react";
 import { useZilobaseFeatures } from "@zilobase/features";
+import { subscribePageReadCache } from "@/features/pages/cache/page-read-cache";
 
 import posthog from "@/shared/lib/posthog";
 
@@ -67,13 +68,16 @@ export function AppProviders({ children }: React.PropsWithChildren) {
 function SessionDatabaseProvider({ children }: React.PropsWithChildren) {
   const { data: session } = useSession();
   const { apiFetch } = useZilobaseFeatures();
+  const userId = session?.user?.id;
+  const sessionId = session?.session?.id;
+
+  React.useEffect(() => {
+    if (!userId || !sessionId) return;
+    return subscribePageReadCache(queryClient, userId, sessionId);
+  }, [userId, sessionId]);
 
   return (
-    <DbProvider
-      apiFetch={apiFetch}
-      queryClient={queryClient}
-      sessionId={session?.session?.id ?? null}
-    >
+    <DbProvider apiFetch={apiFetch} queryClient={queryClient} sessionId={sessionId ?? null}>
       {children}
     </DbProvider>
   );

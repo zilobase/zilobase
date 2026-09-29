@@ -339,7 +339,7 @@ test("explicit WebSocket URL overrides a rewritten request host", () => {
   assert.equal(
     runWithRuntimePorts({ env: runtimeEnv, urls: createUrlResolver(runtimeEnv) }, () =>
       getCollaborationWebSocketUrl(
-        new Request("http://api.zilobase.com/pages/page-1/collaboration-ticket"),
+        new Request("http://api.zilobase.com/pages/page-1/collaboration-bootstrap"),
       ),
     ),
     "ws://localhost:3000/collaboration",

@@ -46,7 +46,8 @@ subpath and must be reachable by desktop and browser clients.
 Editable page bodies use Yjs through Hocuspocus. Run the latest Drizzle
 migrations before starting the server. The Node runtime serves the collaboration
 WebSocket at `/collaboration`; clients obtain short-lived page-scoped tickets
-from `POST /pages/:id/collaboration-ticket`.
+from `POST /pages/:id/collaboration-bootstrap`. Clients request the full Yjs
+state on a cold page open and only a short-lived ticket for cached documents.
 
 `COLLABORATION_SECRET` is optional and falls back to `BETTER_AUTH_SECRET`. Set
 it separately when collaboration tickets should have an independent signing

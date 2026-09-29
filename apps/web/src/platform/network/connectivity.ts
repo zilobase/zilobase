@@ -2,7 +2,7 @@ import { onlineManager } from "@tanstack/react-query";
 
 export type ConnectivityState = "online" | "offline";
 
-/** Online status for cached Calendar reads. Offline page drafts were removed. */
+/** Browser connectivity for cached reads and the bounded online page edit window. */
 export function getConnectivityState(): ConnectivityState {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return "offline";
