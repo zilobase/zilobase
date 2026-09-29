@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { markPageNavigationStart } from "../navigation/page-navigation-timing";
 
 import { usePageSidePane } from "./page-side-pane";
 import type { OpenPageSidePaneOptions } from "./page-side-pane";
@@ -70,6 +71,8 @@ export function useOpenEmbeddedPage({
         }
         return;
       }
+
+      markPageNavigationStart(pageId);
 
       if (usesDialog) {
         openEmbeddedPageDialog(pageId, {

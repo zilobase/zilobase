@@ -18,6 +18,8 @@ The [page duplication model](../../../apps/web/src/features/sidebar/model/page-d
 
 [Page links](../../../apps/web/src/features/sidebar/components/nav-pages.tsx) prefetch authorized page detail and cold Yjs state after pointer dwell or keyboard focus through the [page prefetch owner](../../../apps/web/src/features/editor/collaboration/page-prefetch.ts). Prefetch has bounded concurrency and does not open a collaboration socket; the page still checks authorization when opened.
 
+[Navigation timing](../../../apps/web/src/features/pages/navigation/page-navigation-timing.ts) marks sidebar and embedded-page opens before route work. The page pane records visible, editable and live `PerformanceMeasure` entries from that mark, falling back to pane mount for other entry points.
+
 ## Authorization and persistence
 
 Navigation reflects accessible content and user sidebar preferences. [Sidebar configuration](../../../packages/features/src/user-settings/sidebar-config.ts) normalizes Home, AI and Calendar as fixed tabs, including existing saved layouts. Calendar is a static route tab with account controls instead of customizable shortcuts and sections. The [application sidebar](../../../apps/web/src/features/sidebar/app-sidebar.tsx) filters Calendar by its independent feature flag and keeps selection synchronized with the Calendar route, restoring the saved workspace tab when leaving it. Page graph/hierarchy ownership stays with page modules; sidebar visibility is not a server authorization decision.

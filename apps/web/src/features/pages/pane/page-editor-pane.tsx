@@ -56,6 +56,7 @@ import { createPageCommentController } from "@/features/comments/index";
 import { usePageCommentsRegistry } from "@/features/comments/index";
 import { useTitleDraft } from "../hooks/use-title-draft";
 import { scrollToMeetingBlock } from "@/features/meetings/index";
+import { consumePageNavigationStart } from "../navigation/page-navigation-timing";
 import {
   getMissingHostedMeetingIds,
   getPlacedDatabaseIds,
@@ -160,13 +161,17 @@ export function PageEditorPane({
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
   const serverActionsReadyRef = useRef(demoMode);
   const paneRef = useRef<HTMLElement | null>(null);
-  const navigationTimingRef = useRef({
-    pageId,
-    startedAt: performance.now(),
-    measured: new Set<string>(),
-  });
-  if (navigationTimingRef.current.pageId !== pageId) {
-    navigationTimingRef.current = { pageId, startedAt: performance.now(), measured: new Set() };
+  const navigationTimingRef = useRef<{
+    pageId: string;
+    startedAt: number;
+    measured: Set<string>;
+  } | null>(null);
+  if (!navigationTimingRef.current || navigationTimingRef.current.pageId !== pageId) {
+    navigationTimingRef.current = {
+      pageId,
+      startedAt: consumePageNavigationStart(pageId) ?? performance.now(),
+      measured: new Set(),
+    };
   }
   const { getEditorHandle, registerEditor, unregisterEditor } = usePageEditorRegistry();
 
@@ -429,7 +434,7 @@ export function PageEditorPane({
 
   useEffect(() => {
     const timing = navigationTimingRef.current;
-    if (timing.pageId !== pageId) return;
+    if (!timing || timing.pageId !== pageId) return;
     const milestones = [
       ["visible", Boolean(page && !isLoading && !waitingForCollaboration)],
       ["editable", Boolean(page && pageEditable && liveEditingReady)],
