@@ -105,4 +105,20 @@ export function register({ assert, loadModule, test }) {
     await cache.clearPageCacheForUser("cache-user-5");
     assert.equal((await cache.readPageSnapshots("cache-user-5", ["database:db-1"])).length, 0);
   });
+
+  test("sign out drains pending snapshot writes before clearing them", async () => {
+    const cache = await loadModule("/src/features/editor/collaboration/page-document-cache.ts");
+    const writes = Array.from({ length: 20 }, (_, index) =>
+      cache.rememberPageSnapshot(
+        "cache-user-7",
+        "page:page-7",
+        ["page", "page-7", `data-${index}`],
+        { value: index },
+        Date.now(),
+      ),
+    );
+    await cache.clearPageCacheForUser("cache-user-7");
+    await Promise.all(writes);
+    assert.equal((await cache.readPageSnapshots("cache-user-7", ["page:page-7"])).length, 0);
+  });
 }
