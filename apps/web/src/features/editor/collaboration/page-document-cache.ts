@@ -83,6 +83,8 @@ const db = new PageCacheDatabase();
 const entries = new Map<string, PageDocumentEntry>();
 const opening = new Map<string, Promise<PageDocumentEntry>>();
 const writeTails = new Map<string, Promise<void>>();
+const snapshotWriteTails = new Map<string, Promise<void>>();
+const blockedSnapshotUsers = new Set<string>();
 
 function cacheKey(userId: string, pageId: string) {
   const deployment = pageCacheDeploymentKey();
@@ -322,6 +324,7 @@ export async function exportCachedPageState(userId: string, pageId: string) {
 
 export async function rememberCachedSession(value: SessionResponse) {
   if (!value.user || !value.session) return;
+  blockedSnapshotUsers.delete(`${pageCacheDeploymentKey()}:${value.user.id}`);
   await db.sessions.put({ key: pageCacheDeploymentKey(), value });
 }
 
@@ -334,9 +337,15 @@ export async function clearCachedSession() {
 }
 
 export async function clearPageCacheForUser(userId: string) {
+  const snapshotOwnerKey = `${pageCacheDeploymentKey()}:${userId}`;
+  blockedSnapshotUsers.add(snapshotOwnerKey);
+  await snapshotWriteTails.get(snapshotOwnerKey)?.catch(() => undefined);
   const deploymentPrefix = `${pageCacheDeploymentKey()}:`;
   const keys = (await db.pages.where("userId").equals(userId).primaryKeys()).filter((key) =>
     key.startsWith(deploymentPrefix),
+  );
+  const snapshotKeys = (await db.snapshots.where("userId").equals(userId).primaryKeys()).filter(
+    (key) => key.startsWith(deploymentPrefix),
   );
   for (const key of keys) {
     const entry = entries.get(key);
@@ -350,12 +359,28 @@ export async function clearPageCacheForUser(userId: string) {
   await db.transaction("rw", db.pages, db.updates, db.snapshots, async () => {
     await db.updates.where("key").anyOf(keys).delete();
     await db.pages.bulkDelete(keys);
-    await db.snapshots.where("userId").equals(userId).delete();
+    await db.snapshots.bulkDelete(snapshotKeys);
   });
 }
 
 function snapshotScopeKey(userId: string, scope: string) {
   return `${pageCacheDeploymentKey()}:${userId}:${scope}`;
+}
+
+function queueSnapshotWrite(userId: string, work: () => Promise<void>) {
+  const ownerKey = `${pageCacheDeploymentKey()}:${userId}`;
+  if (blockedSnapshotUsers.has(ownerKey)) return Promise.resolve();
+  const previous = snapshotWriteTails.get(ownerKey) ?? Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(() => (blockedSnapshotUsers.has(ownerKey) ? undefined : work()));
+  snapshotWriteTails.set(ownerKey, next);
+  void next
+    .finally(() => {
+      if (snapshotWriteTails.get(ownerKey) === next) snapshotWriteTails.delete(ownerKey);
+    })
+    .catch(() => undefined);
+  return next;
 }
 
 export async function rememberPageSnapshot(
@@ -371,12 +396,14 @@ export async function rememberPageSnapshot(
   if (bytes > SNAPSHOT_BYTE_LIMIT) return;
   const scopeKey = snapshotScopeKey(userId, scope);
   const key = `${scopeKey}:${JSON.stringify(queryKey)}`;
-  await db.transaction("rw", db.snapshots, async () => {
-    const previous = await db.snapshots.get(key);
-    if (previous && previous.updatedAt > updatedAt) return;
-    await db.snapshots.put({ key, scopeKey, userId, queryKey, data, updatedAt, bytes });
+  await queueSnapshotWrite(userId, async () => {
+    await db.transaction("rw", db.snapshots, async () => {
+      const previous = await db.snapshots.get(key);
+      if (previous && previous.updatedAt > updatedAt) return;
+      await db.snapshots.put({ key, scopeKey, userId, queryKey, data, updatedAt, bytes });
+    });
+    await pruneDiskCache();
   });
-  await pruneDiskCache();
 }
 
 export async function readPageSnapshots(userId: string, scopes: string[]) {
@@ -389,14 +416,19 @@ export async function readPageSnapshots(userId: string, scopes: string[]) {
 
 export async function deletePageSnapshots(userId: string, scopes: string[]) {
   if (!scopes.length) return;
-  await db.snapshots
-    .where("scopeKey")
-    .anyOf(scopes.map((scope) => snapshotScopeKey(userId, scope)))
-    .delete();
+  await queueSnapshotWrite(userId, async () => {
+    await db.snapshots
+      .where("scopeKey")
+      .anyOf(scopes.map((scope) => snapshotScopeKey(userId, scope)))
+      .delete();
+  });
 }
 
 export async function clearPageSnapshotsForDeployment(userId: string) {
   const prefix = `${pageCacheDeploymentKey()}:${userId}:`;
+  const ownerKey = `${pageCacheDeploymentKey()}:${userId}`;
+  blockedSnapshotUsers.add(ownerKey);
+  await snapshotWriteTails.get(ownerKey)?.catch(() => undefined);
   const snapshots = await db.snapshots.where("userId").equals(userId).toArray();
   await db.snapshots.bulkDelete(
     snapshots.filter((snapshot) => snapshot.key.startsWith(prefix)).map((snapshot) => snapshot.key),

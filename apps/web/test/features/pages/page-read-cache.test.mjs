@@ -72,4 +72,30 @@ export function register({ assert, loadModule, test }) {
     );
     await storage.clearPageCacheForUser("reader-3");
   });
+
+  test("an access denial removes a cached database view", async () => {
+    const storage = await loadModule("/src/features/editor/collaboration/page-document-cache.ts");
+    const cache = await loadModule("/src/features/pages/cache/page-read-cache.ts");
+    const queryKey = ["db", "session-4", "db-4", "bootstrap", null, false];
+    await storage.rememberPageSnapshot(
+      "reader-4",
+      "database:db-4",
+      ["db", "$session", "db-4", "bootstrap", null, false],
+      { database: { id: "db-4" } },
+      Date.now(),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const unsubscribe = cache.subscribePageReadCache(client, "reader-4", "session-4");
+    await assert.rejects(
+      client.fetchQuery({ queryKey, queryFn: () => Promise.reject({ status: 403 }) }),
+    );
+    for (let attempt = 0; attempt < 10; attempt++) {
+      if (!(await storage.readPageSnapshots("reader-4", ["database:db-4"])).length) break;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.equal((await storage.readPageSnapshots("reader-4", ["database:db-4"])).length, 0);
+    assert.equal(client.getQueryData(queryKey), undefined);
+    unsubscribe();
+    await storage.clearPageCacheForUser("reader-4");
+  });
 }

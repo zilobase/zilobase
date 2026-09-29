@@ -5,6 +5,7 @@ import {
 } from "@zilobase/features/databases";
 
 import {
+  deletePageSnapshots,
   readPageSnapshots,
   rememberPageSnapshot,
   type CachedPageSnapshot,
@@ -127,7 +128,24 @@ export function subscribePageReadCache(
   sessionId: string,
 ) {
   return queryClient.getQueryCache().subscribe((event) => {
-    if (event.type !== "updated" || event.action.type !== "success" || event.action.manual) return;
+    if (event.type !== "updated") return;
+    if (event.action.type === "error") {
+      const error = event.action.error;
+      const status = isObject(error) ? error.status : null;
+      if (status !== 401 && status !== 403 && status !== 404) return;
+      const key = event.query.queryKey;
+      const scope =
+        key[0] === "db" && key[1] === sessionId && typeof key[2] === "string"
+          ? `database:${key[2]}`
+          : key[0] === "page" && typeof key[1] === "string"
+            ? `page:${key[1]}`
+            : null;
+      if (!scope) return;
+      void deletePageSnapshots(userId, [scope]).catch(() => undefined);
+      queryClient.removeQueries({ queryKey: key, exact: true });
+      return;
+    }
+    if (event.action.type !== "success" || event.action.manual) return;
     const { queryKey, state } = event.query;
     const snapshot = snapshotOf(queryKey, state.data, sessionId);
     if (!snapshot) return;
