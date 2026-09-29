@@ -90,4 +90,19 @@ export function register({ assert, loadModule, test }) {
     cache.releasePageDocument(entry);
     await cache.clearPageCacheForUser("cache-user-4");
   });
+
+  test("read snapshots are scoped to their account and removed on sign out", async () => {
+    const cache = await loadModule("/src/features/editor/collaboration/page-document-cache.ts");
+    await cache.rememberPageSnapshot(
+      "cache-user-5",
+      "database:db-1",
+      ["db", "session-1", "db-1", "bootstrap", null, false],
+      { database: { id: "db-1" } },
+      Date.now(),
+    );
+    assert.equal((await cache.readPageSnapshots("cache-user-5", ["database:db-1"])).length, 1);
+    assert.equal((await cache.readPageSnapshots("cache-user-6", ["database:db-1"])).length, 0);
+    await cache.clearPageCacheForUser("cache-user-5");
+    assert.equal((await cache.readPageSnapshots("cache-user-5", ["database:db-1"])).length, 0);
+  });
 }

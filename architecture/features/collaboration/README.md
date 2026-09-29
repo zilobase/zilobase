@@ -5,7 +5,7 @@
 - [apps/server/src/features/collaboration](../../../apps/server/src/features/collaboration)
 - [apps/web/src/features/editor/collaboration](../../../apps/web/src/features/editor/collaboration)
 
-The browser [page document cache](../../../apps/web/src/features/editor/collaboration/page-document-cache.ts) owns deployment- and account-scoped IndexedDB Yjs updates, remembered page detail and shared in-memory page documents. It compacts update logs, releases idle documents and prunes clean disk entries. Local changes stay on disk until comparison with a fresh server snapshot proves delivery. The editor uses a cached document while its transport starts. Startup page-body editing is bounded to an online connection attempt; offline viewing is read only. [ADR 0013](../../decisions/0013-bounded-online-page-document-cache.md) records this policy.
+The browser [page document cache](../../../apps/web/src/features/editor/collaboration/page-document-cache.ts) owns deployment- and account-scoped IndexedDB Yjs updates, remembered page detail, read-only page data snapshots and shared in-memory page documents. It compacts update logs, releases idle documents and prunes clean disk entries and snapshots under a shared budget. Local Yjs changes stay on disk until comparison with a fresh server snapshot proves delivery. The editor uses a cached document while its transport starts. Startup page-body editing is bounded to an online connection attempt; offline viewing is read only. [ADR 0013](../../decisions/0013-bounded-online-page-document-cache.md) records this policy.
 
 ## Main flow
 

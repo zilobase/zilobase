@@ -21,11 +21,21 @@ type CachedPage = {
 
 type CachedUpdate = { id?: number; key: string; update: Uint8Array };
 type CachedSession = { key: string; value: SessionResponse };
+export type CachedPageSnapshot = {
+  key: string;
+  scopeKey: string;
+  userId: string;
+  queryKey: unknown[];
+  data: unknown;
+  updatedAt: number;
+  bytes: number;
+};
 
 class PageCacheDatabase extends Dexie {
   pages!: EntityTable<CachedPage, "key">;
   updates!: EntityTable<CachedUpdate, "id">;
   sessions!: EntityTable<CachedSession, "key">;
+  snapshots!: EntityTable<CachedPageSnapshot, "key">;
 
   constructor() {
     super("zilobase-page-cache-v1");
@@ -34,6 +44,12 @@ class PageCacheDatabase extends Dexie {
       pages: "key,userId,updatedAt",
       updates: "++id,key",
       sessions: "key",
+    });
+    this.version(3).stores({
+      pages: "key,userId,updatedAt",
+      updates: "++id,key",
+      sessions: "key",
+      snapshots: "key,scopeKey,userId,updatedAt",
     });
   }
 }
@@ -59,6 +75,8 @@ export type PageDocumentEntry = {
 const MEMORY_LIMIT = 5;
 const DISK_PAGE_LIMIT = 100;
 const DISK_BYTE_LIMIT = 100 * 1024 * 1024;
+const SNAPSHOT_LIMIT = 300;
+const SNAPSHOT_BYTE_LIMIT = 2 * 1024 * 1024;
 const COMPACT_UPDATE_LIMIT = 100;
 const COMPACT_BYTE_LIMIT = 1024 * 1024;
 const db = new PageCacheDatabase();
@@ -67,11 +85,11 @@ const opening = new Map<string, Promise<PageDocumentEntry>>();
 const writeTails = new Map<string, Promise<void>>();
 
 function cacheKey(userId: string, pageId: string) {
-  const deployment = deploymentKey();
+  const deployment = pageCacheDeploymentKey();
   return `${deployment}:${userId}:${pageId}`;
 }
 
-function deploymentKey() {
+export function pageCacheDeploymentKey() {
   return typeof window === "undefined"
     ? "server"
     : `${window.location.origin}|${getSelectedDesktopServer()?.instanceId ?? resolveRuntimeApiOrigin()}`;
@@ -276,6 +294,7 @@ export async function blockCachedPage(userId: string, pageId: string) {
     entry.blocked = true;
   }
   await db.pages.where("key").equals(key).modify({ detail: null, blocked: true });
+  await deletePageSnapshots(userId, [`page:${pageId}`]);
 }
 
 export async function unblockCachedPage(entry: PageDocumentEntry) {
@@ -303,23 +322,22 @@ export async function exportCachedPageState(userId: string, pageId: string) {
 
 export async function rememberCachedSession(value: SessionResponse) {
   if (!value.user || !value.session) return;
-  await db.sessions.put({ key: deploymentKey(), value });
+  await db.sessions.put({ key: pageCacheDeploymentKey(), value });
 }
 
 export async function readCachedSession() {
-  return (await db.sessions.get(deploymentKey()))?.value ?? null;
+  return (await db.sessions.get(pageCacheDeploymentKey()))?.value ?? null;
 }
 
 export async function clearCachedSession() {
-  await db.sessions.delete(deploymentKey());
+  await db.sessions.delete(pageCacheDeploymentKey());
 }
 
 export async function clearPageCacheForUser(userId: string) {
-  const deploymentPrefix = `${deploymentKey()}:`;
+  const deploymentPrefix = `${pageCacheDeploymentKey()}:`;
   const keys = (await db.pages.where("userId").equals(userId).primaryKeys()).filter((key) =>
     key.startsWith(deploymentPrefix),
   );
-  if (!keys.length) return;
   for (const key of keys) {
     const entry = entries.get(key);
     if (entry) {
@@ -329,10 +347,60 @@ export async function clearPageCacheForUser(userId: string) {
       writeTails.delete(key);
     }
   }
-  await db.transaction("rw", db.pages, db.updates, async () => {
+  await db.transaction("rw", db.pages, db.updates, db.snapshots, async () => {
     await db.updates.where("key").anyOf(keys).delete();
     await db.pages.bulkDelete(keys);
+    await db.snapshots.where("userId").equals(userId).delete();
   });
+}
+
+function snapshotScopeKey(userId: string, scope: string) {
+  return `${pageCacheDeploymentKey()}:${userId}:${scope}`;
+}
+
+export async function rememberPageSnapshot(
+  userId: string,
+  scope: string,
+  queryKey: unknown[],
+  data: unknown,
+  updatedAt: number,
+) {
+  const serialized = JSON.stringify(data);
+  if (!serialized) return;
+  const bytes = new TextEncoder().encode(serialized).byteLength;
+  if (bytes > SNAPSHOT_BYTE_LIMIT) return;
+  const scopeKey = snapshotScopeKey(userId, scope);
+  const key = `${scopeKey}:${JSON.stringify(queryKey)}`;
+  await db.transaction("rw", db.snapshots, async () => {
+    const previous = await db.snapshots.get(key);
+    if (previous && previous.updatedAt > updatedAt) return;
+    await db.snapshots.put({ key, scopeKey, userId, queryKey, data, updatedAt, bytes });
+  });
+  await pruneDiskCache();
+}
+
+export async function readPageSnapshots(userId: string, scopes: string[]) {
+  if (!scopes.length) return [];
+  return db.snapshots
+    .where("scopeKey")
+    .anyOf(scopes.map((scope) => snapshotScopeKey(userId, scope)))
+    .toArray();
+}
+
+export async function deletePageSnapshots(userId: string, scopes: string[]) {
+  if (!scopes.length) return;
+  await db.snapshots
+    .where("scopeKey")
+    .anyOf(scopes.map((scope) => snapshotScopeKey(userId, scope)))
+    .delete();
+}
+
+export async function clearPageSnapshotsForDeployment(userId: string) {
+  const prefix = `${pageCacheDeploymentKey()}:${userId}:`;
+  const snapshots = await db.snapshots.where("userId").equals(userId).toArray();
+  await db.snapshots.bulkDelete(
+    snapshots.filter((snapshot) => snapshot.key.startsWith(prefix)).map((snapshot) => snapshot.key),
+  );
 }
 
 async function trimMemoryCache() {
@@ -363,11 +431,30 @@ async function dropIdleEntry(entry: PageDocumentEntry) {
 
 async function pruneDiskCache() {
   const pages = await db.pages.orderBy("updatedAt").toArray();
-  let bytes = pages.reduce((total, page) => total + page.bytes, 0);
-  let count = pages.length;
-  if (count <= DISK_PAGE_LIMIT && bytes <= DISK_BYTE_LIMIT) return;
-  for (const page of pages) {
-    if (count <= DISK_PAGE_LIMIT && bytes <= DISK_BYTE_LIMIT) break;
+  const snapshots = await db.snapshots.orderBy("updatedAt").toArray();
+  let bytes =
+    pages.reduce((total, page) => total + page.bytes, 0) +
+    snapshots.reduce((total, snapshot) => total + snapshot.bytes, 0);
+  let pageCount = pages.length;
+  let snapshotCount = snapshots.length;
+  if (pageCount <= DISK_PAGE_LIMIT && snapshotCount <= SNAPSHOT_LIMIT && bytes <= DISK_BYTE_LIMIT)
+    return;
+  const candidates = [
+    ...pages.map((page) => ({ kind: "page" as const, value: page })),
+    ...snapshots.map((snapshot) => ({ kind: "snapshot" as const, value: snapshot })),
+  ].sort((a, b) => a.value.updatedAt - b.value.updatedAt);
+  for (const candidate of candidates) {
+    if (pageCount <= DISK_PAGE_LIMIT && snapshotCount <= SNAPSHOT_LIMIT && bytes <= DISK_BYTE_LIMIT)
+      break;
+    if (candidate.kind === "snapshot") {
+      if (snapshotCount <= SNAPSHOT_LIMIT && bytes <= DISK_BYTE_LIMIT) continue;
+      await db.snapshots.delete(candidate.value.key);
+      snapshotCount -= 1;
+      bytes -= candidate.value.bytes;
+      continue;
+    }
+    if (pageCount <= DISK_PAGE_LIMIT && bytes <= DISK_BYTE_LIMIT) continue;
+    const page = candidate.value;
     const entry = entries.get(page.key);
     if (page.locallyChanged || entry?.locallyChanged || entry?.references) continue;
     if (entry) {
@@ -381,7 +468,7 @@ async function pruneDiskCache() {
       await db.updates.where("key").equals(page.key).delete();
       await db.pages.delete(page.key);
     });
-    count -= 1;
+    pageCount -= 1;
     bytes -= page.bytes;
   }
 }

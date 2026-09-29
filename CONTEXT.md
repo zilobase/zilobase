@@ -58,7 +58,7 @@ A Page is the page item represented by a Database row and opened from the editor
 
 ### Page document cache
 
-The deployment- and account-scoped browser store of Yjs page updates and last authorized page detail. A cached document renders immediately during collaboration startup and retains page-body edits made during a bounded online connection window; a disconnected page is read only.
+The deployment- and account-scoped browser store of Yjs page updates, last authorized page detail and bounded read-only page data snapshots. A cached document renders immediately during collaboration startup and retains page-body edits made during a bounded online connection window; a disconnected page is read only.
 
 ### Clip
 
