@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   ChevronDown,
@@ -62,6 +69,10 @@ import {
   writePublishedEmbeddedItemsOpenAs,
 } from "../publication/published-page-preferences";
 import { getDatabaseId, getMeetingId, getPageId } from "../navigation/route-item-id";
+import {
+  getPageConnectionIndicator,
+  subscribePageConnectionIndicator,
+} from "@/features/editor/collaboration/page-connection-indicator";
 
 export { getDatabaseId } from "../navigation/route-item-id";
 
@@ -499,7 +510,34 @@ function PageBreadcrumb({ pageId }: { pageId: string }) {
     : [];
   const entries = buildBreadcrumbEntries(trail, teamspaces, pageId);
 
-  return <CollapsedBreadcrumbTrail entries={entries} />;
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <CollapsedBreadcrumbTrail entries={entries} />
+      <PageConnectionDot pageId={pageId} />
+    </div>
+  );
+}
+
+function PageConnectionDot({ pageId }: { pageId: string }) {
+  const subscribe = useCallback(
+    (listener: () => void) => subscribePageConnectionIndicator(pageId, listener),
+    [pageId],
+  );
+  const getSnapshot = useCallback(() => getPageConnectionIndicator(pageId), [pageId]);
+  const indicator = useSyncExternalStore(subscribe, getSnapshot, () => null);
+  if (!indicator) return null;
+
+  const label = indicator === "connected" ? "Collaboration connected" : "Connecting collaboration";
+  return (
+    <span
+      aria-label={label}
+      className={`size-2 shrink-0 rounded-full ${
+        indicator === "connected" ? "bg-feedback-success" : "bg-feedback-warning"
+      }`}
+      role="status"
+      title={label}
+    />
+  );
 }
 
 function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {

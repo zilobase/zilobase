@@ -44,6 +44,7 @@ import type {
 } from "@/features/editor/core/types";
 import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/features/editor/collaboration/use-page-collaboration";
+import { setPageConnectionIndicator } from "@/features/editor/collaboration/page-connection-indicator";
 import {
   blockCachedPage,
   exportCachedPageState,
@@ -76,6 +77,7 @@ type PageEditorPaneProps = {
   onTitleChange?: (title: string) => void;
   readOnly?: boolean;
   showCollaborationPresence?: boolean;
+  showConnectionIndicator?: boolean;
   reviewDiff?: { beforeMarkdown: string; afterMarkdown: string } | null;
   pageId: string;
 };
@@ -95,6 +97,7 @@ export function PageEditorPane({
   onTitleChange,
   readOnly = false,
   showCollaborationPresence = true,
+  showConnectionIndicator = false,
   reviewDiff,
   pageId,
 }: PageEditorPaneProps) {
@@ -334,6 +337,28 @@ export function PageEditorPane({
     pageId,
     user: session?.user,
   });
+  useEffect(() => {
+    if (!showConnectionIndicator) return;
+    return () => setPageConnectionIndicator(pageId, null);
+  }, [pageId, showConnectionIndicator]);
+  useEffect(() => {
+    if (!showConnectionIndicator) return;
+    setPageConnectionIndicator(
+      pageId,
+      collaborationEnabled && collaboration.online && !collaboration.error
+        ? collaboration.synced
+          ? "connected"
+          : "connecting"
+        : null,
+    );
+  }, [
+    collaboration.online,
+    collaboration.synced,
+    collaboration.error,
+    collaborationEnabled,
+    pageId,
+    showConnectionIndicator,
+  ]);
   const onlineActionsReady = demoMode || collaboration.online;
   onlineActionsReadyRef.current = onlineActionsReady;
   const { setTitle: setName, title: name } = useTitleDraft({
@@ -845,13 +870,13 @@ export function PageEditorPane({
           showRestore={!readOnly}
         />
       ) : null}
-      {collaborationEnabled && !collaboration.synced ? (
+      {collaborationEnabled &&
+      !collaboration.synced &&
+      (!collaboration.online || Boolean(collaboration.error)) ? (
         <p aria-live="polite" className="px-6 py-2 text-xs text-content-secondary">
           {!collaboration.online
             ? "Offline. This cached page is read only."
-            : collaboration.canEdit
-              ? "Connecting collaboration. Your edits are saved locally until the connection is ready."
-              : "Collaboration is unavailable. This page is read only until it reconnects."}
+            : "Collaboration is unavailable. This page is read only until it reconnects."}
         </p>
       ) : null}
       <Editor

@@ -25,6 +25,7 @@ export function AuthenticatedPage() {
             key={pageId}
             onOpenPage={openPage}
             pageId={pageId}
+            showConnectionIndicator
           />
         </PageWorkspaceGate>
       }
