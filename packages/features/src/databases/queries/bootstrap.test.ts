@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { QueryClient } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../data/testing";
 
 import { databaseBootstrapQueryKey, sessionIdForQueries } from "./keys";
 import { databaseBootstrapQueryOptions } from "./bootstrap";
@@ -55,10 +55,13 @@ test("bootstrap fetch parses and validates", async () => {
     databaseId: "database-1",
     viewId: "view-1",
   });
+  const queryClient = new QueryClient();
   const data = await options.queryFn!({
+    client: queryClient,
     signal: new AbortController().signal,
   } as never);
   assert.deepEqual(data, databaseBootstrapResponseSchema.parse(bootstrap));
+  queryClient.clear();
   assert.equal(seen[0], "/databases/database-1/bootstrap?viewId=view-1");
 });
 
@@ -76,6 +79,7 @@ test("bootstrap prefer-newest guard keeps newer cached version", async () => {
       stale) as unknown as import("../../shared/api-fetcher").ApiFetcher;
     const options = databaseBootstrapQueryOptions(apiFetch, "session-1", scope, queryClient);
     const data = await options.queryFn!({
+      client: queryClient,
       signal: new AbortController().signal,
     } as never);
     assert.equal(data.database.version, 3);

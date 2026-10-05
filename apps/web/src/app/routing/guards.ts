@@ -16,7 +16,12 @@ import { decidePublishedShareAccess } from "@/features/pages/publication/publish
 import { readCachedPageDetail } from "@/features/editor/collaboration/page-document-cache";
 import { getConnectivityState } from "@/platform/network/connectivity";
 import { hydratePageReadCache } from "@/features/pages/cache/page-read-cache";
-import type { PageDetail } from "@zilobase/features/pages";
+import {
+  cachePageDetail,
+  resolvePageDetailReference,
+  resolveNavigationReference,
+  type PageDetail,
+} from "@zilobase/features/pages";
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000;
 
@@ -25,7 +30,7 @@ export async function applyPageShareAccess(pageId: string) {
   if (cachedSession?.user) {
     const cachedPage = await readCachedPageDetail(cachedSession.user.id, pageId);
     if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
-      queryClient.setQueryData(pageQueryKey(pageId), cachedPage);
+      cachePageDetail(queryClient, cachedPage as PageDetail);
       await hydrateCachedPageQueries(cachedSession, pageId, cachedPage as PageDetail);
       void queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
       return "app" as const;
@@ -37,7 +42,7 @@ export async function applyPageShareAccess(pageId: string) {
   if (session.user && getConnectivityState() === "offline") {
     const cachedPage = await readCachedPageDetail(session.user.id, pageId);
     if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
-      queryClient.setQueryData(pageQueryKey(pageId), cachedPage);
+      cachePageDetail(queryClient, cachedPage as PageDetail);
       await hydrateCachedPageQueries(session, pageId, cachedPage as PageDetail);
       return "app" as const;
     }
@@ -54,7 +59,11 @@ export async function applyPageShareAccess(pageId: string) {
     });
 
     if (session.user && detail?.viewerType === "member") {
-      await hydrateCachedPageQueries(session, pageId, detail);
+      await hydrateCachedPageQueries(
+        session,
+        pageId,
+        resolvePageDetailReference(queryClient, detail)!,
+      );
     }
 
     if (detail?.viewerType === "guest") return "guest" as const;
@@ -143,7 +152,9 @@ export async function getDefaultAppPath(
       staleTime: NAVIGATION_AUTH_STALE_TIME,
     });
 
-    return navigation ? (getMostRecentItemPath(navigation) ?? "/recents") : "/recents";
+    return navigation
+      ? (getMostRecentItemPath(resolveNavigationReference(queryClient, navigation)) ?? "/recents")
+      : "/recents";
   } catch {
     return "/recents";
   }

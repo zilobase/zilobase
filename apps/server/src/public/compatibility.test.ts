@@ -31,7 +31,6 @@ test("external consumer entrypoints retain their runtime exports", () => {
   assertExports(realtimeApi, [
     "DATABASE_REALTIME_PROTOCOL",
     "MEETING_AUDIO_PROTOCOL",
-    "NAVIGATION_REALTIME_PROTOCOL",
     "verifyDatabaseRealtimeTicket",
   ]);
 });

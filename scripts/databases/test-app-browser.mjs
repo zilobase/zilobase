@@ -181,14 +181,17 @@ try {
     afterPropertyId: null,
     beforePropertyId: null,
   });
+  const createdRows = [];
   for (const title of ["Alpha browser row", "Beta browser row", "Gamma browser row"])
-    await command(sourcePath, {
-      type: "row.place",
-      title,
-      afterRowId: null,
-      beforeRowId: null,
-      parentRowId: null,
-    });
+    createdRows.push(
+      await command(sourcePath, {
+        type: "row.place",
+        title,
+        afterRowId: null,
+        beforeRowId: null,
+        parentRowId: null,
+      }),
+    );
   await command(`/databases/${host}/commands`, {
     type: "view.create",
     name: "Board",
@@ -229,6 +232,13 @@ try {
   }
   page.setDefaultTimeout(20000);
   const errors = [];
+  const navigationTraffic = [];
+  page.on("request", (request) => {
+    if (request.url().includes("navigation-realtime")) navigationTraffic.push(request.url());
+  });
+  page.on("websocket", (socket) => {
+    if (socket.url().includes("navigation-realtime")) navigationTraffic.push(socket.url());
+  });
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error" && message.text().includes("Cannot update a component"))
@@ -388,6 +398,79 @@ try {
   console.info(
     "Disconnected peer caught up after reconnect without reloading or replaying writes.",
   );
+  measurementPhase = "shared-page-metadata";
+  const alphaPageId = createdRows[0].pageId;
+  const favorite = await api.requestJson(`/pages/${alphaPageId}/favorite`, { jar, method: "PUT" });
+  assert.ok(favorite.response.ok);
+  await page.reload();
+  await expect(
+    page.locator("tr[data-database-row-id]").filter({ hasText: "Alpha browser row" }),
+  ).toBeVisible();
+  const alphaRow = page
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Alpha browser row" });
+  await alphaRow.locator(".database-page-link").hover();
+  await alphaRow.getByRole("button", { name: "Open Alpha browser row", exact: true }).click();
+  const paneTitle = page.getByRole("textbox", { name: "Page title", exact: true }).last();
+  await expect(paneTitle).toHaveValue("Alpha browser row");
+  await expect(paneTitle).toBeEditable();
+  await page.waitForLoadState("networkidle");
+  const metadataRequests = [];
+  const trackMetadata = (request) => {
+    const url = new URL(request.url());
+    if (url.port === "1497" || url.pathname.startsWith("/api/"))
+      metadataRequests.push({
+        method: request.method(),
+        path: url.pathname,
+        fields: url.searchParams.get("fields"),
+      });
+  };
+  page.on("request", trackMetadata);
+  const titleAck = page.waitForResponse(
+    (response) =>
+      response.request().method() === "PATCH" && response.url().endsWith(`/pages/${alphaPageId}`),
+  );
+  void titleAck.catch(() => undefined);
+  await paneTitle.fill("Shared browser title");
+  await paneTitle.press("Enter");
+  assert.ok((await titleAck).ok());
+  await expect(
+    page.locator("tr[data-database-row-id]").filter({ hasText: "Shared browser title" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('a[href*="/p/' + alphaPageId + '"]')
+      .filter({ hasText: "Shared browser title" })
+      .first(),
+  ).toBeVisible();
+  await expect(paneTitle).toHaveValue("Shared browser title");
+  await page.waitForTimeout(200);
+  page.off("request", trackMetadata);
+  assert.equal(
+    metadataRequests.filter((request) => request.method === "PATCH").length,
+    1,
+    JSON.stringify(metadataRequests),
+  );
+  assert.equal(
+    metadataRequests.filter(
+      (request) =>
+        request.method === "GET" &&
+        (request.path.endsWith(`/pages/${alphaPageId}`) ||
+          (request.path.endsWith("/pages") && request.fields === "nav") ||
+          request.path.endsWith("/bootstrap")),
+    ).length,
+    0,
+    JSON.stringify(metadataRequests),
+  );
+  assert.deepEqual(navigationTraffic, [], "Navigation ticket requests and sockets are retired");
+  console.info(
+    "Sidebar, database row and page pane share a title acknowledgement with one write and no blanket metadata reads.",
+  );
+  const renamedRow = page
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Shared browser title" });
+  await renamedRow.locator(".database-page-link").hover();
+  await renamedRow.getByRole("button", { name: "Close Shared browser title", exact: true }).click();
   await page.getByRole("tab", { name: "Board", exact: true }).click();
   await mkdir(`${root}.dev/database-app-results`, { recursive: true });
   await page.screenshot({ path: `${root}.dev/database-app-results/kanban.png`, fullPage: true });

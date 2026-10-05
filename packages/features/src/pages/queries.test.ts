@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { QueryObserver } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../data/testing";
 
 import type { ApiFetcher } from "../shared/api-fetcher";
 import { pageQueryOptions, pagesQueryOptions } from "./queries";
@@ -27,6 +28,7 @@ test("route-owned page queries survive their component observer detaching", asyn
       name: "Page",
       type: "document",
       workspaceId: "workspace-1",
+      updatedAt: "2026-10-05T00:00:00.000Z",
     },
   });
 

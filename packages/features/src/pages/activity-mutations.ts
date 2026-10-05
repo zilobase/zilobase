@@ -1,9 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import { setPageDetailCache } from "../shared/item-action-cache";
-import { pageQueryKey, pagesNavRootQueryKey, pagesQueryKey, pagesRootQueryKey } from "./queries";
-import type { PageDetail, Page, PageNavigationPayload } from "./contracts";
-import { applyPageFavoriteToNav, applyItemVisitToNav } from "./nav-delta";
+import { pageQueryKey, pagesQueryKey, pagesRootQueryKey } from "./queries";
+import {
+  updatePageContexts,
+  type PageDetailReference,
+  type PageNavigationReference,
+} from "./cache";
+import type { Page } from "./contracts";
 
 type SetPageFavoriteInput = {
   isFavorite: boolean;
@@ -17,7 +21,7 @@ type RecordItemVisitInput = {
 };
 
 function applyPageFavoriteToList(
-  navigation: PageNavigationPayload | undefined,
+  navigation: PageNavigationReference | undefined,
   pageId: string,
   isFavorite: boolean,
 ) {
@@ -25,7 +29,7 @@ function applyPageFavoriteToList(
     ? {
         ...navigation,
         pages: navigation.pages.map((page) =>
-          page.id === pageId ? { ...page, isFavorite } : page,
+          page.id === pageId ? { ...page, context: { ...page.context, isFavorite } } : page,
         ),
       }
     : navigation;
@@ -54,28 +58,30 @@ export function useSetPageFavorite() {
         queryClient.cancelQueries({ queryKey: pagesRootQueryKey() }),
       ]);
 
-      const previousDetail = queryClient.getQueryData<PageDetail | null>(
+      const previousDetail = queryClient.getQueryData<PageDetailReference | null>(
         pageQueryKey(variables.pageId),
       );
       const previousNavQueries = queryClient
-        .getQueriesData<PageNavigationPayload>({
+        .getQueriesData<PageNavigationReference>({
           queryKey: pagesRootQueryKey(),
         })
         .filter(([queryKey]) => isPageNavQueryKey(queryKey));
 
-      queryClient.setQueryData<PageDetail | null>(pageQueryKey(variables.pageId), (current) =>
-        current
-          ? {
-              ...current,
-              page: {
-                ...current.page,
-                isFavorite: variables.isFavorite,
-              },
-            }
-          : current,
+      queryClient.setQueryData<PageDetailReference | null>(
+        pageQueryKey(variables.pageId),
+        (current) =>
+          current
+            ? {
+                ...current,
+                page: {
+                  ...current.page,
+                  context: { ...current.page.context, isFavorite: variables.isFavorite },
+                },
+              }
+            : current,
       );
       for (const [queryKey] of previousNavQueries) {
-        queryClient.setQueryData<PageNavigationPayload | undefined>(queryKey, (current) =>
+        queryClient.setQueryData<PageNavigationReference | undefined>(queryKey, (current) =>
           applyPageFavoriteToList(current, variables.pageId, variables.isFavorite),
         );
       }
@@ -91,10 +97,7 @@ export function useSetPageFavorite() {
     },
     onSuccess: async (page) => {
       setPageDetailCache(queryClient, page);
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(page.workspaceId) },
-        (current) => applyPageFavoriteToNav(current, page),
-      );
+      updatePageContexts(queryClient, page.id, { isFavorite: page.isFavorite });
     },
   });
 }
@@ -118,27 +121,43 @@ export function useRecordItemVisit() {
           queryKey: ["workspaces", variables.workspaceId, "ai-agent-profiles"],
         });
       }
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
+      queryClient.setQueriesData<PageNavigationReference>(
         { queryKey: pagesQueryKey(variables.workspaceId) },
-        (current) =>
-          applyItemVisitToNav(current, {
-            itemId: result.itemId,
-            itemKind: result.itemKind as "database" | "page",
-            lastVisitedAt: result.lastVisitedAt,
-          }),
+        (current) => {
+          if (!current) return current;
+          return result.itemKind === "page"
+            ? {
+                ...current,
+                pages: current.pages.map((page) =>
+                  page.id === result.itemId
+                    ? { ...page, context: { ...page.context, lastVisitedAt: result.lastVisitedAt } }
+                    : page,
+                ),
+              }
+            : {
+                ...current,
+                databases: current.databases.map((database) =>
+                  database.id === result.itemId
+                    ? { ...database, lastVisitedAt: result.lastVisitedAt }
+                    : database,
+                ),
+              };
+        },
       );
 
       if (result.itemKind === "page") {
-        queryClient.setQueryData<PageDetail | null>(pageQueryKey(result.itemId), (current) =>
-          current
-            ? {
-                ...current,
-                page: {
-                  ...current.page,
-                  lastVisitedAt: result.lastVisitedAt,
-                },
-              }
-            : current,
+        queryClient.setQueryData<PageDetailReference | null>(
+          pageQueryKey(result.itemId),
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  page: {
+                    ...current.page,
+                    context: { ...current.page.context, lastVisitedAt: result.lastVisitedAt },
+                  },
+                }
+              : current,
         );
       }
     },

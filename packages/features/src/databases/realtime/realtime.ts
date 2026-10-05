@@ -1,3 +1,5 @@
+import { sharedClient } from "../../data/client";
+import { refreshTitleMembership } from "../queries/page-membership";
 import type { QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
@@ -267,7 +269,17 @@ export class DatabaseRealtimeManager {
     if (message.databaseId !== this.databaseId) return;
 
     if (message.type === "database.mutation") {
-      // Poke only. Ignore changes, areas, requiresReset payload.
+      const entities = sharedClient(this.queryClient).database(this.databaseId);
+      const pageMetadata = entities?.databases.isPageMetadataEvent(message);
+      const admitted = entities?.databases.ingestEvent(message);
+      if (pageMetadata && admitted === "published") {
+        refreshTitleMembership(
+          this.queryClient,
+          message.changes.records!.map((record) => record.pageId),
+        );
+        return;
+      }
+      // Result membership continues through the existing recovery reads until Pass 7.
       this.pokeDatabaseVersion(message.version);
       return;
     }

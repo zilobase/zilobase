@@ -2,15 +2,14 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
 import { databaseAccessQueryKey } from "../databases/queries/queries";
-import { applyPageFavoriteToNav } from "../pages/nav-delta";
 import {
-  zilobaseAiPagesQueryKey,
-  pagesNavRootQueryKey,
-  pageQueryKey,
-  pagesRootQueryKey,
-  pagesQueryKey,
-} from "../pages/queries";
-import type { Page, PageDetail, PageNavigationPayload } from "../pages/contracts";
+  cachePageDetail,
+  readCachedPage,
+  updatePageContexts,
+  type PageDetailReference,
+} from "../pages/cache";
+import { zilobaseAiPagesQueryKey, pagesNavRootQueryKey, pageQueryKey } from "../pages/queries";
+import type { Page } from "../pages/contracts";
 
 export type DeletedItemIds = {
   deletedDatabaseIds: string[];
@@ -56,10 +55,7 @@ export async function favoritePages({
 
   for (const { page } of results) {
     setPageDetailCache(queryClient, page);
-    queryClient.setQueriesData<PageNavigationPayload | undefined>(
-      { queryKey: pagesNavRootQueryKey(page.workspaceId) },
-      (current) => applyPageFavoriteToNav(current, page),
-    );
+    updatePageContexts(queryClient, page.id, { isFavorite: page.isFavorite });
   }
 }
 
@@ -149,38 +145,15 @@ export async function invalidateRestoredItems({
 }
 
 export function setPageDetailCache(queryClient: QueryClient, page: Page) {
-  queryClient.setQueryData<PageDetail | null>(pageQueryKey(page.id), (current) => ({
+  const current = queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(page.id));
+  cachePageDetail(queryClient, {
+    ...current,
+    page,
     accessLevel: current?.accessLevel ?? null,
     databaseIds: current?.databaseIds ?? [],
-    page,
-  }));
+  });
 }
 
-function getPageFromCache(queryClient: QueryClient, pageId: string, workspaceId?: string | null) {
-  const detail = queryClient.getQueryData<PageDetail | null>(pageQueryKey(pageId));
-
-  if (detail?.page.id === pageId) {
-    return detail.page;
-  }
-
-  const workspacePages = workspaceId
-    ? queryClient.getQueryData<PageNavigationPayload>(pagesQueryKey(workspaceId))
-    : null;
-  const page = workspacePages?.pages.find((candidate) => candidate.id === pageId);
-
-  if (page) {
-    return page;
-  }
-
-  for (const [, navigation] of queryClient.getQueriesData<PageNavigationPayload>({
-    queryKey: pagesRootQueryKey(),
-  })) {
-    const page = navigation?.pages.find((candidate) => candidate.id === pageId);
-
-    if (page) {
-      return page;
-    }
-  }
-
-  return null;
+function getPageFromCache(queryClient: QueryClient, pageId: string, _workspaceId?: string | null) {
+  return readCachedPage(queryClient, pageId);
 }

@@ -1,3 +1,4 @@
+import { sharedClient } from "../../data/client";
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
@@ -35,10 +36,21 @@ export function databaseBootstrapQueryOptions(
   return queryOptions({
     queryKey,
     staleTime: 30_000,
-    queryFn: async ({ signal }): Promise<DatabaseBootstrapResponse> => {
+    queryFn: async ({ client, signal }): Promise<DatabaseBootstrapResponse> => {
+      const owner = sharedClient(client);
+      const read = owner.capture();
       const incoming = databaseBootstrapResponseSchema.parse(
         await apiFetch<DatabaseBootstrapResponse>(databaseBootstrapPath(scope), { signal }),
       );
+      owner
+        .resolve(
+          read,
+          incoming.database.workspaceId,
+          read.identity.viewer.kind === "public"
+            ? { kind: "public", id: scope.databaseId }
+            : undefined,
+        )
+        .databases.ingestBootstrap(scope.databaseId, incoming);
       // Prefer-newest guard: out-of-order GETs must not regress cache.
       if (queryClient) {
         const cached = queryClient.getQueryData<DatabaseBootstrapResponse>(queryKey);

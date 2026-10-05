@@ -2,7 +2,7 @@
 
 ## Interface and flow
 
-Page collaboration, database mutation events, Calendar updates and workspace navigation invalidations have separate attachment modules. Their tickets, events and recovery are owned by the corresponding feature implementations.
+Page collaboration, database mutation events, Calendar updates have separate attachment modules. Their tickets, events and recovery are owned by the corresponding feature implementations.
 
 Node and Cloudflare are alternative deployment topologies. Every Node role
 (`all`, `api`, and `worker`) requires one configured Redis/Valkey realtime bus.
@@ -32,10 +32,13 @@ bounded reconnect and structured-error policy and close with the extension.
 Other Node fanout, notification, and rate-limit features reuse the single
 runtime bus.
 
-Database clients compare socket versions with their cached snapshots and refetch
-the affected host. They do not merge socket changes or call the mutation-journal
-feed. Pending controller projections survive stale reads until each consumer has
-confirmed the committed revision.
+Database clients validate socket changes and ingest authorized entity facets into
+the [shared collections](../../packages/features/src/databases/cache.ts). Database
+result membership still uses the existing host recovery reads during the staged
+consumer migration. Unknown sources and reset hints require authorized reads.
+Presence remains separate. There is no navigation socket or server producer;
+page/hierarchy/access reads refresh on focus and reopen. Cloudflare retains its
+existing navigation class export and migration declarations as an inert boundary.
 
 ## Verification
 

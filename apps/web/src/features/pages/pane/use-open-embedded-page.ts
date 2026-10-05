@@ -10,7 +10,8 @@ import {
   type UserSettings,
 } from "@zilobase/features/user-settings";
 import {
-  getPageFromDetail,
+  resolvePageDetailReference,
+  type PageDetailReference,
   resolveEmbeddedItemsOpenAs,
   pageQueryKey,
   type Page,
@@ -28,7 +29,10 @@ function resolveOpenPagesAsFromCache(
   const userSettings =
     queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ?? defaultUserSettings;
   const page =
-    getPageFromDetail(queryClient.getQueryData(pageQueryKey(hostPageId))) ?? fallbackPage;
+    resolvePageDetailReference(
+      queryClient,
+      queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(hostPageId)),
+    )?.page ?? fallbackPage;
 
   if (isPublishedFallbackPage(page)) {
     return readPublishedEmbeddedItemsOpenAs();

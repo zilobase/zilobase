@@ -18,7 +18,6 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
         where status in ('accumulating', 'ready')
       union all select 'fast', lease_expires_at from database_automation_event_window where status = 'processing'
       union all select 'fast', next_attempt_at from database_realtime_outbox
-      union all select 'fast', next_attempt_at from navigation_realtime_outbox
       union all select 'fast', next_attempt_at from in_product_notification_outbox where status = 'pending'
       union all select 'automation', available_at from database_automation_run where status = 'queued'
       union all select 'automation', lease_expires_at from database_automation_run where status = 'running'

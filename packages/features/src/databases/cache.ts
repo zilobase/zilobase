@@ -264,4 +264,46 @@ export class DatabaseCollections {
     }
     return "published";
   }
+
+  /** Full records can confirm page metadata without changing result membership. */
+  isPageMetadataEvent(event: import("./core/entities").DatabaseMutationEventV2) {
+    const { records, sourceVersions: _versions, ...other } = event.changes;
+    if (
+      event.requiresReset ||
+      !records?.length ||
+      Object.values(other).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value !== undefined,
+      )
+    )
+      return false;
+    return records.every((record) => {
+      const current = this.records.collection.base.get(record.id);
+      const page = this.pages.collection.base.get(record.pageId);
+      if (
+        !current ||
+        !page ||
+        current.pageId !== record.pageId ||
+        current.dataSourceId !== record.dataSourceId ||
+        current.orderKey !== record.orderKey ||
+        current.parentRowId !== record.parentRowId ||
+        page.deletedAt !== record.page.deletedAt ||
+        page.hasContent !== record.page.hasContent
+      )
+        return false;
+      const values = Object.values(record.valuesByPropertyId);
+      return (
+        values.length === current.valueIds.length &&
+        values.every((value) => {
+          const previous = this.values.collection.base.get(
+            valueIdentity(value.pageId, value.propertyId),
+          );
+          return (
+            previous?.valueId === value.id &&
+            previous.updatedAt === value.updatedAt &&
+            JSON.stringify(previous.value) === JSON.stringify(value.value)
+          );
+        })
+      );
+    });
+  }
 }

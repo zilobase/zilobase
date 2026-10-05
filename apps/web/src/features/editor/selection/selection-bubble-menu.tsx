@@ -26,7 +26,7 @@ export function SelectionBubbleMenu({
   runCommand: RunToolbarCommand;
 }) {
   useEffect(() => {
-    if (!editor) {
+    if (!editor || !editor.isInitialized || editor.isDestroyed) {
       return;
     }
 
@@ -40,7 +40,7 @@ export function SelectionBubbleMenu({
       frame = window.requestAnimationFrame(() => {
         frame = null;
 
-        if (editor.isDestroyed) {
+        if (!editor.isInitialized || editor.isDestroyed) {
           return;
         }
 
@@ -79,7 +79,7 @@ export function SelectionBubbleMenu({
     };
   }, [editor]);
 
-  if (!editor) {
+  if (!editor || !editor.isInitialized || editor.isDestroyed) {
     return null;
   }
 

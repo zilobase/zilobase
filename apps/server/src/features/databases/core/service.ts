@@ -29,10 +29,6 @@ import { invalidateDatabaseAutomationDependencies } from "../../automations/serv
 import { getDatabaseRecord } from "../access/database-access";
 import { getDatabaseExportPayload } from "./payload";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../../workspaces/navigation-realtime/outbox";
 
 async function resolveCreationTeamspace(
   input: Parameters<typeof createDatabaseService>[0],
@@ -120,7 +116,7 @@ export async function createDatabaseService(input: {
           .limit(1)
       : [];
 
-  const navigationEvent = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await tx.insert(database).values({
       id: databaseId,
       workspaceId: input.workspaceId,
@@ -183,12 +179,7 @@ export async function createDatabaseService(input: {
           target: [favorite.userId, favorite.databaseId],
         });
     }
-    return enqueueNavigationInvalidation(tx, input.workspaceId);
   });
-  await deliverAfterCommit(
-    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
-    input.afterCommit,
-  );
 
   return {
     databaseId,
@@ -288,7 +279,7 @@ export async function restoreDatabaseService(input: {
 
   const deletedAt = existing.deletedAt;
   const now = new Date();
-  const { navigationEvent, ...restored } = await db.transaction(async (tx) => {
+  const { ...restored } = await db.transaction(async (tx) => {
     const restoredDatabases = await tx
       .update(database)
       .set({
@@ -346,17 +337,10 @@ export async function restoreDatabaseService(input: {
       .returning({ id: page.id });
 
     return {
-      navigationEvent: await enqueueNavigationInvalidation(tx, existing.workspaceId, {
-        committedAt: now,
-      }),
       restoredDatabaseIds,
       restoredPageIds: restoredPages.map((record) => record.id),
     };
   });
-  await deliverAfterCommit(
-    () => publishCommittedNavigationInvalidation(navigationEvent, input.env),
-    input.afterCommit,
-  );
 
   const restoredRecord = {
     ...existing,

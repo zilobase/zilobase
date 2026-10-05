@@ -29,16 +29,6 @@ function snapshotOf(
   sessionId: string,
 ): ReadSnapshot | null {
   const key = [...queryKey];
-  if (key[0] === "pages" && typeof key[1] === "string" && key[2] === "nav" && key[3] === "active") {
-    if (
-      !isObject(data) ||
-      !Array.isArray(data.pages) ||
-      !Array.isArray(data.databases) ||
-      !Array.isArray(data.placements)
-    )
-      return null;
-    return { scope: `workspace:${key[1]}`, queryKey: key, data };
-  }
   if (key[0] === "meetings" && key[1] === "list" && typeof key[2] === "string") {
     if (!isObject(data) || !Array.isArray(data.meetings)) return null;
     return { scope: `workspace:${key[2]}`, queryKey: key, data };

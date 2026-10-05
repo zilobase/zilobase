@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { QueryClient } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../data/testing";
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { DatabaseController } from "./store";
 import { DatabaseCommandUnconfirmedError, DatabaseReconciliationError } from "../mutations/execute";

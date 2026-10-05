@@ -106,7 +106,6 @@ export async function createDatabaseViewService(input: {
       areas: ["views"],
       databaseId: existing.id,
       env: input.env,
-      navigationWorkspaceId: existing.workspaceId,
     },
     async (tx) => {
       const now = new Date();
@@ -353,7 +352,6 @@ export async function updateDatabaseViewService(input: {
       areas: subItemSetup ? ["views", "properties", "records"] : ["views"],
       databaseId: existing.id,
       env: input.env,
-      navigationWorkspaceId: existing.workspaceId,
     },
     async (tx) => {
       const now = new Date();

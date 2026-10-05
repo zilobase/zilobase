@@ -72,9 +72,6 @@ vi.mock("./features/meeting-audio/meeting-audio-runtime", () => ({
 vi.mock("./features/calendar-realtime/calendar-realtime-runtime", () => ({
   attachNodeCalendarRealtimeRuntime: vi.fn(() => mocks.calendarRealtime),
 }));
-vi.mock("./features/navigation-realtime/navigation-realtime-runtime", () => ({
-  attachNodeNavigationRealtimeRuntime: vi.fn(() => mocks.navigationRealtime),
-}));
 vi.mock("./background-coordinator", () => ({
   createNodeBackgroundCoordinator: vi.fn(() => mocks.coordinator),
   publishNodeBackgroundNotification: mocks.publishBackground,
@@ -242,10 +239,11 @@ describe("Node runtime lifecycle", () => {
 
     await runtime.start();
     await ports!.fanout.publish("db:database", { id: "db" });
-    await ports!.fanout.publish("navigation:workspace", { id: "nav" });
+    await expect(ports!.fanout.publish("navigation:workspace", { id: "nav" })).rejects.toThrow(
+      "Unsupported fanout channel",
+    );
     await ports!.jobs.dispatch([]);
     expect(mocks.databaseRealtime.publishMutation).toHaveBeenCalled();
-    expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
     expect(mocks.publishBackground).toHaveBeenCalled();
 
     expect(await (await fetch(`http://127.0.0.1:${port}/api/test`)).text()).toBe("api");

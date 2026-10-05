@@ -1,0 +1,17 @@
+import { QueryClient, type QueryClientConfig } from "@tanstack/react-query";
+import { installSharedClient, sharedClient } from "./client";
+
+/** Test composition mirrors the application's explicit session installation. */
+export class TestQueryClient extends QueryClient {
+  constructor(config?: QueryClientConfig) {
+    super(config);
+    installSharedClient(this, () => ({
+      deployment: "https://local.zilobase.test",
+      viewer: { kind: "account", accountId: "account", actorId: "actor", sessionId: "session" },
+    }));
+  }
+  override clear() {
+    for (const owner of sharedClient(this).all()) void owner.session.dispose();
+    super.clear();
+  }
+}

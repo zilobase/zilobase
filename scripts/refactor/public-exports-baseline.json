@@ -196,10 +196,6 @@
       "value": true,
       "type": false
     },
-    "drainNavigationRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -843,10 +839,6 @@
       "type": false
     },
     "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -1496,10 +1488,6 @@
       "value": true,
       "type": false
     },
-    "drainNavigationRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -2143,10 +2131,6 @@
       "type": false
     },
     "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -2805,10 +2789,6 @@
       "type": false
     },
     "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -3482,10 +3462,6 @@
       "value": true,
       "type": false
     },
-    "drainNavigationRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -3956,10 +3932,6 @@
       "value": true,
       "type": false
     },
-    "createNavigationRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX": {
       "value": true,
       "type": false
@@ -4016,31 +3988,11 @@
       "value": true,
       "type": false
     },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicketClaims": {
-      "value": false,
-      "type": true
-    },
     "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
     "verifyMeetingAudioTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyNavigationRealtimeTicket": {
       "value": true,
       "type": false
     }
@@ -4054,10 +4006,6 @@
       "value": true,
       "type": false
     },
-    "createNavigationRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX": {
       "value": true,
       "type": false
@@ -4114,31 +4062,11 @@
       "value": true,
       "type": false
     },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicketClaims": {
-      "value": false,
-      "type": true
-    },
     "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
     "verifyMeetingAudioTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyNavigationRealtimeTicket": {
       "value": true,
       "type": false
     }
@@ -8504,10 +8432,6 @@
       "value": true,
       "type": false
     },
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
     "isPageBodyEmpty": {
       "value": true,
       "type": false
@@ -8529,30 +8453,6 @@
       "type": false
     },
     "NavDelta": {
-      "value": false,
-      "type": true
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
       "value": false,
       "type": true
     },
@@ -8926,10 +8826,6 @@
       "value": true,
       "type": false
     },
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
     "isPageBodyEmpty": {
       "value": true,
       "type": false
@@ -8951,30 +8847,6 @@
       "type": false
     },
     "NavDelta": {
-      "value": false,
-      "type": true
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
       "value": false,
       "type": true
     },
@@ -9459,66 +9331,6 @@
       "type": false
     },
     "NavDelta": {
-      "value": false,
-      "type": true
-    }
-  },
-  "@zilobase/features:./pages/navigation-realtime:types": {
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
-      "value": false,
-      "type": true
-    }
-  },
-  "@zilobase/features:./pages/navigation-realtime:default": {
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
       "value": false,
       "type": true
     }

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { QueryClient } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../data/testing";
 
+import { sharedClient } from "../../data/client";
 import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "./keys";
 import {
   fetchRecordWindow,
@@ -259,6 +260,39 @@ test("placeholder drops rows from another data source", () => {
 test("prefetch warms an uncached window and skips a cached one", async () => {
   const queryClient = new QueryClient();
   try {
+    const owner = sharedClient(queryClient);
+    const stamp = "2026-10-05T00:00:00.000Z";
+    owner.resolve(owner.capture(), "workspace").databases.ingestBootstrap(scope.databaseId, {
+      database: {
+        id: scope.databaseId,
+        workspaceId: "workspace",
+        name: "Host",
+        config: {},
+        accessLevel: "full",
+        pageId: null,
+        deletedAt: null,
+        createdAt: stamp,
+        updatedAt: stamp,
+        version: 5,
+      },
+      dataSources: [
+        {
+          id: scope.dataSourceId,
+          workspaceId: "workspace",
+          parentDatabaseId: scope.databaseId,
+          name: "Source",
+          config: {},
+          configVersion: 0,
+          version: 2,
+          position: 0,
+          linkedAt: stamp,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+      properties: [],
+      views: [],
+    });
     let calls = 0;
     const apiFetch = (async () => {
       calls += 1;

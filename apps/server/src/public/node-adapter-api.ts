@@ -41,13 +41,6 @@ export {
   type CalendarRealtimeTicketClaims,
 } from "../features/calendar/realtime/calendar-realtime-ticket";
 export {
-  NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
-  NAVIGATION_REALTIME_PROTOCOL,
-  createNavigationRealtimeTicket,
-  verifyNavigationRealtimeTicket,
-  type NavigationRealtimeTicketClaims,
-} from "../shared/security/navigation-realtime-ticket";
-export {
   MEETING_AUDIO_SOURCES,
   meetingAudioSourceFromCode,
   type MeetingAudioSource,

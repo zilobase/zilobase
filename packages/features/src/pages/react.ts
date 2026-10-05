@@ -29,4 +29,3 @@ export {
   usePageProperties,
 } from "./query-hooks";
 export { useResolvedPageLayout, useSavePageLayout, useResetPageLayout } from "./page-layout-hooks";
-export { useNavigationRealtime } from "./use-navigation-realtime";

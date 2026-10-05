@@ -6,10 +6,7 @@ import { db } from "../../infrastructure/database";
 import { database, dataSource, databaseRow, page } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { softDeletePageTree } from "./mutations/soft-delete-nav-items";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../workspaces/navigation-realtime/outbox";
+
 import { enforceActiveWorkspace, getPage, getPageIncludingDeleted } from "./page-route-support";
 
 export const pageLifecycleRoutes = new Hono<AppBindings>();
@@ -46,7 +43,7 @@ pageLifecycleRoutes.post("/:id/restore", async (c) => {
   }
 
   const deletedAt = existing.deletedAt;
-  const { navigationEvent, ...restored } = await db.transaction(async (tx) => {
+  const { ...restored } = await db.transaction(async (tx) => {
     const now = new Date();
     const restoredPages = await tx
       .update(page)
@@ -104,15 +101,11 @@ pageLifecycleRoutes.post("/:id/restore", async (c) => {
     }
 
     return {
-      navigationEvent: await enqueueNavigationInvalidation(tx, existing.workspaceId, {
-        committedAt: now,
-      }),
       page: restoredPages.find((record) => record.id === existing.id) ?? existing,
       restoredDatabaseIds,
       restoredPageIds: restoredPages.map((record) => record.id),
     };
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json(restored);
 });

@@ -9,7 +9,6 @@ export const BACKGROUND_TASK_KINDS = [
   "ai.job",
   "calendar.sync",
   "realtime.database",
-  "realtime.navigation",
   "notification.publish",
 ] as const;
 

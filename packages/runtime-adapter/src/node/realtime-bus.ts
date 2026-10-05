@@ -157,10 +157,6 @@ export function databaseRealtimeChannel(databaseId: string) {
   return `zilobase:realtime:database:${databaseId}`;
 }
 
-export function navigationRealtimeChannel(workspaceId: string) {
-  return `zilobase:realtime:navigation:${workspaceId}`;
-}
-
 function parseEnvelope(raw: string): RealtimeEnvelope | null {
   try {
     const value = JSON.parse(raw) as Partial<RealtimeEnvelope>;

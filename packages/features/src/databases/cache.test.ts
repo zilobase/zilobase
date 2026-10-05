@@ -145,6 +145,44 @@ function fixture() {
   return { session, pages, databases };
 }
 
+test("page metadata confirmations do not require replacement reads but value, placement and lifecycle changes do", async () => {
+  const { session, databases } = fixture();
+  try {
+    databases.ingestBootstrap("host", bootstrap());
+    databases.ingestWindow("host", "source", "q-fixture", window());
+    const changed = {
+      ...record(),
+      updatedAt: stamp(2),
+      page: { ...record().page, name: "Renamed", updatedAt: stamp(2) },
+    };
+    assert.equal(
+      databases.isPageMetadataEvent(event({ records: [changed], sourceVersions: { source: 2 } })),
+      true,
+    );
+    assert.equal(
+      databases.isPageMetadataEvent(event({ records: [{ ...changed, orderKey: "2000" }] })),
+      false,
+    );
+    assert.equal(
+      databases.isPageMetadataEvent(
+        event({ records: [{ ...changed, page: { ...changed.page, deletedAt: stamp(2) } }] }),
+      ),
+      false,
+    );
+    assert.equal(databases.isPageMetadataEvent(event({ records: [record(2)] })), false);
+    assert.equal(
+      databases.isPageMetadataEvent(event({ records: [{ ...changed, id: "unknown" }] })),
+      false,
+    );
+    assert.equal(
+      databases.isPageMetadataEvent(event({ records: [changed], removedRecordIds: ["other"] })),
+      false,
+    );
+  } finally {
+    await session.dispose();
+  }
+});
+
 test("bootstrap and windows return server result references and normalize storage identities", async () => {
   const { session, pages, databases } = fixture();
   const boot = databases.ingestBootstrap("host", bootstrap());

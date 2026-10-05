@@ -16,10 +16,7 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../../workspaces/navigation-realtime/outbox";
+
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
@@ -50,7 +47,6 @@ type CommitOptions = {
   areas: DatabaseChangedAreaV2[];
   databaseId: string;
   env?: RuntimeEnv;
-  navigationWorkspaceId?: string;
 };
 
 type BatchMutation = {
@@ -71,7 +67,6 @@ type DataSourceBatchMutation = {
 type BatchCommitOptions = {
   actorId: string;
   env?: RuntimeEnv;
-  navigationWorkspaceId?: string;
 };
 
 export type DatabaseMutationCommitResult = DatabaseMutationEventV2;
@@ -100,7 +95,7 @@ export async function commitDatabaseMutationBatch<T>(
   const committedAt = new Date().toISOString();
   const automationWindows: Array<{ availableAt: Date; id: string }> = [];
   let agentTriggerFacts: DatabaseAutomationMutationFactCandidate[] = [];
-  const { commits, navigationEvent, result } = await measureDatabaseOperation(
+  const { commits, result } = await measureDatabaseOperation(
     "commit_duration_ms",
     { operation: "internal", scope: "source" },
     () =>
@@ -220,13 +215,7 @@ export async function commitDatabaseMutationBatch<T>(
           await tx.insert(databaseRealtimeOutbox).values(outboxRows);
         }
 
-        const navigationEvent = options.navigationWorkspaceId
-          ? await enqueueNavigationInvalidation(tx, options.navigationWorkspaceId, {
-              committedAt: new Date(committedAt),
-            })
-          : null;
-
-        return { commits, navigationEvent, result: mutationResult.result };
+        return { commits, result: mutationResult.result };
       }),
   );
 
@@ -272,10 +261,6 @@ export async function commitDatabaseMutationBatch<T>(
     }
   }
 
-  if (navigationEvent) {
-    await publishCommittedNavigationInvalidation(navigationEvent, options.env);
-  }
-
   return { commits, result };
 }
 
@@ -291,7 +276,6 @@ export async function commitDatabaseMutation(
     {
       actorId: options.actorId,
       env: options.env,
-      navigationWorkspaceId: options.navigationWorkspaceId,
     },
     async (tx) => {
       const result = await mutate(tx);

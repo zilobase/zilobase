@@ -4,7 +4,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 
 import { useZilobaseFeatures } from "@zilobase/features";
-import { pageQueryKey, type PageDetail } from "@zilobase/features/pages";
+import {
+  pageQueryKey,
+  resolvePageDetailReference,
+  type PageDetailReference,
+  type PageDetail,
+} from "@zilobase/features/pages";
 import {
   logPageEdit,
   resolvePageEditMarkdown,
@@ -171,7 +176,10 @@ export function usePageEditApplier() {
       }
 
       const workspaceId = readWorkspaceIdFromPageDetail(
-        queryClient.getQueryData<PageDetail | null>(pageQueryKey(input.pageId)),
+        resolvePageDetailReference(
+          queryClient,
+          queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(input.pageId)),
+        ),
       );
 
       if (!workspaceId) {

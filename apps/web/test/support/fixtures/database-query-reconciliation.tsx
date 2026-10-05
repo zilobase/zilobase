@@ -1,7 +1,9 @@
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../../../../packages/features/src/data/testing";
+import { sharedClient } from "../../../../../packages/features/src/data/client";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   ZilobaseFeaturesProvider,
   type ZilobaseFeaturesConfig,
@@ -64,6 +66,10 @@ export function mountQueryReconciliation(container: HTMLElement) {
     })),
   };
   const key = databaseBootstrapQueryKey("query-test", { databaseId: "host" });
+  const owner = sharedClient(queryClient);
+  owner
+    .resolve(owner.capture(), server.database.workspaceId)
+    .databases.ingestBootstrap("host", server);
   queryClient.setQueryData(key, server);
   const requests: string[] = [];
   let confirm: (() => void) | undefined;

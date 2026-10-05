@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -16,18 +16,11 @@ test("foundation imports public package entrypoints and avoids internal APIs", (
   assert.doesNotMatch(readFileSync(join(data, "index.ts"), "utf8"), /\.\/react/);
 });
 
-test("preparatory shared data has no active application imports", () => {
-  function inspect(directory: string) {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) inspect(path);
-      else if (/\.tsx?$/.test(entry.name))
-        assert.doesNotMatch(
-          readFileSync(path, "utf8"),
-          /@zilobase\/features\/data(?:[/'"]|$)/,
-          path,
-        );
-    }
-  }
-  inspect(join(root, "apps/web/src"));
+test("application composition installs shared data through its public entrypoint", () => {
+  const source = readFileSync(
+    join(root, "apps/web/src/app/providers/features-provider.tsx"),
+    "utf8",
+  );
+  assert.match(source, /import .*installSharedClient.*from "@zilobase\/features\/data"/);
+  assert.match(source, /installSharedClient\(queryClient/);
 });

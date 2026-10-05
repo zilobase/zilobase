@@ -21,9 +21,9 @@ per peer. A mutation representing a source outside the ticket scope becomes an
 empty `requiresReset` hint with no source identity or entity payload. Ticket
 refresh reevaluates source grants. This changes the signed ticket contract and
 requires coordinated server/runtime rollout; no new room or provider is added.
-The prepared collection normalizer also requires authorized source reads before
-admitting entities. The application's existing poke behavior below remains
-active until its consumer migration.
+The installed collection normalizer requires authorized source reads before
+admitting entities. Page labels now resolve these ingested records; result recovery
+reads remain until the database presentation migration.
 
 The [mutation history service](../../../apps/server/src/features/databases/history/service.ts) remains server-only for now and is write-only from the client's perspective: it serves contiguous events after a client version in pages of at most 500 for future cleanup, but the poke-and-refetch client never calls `GET /mutations`. A missing version, malformed event, future client version, expired history, or journal reset marker would return `resetRequired` without applying a partial sequence. Cleanup retains all events from the last seven days and at least the newest 10,000 events per database, and removes expired command receipts. Future cleanup may remove the dead client catch-up path entirely.
 
@@ -40,12 +40,13 @@ only after a valid `realtime.ready` frame. Receiving an HTTP ticket does not
 prove that its WebSocket endpoint accepted the ticket; repeated upgrade
 failures continue backing off rather than restarting the shortest retry delay.
 
-The client never applies `database.mutation` frame payloads to its cache.
-`changes`, `areas`, and `requiresReset` are ignored because the version bump
-already covers them; convergence comes from the following GET. Presence
-(`presence.update` / `presence.clear`) only touches in-memory collaborators
-and `cellPresenceByKey`, never QueryClient data. Test poke thresholds,
-presence grouping, ticket handling, and backoff with the adjacent realtime
-tests.
+Validated `database.mutation` facets are ingested into the shared collections
+within proven host/source scope. Unknown-source payloads and resets require
+recovery reads. Result memberships still refresh through the existing host poke
+path during the staged cutover. Presence only touches in-memory collaborators
+and `cellPresenceByKey`. The [title dependency refresh](../../../packages/features/src/databases/queries/page-membership.ts)
+restricts acknowledged title-only edits to window reads whose filters/sorts use
+names or potentially dependent computed properties; ordinary title acknowledgements
+need no page/navigation/bootstrap refetch.
 
 [Database overview](README.md). [Operations and troubleshooting](../../../docs/databases/operations.md).

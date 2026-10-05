@@ -1,8 +1,10 @@
+import { useMemo } from "react";
+import { useSharedDataRevision } from "../data/react";
+import { resolveNavigationReference, resolvePageDetailReference } from "./cache";
 import { useQuery } from "@tanstack/react-query";
 
 import { useZilobaseFeatures } from "../shared/context";
 import {
-  getPageFromDetail,
   pageAccessQueryOptions,
   pageAccessTargetsQueryOptions,
   pageGuestInvitationQueryOptions,
@@ -21,22 +23,15 @@ export function usePages(
   workspaceId: string | null | undefined,
   options?: { deleted?: PagesDeletedFilter; enabled?: boolean },
 ) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pagesQueryOptions(apiFetch, workspaceId, {
-      deleted: options?.deleted,
-    }),
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    select: (navigation) => navigation.pages,
-  });
+  const navigation = usePageNavigation(workspaceId, options);
+  return { ...navigation, data: navigation.data?.pages };
 }
 
 export function usePageNavigation(
   workspaceId: string | null | undefined,
   options?: { deleted?: PagesDeletedFilter; enabled?: boolean },
 ) {
-  const { apiFetch } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
 
   const query = useQuery({
     ...pagesQueryOptions(apiFetch, workspaceId, {
@@ -44,7 +39,12 @@ export function usePageNavigation(
     }),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
   });
-  const data = useProjectedDatabaseNavigation(query.data);
+  const revision = useSharedDataRevision(queryClient);
+  const resolved = useMemo(
+    () => (query.data ? resolveNavigationReference(queryClient, query.data) : undefined),
+    [queryClient, query.data, revision],
+  );
+  const data = useProjectedDatabaseNavigation(resolved);
   return {
     data,
     error: query.error,
@@ -68,13 +68,27 @@ type PageQueryHookOptions = {
 };
 
 export function usePage(pageId: string | null | undefined, options?: PageQueryHookOptions) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const query = useQuery({
     ...pageQueryOptions(apiFetch, pageId),
-    refetchOnMount: options?.refetchOnMount,
-    select: (detail) => getPageFromDetail(detail),
+    refetchOnMount: options?.refetchOnMount ?? "always",
   });
+  const revision = useSharedDataRevision(queryClient);
+  const data = useMemo(
+    () => resolvePageDetailReference(queryClient, query.data)?.page ?? null,
+    [queryClient, query.data, revision],
+  );
+  return {
+    data,
+    error: query.error,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    status: query.status,
+    refetch: query.refetch,
+  };
 }
 
 export function usePageAccessLevel(

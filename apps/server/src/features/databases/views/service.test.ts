@@ -166,7 +166,6 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
     areas: ["views"],
     databaseId: "database-1",
     env: { ENV: "test" },
-    navigationWorkspaceId: "workspace-1",
   });
 });
 

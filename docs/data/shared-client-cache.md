@@ -41,18 +41,48 @@ medians and add title/mount-cycle measurements before final acceptance.
 
 ## Foundation proof
 
-Pass 2 pins DB 0.11.3 and React DB 0.5.3. The app still has no imports of the new
-foundation. Eleven focused collection/boundary proofs, the 265-test feature suite,
+Pass 2 pins DB 0.11.3 and React DB 0.5.3. The foundation was uninstalled during that proof. Eleven focused collection/boundary proofs, the 265-test feature suite,
 feature typechecking, production build, UI lint and architecture checks pass.
 The [mounted browser fixture](../../scripts/data/test-cache-browser.mjs) verifies
 three independent React consumers and a page/property join render only complete
 publications. Run `npm run test:data:browser`; SSR lookup is not its substitute.
 The fixture is independent of the application and does not prove migrated surfaces.
 
+## Page metadata cutover
+
+Pass 4 installs the session owner through explicit web composition. Page detail
+and navigation Query results contain references and context; hooks resolve current
+metadata across panes, headers, breadcrumbs, sidebar and database rows. Metadata
+writes are sparse and atomically merge JSON fields. Supported transactions
+serialize same-page previews. A conflicting confirmation rolls back its preview,
+while independent HTTP tracking preserves acknowledgement/rejection and queue order.
+No full page/navigation/bootstrap reads follow ordinary page metadata edits.
+Title-dependent filters/sorts and computed dependencies use targeted window reads;
+other database result refresh paths are retained until Pass 7. Full record frames
+that only confirm known page metadata use this same targeted path; value,
+placement, lifecycle and unknown-record changes still require recovery reads.
+
+The signed-in Docker fixture verifies simultaneous sidebar, table row and page
+pane labels, one PATCH, no full page/navigation/bootstrap GET after the edit and
+no navigation ticket/socket. Existing two-client drag/value/reconnect cases pass.
+The page pane proof also required guarding editor controls against a retired
+Tiptap view during lifecycle replacement; Yjs storage and transport are unchanged.
+Pass 4 checks: 284 feature tests, web tests, production build (0.81 MB initial
+bundle within budget), UI lint, architecture links/exports, 119 runtime tests,
+1,012 server tests (13 skipped), 26 core Worker tests and Cloudflare build/14
+Worker tests. Final cross-surface, retention and performance acceptance remains
+in Passes 9–12.
+
+Navigation ticket issuance, clients, producers, task dispatch and Node delivery
+are retired. The Cloudflare class export/declarations remain; its inactive room
+returns 410 and closes old sockets. The old outbox table is inert. Retired public
+exports are intentionally removed from the architecture baseline. Covered
+navigation browser snapshot persistence is excluded once it holds session references.
+
 ## Storage identities
 
 Pass 3 preparation adds typed database normalization and source-scoped socket
-delivery. The collection adapters remain uninstalled. Coverage/removal metadata
+delivery. The collection adapters were uninstalled at the Pass 3 commit. Coverage/removal metadata
 uses TanStack DB's public sync metadata API; delayed staged inputs revalidate
 against the current base before a coherent publication. Result exclusion never
 implicitly deletes a canonical page, definition, value or source.
@@ -72,8 +102,8 @@ identities, partial metadata, lifecycle/hard-removal barriers, malformed batch
 rejection, canonical value IDs, source unlinking and gated export snapshots.
 Real PostgreSQL tests verify competing entity writers; Node and workerd tests
 verify peers with different source grants. The existing signed-in application
-fixture also passes with the revised ticket contract and stamp migration. Actual
-shared-cache application acceptance remains pending consumer installation.
+fixture also passes with the revised ticket contract and stamp migration. Full shared-cache application acceptance remains pending the remaining consumer
+cutovers and final comparison.
 
 | Entity owner     | Storage identity                | Normalization                                                                    |
 | ---------------- | ------------------------------- | -------------------------------------------------------------------------------- |

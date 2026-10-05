@@ -5,7 +5,6 @@ import type {
   MeetingRecorderRuntimeState,
   MeetingTranscriptYjsSegment,
 } from "@zilobase/server/adapter-api";
-import type { NavigationRealtimeInvalidateEvent } from "@zilobase/server/realtime-api";
 import type { WorkerR2Bucket } from "./image-storage";
 
 export type WorkerHyperdriveBinding = { connectionString: string };
@@ -75,7 +74,6 @@ export type WorkerEnvBindings = Record<string, unknown> & {
   NAVIGATION_NOTIFICATION_ROOM?: {
     getByName(name: string): {
       fetch(request: Request): Promise<Response>;
-      publishInvalidation(event: NavigationRealtimeInvalidateEvent): Promise<void>;
     };
   };
 };

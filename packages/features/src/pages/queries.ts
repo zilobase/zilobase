@@ -1,7 +1,6 @@
 import type {
   ZilobaseAiMode,
   PageDatabase,
-  PageNavigationPayload,
   PageItemPlacement,
   Page,
   ZilobaseAiPageSummary,
@@ -25,6 +24,13 @@ import {
 import type { ApiFetcher } from "../shared/api-fetcher";
 import type { EmbeddedItemsOpenAs } from "./item-relationships";
 import { preferNewestDatabaseNavigation } from "../databases/interactions/navigation";
+import { sharedClient } from "../data/client";
+import {
+  stageAuthorizedPages,
+  resolveNavigationReference,
+  type PageNavigationReference,
+  type PageDetailReference,
+} from "./cache";
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -137,6 +143,7 @@ export const pagesQueryOptions = (
       }
 
       try {
+        const read = sharedClient(client).capture();
         const params = new URLSearchParams({
           fields: "nav",
           workspaceId,
@@ -152,14 +159,19 @@ export const pagesQueryOptions = (
           pages: Page[];
         }>(`/pages?${params.toString()}`, { method: "GET" });
 
-        return preferNewestDatabaseNavigation(
+        const current = client.getQueryData<PageNavigationReference>(queryKey);
+        const accepted = preferNewestDatabaseNavigation(
           {
             databases: result.databases ?? [],
             pages: result.pages,
             placements: result.placements ?? [],
           },
-          client.getQueryData<PageNavigationPayload>(queryKey),
+          current ? resolveNavigationReference(client, current) : undefined,
         );
+        return {
+          ...accepted,
+          pages: stageAuthorizedPages(client, read, workspaceId, accepted.pages),
+        };
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -219,14 +231,16 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
     queryKey: pageQueryKey(pageId),
     enabled: Boolean(pageId),
     staleTime: 30_000,
+    refetchOnWindowFocus: "always",
     // Public-share guards and page components can consume this request at the
     // same time, so its lifetime cannot belong to the component observer.
-    queryFn: async (): Promise<PageDetail | null> => {
+    queryFn: async ({ client }): Promise<PageDetailReference | null> => {
       if (!pageId) {
         throw new Error("pageId is required");
       }
 
       try {
+        const read = sharedClient(client).capture();
         const result = await apiFetch<{
           accessLevel?: AccessLevel;
           databaseIds?: string[];
@@ -237,7 +251,15 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
         return {
           accessLevel: result.accessLevel ?? null,
           databaseIds: result.databaseIds ?? [],
-          page: result.page,
+          page: stageAuthorizedPages(
+            client,
+            read,
+            result.page.workspaceId,
+            [result.page],
+            result.viewerType === "guest" || result.viewerType === "public"
+              ? { kind: result.viewerType, id: pageId }
+              : undefined,
+          )[0]!,
           viewerType: result.viewerType ?? null,
         };
       } catch (error) {

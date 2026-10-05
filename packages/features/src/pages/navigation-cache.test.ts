@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { QueryClient } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../data/testing";
 
-import { applyNavigationDeltaToCache, isNavigationRealtimeEvent } from "./navigation-realtime";
+import { applyNavigationDeltaToCache } from "./navigation-cache";
+import { resolveNavigationReference, type PageNavigationReference } from "./cache";
 import { pagesQueryKey } from "./queries";
 import type { PageNavigationPayload } from "./contracts";
 
@@ -30,7 +31,11 @@ test("applies local navigation deltas to loaded snapshots", () => {
     }),
     true,
   );
-  assert.deepEqual(client.getQueryData<PageNavigationPayload>(key)?.pages, [page]);
+  assert.deepEqual(
+    resolveNavigationReference(client, client.getQueryData<PageNavigationReference>(key)!).pages,
+    [page],
+  );
+  client.clear();
 });
 
 test("invalidates navigation when no snapshot is loaded", () => {
@@ -47,29 +52,6 @@ test("invalidates navigation when no snapshot is loaded", () => {
     false,
   );
   assert.equal(client.getQueryState(key)?.isInvalidated, true);
-});
-
-test("accepts metadata-only navigation events", () => {
-  assert.equal(
-    isNavigationRealtimeEvent({
-      committedAt: "2026-08-31T00:00:00.000Z",
-      eventId: "event-1",
-      protocolVersion: 1,
-      type: "navigation.invalidate",
-      workspaceId: "workspace-1",
-    }),
-    true,
-  );
-  assert.equal(
-    isNavigationRealtimeEvent({
-      eventId: "event-1",
-      pageId: "private-page",
-      protocolVersion: 1,
-      type: "navigation.invalidate",
-      workspaceId: "workspace-1",
-    }),
-    false,
-  );
 });
 
 test("database deltas invalidate instead of overwriting revisioned navigation", () => {

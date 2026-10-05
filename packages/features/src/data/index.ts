@@ -6,3 +6,4 @@ export type {
   RemovalKind,
 } from "./collection";
 export { compareClocks, entityTimestamp, type EntityClock } from "./clock";
+export { installSharedClient, sharedClient, type SessionEntities } from "./client";

@@ -34,6 +34,7 @@ const hiddenAddControls: AddControlVisibility = {
 };
 
 function updateTableMinWidths(editor: Editor) {
+  if (!editor.isInitialized || editor.isDestroyed) return;
   editor.view.dom.querySelectorAll("table").forEach((table) => {
     if (!(table instanceof HTMLTableElement)) {
       return;
@@ -201,7 +202,7 @@ export function TableControls({ editor }: { editor: Editor | null }) {
   const rectRef = useRef<TableControlRect | null>(null);
 
   const updateRect = useCallback(() => {
-    if (!editor) {
+    if (!editor || !editor.isInitialized || editor.isDestroyed) {
       setRect(null);
       return;
     }
@@ -219,7 +220,7 @@ export function TableControls({ editor }: { editor: Editor | null }) {
   };
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || !editor.isInitialized || editor.isDestroyed) {
       setRect(null);
       setAddControls(hiddenAddControls);
       setHoveredCell(null);

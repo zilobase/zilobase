@@ -156,8 +156,7 @@ export type RealtimeEndpoint =
   | "collaboration"
   | "database"
   | "meeting-audio"
-  | "meeting-collaboration"
-  | "navigation";
+  | "meeting-collaboration";
 
 export interface UrlResolver {
   getCollabUrl(endpoint: RealtimeEndpoint, request: Request): string;

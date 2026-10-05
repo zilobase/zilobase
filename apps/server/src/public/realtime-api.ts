@@ -9,14 +9,6 @@ export type { DatabaseMutationEventV2 } from "../features/databases/realtime/out
 export type { MeetingLifecycleAction } from "../features/meetings/contracts/meeting-types";
 export type { MeetingStatus };
 export {
-  NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
-  NAVIGATION_REALTIME_PROTOCOL,
-  createNavigationRealtimeTicket,
-  verifyNavigationRealtimeTicket,
-  type NavigationRealtimeTicketClaims,
-} from "../shared/security/navigation-realtime-ticket";
-export type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime";
-export {
   createMeetingAudioTicket,
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,

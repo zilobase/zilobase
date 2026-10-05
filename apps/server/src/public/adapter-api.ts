@@ -125,7 +125,6 @@ export {
   drainDatabaseRealtimeOutbox,
   type DatabaseMutationEventV2,
 } from "../features/databases/realtime/outbox";
-export { drainNavigationRealtimeOutbox } from "../features/workspaces/navigation-realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
 export {
   getDatabaseAutomationEventCaptureMetrics,

@@ -16,7 +16,6 @@ import {
   isPageLocked,
   resolvePageFullWidth,
   type PageIconPosition,
-  type PageMetadata,
 } from "@zilobase/features/pages";
 import { useDeleteDatabase, useRestoreDatabase } from "@zilobase/features/databases/react";
 import { useDeleteMeeting, useWorkspaceMeetings } from "@zilobase/features/meetings/react";
@@ -527,7 +526,6 @@ export function PageEditorPane({
     updatePage.mutate({
       id: page.id,
       metadata: {
-        ...((page.metadata ?? {}) as PageMetadata),
         cover: nextCover,
       },
     });
@@ -546,7 +544,6 @@ export function PageEditorPane({
     updatePage.mutate({
       id: page.id,
       metadata: {
-        ...((page.metadata ?? {}) as PageMetadata),
         emoji: nextEmoji,
         iconPosition: nextIconPosition,
       },
@@ -563,7 +560,6 @@ export function PageEditorPane({
     updatePage.mutate({
       id: page.id,
       metadata: {
-        ...((page.metadata ?? {}) as PageMetadata),
         iconPosition: nextPosition,
       },
     });

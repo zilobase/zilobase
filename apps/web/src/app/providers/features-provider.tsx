@@ -13,7 +13,9 @@ import type {
   VerifyEmailOtpInput,
 } from "@zilobase/features/auth";
 
-import { apiFetch, authFetch, clearApiAuthToken } from "@/platform/network/api";
+import { installSharedClient } from "@zilobase/features/data";
+import { sessionQueryKey } from "@zilobase/features/auth";
+import { apiFetch, authFetch, clearApiAuthToken, resolveApiBaseUrl } from "@/platform/network/api";
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
@@ -30,6 +32,22 @@ import {
   rememberCachedSession,
 } from "@/features/editor/collaboration/page-document-cache";
 import { getConnectivityState } from "@/platform/network/connectivity";
+
+installSharedClient(queryClient, () => {
+  const session = queryClient.getQueryData<SessionResponse>(sessionQueryKey);
+  return {
+    deployment: resolveApiBaseUrl() || window.location.origin,
+    viewer:
+      session?.user && session.session
+        ? {
+            kind: "account",
+            accountId: session.user.id,
+            actorId: session.user.id,
+            sessionId: session.session.id,
+          }
+        : { kind: "public", capabilityId: "unauthenticated" },
+  };
+});
 
 function withOAuthQuery<T extends Record<string, unknown>>(input: T) {
   if (typeof window === "undefined") {
@@ -186,7 +204,6 @@ export function WebFeaturesProvider({ children }: React.PropsWithChildren) {
         apiFetch,
         auth: webAuthClient,
         databaseRealtimeEnabled: !isHostedDemoRuntime(),
-        navigationRealtimeEnabled: !isHostedDemoRuntime(),
         preferredActiveWorkspaceId,
         queryClient,
         setPreferredActiveWorkspaceId,

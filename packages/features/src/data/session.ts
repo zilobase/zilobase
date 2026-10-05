@@ -1,6 +1,7 @@
 import { DbClient } from "@tanstack/db";
 
 import { EntityCollection, type EntityRegistration, type PreparedIngestion } from "./collection";
+import { DataCommands } from "./commands";
 import { DataPublication } from "./publication";
 
 export type DataSessionScope = {
@@ -15,6 +16,7 @@ export type DataSessionScope = {
 export class DataSession {
   readonly client = new DbClient();
   readonly publication = new DataPublication();
+  readonly commands = new DataCommands(this);
   readonly id: string;
   private disposed = false;
   private readonly collections = new Map<string, { dispose: () => Promise<void> }>();

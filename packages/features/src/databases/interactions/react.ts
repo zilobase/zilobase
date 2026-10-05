@@ -1,3 +1,5 @@
+import { useSharedDataRevision } from "../../data/react";
+import { sharedClient } from "../../data/client";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useZilobaseFeatures } from "../../shared/context";
 import type {
@@ -79,6 +81,8 @@ export function useProjectedDatabaseRecords(input: {
   records: DatabaseRecordEntity[];
 }) {
   const store = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
+  const revision = useSharedDataRevision(queryClient);
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const key = useRef({});
   useEffect(() => {
@@ -94,13 +98,32 @@ export function useProjectedDatabaseRecords(input: {
   }, [store]);
   return useMemo(
     () =>
-      input.dataSourceId
+      (input.dataSourceId
         ? projectRecordInteractions(input.records, interactions, {
             dataSourceId: input.dataSourceId,
             sourceVersion: input.sourceVersion,
           })
-        : input.records,
-    [input.records, input.dataSourceId, input.sourceVersion, interactions],
+        : input.records
+      ).map((record) => {
+        const owners = sharedClient(queryClient)
+          .all()
+          .filter((owner) => owner.databases.records.collection.base.has(record.id));
+        const page = owners[0]?.pages.get(record.pageId);
+        return page
+          ? {
+              ...record,
+              page: {
+                ...record.page,
+                name: page.name,
+                metadata: page.metadata,
+                updatedAt: page.updatedAt,
+                deletedAt: page.deletedAt ?? null,
+                hasContent: page.hasContent ?? record.page.hasContent,
+              },
+            }
+          : record;
+      }),
+    [input.records, input.dataSourceId, input.sourceVersion, interactions, queryClient, revision],
   );
 }
 

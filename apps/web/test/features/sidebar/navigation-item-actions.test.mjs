@@ -136,16 +136,13 @@ export function register({ assert, appPath, test }) {
     const capture = (input = { pageId: "page" }, overrides = {}) =>
       module.exports.capture(input, { ...dependencies, ...overrides });
     capture().lock.toggle();
-    assert.deepEqual(calls.at(-1), [
-      "UpdatePage",
-      { id: "page", metadata: { locked: true, keep: "metadata" } },
-    ]);
+    assert.deepEqual(calls.at(-1), ["UpdatePage", { id: "page", metadata: { locked: true } }]);
     const previousCount = calls.length;
     capture(undefined, { access: "view" }).lock.toggle();
     assert.equal(calls.length, previousCount);
     capture({ pageId: "page", meetingId: "meeting" }).lock.toggle();
     assert.equal(calls.at(-1)[1].metadata.meetingLocked, true);
-    assert.equal(calls.at(-1)[1].metadata.locked, false);
+    assert.equal(calls.at(-1)[1].metadata.locked, undefined);
     const database = {
       database: {
         id: "db",

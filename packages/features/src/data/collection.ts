@@ -33,6 +33,7 @@ export class EntityCollection<T extends { id: string }> {
   private disposed = false;
   private readonly listeners = new Map<string, Set<() => void>>();
   private readonly subscription;
+  private readonly confirmations = new Map<string, Set<() => void>>();
 
   constructor(
     client: DbClient,
@@ -162,6 +163,10 @@ export class EntityCollection<T extends { id: string }> {
     coverage?: Map<string, z.infer<typeof coverageSchema>>,
   ) {
     this.assertActive();
+    for (const entity of entities) {
+      if (JSON.stringify(this.collection.base.get(entity.id)) !== JSON.stringify(entity))
+        for (const retire of this.confirmations.get(entity.id) ?? []) retire();
+    }
     this.writer.begin({ immediate: true });
     for (const entity of entities) {
       this.writer.write({
@@ -224,6 +229,16 @@ export class EntityCollection<T extends { id: string }> {
     return this.writer.metadata;
   }
 
+  onConfirmed(id: string, retire: () => void) {
+    const callbacks = this.confirmations.get(id) ?? new Set();
+    callbacks.add(retire);
+    this.confirmations.set(id, callbacks);
+    return () => {
+      callbacks.delete(retire);
+      if (!callbacks.size) this.confirmations.delete(id);
+    };
+  }
+
   get(id: string): T | undefined {
     this.assertActive();
     return this.collection.get(id);
@@ -243,6 +258,8 @@ export class EntityCollection<T extends { id: string }> {
   async dispose() {
     this.disposed = true;
     this.listeners.clear();
+    for (const callbacks of this.confirmations.values()) for (const retire of callbacks) retire();
+    this.confirmations.clear();
     this.subscription.unsubscribe();
     await this.collection.cleanup();
   }

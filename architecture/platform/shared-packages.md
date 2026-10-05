@@ -31,11 +31,12 @@ The database feature root likewise exports data contracts, query builders and pu
 
 ## Shared data preparation
 
-The [data entrypoint](../../packages/features/src/data/index.ts) exposes an
-uninstalled session/collection foundation. Its [React entrypoint](../../packages/features/src/data/react.ts)
-subscribes to key-specific coherent session publications. Domain fixture schemas
-remain in pages and database schema modules. No application consumer imports the
-foundation yet, so QueryClient/controller ownership above remains active.
+The [data entrypoint](../../packages/features/src/data/index.ts) exposes the session/collection owner. Its [React entrypoint](../../packages/features/src/data/react.ts)
+subscribes to key-specific coherent session publications. Domain schemas remain in pages and database schema modules. Web composition
+[installs the client](../../apps/web/src/app/providers/features-provider.tsx) with
+explicit deployment and authentication identity. Page reads return references;
+page hooks resolve shared metadata. Database bootstrap/window/entity ingestion is
+installed while later value/configuration consumer migrations remain staged.
 
 [DataSession](../../packages/features/src/data/session.ts) uses a TanStack DB client
 transaction scope per deployment/viewer/workspace session and disposes registered
@@ -57,8 +58,9 @@ metadata fields. Session snapshots reject reads during publication.
 hosts, sources, source links, definitions, bindings, persisted value pairs and
 record references. Bootstrap/window returns contain ordered IDs and server counts,
 hashes and snapshots. Known source grants come from authorized bootstrap reads;
-unknown socket sources request another authorized read. These adapters remain
-uninstalled, so they do not yet own Query results in the application.
+unknown socket sources request another authorized read. Page fields are now shared across database record presentations and page hooks.
+Database result DTOs temporarily retain unmigrated fields until their presentation
+cutover; they are not used as the page metadata owner.
 
 [Publication](../../packages/features/src/data/publication.ts) batches key callbacks
 across collection commits without storing confirmed entity values. Feature owners
@@ -66,8 +68,10 @@ may access collections for supported transactions; feature UI uses hooks/actions
 The [foundation proofs](../../packages/features/src/data/collection.test.ts) exercise
 partial/empty inputs, authoritative base isolation, rollback, acknowledgement,
 conflicting preview retirement and session disposal. The [mounted browser fixture](../../scripts/data/test-cache-browser.mjs) proves three
-React consumers and a page/property join see completed publications. These isolated
-proofs do not establish migrated application timing or network behavior.
+React consumers and a page/property join see completed publications. [Page tests](../../packages/features/src/pages/cache.test.ts) cover actual feature
+mutations, reference-only Query data, delayed partial reads and serialized preview
+retirement. HTTP acknowledgement tracking is independent of the transaction
+settlement promise, since rollback can settle a preview before delivery completes.
 
 The `@zilobase/features/calendar-layout` [entrypoint](../../packages/features/src/calendar-layout/index.ts) exposes provider-independent date, timezone and layout functions. The Calendar entrypoint re-exports the subset used by provider-aware consumers directly from that implementation.
 The layout index preserves day-array identity for unchanged memberships, normalizes immutable timing through weak references, and uses heap-based timed overlap placement. Its pure tests cover DST, exclusive boundaries and dense overlap inputs.

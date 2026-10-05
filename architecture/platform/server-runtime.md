@@ -34,8 +34,7 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 ```
 
 `node/features/` mirrors `worker/features/` by feature name
-(`calendar-realtime`, `collaboration`, `database-realtime`, `meeting-audio`,
-`navigation-realtime`). Shared mechanism stays flat on both
+(`calendar-realtime`, `collaboration`, `database-realtime`, `meeting-audio`). Shared mechanism stays flat on both
 sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
 `jobs`, `scheduler`, `fanout`, `limits`, `telemetry`, `mailer`,
 `outbound-fetch`, `image-storage`); only the factory entrypoints
@@ -99,7 +98,7 @@ against `RoomPorts`. Runtime adapters provide Node and Worker `RoomHost` and
 controller in unit tests. Feature-room migrations must reuse this kernel
 instead of adding another crossws or Durable Object implementation.
 
-Calendar and navigation notification sockets share one expiring
+Calendar notification sockets use the expiring
 notification controller. Node's crossws runtime and Worker Durable Objects both
 adapt peers into the same controller for ping/pong, expiry pruning, validation,
 recipient selection, and broadcast; authentication and wire-specific payload
@@ -138,7 +137,7 @@ SMTP, pinned network transports, and resident Hocuspocus; Workers map
 Hyperdrive, R2, Email, Worker fetch options, and named Durable Objects. The
 hosted repository composes `createWorker` directly and no longer constructs a
 `createWorkerAdapter`. URL and storage helpers are thin port lookups, and
-Calendar, navigation and in-product notification publication uses `FanoutBus` channels.
+Calendar and in-product notification publication uses `FanoutBus` channels.
 
 Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenticates before parsing required JSON objects, including the existing array acceptance. JSON schema routes can use [hono/validator](../../apps/server/src/shared/http/json.ts) so a missing `Content-Type: application/json` is 400 rather than an empty object. Migrated JSON POST routes decode with [parseJsonBody](../../apps/server/src/shared/http/schema-json.ts). Feature routes retain operation-specific validation and authorization.
 

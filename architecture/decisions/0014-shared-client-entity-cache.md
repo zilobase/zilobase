@@ -1,6 +1,6 @@
 # Shared client entity cache
 
-Status: accepted; consumer migration is not yet implemented.
+Status: accepted; page metadata consumers are migrated. Remaining entity migrations are in progress.
 
 ## Context
 
@@ -17,7 +17,7 @@ collections. Query owns HTTP orchestration and authoritative result references,
 counts, continuation state and contextual derived data. Domain schemas and
 actions stay beside their features; collection lifecycle, validated ingestion,
 publication and command confirmation belong in `packages/features/src/data`.
-The foundation remains uninstalled until coherent consumer cutovers are ready.
+Application composition installs the session owner; each entity family cuts over its consumers together.
 
 Reuse existing command routes, receipts, PostgreSQL entities, database rooms and
 Yjs. There is no new backend synchronization architecture, global clock,

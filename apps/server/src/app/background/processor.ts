@@ -5,7 +5,6 @@ import { processAgentRun } from "../../features/ai/execution/agent-run-service";
 import { processDatabaseAutomationEventWindow } from "../../features/automations/triggers/event-evaluator";
 import { processDatabaseAutomationRun } from "../../features/automations/execution/run-engine";
 import { processDatabaseRealtimeTask } from "../../features/databases/realtime/background";
-import { processNavigationRealtimeTask } from "../../features/workspaces/navigation-realtime/background";
 import { processNotificationTask } from "../../features/notifications/background";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
@@ -92,7 +91,6 @@ async function processBackgroundTaskInner(input: {
       }),
     "calendar.sync": () => processCalendarSyncTask(env, task.resourceId),
     "realtime.database": () => processDatabaseRealtimeTask(env, task.resourceId),
-    "realtime.navigation": () => processNavigationRealtimeTask(env, task.resourceId),
     "notification.publish": () => processNotificationTask(env, task.resourceId),
   };
   return handlers[task.kind]();

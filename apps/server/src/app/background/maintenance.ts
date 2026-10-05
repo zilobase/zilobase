@@ -18,7 +18,7 @@ import { scanDueDatabaseAutomationSchedules } from "../../features/automations/t
 import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/outbox";
 import { expireTemporaryMemberships } from "../../features/memberships";
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
-import { drainNavigationRealtimeOutbox } from "../../features/workspaces/navigation-realtime/outbox";
+
 import type { RuntimeEnv } from "../../shared/config/config";
 import { boundedErrorCode } from "../../infrastructure/background/dispatch";
 import { getBackgroundOperationalSnapshot } from "../../infrastructure/background/health";
@@ -172,7 +172,6 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
       drainAgentRuns(env, { limit: 10, workerId: `${workerId}:agents` }),
       runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: 5, workerId: `${workerId}:ai` }),
       drainDatabaseRealtimeOutbox(env, { limit: 100 }),
-      drainNavigationRealtimeOutbox(env, { limit: 100 }),
       drainInProductNotificationOutbox(env, { limit: 100 }),
     ]);
   },

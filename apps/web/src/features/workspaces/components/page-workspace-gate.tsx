@@ -21,6 +21,7 @@ import {
   parseActiveWorkspaceMismatchError,
   pageQueryKey,
   pageQueryOptions,
+  resolvePageDetailReference,
 } from "@zilobase/features/pages";
 import { useWorkspaces, useSetActiveWorkspace } from "@zilobase/features/workspaces/react";
 
@@ -45,7 +46,7 @@ export function PageWorkspaceGate({ children, pageId }: PageWorkspaceGateProps) 
     },
   });
   const mismatch = parseActiveWorkspaceMismatchError(query.error);
-  const pageWorkspaceId = query.data?.page?.workspaceId;
+  const pageWorkspaceId = resolvePageDetailReference(queryClient, query.data)?.page.workspaceId;
   const hasClientMismatch = Boolean(
     pageWorkspaceId && activeWorkspaceId && pageWorkspaceId !== activeWorkspaceId,
   );

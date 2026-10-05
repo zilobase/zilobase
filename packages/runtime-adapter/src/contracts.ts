@@ -18,7 +18,6 @@ export type BackgroundTaskKind =
   | "ai.job"
   | "calendar.sync"
   | "realtime.database"
-  | "realtime.navigation"
   | "notification.publish";
 
 export type BackgroundTaskV1 = {

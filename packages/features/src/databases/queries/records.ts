@@ -4,6 +4,7 @@ import {
   type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
+import { sharedClient } from "../../data/client";
 import { useCallback, useSyncExternalStore } from "react";
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
@@ -178,7 +179,7 @@ export function databaseWindowQueryOptions(
   sessionId: string,
   scope: DatabaseWindowFetchScope,
   pageSize: DatabaseInitialPageSize,
-  queryClient?: QueryClient,
+  _queryClient?: QueryClient,
 ) {
   const queryKey = databaseWindowQueryKey(sessionId, scope);
   return infiniteQueryOptions({
@@ -186,8 +187,29 @@ export function databaseWindowQueryOptions(
     staleTime: 30_000,
     retry: (failures, error) => !isViewQueryChangedError(error) && failures < 2,
     initialPageParam: { limit: pageSize, snapshot: undefined },
-    queryFn: async ({ pageParam, signal }): Promise<DatabaseRecordWindowResponse> =>
-      fetchRecordWindow(apiFetch, scope, pageParam, queryClient, queryKey, signal),
+    queryFn: async ({ client, pageParam, signal }): Promise<DatabaseRecordWindowResponse> => {
+      const owner = sharedClient(client);
+      const read = owner.capture();
+      const incoming = await fetchRecordWindow(
+        apiFetch,
+        scope,
+        pageParam,
+        client,
+        queryKey,
+        signal,
+      );
+      if (owner.capture().key !== read.key)
+        throw new Error("Record read belongs to an expired identity");
+      const entities = owner.database(scope.databaseId);
+      if (!entities) throw new Error("Record read requires an authorized database bootstrap");
+      entities.databases.ingestWindow(
+        scope.databaseId,
+        scope.dataSourceId,
+        scope.queryHash,
+        incoming,
+      );
+      return incoming;
+    },
     getNextPageParam: (last: DatabaseRecordWindowResponse): RecordWindowPageParam | undefined =>
       last.hasMore
         ? {

@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import type { NavItemKind } from "./item-relationships";
-import { pageQueryKey, getPageFromDetail, pagesQueryKey } from "./queries";
+import { readCachedPage } from "./cache";
+import { pagesQueryKey } from "./queries";
 import type { Page } from "./contracts";
 
 export function useMovePageToTeamspace() {
@@ -87,7 +88,7 @@ export function useRemovePageEmbed() {
         body: JSON.stringify({ itemId, kind }),
       }),
     onSuccess: async (_result, variables) => {
-      const host = getPageFromDetail(queryClient.getQueryData(pageQueryKey(variables.hostPageId)));
+      const host = readCachedPage(queryClient, variables.hostPageId);
 
       if (host) {
         await queryClient.invalidateQueries({

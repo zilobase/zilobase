@@ -1,3 +1,5 @@
+import { refreshTitleMembership } from "../queries/page-membership";
+import { sharedClient } from "../../data/client";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
 import { databaseRecordEntitySchema, databaseBootstrapResponseSchema } from "../core/entities";
@@ -262,9 +264,31 @@ export class DatabaseController {
     // Freeze the remapped request before first delivery; retries use exactly this ID/body.
     job.input = this.remapReferences(job.input);
     try {
-      const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
-        commandId: job.interaction.id,
-      });
+      const owner = sharedClient(this.queryClient);
+      const entities = owner.database(job.input.databaseId);
+      const send = async () => {
+        const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
+          commandId: job.interaction.id,
+        });
+        if (ack.event && entities) entities.databases.ingestEvent(ack.event);
+        return ack;
+      };
+      const title = job.input.command.type === "row.change" ? job.input.command.title : undefined;
+      const record =
+        job.input.command.type === "row.change" && entities
+          ? entities.databases.records.get(job.input.command.rowId)
+          : undefined;
+      const ack =
+        entities && record && title !== undefined
+          ? await entities.session.commands.run(
+              entities.pages,
+              record.pageId,
+              (draft) => {
+                draft.name = title;
+              },
+              send,
+            )
+          : await send();
       if (this.disposed) return;
       for (const source of job.sources)
         if (ack.sourceVersions[source] === undefined)
@@ -319,7 +343,8 @@ export class DatabaseController {
               favorite: { ...job.interaction.favorite, confirmation: ack.privateConfirmation },
             }
           : {}),
-        sourceVersions: ack.sourceVersions,
+        sourceVersions: titleOnly(job.input) && entities ? {} : ack.sourceVersions,
+        ...(titleOnly(job.input) && entities ? { effects: [] } : {}),
         hostVersions: ack.event ? { [ack.event.databaseId]: ack.event.version } : {},
       };
       this.update(job.interaction);
@@ -376,6 +401,14 @@ export class DatabaseController {
     }
   }
   private refresh(job: Job, ack?: DatabaseCommandAck) {
+    if (ack && titleOnly(job.input)) {
+      refreshTitleMembership(
+        this.queryClient,
+        ack.event?.changes.records?.map((record) => record.pageId) ?? [],
+      );
+      return;
+    }
+
     const hosts = new Set([job.input.databaseId]);
     const sources = new Set([...job.sources, ...Object.keys(ack?.sourceVersions ?? {})]);
     if (job.input.command.type === "row.place" && job.input.command.source)
@@ -562,4 +595,15 @@ export function databaseController(
 export function disposeDatabaseController(queryClient: QueryClient, sessionId: string) {
   sessions.get(queryClient)?.get(sessionId)?.dispose();
   sessions.get(queryClient)?.delete(sessionId);
+}
+
+function titleOnly(input: DatabaseCommandInput) {
+  return (
+    input.command.type === "row.change" &&
+    input.command.title !== undefined &&
+    input.command.valuesByPropertyId === undefined &&
+    input.command.placement === undefined &&
+    input.command.hierarchy === undefined &&
+    !input.command.clearSortViewId
+  );
 }

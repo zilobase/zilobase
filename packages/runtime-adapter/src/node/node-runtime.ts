@@ -20,7 +20,6 @@ import {
   type ZilobaseEditionExtension,
 } from "@zilobase/server/node-adapter-api";
 import { runWithRuntimePorts } from "../capabilities";
-import { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus, type NodeRealtimeBus } from "./realtime-bus";
@@ -147,7 +146,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     databaseRealtime: ReturnType<typeof attachNodeDatabaseRealtimeRuntime>;
     meetingAudio: ReturnType<typeof attachNodeMeetingAudioRuntime>;
     calendarRealtime: ReturnType<typeof attachNodeCalendarRealtimeRuntime>;
-    navigationRealtime: ReturnType<typeof attachNodeNavigationRealtimeRuntime>;
     backgroundCoordinator: NodeBackgroundCoordinator | null;
     backgroundAdminServer: ReturnType<typeof createBackgroundAdminServer> | null;
   };
@@ -158,7 +156,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const kind = channel.slice(0, separator);
     if (kind === "db") return state.databaseRealtime.publishMutation(payload as never);
     if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
-    if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
     if (kind === "notification") return;
     if (kind === "page") {
       const command = payload as { content: unknown; pageId: string; userId: string };
@@ -182,12 +179,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     setCollaborationExtensionsFactory(createCollaborationExtensions);
     const collaboration = attachNodeCollaborationRuntime(server, env, {
       editionExtension,
-      passthroughPaths: [
-        "/database-collaboration",
-        "/calendar-realtime",
-        "/meeting-audio",
-        "/navigation-realtime",
-      ],
+      passthroughPaths: ["/database-collaboration", "/calendar-realtime", "/meeting-audio"],
       limits,
     });
     const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, {
@@ -196,7 +188,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     });
     const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
-    const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
     const backgroundCoordinator = createBackgroundCoordinator(env, ports);
     backgroundCoordinatorRef = backgroundCoordinator;
     const backgroundAdminServer = backgroundCoordinator
@@ -212,7 +203,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       collaboration,
       databaseRealtime,
       meetingAudio,
-      navigationRealtime,
     };
     return started;
   }
@@ -257,7 +247,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       await started?.databaseRealtime.destroy();
       await started?.meetingAudio.destroy();
       await started?.calendarRealtime.destroy();
-      await started?.navigationRealtime.destroy();
       await started?.collaboration.destroy();
       await realtimeBus.close();
       started = null;

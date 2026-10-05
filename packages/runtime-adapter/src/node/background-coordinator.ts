@@ -9,7 +9,6 @@ import { drainDatabaseAutomationEventWindows } from "@zilobase/server/node-adapt
 import { drainDatabaseAutomationRuns } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseRealtimeOutbox } from "@zilobase/server/node-adapter-api";
 import { drainInProductNotificationOutbox } from "@zilobase/server/node-adapter-api";
-import { drainNavigationRealtimeOutbox } from "@zilobase/server/node-adapter-api";
 import { type RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import {
   db,
@@ -25,7 +24,6 @@ import {
   calendarProviderCalendar,
   databaseRealtimeOutbox,
   inProductNotificationOutbox,
-  navigationRealtimeOutbox,
 } from "@zilobase/server/node-adapter-api";
 import { runWithRuntimePorts } from "../capabilities";
 import { runDueBackgroundMaintenance } from "@zilobase/server/node-adapter-api";
@@ -98,10 +96,6 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
               {
                 name: "database_realtime",
                 run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }),
-              },
-              {
-                name: "navigation_realtime",
-                run: () => drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }),
               },
               {
                 name: "in_product_notifications",
@@ -384,9 +378,6 @@ async function nextLaneDueAt(lane: BackgroundLane) {
       .from(databaseAutomationEventWindow)
       .where(inArray(databaseAutomationEventWindow.status, ["accumulating", "ready"])),
     db.select({ value: min(databaseRealtimeOutbox.nextAttemptAt) }).from(databaseRealtimeOutbox),
-    db
-      .select({ value: min(navigationRealtimeOutbox.nextAttemptAt) })
-      .from(navigationRealtimeOutbox),
     db
       .select({ value: min(inProductNotificationOutbox.nextAttemptAt) })
       .from(inProductNotificationOutbox)

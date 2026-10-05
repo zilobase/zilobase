@@ -26,10 +26,6 @@ export function getMeetingAudioWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("meeting-audio", request);
 }
 
-export function getNavigationRealtimeWebSocketUrl(request: Request) {
-  return requireRuntimePort("urls").getCollabUrl("navigation", request);
-}
-
 export function getDatabaseUrl(env: RuntimeEnv) {
   const direct = env.DATABASE_URL;
   if (typeof direct === "string" && direct.length > 0) return direct;

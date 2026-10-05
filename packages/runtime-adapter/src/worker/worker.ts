@@ -39,10 +39,7 @@ import {
   type MeetingAudioRouteEnv,
 } from "./features/meeting-audio/security";
 import { NavigationNotificationRoom } from "./features/navigation-realtime/navigation-notification-room";
-import {
-  routeNavigationRealtimeRequest,
-  type NavigationRealtimeRouteEnv,
-} from "./features/navigation-realtime/security";
+
 import type { WorkerEnvBindings } from "./bindings";
 import { createWorkerHandler } from "./handler";
 import { createWorkerScheduler } from "./scheduler";
@@ -394,12 +391,6 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
               request,
               env as unknown as CalendarRealtimeRouteEnv,
             );
-          if (pathname === "/navigation-realtime") {
-            return routeNavigationRealtimeRequest(
-              request,
-              env as unknown as NavigationRealtimeRouteEnv,
-            );
-          }
 
           return fetchApp(request, env, ctx);
         } catch (error) {

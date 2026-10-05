@@ -65,6 +65,6 @@ The Node realtime topology is fixed by [ADR 0009](decisions/0009-mandatory-node-
 Page navigation uses the bounded browser document cache in [ADR 0013](decisions/0013-bounded-online-page-document-cache.md) with the same bootstrap contract in Node and Cloudflare.
 
 [ADR 0014](decisions/0014-shared-client-entity-cache.md) accepts session-owned shared
-entities and navigation socket retirement. Consumer migration is not installed;
+entities and navigation socket retirement. Page metadata consumers use shared collections;
 the [inventory and acceptance contract](../docs/data/shared-client-cache.md) records
 the current owners and verification gates.

@@ -5,7 +5,7 @@ import { isAgentLiveEffect, type AgentLiveEffect } from "@zilobase/features/ai-c
 import {
   applyNavDelta,
   applyNavigationDeltaToCache,
-  pageQueryKey,
+  cachePageDetail,
   type PageDetail,
 } from "@zilobase/features/pages";
 import { insertDatabaseBlockInContent } from "@zilobase/page-context";
@@ -69,10 +69,7 @@ export function useAgentLiveEffects() {
       if (handledEffectIds.current.has(effect.effectId)) return;
 
       if (effect.kind === "page-upsert") {
-        queryClient.setQueryData<PageDetail>(
-          pageQueryKey(effect.pageId),
-          effect.detail as PageDetail,
-        );
+        cachePageDetail(queryClient, effect.detail as PageDetail);
         handledEffectIds.current.add(effect.effectId);
         return;
       }
