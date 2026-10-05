@@ -20,7 +20,6 @@ import {
   zilobaseAiPagesQueryOptions,
 } from "./queries";
 import type { PagesDeletedFilter } from "./contracts";
-import { useProjectedDatabaseNavigation } from "../databases/interactions/react";
 
 export function usePages(
   workspaceId: string | null | undefined,
@@ -47,7 +46,7 @@ export function usePageNavigation(
     () => (query.data ? resolveNavigationReference(queryClient, query.data) : undefined),
     [queryClient, query.data, revision],
   );
-  const data = useProjectedDatabaseNavigation(resolved);
+  const data = resolved;
   return {
     data,
     error: query.error,

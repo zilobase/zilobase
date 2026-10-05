@@ -245,7 +245,7 @@ for (const lifecycle of ["archive", "restore"] as const) {
   });
 }
 
-test("view confirmation evicts inactive stale navigation without patching its contents", async () => {
+test("fallback confirmation leaves retained result snapshots unchanged for authorized recovery", async () => {
   const h = harness();
   const nav = pagesQueryKey("workspace");
   const snapshot = { pages: [], placements: [], databases: [{ id: "host", name: "Saved" }] };
@@ -257,7 +257,8 @@ test("view confirmation evicts inactive stale navigation without patching its co
     });
     h.ack(0);
     await saved;
-    assert.equal(h.client.getQueryData(nav), undefined);
+    assert.equal(h.client.getQueryData(nav), snapshot);
+    assert.equal(h.client.getQueryState(nav)?.isInvalidated, true);
     assert.equal(snapshot.databases[0]!.name, "Saved");
   } finally {
     h.close();

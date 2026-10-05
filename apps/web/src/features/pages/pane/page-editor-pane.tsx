@@ -47,7 +47,6 @@ import { setPageConnectionIndicator } from "@/features/editor/collaboration/page
 import {
   blockCachedPage,
   exportCachedPageState,
-  rememberPageDetail,
 } from "@/features/editor/collaboration/page-document-cache";
 import { ApiError } from "@/platform/network/api";
 import { isHostedDemoRuntime } from "@/features/demo";
@@ -396,22 +395,6 @@ export function PageEditorPane({
     navigation,
     page,
     pageEditable,
-  ]);
-  useEffect(() => {
-    if (!collaboration.entry || !page || accessDenied || collaboration.status === "blocked") return;
-    void rememberPageDetail(
-      collaboration.entry,
-      { page, accessLevel, databaseIds: pageDatabaseIds, viewerType: "member" },
-      page.workspaceId,
-    );
-  }, [
-    accessDenied,
-    accessLevel,
-    collaboration.entry,
-    collaboration.status,
-    collaboration.synced,
-    page,
-    pageDatabaseIds,
   ]);
   useEffect(() => {
     if (!session?.user || (!accessDenied && collaboration.status !== "blocked")) return;

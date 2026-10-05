@@ -195,8 +195,7 @@ reject committed writes. Schema and view metadata submit through the same sessio
 controller. Sparse presentation edits and neighbor moves use library previews;
 query hashes derive only from confirmed view/host configuration. Bootstrap queries
 retain authorized source/binding/view IDs, access context and read revision.
-Navigation uses those same metadata intentions, with independent host/source/actor
-revision checks for every mounted consumer. All schema, source and template hooks
+Navigation resolves the same canonical collections, with independent host/source/actor clocks. All schema, source and template hooks
 delegate refresh ownership to controller confirmation; no success/settled callback
 duplicates invalidation or awaits navigation after an acknowledged save.
 Host-wide mutations form barriers across the source writes visible through that host.
@@ -210,7 +209,7 @@ Neighbor-based property/view placement projects immediately without mutating sna
 Metadata update commands accept `patch.configuration`, a bounded list of explicit
 path assignments/removals, not a replacement `config`. Editors compute changes against
 the configuration they displayed. The server applies those same operations to the
-locked current entity, and bootstrap projections apply them to untouched snapshots.
+locked current entity, and supported collection transactions apply sparse previews to shared entities.
 Full configuration objects are accepted only for creation and template application.
 Property updates lock the shared definition row before reading configuration, so
 different-field changes through different source bindings compose. Existing

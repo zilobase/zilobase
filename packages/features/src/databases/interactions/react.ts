@@ -10,8 +10,6 @@ import type {
 import { projectDatabaseMetadata } from "./metadata";
 import { useDatabaseSessionId } from "../queries/session";
 import { databaseController } from "./store";
-import type { PageNavigationPayload } from "../../pages/contracts";
-import { projectDatabaseNavigation } from "./navigation";
 import { projectRecordInteractions, type RecordEffect } from "./model";
 import { changeRecordHierarchy } from "./hierarchy";
 import type { DatabaseCommandTarget } from "../mutations/pending";
@@ -38,39 +36,17 @@ export function useProjectedDatabaseBootstrap(snapshot: DatabaseBootstrapRespons
     controller.getSnapshot,
     controller.getSnapshot,
   );
-  const key = useRef({});
-  useEffect(() => {
-    if (snapshot) controller.observeBootstrap(key.current, snapshot);
-    else controller.unobserve(key.current);
-  }, [controller, snapshot]);
-  useEffect(() => {
-    const token = key.current;
-    return () => controller.unobserve(token);
-  }, [controller]);
   return useMemo(
-    () => (snapshot ? projectDatabaseMetadata(snapshot, intentions) : undefined),
-    [snapshot, intentions],
-  );
-}
-
-export function useProjectedDatabaseNavigation(snapshot: PageNavigationPayload | undefined) {
-  const controller = useDatabaseController();
-  const intentions = useSyncExternalStore(
-    controller.subscribe,
-    controller.getSnapshot,
-    controller.getSnapshot,
-  );
-  const key = useRef({});
-  useEffect(() => {
-    if (snapshot) controller.observeNavigation(key.current, snapshot);
-    else controller.unobserve(key.current);
-  }, [controller, snapshot]);
-  useEffect(() => {
-    const token = key.current;
-    return () => controller.unobserve(token);
-  }, [controller]);
-  return useMemo(
-    () => (snapshot ? projectDatabaseNavigation(snapshot, intentions) : undefined),
+    () =>
+      snapshot
+        ? projectDatabaseMetadata(
+            snapshot,
+            intentions.map((item) => ({
+              ...item,
+              metadataEffects: item.metadataEffects?.filter((effect) => effect.insert),
+            })),
+          )
+        : undefined,
     [snapshot, intentions],
   );
 }
@@ -103,33 +79,13 @@ export function useProjectedDatabaseRecords(input: {
   }, [store]);
   return useMemo(
     () =>
-      (input.dataSourceId
+      input.dataSourceId
         ? projectRecordInteractions(input.records, interactions, {
             dataSourceId: input.dataSourceId,
             sourceVersion: input.sourceVersion,
             resolveRecord: (id) => owner?.databases.resolveRecord(id),
           })
-        : input.records
-      ).map((record) => {
-        const canonical = owner?.databases.resolveRecord(record.id);
-        const page = owner?.pages.get(record.pageId);
-        return page
-          ? {
-              ...record,
-              parentRowId: canonical ? canonical.parentRowId : record.parentRowId,
-              orderKey: canonical?.orderKey ?? record.orderKey,
-              valuesByPropertyId: canonical?.valuesByPropertyId ?? record.valuesByPropertyId,
-              page: {
-                ...record.page,
-                name: page.name,
-                metadata: page.metadata,
-                updatedAt: page.updatedAt,
-                deletedAt: page.deletedAt ?? null,
-                hasContent: page.hasContent ?? record.page.hasContent,
-              },
-            }
-          : record;
-      }),
+        : input.records,
     [
       input.records,
       input.dataSourceId,

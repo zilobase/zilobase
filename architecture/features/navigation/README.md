@@ -30,19 +30,13 @@ Calendar sidebar controls share the content pane's Calendar controller through a
 Hierarchy changes and workspace switches invalidate navigation state. Preserve expansion, ordering, recency, selected view and authorized read recovery while separating actions from rendering.
 
 Database names, view configuration/ordering, primary-source configuration and favorites
-are projected over navigation GET snapshots by the session database controller, not
-patched into QueryClient. [Metadata projection](../../../packages/features/src/databases/interactions/navigation.ts)
-compares the host and primary-source revision envelope with each mounted consumer;
-bootstrap confirmation alone cannot retire a stale sidebar's intention. Navigation
-GETs use a read-only repeatable-read transaction. Out-of-order responses reconcile
-host, source and actor clocks independently. Database navigation deltas invalidate
-reads rather than merging unversioned labels or removals into confirmed snapshots.
-[Favorite projection](../../../packages/features/src/databases/interactions/favorites.ts)
-compares the receipt's actor-private revision with each navigation consumer's
-`actorState`. Confirmed reads retain newer private state when an older response arrives,
-independently of public metadata. [Navigation deltas](../../../packages/features/src/pages/nav-delta.ts)
-cannot overwrite database metadata, actor state or favorites. Page favorites and visits retain
-their page-owned mutation paths.
+resolve through [shared navigation references](../../../packages/features/src/pages/navigation-references.ts).
+Query owns ordered IDs and hierarchy membership. Public entity clocks and private actor
+clocks reconcile independently; sparse supported transactions update every mounted
+consumer. Navigation reads use a read-only repeatable-read transaction. Unversioned
+hierarchy deltas update page/placement references and request an authorized database
+read when needed. Private page favorite/visit confirmations stay in their captured
+capability scope. Covered metadata is not restored from browser read snapshots.
 
 ## Verification and change points
 

@@ -222,6 +222,7 @@ export class EntityCollection<T extends { id: string }> {
         this.used = true;
         this.writer.begin({ immediate: true });
         const entity = this.collection.base.get(id);
+        if (entity) for (const retire of this.confirmations.get(id) ?? []) retire();
         if (entity) this.writer.write({ type: "delete", value: entity });
         this.metadata().collection.set(`removed:${id}`, { kind, clock });
         const receipt = this.writer.commit();

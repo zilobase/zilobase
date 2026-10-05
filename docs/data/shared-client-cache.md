@@ -368,3 +368,43 @@ facets, denied recovery and late responses, Query GC with mounted/pending holds,
 family cleanup/restart and contiguous delivery. The public lifecycle fixture
 passes, so no dependent migration gate is blocked. Docker application coverage
 continues to verify mounted surfaces and two independent database clients.
+
+### Pass 10 — obsolete ownership removed
+
+The intention controller no longer retains bootstrap/navigation DTO maps or
+projects actor favorites over them. Sidebar metadata reads the collections
+directly. Existing bootstrap projection is limited to temporary property
+insertion membership; deterministic configuration planning is a short-lived
+pure transformation used to create sparse library transactions. Record
+placement/window interests retain IDs and versions, and admitted create receipts
+release their temporary record DTOs. Ordinary confirmed metadata and values
+have one owner.
+
+IndexedDB page-cache version 4 removes the page-detail field and covered
+navigation/database/property/access/search snapshots in place, preserving Yjs
+updates, document compaction/recovery state, sessions and unrelated snapshots.
+Routing uses active scoped references for an already-open offline page; a cold
+reload requires an authorized metadata read. It does not resurrect persisted
+page authorization. Existing pure domain helpers are not installed entity stores.
+
+Debugging entrypoints:
+
+- Application composition installs `data.installSharedClient(queryClient, identity)`.
+- `data.sharedClient(queryClient).get(reference.cacheId)` finds the exact owner;
+  inspect a collection's public `base` for confirmed data and `get(id)` for its
+  current optimistic view. Avoid choosing a capability by entity ID alone.
+- Feature `prepareAuthorizedPages`, `DatabaseCollections.prepareBootstrap`,
+  `normalizePageProperties` and export/search normalizers validate admission.
+- `session.ingest` validates the whole batch; `session.snapshot` gates exports
+  and contextual joins at a coherent publication revision.
+- `session.commands.run/runMany` owns library previews. The existing database
+  controller owns command IDs, queued/coalesced delivery, retry and receipt state.
+- `getSynchronizationError()` reports publication/recovery failure separately
+  from command saving. Socket recovery uses existing authorized queries.
+- Query references determine retention. `captureRead` awaits public lifecycle
+  restart; `revokeReferences` removes an authorization scope; `clear` expires
+  identities and captured reads. Yjs lifecycle remains in page-document-cache.
+
+Focused feature/type checks, browser document-cache tests, mounted publication
+proofs and Docker application checks verify this removal. Historical AI/tool
+receipts and downloaded export snapshots retain their original values.

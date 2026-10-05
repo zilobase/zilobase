@@ -1,10 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import { pageQueryKey, pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages";
-import {
-  sessionQueryKey,
-  sessionQueryOptions,
-  type SessionResponse,
-} from "@zilobase/features/auth";
+import { sessionQueryOptions, type SessionResponse } from "@zilobase/features/auth";
 import { workspacesQueryOptions } from "@zilobase/features/workspaces";
 
 import { queryClient } from "@/app/query-client";
@@ -13,11 +9,9 @@ import { useAppStore } from "@/features/desktop/state/app-store";
 import { ApiError, NetworkUnavailableError, apiFetch } from "@/platform/network/api";
 import { getMostRecentItemPath } from "@/features/library/model/recent-navigation";
 import { decidePublishedShareAccess } from "@/features/pages/publication/published-share-access";
-import { readCachedPageDetail } from "@/features/editor/collaboration/page-document-cache";
 import { getConnectivityState } from "@/platform/network/connectivity";
 import { hydratePageReadCache } from "@/features/pages/cache/page-read-cache";
 import {
-  cachePageDetail,
   resolvePageDetailReference,
   resolveNavigationReference,
   type PageDetail,
@@ -26,26 +20,14 @@ import {
 const NAVIGATION_AUTH_STALE_TIME = 30_000;
 
 export async function applyPageShareAccess(pageId: string) {
-  const cachedSession = queryClient.getQueryData<SessionResponse>(sessionQueryKey);
-  if (cachedSession?.user) {
-    const cachedPage = await readCachedPageDetail(cachedSession.user.id, pageId);
-    if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
-      cachePageDetail(queryClient, cachedPage as PageDetail);
-      await hydrateCachedPageQueries(cachedSession, pageId, cachedPage as PageDetail);
-      void queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) });
-      return "app" as const;
-    }
-  }
-
   const session = await getFreshSession({ optional: true });
-
   if (session.user && getConnectivityState() === "offline") {
-    const cachedPage = await readCachedPageDetail(session.user.id, pageId);
-    if (cachedPage && typeof cachedPage === "object" && "page" in cachedPage && cachedPage.page) {
-      cachePageDetail(queryClient, cachedPage as PageDetail);
-      await hydrateCachedPageQueries(session, pageId, cachedPage as PageDetail);
-      return "app" as const;
-    }
+    const detail = resolvePageDetailReference(
+      queryClient,
+      queryClient.getQueryData(pageQueryKey(pageId)),
+    );
+    if (detail?.viewerType === "member") return "app" as const;
+    throw new NetworkUnavailableError();
   }
 
   if (!session.user) {

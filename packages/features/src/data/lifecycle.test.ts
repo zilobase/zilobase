@@ -11,6 +11,9 @@ const page = {
   id: "page",
   workspaceId: "workspace",
   name: "Private",
+  type: "pageblock",
+  url: "#",
+  createdAt: "2026-10-05T00:00:00.001Z",
   updatedAt: "2026-10-05T00:00:00.001Z",
 };
 const tick = () => new Promise<void>((resolve) => setImmediate(resolve));

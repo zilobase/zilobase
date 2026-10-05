@@ -4,10 +4,7 @@ import {
   deletePageSnapshots,
   readPageSnapshots,
   rememberPageSnapshot,
-  type CachedPageSnapshot,
 } from "@/features/editor/collaboration/page-document-cache";
-
-const SESSION_KEY = "$session";
 
 type ReadSnapshot = {
   scope: string;
@@ -56,14 +53,6 @@ function snapshotOf(
   return null;
 }
 
-function restoredKey(snapshot: CachedPageSnapshot, sessionId: string): unknown[] | null {
-  const key = snapshot.queryKey;
-  if (!Array.isArray(key)) return null;
-  if (key[0] !== "db") return key;
-  if (key[1] !== SESSION_KEY) return null;
-  return [key[0], sessionId, ...key.slice(2)];
-}
-
 export async function hydratePageReadCache(input: {
   queryClient: QueryClient;
   userId: string;
@@ -77,7 +66,7 @@ export async function hydratePageReadCache(input: {
   if (workspaceId) scopes.push(`workspace:${workspaceId}`);
   const snapshots = await readPageSnapshots(userId, scopes);
   for (const snapshot of snapshots) {
-    const key = restoredKey(snapshot, sessionId);
+    const key = snapshot.queryKey;
     if (!key || !snapshotOf(key, snapshot.data, sessionId)) continue;
     const existing = queryClient.getQueryState(key);
     if (existing?.dataUpdatedAt && existing.dataUpdatedAt >= snapshot.updatedAt) continue;

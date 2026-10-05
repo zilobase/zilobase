@@ -15,7 +15,6 @@ import { databaseRecordEntitySchema } from "../core/entities";
 import { databasePropertyEntitySchema } from "../core/entities";
 import { metadataEffectsForCommand } from "./metadata-command";
 import { databaseCommandPolicies } from "./command-policy";
-import type { DatabaseBootstrapResponse } from "../core/entities";
 import { metadataNeedsProjection, projectDatabaseMetadata, type MetadataEffect } from "./metadata";
 import type {
   DatabaseCommandAck,
@@ -32,9 +31,7 @@ import {
 import { DatabaseCommandState, targetsForCommand } from "../mutations/pending";
 import { invalidateDatabaseQueries } from "../mutations/invalidate";
 import { refreshConfirmedDatabaseReads } from "./confirmation";
-import type { PageNavigationPayload } from "../../pages/contracts";
-import { favoriteNeedsProjection, isNavigationSnapshot } from "./favorites";
-import { navigationMetadataNeedsProjection } from "./navigation";
+
 import {
   projectRecordInteractions,
   remapRecordIdentity,
@@ -77,8 +74,6 @@ export class DatabaseController {
   private listeners = new Set<() => void>();
   private jobs = new Map<string, Job>();
   private windows = new Map<object, Window>();
-  private bootstrapWindows = new Map<object, DatabaseBootstrapResponse>();
-  private navigationWindows = new Map<object, PageNavigationPayload>();
   private identities = new Map<string, string>();
   private pageIdentities = new Map<string, string>();
   private disposed = false;
@@ -112,18 +107,6 @@ export class DatabaseController {
   }
   unobserve(key: object) {
     this.windows.delete(key);
-    this.bootstrapWindows.delete(key);
-    this.navigationWindows.delete(key);
-    this.collect();
-  }
-
-  observeBootstrap(key: object, snapshot: DatabaseBootstrapResponse) {
-    this.bootstrapWindows.set(key, snapshot);
-    this.collect();
-  }
-
-  observeNavigation(key: object, snapshot: PageNavigationPayload) {
-    this.navigationWindows.set(key, snapshot);
     this.collect();
   }
 
@@ -135,7 +118,14 @@ export class DatabaseController {
         return result ? [result] : [];
       })
       .sort((left, right) => right.database.version - left.database.version);
-    if (snapshots[0]) return projectDatabaseMetadata(snapshots[0], this.snapshot);
+    if (snapshots[0])
+      return projectDatabaseMetadata(
+        snapshots[0],
+        this.snapshot.map((item) => ({
+          ...item,
+          metadataEffects: item.metadataEffects?.filter((effect) => effect.insert),
+        })),
+      );
     for (const [, data] of this.queryClient.getQueriesData<PageNavigationReference>({
       queryKey: ["pages"],
     })) {
@@ -276,12 +266,6 @@ export class DatabaseController {
       }),
       metadataEffects,
       status: "queued",
-      ...(input.command.type === "database.favorite" &&
-      !sharedClient(this.queryClient)
-        .database(input.databaseId, this.sessionId)
-        ?.navigation.databasePreferences.get(input.databaseId)
-        ? { favorite: { hostId: input.databaseId, value: input.command.favorite } }
-        : {}),
     };
     const sources = [
       ...new Set([
@@ -567,26 +551,24 @@ export class DatabaseController {
         this.identities.set(job.temporaryId, record.id);
         this.publish(
           this.snapshot.map((item) =>
-            remapRecordIdentity(item, job.temporaryId!, record, temporaryPageId),
+            retireConfirmedRecord(
+              remapRecordIdentity(item, job.temporaryId!, record, temporaryPageId),
+              record.id,
+              Boolean(entities?.databases.records.collection.base.has(record.id)),
+            ),
           ),
         );
         for (const queued of this.jobs.values())
-          queued.interaction = remapRecordIdentity(
-            queued.interaction,
-            job.temporaryId,
-            record,
-            temporaryPageId,
+          queued.interaction = retireConfirmedRecord(
+            remapRecordIdentity(queued.interaction, job.temporaryId, record, temporaryPageId),
+            record.id,
+            Boolean(entities?.databases.records.collection.base.has(record.id)),
           );
       }
       job.interaction = {
         ...job.interaction,
         status: "committed",
-        ...(job.scopeExpired ? { effects: [], metadataEffects: [], favorite: undefined } : {}),
-        ...(job.interaction.favorite && ack.privateConfirmation
-          ? {
-              favorite: { ...job.interaction.favorite, confirmation: ack.privateConfirmation },
-            }
-          : {}),
+        ...(job.scopeExpired ? { effects: [], metadataEffects: [] } : {}),
         sourceVersions:
           (titleOnly(job.input) && entities) ||
           job.sharedDefinitionConfirmed ||
@@ -753,43 +735,10 @@ export class DatabaseController {
       const keep = this.snapshot.filter((interaction) => {
         if (interaction.status !== "committed") return true;
         let stale = false;
-        if (interaction.favorite) {
-          for (const snapshot of this.navigationWindows.values())
-            if (favoriteNeedsProjection(interaction.favorite, snapshot)) stale = true;
-          for (const query of this.queryClient.getQueryCache().findAll({ queryKey: ["pages"] })) {
-            if (
-              query.queryKey[2] !== "nav" ||
-              !isNavigationSnapshot(query.state.data) ||
-              !favoriteNeedsProjection(interaction.favorite, query.state.data)
-            )
-              continue;
-            if (!query.isActive() && query.state.fetchStatus === "idle")
-              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
-            else stale = true;
-          }
-        }
         for (const effect of interaction.metadataEffects ?? []) {
-          for (const snapshot of this.navigationWindows.values())
-            if (navigationMetadataNeedsProjection(effect, interaction, snapshot)) stale = true;
-          for (const query of this.queryClient.getQueryCache().findAll({ queryKey: ["pages"] })) {
-            if (
-              query.queryKey[2] !== "nav" ||
-              !isNavigationSnapshot(query.state.data) ||
-              !navigationMetadataNeedsProjection(effect, interaction, query.state.data)
-            )
-              continue;
-            if (!query.isActive() && query.state.fetchStatus === "idle")
-              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
-            else stale = true;
-          }
-          for (const snapshot of this.bootstrapWindows.values())
-            if (metadataNeedsProjection(effect, interaction, snapshot)) stale = true;
           for (const query of queries) {
             const parsed = resolveDatabaseBootstrap(this.queryClient, query.state.data);
-            if (!parsed || !metadataNeedsProjection(effect, interaction, parsed)) continue;
-            if (!query.isActive() && query.state.fetchStatus === "idle")
-              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
-            else stale = true;
+            if (parsed && metadataNeedsProjection(effect, interaction, parsed)) stale = true;
           }
         }
         for (const [source, version] of Object.entries(interaction.sourceVersions ?? {})) {
@@ -824,8 +773,6 @@ export class DatabaseController {
     }
     this.jobs.clear();
     this.windows.clear();
-    this.bootstrapWindows.clear();
-    this.navigationWindows.clear();
     this.identities.clear();
     this.pageIdentities.clear();
     this.commandState.clear();
@@ -903,4 +850,20 @@ function cellOnly(input: DatabaseCommandInput): input is DatabaseCommandInput & 
     command.hierarchy === undefined &&
     !command.clearSortViewId
   );
+}
+
+function retireConfirmedRecord(
+  interaction: DatabaseIntention,
+  id: string,
+  admitted: boolean,
+): DatabaseIntention {
+  if (!admitted) return interaction;
+  return {
+    ...interaction,
+    effects: interaction.effects.map((effect) => {
+      if (effect.rowId !== id) return effect;
+      const { record: _record, ...placement } = effect;
+      return placement;
+    }),
+  };
 }

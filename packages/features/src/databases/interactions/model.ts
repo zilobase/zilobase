@@ -1,6 +1,5 @@
 import type { DatabaseRecordEntity } from "../core/entities";
 import type { MetadataIntention } from "./metadata";
-import type { FavoriteIntention } from "./favorites";
 import type { DatabaseOperationStatus } from "../core/lifecycle-commands";
 
 export type RowPlacement = { afterRowId: string | null; beforeRowId: string | null };
@@ -18,7 +17,6 @@ export type RecordEffect = {
 };
 
 export type DatabaseIntention = MetadataIntention & {
-  favorite?: FavoriteIntention;
   id: string;
   effects: readonly RecordEffect[];
   status: DatabaseOperationStatus;
