@@ -44,14 +44,21 @@ export function needsProjection(
 export function projectRecordInteractions(
   records: DatabaseRecordEntity[],
   interactions: readonly DatabaseIntention[],
-  scope: { dataSourceId: string; sourceVersion: number | null },
+  scope: {
+    dataSourceId: string;
+    sourceVersion: number | null;
+    resolveRecord?: (id: string) => DatabaseRecordEntity | undefined;
+  },
 ): DatabaseRecordEntity[] {
   let result = records;
   for (const interaction of interactions) {
     if (!needsProjection(interaction, scope.dataSourceId, scope.sourceVersion)) continue;
     for (const effect of interaction.effects) {
       if (effect.dataSourceId !== scope.dataSourceId) continue;
-      const current = result.find(({ id }) => id === effect.rowId) ?? effect.record;
+      const current =
+        result.find(({ id }) => id === effect.rowId) ??
+        scope.resolveRecord?.(effect.rowId) ??
+        effect.record;
       if (effect.remove) {
         result = result.filter(({ id }) => id !== effect.rowId);
         continue;

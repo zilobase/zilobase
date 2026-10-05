@@ -102,17 +102,24 @@ export function useProjectedDatabaseRecords(input: {
         ? projectRecordInteractions(input.records, interactions, {
             dataSourceId: input.dataSourceId,
             sourceVersion: input.sourceVersion,
+            resolveRecord: (id) =>
+              sharedClient(queryClient)
+                .all()
+                .find((owner) => owner.databases.records.collection.has(id))
+                ?.databases.resolveRecord(id),
           })
         : input.records
       ).map((record) => {
         const owners = sharedClient(queryClient)
           .all()
-          .filter((owner) => owner.databases.records.collection.base.has(record.id));
+          .filter((owner) => owner.databases.records.collection.has(record.id));
         const canonical = owners[0]?.databases.resolveRecord(record.id);
         const page = owners[0]?.pages.get(record.pageId);
         return page
           ? {
               ...record,
+              parentRowId: canonical ? canonical.parentRowId : record.parentRowId,
+              orderKey: canonical?.orderKey ?? record.orderKey,
               valuesByPropertyId: canonical?.valuesByPropertyId ?? record.valuesByPropertyId,
               page: {
                 ...record.page,

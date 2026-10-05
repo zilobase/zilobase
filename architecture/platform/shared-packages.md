@@ -83,3 +83,10 @@ settlement promise, since rollback can settle a preview before delivery complete
 
 The `@zilobase/features/calendar-layout` [entrypoint](../../packages/features/src/calendar-layout/index.ts) exposes provider-independent date, timezone and layout functions. The Calendar entrypoint re-exports the subset used by provider-aware consumers directly from that implementation.
 The layout index preserves day-array identity for unchanged memberships, normalizes immutable timing through weak references, and uses heap-based timed overlap placement. Its pure tests cover DST, exclusive boundaries and dense overlap inputs.
+
+Database bootstrap and window Query results contain scoped references and result
+context. Domain resolvers build presentation DTOs from current collections;
+confirmed resolvers select saved-view query hashes. Metadata and temporary-record
+preview builders live beside database interactions and issue only public library
+mutations. No-op previews still send commands; preview retirement/rollback uses
+the publication gate independently of HTTP acknowledgement tracking.

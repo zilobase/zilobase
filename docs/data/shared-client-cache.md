@@ -128,6 +128,29 @@ admission, queued coalescing and publication failure after acknowledgement. The
 Docker browser fixture checks cells, the page panel and an independent client
 against actual requests in addition to title/property-definition cases.
 
+## Database presentation cutover
+
+Pass 7 removes host/source/link/view DTO ownership from bootstrap Query results.
+All seven layouts share the common canonical resolvers. Results retain ordered
+IDs, access context and read revisions. Confirmed configuration owns query hashes;
+settings previews, neighbor moves, parent edits and temporary record/value/page
+inserts use public library transactions. Membership intentions retain ordering
+while affected server reads confirm counts, exclusions and replacement rows.
+
+Known presentation facets publish without blanket bootstrap/navigation reads.
+Admitted view/binding memberships reconcile only their cache scope. Unknown-source
+and structural record membership recover through authorized reads. Targeted
+filter/sort dependencies follow title aliases and transitive formulas; dynamic
+formulas, definition renames, edited-time fields and rollups use conservative
+computed-result recovery. Presentation-only grouping does not refresh membership.
+Sidebar-only metadata owners finish migrating in Pass 8.
+
+297 feature tests include coherent temporary insertion rollback, no-op transport,
+formula closure and scoped membership reconciliation. Mounted table/Kanban query
+fixtures verify settings preview versus confirmed hashes. Docker application
+fixtures verify actual requests and two independent database clients. Build,
+web, UI lint and runtime checks complete the pass.
+
 ## Storage identities
 
 Pass 3 preparation adds typed database normalization and source-scoped socket

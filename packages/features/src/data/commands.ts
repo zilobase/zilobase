@@ -27,16 +27,26 @@ export class DataCommands {
           accept = resolve;
           reject = fail;
         });
+        let started = false;
+        const confirmAndRetire = async () => {
+          started = true;
+          try {
+            const result = await confirm();
+            this.session.publication.batch(() => {
+              if (transaction.state !== "completed") transaction.rollback();
+            });
+            accept(result);
+          } catch (error) {
+            this.session.publication.batch(() => {
+              if (transaction.state !== "completed") transaction.rollback();
+            });
+            reject(error);
+            throw error;
+          }
+        };
         const transaction = this.session.client.createTransaction({
           autoCommit: false,
-          mutationFn: async () => {
-            try {
-              accept(await confirm());
-            } catch (error) {
-              reject(error);
-              throw error;
-            }
-          },
+          mutationFn: confirmAndRetire,
         });
         void transaction.when("settled").catch(() => undefined);
         const releases = previews.map((preview) =>
@@ -51,7 +61,18 @@ export class DataCommands {
               throw error;
             }
           });
-          void transaction.commit().catch((error) => reject(error));
+          void transaction
+            .commit()
+            .then(() => {
+              // A no-op transaction completes without calling mutationFn. An
+              // already retired preview must also retain its HTTP receipt.
+              if (!started) void confirmAndRetire().catch(() => undefined);
+            })
+            .catch((error) => {
+              if (!started && transaction.state === "failed")
+                void confirmAndRetire().catch(() => undefined);
+              else reject(error);
+            });
           return await receipt;
         } finally {
           releases.forEach((release) => release());

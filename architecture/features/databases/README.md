@@ -182,16 +182,19 @@ Shared mutations are grouped into database lifecycle, data sources, views,
 properties/templates, access and rows. Record changes and cells share the
 [interaction store](../../../packages/features/src/databases/interactions/store.ts),
 scoped by QueryClient and auth session. The store queues writes per affected source and coalesces consecutive queued cell
-edits before their first delivery. Titles, definitions, bindings and stored values
+edits before their first delivery. Hosts, sources, views, titles, definitions, bindings and stored values
 use supported TanStack transactions, serialized by canonical entity identity.
 Authoritative conflicts retire the preview while HTTP receipt tracking continues.
 Unconfirmed delivery blocks dependent commands and retains the same request ID
-for retry. Structural placement and insertion intentions still reconcile per
-window during the presentation cutover. Query windows hold ordered record IDs,
+for retry. Structural membership/placement intentions reconcile ordered references per
+window. Temporary page/record/value insertions and parent edits use library
+transactions; confirmed row fields resolve from collections. Query windows hold ordered record IDs,
 counts, hashes and pagination through [window references](../../../packages/features/src/databases/cache-window.ts);
 records resolve current page/value fields from collections. Refresh errors never
 reject committed writes. Schema and view metadata submit through the same session
-controller; their remaining structural intentions migrate with presentations.
+controller. Sparse presentation edits and neighbor moves use library previews;
+query hashes derive only from confirmed view/host configuration. Bootstrap queries
+retain authorized source/binding/view IDs, access context and read revision.
 Navigation uses those same metadata intentions, with independent host/source/actor
 revision checks for every mounted consumer. All schema, source and template hooks
 delegate refresh ownership to controller confirmation; no success/settled callback

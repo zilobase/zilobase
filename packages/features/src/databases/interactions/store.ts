@@ -1,7 +1,10 @@
+import { refreshRecordResults } from "../queries/result-refresh";
+import { insertionPreviews } from "./shared-records";
+import { sharedMetadataCommand, sharedMetadataPreviews } from "./shared-metadata";
 import { resolveRecordWindow, type DatabaseWindowReference } from "../cache-window";
 import { entityPreview, entityUpsertPreview } from "../../data/commands";
 import { applyConfigurationChanges } from "./configuration";
-import { resolveDatabaseBootstrap } from "../cache-references";
+import { reconcileBootstrapReferences, resolveDatabaseBootstrap } from "../cache-references";
 import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import { valueIdentity } from "../schema/cache-entities";
 import { sharedClient } from "../../data/client";
@@ -50,7 +53,10 @@ type Job = {
   release: (error: Error | null) => void;
   temporaryId?: string;
   sharedDefinitionConfirmed?: boolean;
+  definitionFields?: string[];
   sharedContentConfirmed?: boolean;
+  sharedPresentationConfirmed?: boolean;
+  sharedResultsConfirmed?: boolean;
   contentChanges?: { pageIds: string[]; propertyIds: string[] };
   synchronizationFailed?: boolean;
 };
@@ -136,7 +142,11 @@ export class DatabaseController {
       [],
       undefined,
       databaseCommandPolicies[input.command.type].preview === "metadata" &&
-        input.command.type !== "property.update"
+        input.command.type !== "property.update" &&
+        (!sharedMetadataCommand(input) ||
+          !sharedClient(this.queryClient)
+            .database(input.databaseId)
+            ?.databases.hosts.get(input.databaseId))
         ? metadataEffectsForCommand(input, this.bootstrap(input.databaseId))
         : [],
     );
@@ -156,6 +166,11 @@ export class DatabaseController {
       for (const record of projectRecordInteractions(window.records, this.snapshot, {
         dataSourceId,
         sourceVersion: window.dataSourceVersion,
+        resolveRecord: (id) =>
+          sharedClient(this.queryClient)
+            .all()
+            .find((owner) => owner.databases.records.collection.has(id))
+            ?.databases.resolveRecord(id),
       }))
         records.set(record.id, record);
     // Include insertions even before a destination window has loaded.
@@ -229,7 +244,13 @@ export class DatabaseController {
       effects: effects.map((effect) => {
         const owner = sharedClient(this.queryClient).database(input.databaseId);
         if (!owner?.databases.pageForRecord(input.databaseId, effect.rowId)) return effect;
-        const { values: _values, title: _title, ...placement } = effect;
+        const {
+          values: _values,
+          title: _title,
+          parentRowId: _parent,
+          record: _record,
+          ...placement
+        } = effect;
         return placement;
       }),
       metadataEffects,
@@ -337,10 +358,20 @@ export class DatabaseController {
           try {
             const definition = entities.databases.isDefinitionEvent(ack.event);
             const content = entities.databases.isRecordContentEvent(ack.event);
+            const presentation = entities.databases.isPresentationEvent(ack.event);
+            const results = entities.databases.isRecordResultEvent(ack.event);
             job.contentChanges = entities.databases.contentChanges(ack.event);
-            const admitted = entities.databases.ingestEvent(ack.event);
+            job.definitionFields = entities.databases.definitionChanges(ack.event);
+            const admitted = entities.session.batch(() => {
+              const result = entities.databases.ingestEvent(ack.event);
+              if (result === "published")
+                reconcileBootstrapReferences(this.queryClient, ack.event!, entities.session.id);
+              return result;
+            });
             job.sharedDefinitionConfirmed = definition && admitted === "published";
             job.sharedContentConfirmed = content && admitted === "published";
+            job.sharedPresentationConfirmed = presentation && admitted === "published";
+            job.sharedResultsConfirmed = results && admitted === "published";
           } catch (error) {
             job.synchronizationFailed = true;
             this.reportSynchronization(error);
@@ -353,7 +384,11 @@ export class DatabaseController {
         job.input.command.type === "row.change" && entities
           ? entities.databases.records.get(job.input.command.rowId)
           : undefined;
-      const previews = [];
+      const previews =
+        entities && sharedMetadataCommand(job.input)
+          ? sharedMetadataPreviews(entities, job.input, this.bootstrap(job.input.databaseId))
+          : [];
+      if (entities) previews.push(...insertionPreviews(entities, job.previewEffects));
       if (entities && record && title !== undefined)
         previews.push(
           entityPreview(entities.pages, record.pageId, (draft) => {
@@ -365,6 +400,12 @@ export class DatabaseController {
           const row = entities.databases.records.get(effect.rowId);
           const pageId = entities.databases.pageForRecord(job.input.databaseId, effect.rowId);
           if (!pageId) continue;
+          if (row && effect.parentRowId !== undefined)
+            previews.push(
+              entityPreview(entities.databases.records, row.id, (draft) => {
+                draft.parentRowId = effect.parentRowId!;
+              }),
+            );
           for (const [propertyId, value] of Object.entries(effect.values ?? {})) {
             const id = valueIdentity(pageId, propertyId);
             const existing = entities.databases.values.get(id);
@@ -471,6 +512,7 @@ export class DatabaseController {
         sourceVersions:
           (titleOnly(job.input) && entities) ||
           job.sharedDefinitionConfirmed ||
+          job.sharedPresentationConfirmed ||
           job.sharedContentConfirmed ||
           job.synchronizationFailed
             ? {}
@@ -541,13 +583,18 @@ export class DatabaseController {
       refreshPropertyMembership(this.queryClient, job.contentChanges?.propertyIds ?? []);
       return;
     }
-    if (ack && job.sharedDefinitionConfirmed) {
-      refreshPropertyMembership(
-        this.queryClient,
-        ack.event?.changes.properties?.flatMap((binding) => [binding.id, binding.propertyId]) ?? [],
-      );
+    if (ack && job.sharedResultsConfirmed) {
+      const owner = sharedClient(this.queryClient).database(job.input.databaseId);
+      if (owner) refreshRecordResults(this.queryClient, owner.session.id, ack.sourceVersions);
       return;
     }
+    if (ack && job.sharedDefinitionConfirmed) {
+      refreshPropertyMembership(this.queryClient, job.definitionFields ?? [], {
+        definitionsChanged: true,
+      });
+      return;
+    }
+    if (ack && job.sharedPresentationConfirmed) return;
     if (ack && titleOnly(job.input)) {
       refreshTitleMembership(
         this.queryClient,

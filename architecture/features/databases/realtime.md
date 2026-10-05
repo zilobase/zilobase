@@ -43,8 +43,10 @@ failures continue backing off rather than restarting the shortest retry delay.
 Validated `database.mutation` facets are ingested into the shared collections
 within proven host/source scope. Unknown-source payloads and resets require
 recovery reads. Known record content and definition updates publish without a host poke.
-Dependent filter/sort/formula windows refresh selectively; structural membership
-changes still recover through existing reads during presentation migration.
+Dependent filter/sort/formula windows refresh selectively; structural record membership
+changes recover through affected server reads. Known presentation fields and
+source/binding/view references update within their cache scope; unknown-source
+membership needs an authorized bootstrap.
 A page-property read admits only its specific rows and exposed definitions; it
 does not authorize other source rows. Presence only touches in-memory collaborators
 and `cellPresenceByKey`. The [title dependency refresh](../../../packages/features/src/databases/queries/page-membership.ts)

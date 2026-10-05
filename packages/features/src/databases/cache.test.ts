@@ -1,6 +1,11 @@
+import { insertionPreviews } from "./interactions/shared-records";
 import { TestQueryClient } from "../data/testing";
 import { sharedClient } from "../data/client";
-import { normalizeDatabaseBootstrap, resolveDatabaseBootstrap } from "./cache-references";
+import {
+  normalizeDatabaseBootstrap,
+  resolveDatabaseBootstrap,
+  reconcileBootstrapReferences,
+} from "./cache-references";
 import { normalizePageProperties, resolvePageProperties } from "../pages/property-cache";
 import { entityPreview, entityUpsertPreview } from "../data/commands";
 import assert from "node:assert/strict";
@@ -565,5 +570,97 @@ test("dependency refresh fields describe changed content and suppress duplicate 
     assert.deepEqual(databases.contentChanges(frame), { pageIds: [], propertyIds: [] });
   } finally {
     await session.dispose();
+  }
+});
+
+test("temporary page, record and value previews roll back as one coherent publication", async () => {
+  const owner = fixture();
+  owner.databases.ingestBootstrap("host", bootstrap());
+  const receipt = Promise.withResolvers<void>();
+  const seen: boolean[][] = [];
+  const release = owner.session.publication.subscribe(() =>
+    seen.push([
+      !!owner.pages.get("page"),
+      !!owner.databases.records.get("record"),
+      !!owner.databases.values.get(valueIdentity("page", "definition")),
+    ]),
+  );
+  try {
+    const command = owner.session.commands.runMany(
+      insertionPreviews(owner, [{ dataSourceId: "source", rowId: "record", record: record() }]),
+      () => receipt.promise,
+    );
+    const rejected = assert.rejects(command, /Denied/);
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    assert.ok(owner.databases.resolveRecord("record"));
+    receipt.reject(new Error("Denied"));
+    await rejected;
+    assert.equal(owner.databases.resolveRecord("record"), undefined);
+    assert.ok(seen.every((fields) => fields.every(Boolean) || fields.every((field) => !field)));
+  } finally {
+    release();
+    await owner.session.dispose();
+  }
+});
+
+test("a no-op library preview still tracks its authorized command acknowledgement", async () => {
+  const { session, databases } = fixture();
+  databases.ingestBootstrap("host", bootstrap());
+  try {
+    let sent = 0;
+    const result = await session.commands.run(
+      databases.definitions,
+      "definition",
+      () => {},
+      async () => {
+        sent++;
+        return "ack";
+      },
+    );
+    assert.equal(sent, 1);
+    assert.equal(result, "ack");
+  } finally {
+    await session.dispose();
+  }
+});
+
+test("admitted metadata updates bootstrap references within their cache scope", async () => {
+  const client = new TestQueryClient();
+  const key = ["db", "session", "host", "bootstrap", null, false];
+  try {
+    const ref = normalizeDatabaseBootstrap(
+      client,
+      sharedClient(client).capture(),
+      "host",
+      bootstrap(),
+    );
+    client.setQueryData(key, ref);
+    const owner = sharedClient(client).get(ref.cacheId)!;
+    const view = {
+      ...bootstrap().views[0]!,
+      id: "new-view",
+      name: "Gallery",
+      type: "gallery",
+      position: 1,
+      updatedAt: stamp(2),
+    };
+    const frame = event({ views: [view] }, 2);
+    owner.session.batch(() => {
+      owner.databases.ingestEvent(frame);
+      reconcileBootstrapReferences(client, frame, ref.cacheId);
+    });
+    const current = client.getQueryData<typeof ref>(key)!;
+    assert.equal("database" in current, false);
+    assert.equal("views" in current, false);
+    assert.deepEqual(current.viewIds, ["view-host", "new-view"]);
+    assert.equal(resolveDatabaseBootstrap(client, current)!.views[1]!.name, "Gallery");
+    reconcileBootstrapReferences(
+      client,
+      event({ removedViewIds: ["new-view"] }, 3),
+      "another-scope",
+    );
+    assert.deepEqual(client.getQueryData<typeof ref>(key)!.viewIds, current.viewIds);
+  } finally {
+    client.clear();
   }
 });

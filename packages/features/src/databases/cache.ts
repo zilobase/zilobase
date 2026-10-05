@@ -336,6 +336,80 @@ export class DatabaseCollections {
     return "published";
   }
 
+  sourcesForPages(pageIds: readonly string[]) {
+    const pages = new Set(pageIds);
+    const sources = new Set(
+      [...this.records.collection.values()]
+        .filter((record) => pages.has(record.pageId))
+        .map((record) => record.dataSourceId),
+    );
+    for (const rows of this.pageInterests.values())
+      for (const row of rows.values()) if (pages.has(row.pageId)) sources.add(row.dataSourceId);
+    return [...sources];
+  }
+
+  isRecordResultEvent(event: import("./core/entities").DatabaseMutationEventV2) {
+    const {
+      records = [],
+      removedRecordIds = [],
+      views: _views,
+      sourceVersions: _versions,
+      ...other
+    } = event.changes;
+    return (
+      !event.requiresReset &&
+      !!(records.length || removedRecordIds.length) &&
+      !Object.values(other).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value !== undefined,
+      )
+    );
+  }
+
+  isPresentationEvent(event: import("./core/entities").DatabaseMutationEventV2) {
+    const {
+      databases = [],
+      dataSources = [],
+      views = [],
+      properties = [],
+      sourceVersions: _versions,
+      ...other
+    } = event.changes;
+    if (
+      event.requiresReset ||
+      !(databases.length + dataSources.length + views.length + properties.length) ||
+      Object.values(other).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value !== undefined,
+      )
+    )
+      return false;
+    return (
+      databases.every((host) => this.hosts.collection.base.has(host.id)) &&
+      dataSources.every((source) => this.sources.collection.base.has(source.id)) &&
+      views.every((view) => this.views.collection.base.has(view.id)) &&
+      properties.every((binding) => {
+        const previous = this.bindings.collection.base.get(binding.id);
+        return (
+          previous?.propertyId === binding.propertyId &&
+          previous.dataSourceId === binding.dataSourceId &&
+          !binding.property.deletedAt
+        );
+      })
+    );
+  }
+
+  definitionChanges(event: import("./core/entities").DatabaseMutationEventV2) {
+    return (event.changes.properties ?? []).flatMap((binding) => {
+      const previous = this.definitions.collection.base.get(binding.propertyId);
+      return ["name", "type", "config", "deletedAt"].some(
+        (field) =>
+          JSON.stringify(previous && Reflect.get(previous, field)) !==
+          JSON.stringify(Reflect.get(binding.property, field)),
+      )
+        ? [binding.id, binding.propertyId]
+        : [];
+    });
+  }
+
   contentChanges(event: import("./core/entities").DatabaseMutationEventV2) {
     const pageIds = new Set<string>();
     const propertyIds = new Set<string>();

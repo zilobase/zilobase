@@ -259,8 +259,8 @@ export function confirmedWindowBootstrap(
     queryKey: ["db", sessionId, scope.databaseId, "bootstrap"],
   })) {
     if (key[5] !== (scope.includeDeleted === true) || !bootstrap) continue;
-    if (bootstrap.database.id !== scope.databaseId) continue;
-    if (!newest || bootstrap.database.version > newest.database.version) newest = bootstrap;
+    if (bootstrap.databaseId !== scope.databaseId) continue;
+    if (!newest || bootstrap.databaseVersion > newest.databaseVersion) newest = bootstrap;
   }
   return newest;
 }
@@ -293,7 +293,7 @@ export function useDatabaseRecords(
   const bootstrapReference = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const revision = useSharedDataRevision(queryClient);
   const bootstrap = useMemo(
-    () => resolveDatabaseBootstrap(queryClient, bootstrapReference),
+    () => resolveDatabaseBootstrap(queryClient, bootstrapReference, true),
     [queryClient, bootstrapReference, revision],
   );
   const view = bootstrap?.views.find(

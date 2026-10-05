@@ -1,3 +1,5 @@
+import { refreshRecordResults } from "../queries/result-refresh";
+import { reconcileBootstrapReferences } from "../cache-references";
 import { sharedClient } from "../../data/client";
 import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import type { QueryClient } from "@tanstack/react-query";
@@ -273,25 +275,38 @@ export class DatabaseRealtimeManager {
       const pageMetadata = entities?.databases.isPageMetadataEvent(message);
       const definitions = entities?.databases.isDefinitionEvent(message);
       const content = entities?.databases.isRecordContentEvent(message);
+      const presentation = entities?.databases.isPresentationEvent(message);
+      const results = entities?.databases.isRecordResultEvent(message);
       const changes = entities?.databases.contentChanges(message);
-      const admitted = entities?.databases.ingestEvent(message);
+      const definitionFields = entities?.databases.definitionChanges(message);
+      const admitted = entities?.session.batch(() => {
+        const result = entities.databases.ingestEvent(message);
+        if (result === "published")
+          reconcileBootstrapReferences(this.queryClient, message, entities.session.id);
+        return result;
+      });
       if (pageMetadata && admitted === "published") {
-        refreshTitleMembership(
-          this.queryClient,
-          message.changes.records!.map((record) => record.pageId),
-        );
+        refreshTitleMembership(this.queryClient, changes?.pageIds ?? []);
         return;
       }
       if (definitions && admitted === "published") {
-        refreshPropertyMembership(
-          this.queryClient,
-          message.changes.properties!.flatMap((binding) => [binding.id, binding.propertyId]),
-        );
+        refreshPropertyMembership(this.queryClient, definitionFields ?? [], {
+          definitionsChanged: true,
+        });
         return;
       }
       if (content && admitted === "published") {
         refreshTitleMembership(this.queryClient, changes?.pageIds ?? []);
         refreshPropertyMembership(this.queryClient, changes?.propertyIds ?? []);
+        return;
+      }
+      if (presentation && admitted === "published") return;
+      if (results && admitted === "published" && entities) {
+        refreshRecordResults(
+          this.queryClient,
+          entities.session.id,
+          message.changes.sourceVersions ?? {},
+        );
         return;
       }
       // Result membership continues through the existing recovery reads until Pass 7.

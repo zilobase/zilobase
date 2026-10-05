@@ -44,7 +44,7 @@ export const sessionIdForQueries = (authSessionId: string | null | undefined) =>
 
 function bootstrapVersionOf(value: unknown): number | null {
   const parsed = databaseBootstrapReferenceSchema.safeParse(value);
-  if (parsed.success) return parsed.data.database.version;
+  if (parsed.success) return parsed.data.databaseVersion;
   return null;
 }
 

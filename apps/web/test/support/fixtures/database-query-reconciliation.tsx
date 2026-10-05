@@ -1,3 +1,4 @@
+import { resolveDatabaseBootstrap } from "../../../../../packages/features/src/databases/cache-references";
 import { normalizeDatabaseBootstrap } from "../../../../../packages/features/src/databases/cache-references";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
@@ -97,7 +98,7 @@ export function mountQueryReconciliation(container: HTMLElement) {
             event: {
               actorId: "actor",
               areas: ["views"],
-              changes: {},
+              changes: { views: [server.views[0]!] },
               commandId,
               committedAt: now,
               databaseId: "host",
@@ -176,7 +177,8 @@ export function mountQueryReconciliation(container: HTMLElement) {
         .catch(() => undefined);
     },
     confirm: () => confirm!(),
-    rawConfig: () => queryClient.getQueryData<DatabaseBootstrapResponse>(key)?.views[0]?.config,
+    rawConfig: () =>
+      resolveDatabaseBootstrap(queryClient, queryClient.getQueryData(key), true)?.views[0]?.config,
     close() {
       flushSync(() => root.unmount());
       disposeDatabaseController(queryClient, "query-test");

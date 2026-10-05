@@ -86,7 +86,7 @@ test("bootstrap prefer-newest guard keeps newer cached version", async () => {
       client: queryClient,
       signal: new AbortController().signal,
     } as never);
-    assert.equal(data.database.version, 3);
+    assert.equal(data.databaseVersion, 3);
   } finally {
     queryClient.clear();
   }

@@ -20,6 +20,12 @@ export class TestQueryClient extends QueryClient {
 export function cacheTestBootstrap(client: QueryClient, key: readonly unknown[], input: unknown) {
   return client.setQueryData(
     key,
-    normalizeDatabaseBootstrap(client, sharedClient(client).capture(), String(key[2]), input),
+    normalizeDatabaseBootstrap(
+      client,
+      sharedClient(client).capture(),
+      String(key[2]),
+      input,
+      key[5] === true,
+    ),
   );
 }

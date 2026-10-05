@@ -49,11 +49,17 @@ export function databaseBootstrapQueryOptions(
       const incoming = databaseBootstrapResponseSchema.parse(
         await apiFetch<DatabaseBootstrapResponse>(databaseBootstrapPath(scope), { signal }),
       );
-      const reference = normalizeDatabaseBootstrap(client, read, scope.databaseId, incoming);
+      const reference = normalizeDatabaseBootstrap(
+        client,
+        read,
+        scope.databaseId,
+        incoming,
+        scope.includeDeleted,
+      );
       // Prefer-newest guard: out-of-order GETs must not regress cache.
       if (queryClient) {
         const cached = queryClient.getQueryData<DatabaseBootstrapReference>(queryKey);
-        if (cached && incoming.database.version < cached.database.version) {
+        if (cached && incoming.database.version < cached.databaseVersion) {
           return cached;
         }
       }
@@ -81,6 +87,10 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
     () => resolveDatabaseBootstrap(queryClient, query.data),
     [queryClient, query.data, revision],
   );
+  const confirmed = useMemo(
+    () => resolveDatabaseBootstrap(queryClient, query.data, true),
+    [queryClient, query.data, revision],
+  );
   const projected = useProjectedDatabaseBootstrap(resolved);
 
   if (!scope || !queryKey) {
@@ -102,7 +112,7 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
 
   return {
     data: projected,
-    serverData: resolved,
+    serverData: confirmed,
     error,
     refetch: () => queryClient.refetchQueries({ exact: true, queryKey }),
     scope,
