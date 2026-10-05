@@ -29,6 +29,11 @@ Calendar sidebar controls share the content pane's Calendar controller through a
 
 Hierarchy changes and workspace switches invalidate navigation state. Preserve expansion, ordering, recency, selected view and authorized read recovery while separating actions from rendering.
 
+Navigation and mounted access queries explicitly revalidate on window focus even
+while their previous result is fresh. This replaces navigation push delivery for
+other-client page, hierarchy and access changes. Reopen and explicit reads retain
+the same authorized normalization boundary.
+
 Database names, view configuration/ordering, primary-source configuration and favorites
 resolve through [shared navigation references](../../../packages/features/src/pages/navigation-references.ts).
 Query owns ordered IDs and hierarchy membership. Public entity clocks and private actor

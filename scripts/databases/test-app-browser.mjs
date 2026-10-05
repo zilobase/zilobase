@@ -11,7 +11,7 @@ import { CookieJar, createApiClient } from "../selfhost/api-conformance.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const measurementFile = process.env.ZILOBASE_APP_MEASUREMENTS;
-const measurements = { sampleCount: 1, requests: [], startupMs: null, heap: [] };
+const measurements = { sampleCount: 1, requests: [], startupMs: null, heap: [], cache: [] };
 const measurementsPending = [];
 let measurementPhase = "startup";
 const exec = promisify(execFile);
@@ -398,6 +398,13 @@ try {
   console.info(
     "Disconnected peer caught up after reconnect without reloading or replaying writes.",
   );
+  if (devtools)
+    measurements.heap.push({
+      phase: "after-baseline-interactions",
+      metrics: (await devtools.send("Performance.getMetrics")).metrics.filter(
+        ({ name }) => name === "JSHeapUsedSize",
+      ),
+    });
   measurementPhase = "shared-page-metadata";
   const alphaPageId = createdRows[0].pageId;
   const favorite = await api.requestJson(`/pages/${alphaPageId}/favorite`, { jar, method: "PUT" });
@@ -582,6 +589,23 @@ try {
   console.info(
     "Cell, page property panel and independent browser resolve one value acknowledgement without blanket reads.",
   );
+  measurementPhase = "yjs-collaboration";
+  const bodyText = "Shared Yjs browser body";
+  const editor = page.locator('.tiptap[contenteditable="true"]').last();
+  await expect(editor).toBeEditable();
+  await editor.click();
+  await editor.press("ControlOrMeta+End");
+  await editor.press("Enter");
+  await editor.pressSequentially(bodyText);
+  const peerYjsRow = peer
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Shared browser title" });
+  await peerYjsRow.locator(".database-page-link").hover();
+  await peerYjsRow.getByRole("button", { name: "Open Shared browser title", exact: true }).click();
+  await expect(peer.locator(".tiptap").last()).toContainText(bodyText);
+  console.info(
+    "Independent page panes share Yjs body edits through existing collaboration sockets.",
+  );
   const renamedRow = page
     .locator("tr[data-database-row-id]")
     .filter({ hasText: "Shared browser title" });
@@ -590,6 +614,190 @@ try {
   await page.getByRole("tab", { name: "Board", exact: true }).click();
   await mkdir(`${root}.dev/database-app-results`, { recursive: true });
   await page.screenshot({ path: `${root}.dev/database-app-results/kanban.png`, fullPage: true });
+  measurementPhase = "all-layouts";
+  const scheduled = await command(sourcePath, {
+    type: "property.create",
+    name: "Scheduled",
+    propertyType: "date",
+    config: {},
+    afterPropertyId: null,
+    beforePropertyId: null,
+  });
+  await command(sourcePath, {
+    type: "row.change",
+    rowId: createdRows[0].id,
+    valuesByPropertyId: { [scheduled.property.id]: ["2026-10-05"] },
+  });
+  for (const type of ["list", "gallery", "timeline", "chart", "form"]) {
+    await command(`/databases/${host}/commands`, {
+      type: "view.create",
+      name: `Proof ${type}`,
+      viewType: type,
+      dataSourceId: source,
+      config:
+        type === "timeline"
+          ? { datePropertyId: scheduled.property.id }
+          : type === "chart"
+            ? { chart: { type: "count" } }
+            : {},
+      afterViewId: null,
+      beforeViewId: null,
+    });
+  }
+  const selectView = async (name) => {
+    await page.keyboard.press("Escape");
+    const tab = page.getByRole("tab", { name, exact: true });
+    if (await tab.count()) {
+      if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
+    } else {
+      await page.getByRole("button", { name: /more database views$/ }).click();
+      await page.getByRole("menuitem", { name, exact: true }).click();
+    }
+    const type = name === "Table" ? "table" : name === "Board" ? "kanban" : name.slice(6);
+    await expect(page.locator(`[data-database-layout="${type}"]`).first()).toBeVisible();
+  };
+  // These are actual mounted application layouts backed by the same PostgreSQL source.
+  for (const [type, name] of [
+    ["table", "Table"],
+    ["kanban", "Board"],
+    ...["list", "gallery", "timeline", "chart", "form"].map((type) => [type, `Proof ${type}`]),
+  ]) {
+    await selectView(name);
+    const surface = page.locator(`[data-database-layout="${type}"]`).first();
+    await expect(surface).toBeVisible();
+    if (["table", "kanban", "list", "gallery", "timeline"].includes(type))
+      await expect(
+        surface.getByText("Shared browser title", { exact: true }).first(),
+      ).toBeVisible();
+    if (type === "chart")
+      await expect(surface.getByText("3", { exact: true }).first()).toBeVisible();
+    if (type === "form")
+      await expect(surface.getByText("Scheduled", { exact: true }).first()).toBeVisible();
+  }
+  console.info(
+    "All seven mounted layouts resolve current shared entities and server-authoritative records.",
+  );
+
+  measurementPhase = "rejected-write";
+  await selectView("Table");
+  const rejectedCell = page
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Beta browser row" })
+    .getByRole("checkbox")
+    .first();
+  const confirmedChecked = await rejectedCell.isChecked();
+  let rejectedRequests = 0;
+  const rejectCell = async (route) => {
+    rejectedRequests++;
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Fixture rejected write" }),
+    });
+  };
+  await page.route(`**${sourcePath}`, rejectCell);
+  const rejectedResponse = page.waitForResponse(
+    (response) => response.url().endsWith(sourcePath) && response.request().method() === "POST",
+  );
+  await rejectedCell.click();
+  assert.equal((await rejectedResponse).status(), 409);
+  await expect.poll(() => rejectedCell.isChecked()).toBe(confirmedChecked);
+  assert.equal(rejectedRequests, 1);
+  await page.unroute(`**${sourcePath}`, rejectCell);
+  console.info(
+    "A mounted cell rolls back a rejected normal write and retains its confirmed value.",
+  );
+
+  measurementPhase = "focus-recovery";
+  const otherPage = await api.requestJson("/pages", {
+    jar,
+    method: "POST",
+    body: {
+      workspaceId: setup.data.workspaceId,
+      name: "Focus recovery page",
+      type: "pageblock",
+      url: "#",
+      content: null,
+      metadata: {},
+    },
+  });
+  assert.ok(otherPage.response.ok);
+  await expect(peer.getByText("Focus recovery page", { exact: true })).toHaveCount(0);
+  const focusedRead = peer.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      response.request().method() === "GET" &&
+      url.pathname.endsWith("/pages") &&
+      url.searchParams.get("fields") === "nav"
+    );
+  });
+  void focusedRead.catch(() => undefined);
+  await peer.bringToFront();
+  await peer.evaluate(() => window.dispatchEvent(new Event("visibilitychange")));
+  assert.ok((await focusedRead).ok());
+  await expect(peer.getByText("Focus recovery page", { exact: true }).first()).toBeVisible();
+  assert.deepEqual(navigationTraffic, []);
+  console.info(
+    "A different client's plain page/hierarchy update recovers on focus without navigation tickets or sockets.",
+  );
+
+  if (devtools) {
+    const cacheSnapshot = () =>
+      page.evaluate(async (root) => {
+        const { queryClient } = await import("/src/app/query-client.ts");
+        const { sharedClient } = await import(`/@fs/${root}packages/features/src/data/index.ts`);
+        return {
+          queries: queryClient.getQueryCache().getAll().length,
+          scopes: sharedClient(queryClient)
+            .all()
+            .map((owner) => ({
+              kind: owner.session.scope.viewer.kind,
+              pages: owner.pages.collection.base.size,
+              records: owner.databases.records.collection.base.size,
+              definitions: owner.databases.definitions.collection.base.size,
+              values: owner.databases.values.collection.base.size,
+            })),
+        };
+      }, root);
+    await page.bringToFront();
+    await page.waitForLoadState("networkidle");
+    await devtools.send("HeapProfiler.collectGarbage");
+    measurements.heap.push({
+      phase: "retained-before-mount-cycles",
+      forcedGC: true,
+      metrics: (await devtools.send("Performance.getMetrics")).metrics.filter(
+        ({ name }) => name === "JSHeapUsedSize",
+      ),
+    });
+    measurements.cache.push({ phase: "before-mount-cycles", ...(await cacheSnapshot()) });
+    measurementPhase = "mount-cycles";
+    for (let cycle = 0; cycle < 5; cycle++)
+      for (const name of [
+        "Table",
+        "Board",
+        "Proof list",
+        "Proof gallery",
+        "Proof timeline",
+        "Proof chart",
+        "Proof form",
+      ])
+        await selectView(name);
+    await page.waitForLoadState("networkidle");
+    await devtools.send("HeapProfiler.collectGarbage");
+    measurements.heap.push({
+      phase: "retained-after-mount-cycles",
+      forcedGC: true,
+      metrics: (await devtools.send("Performance.getMetrics")).metrics.filter(
+        ({ name }) => name === "JSHeapUsedSize",
+      ),
+    });
+    measurements.cache.push({ phase: "after-mount-cycles", ...(await cacheSnapshot()) });
+    assert.deepEqual(
+      measurements.cache[1].scopes,
+      measurements.cache[0].scopes,
+      "Repeated mount cycles must not accumulate canonical entities",
+    );
+  }
   assert.deepEqual(errors, []);
   assert.ok(
     !serverLog.includes('"event":"background.node_lane_operation"'),

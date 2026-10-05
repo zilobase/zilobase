@@ -173,3 +173,25 @@ test("an expired family cleans up and restarts through an authorized read while 
   assert.equal(owner.databases.values.collection.size, 1);
   client.clear();
 });
+
+test("page acknowledgement metadata shares existing capabilities while private preferences remain scoped", () => {
+  const client = new TestQueryClient();
+  const cache = sharedClient(client);
+  const [account] = stageAuthorizedPages(client, cache.capture(), "workspace", [
+    { ...page, isFavorite: true },
+  ]);
+  const [guest] = stageAuthorizedPages(
+    client,
+    cache.capture(),
+    "workspace",
+    [{ ...page, isFavorite: false }],
+    { kind: "guest", id: "page" },
+  );
+  stageAuthorizedPages(client, cache.capture(), "workspace", [
+    { ...page, name: "Confirmed", updatedAt: "2026-10-05T00:00:00.002Z", isFavorite: true },
+  ]);
+  assert.equal(resolvePageReference(client, account!)?.name, "Confirmed");
+  assert.equal(resolvePageReference(client, guest!)?.name, "Confirmed");
+  assert.equal(resolvePageReference(client, guest!)?.isFavorite, false);
+  client.clear();
+});

@@ -1,3 +1,4 @@
+import { publishDatabaseEvent } from "./cache-publication";
 import { insertionPreviews } from "./interactions/shared-records";
 import { TestQueryClient } from "../data/testing";
 import { sharedClient } from "../data/client";
@@ -674,4 +675,55 @@ test("delivery gaps require recovery while duplicate and reversed acknowledgemen
   assert.equal(databases.observeDelivery("host", 3), true);
   assert.equal(databases.observeDelivery("unknown", 1), false);
   await session.dispose();
+});
+
+test("confirmed frames publish only proven facets into existing guest database and page capabilities", () => {
+  const client = new TestQueryClient();
+  const cache = sharedClient(client);
+  const ref = normalizeDatabaseBootstrap(client, cache.capture(), "host", {
+    ...bootstrap(),
+    viewerType: "guest",
+  });
+  const primary = cache.get(ref.cacheId)!;
+  primary.databases.ingestWindow("host", "source", "q-fixture", window());
+  const properties = normalizePageProperties(client, cache.capture(), "page", {
+    workspaceId: "workspace",
+    viewerType: "guest",
+    properties: [bootstrap().properties[0]!.property],
+    values: [],
+    databaseIds: ["host"],
+    presenceTargets: [
+      { databaseId: "host", dataSourceId: "source", rowId: "record", propertyIds: ["definition"] },
+    ],
+  });
+  const secondary = cache.get(properties.cacheId)!;
+  assert.notEqual(primary, secondary);
+  assert.equal(
+    publishDatabaseEvent(
+      client,
+      primary,
+      event({ records: [record(3)], sourceVersions: { source: 3 } }, 3),
+    ),
+    "published",
+  );
+  assert.deepEqual(
+    primary.databases.resolveRecord("record")!.valuesByPropertyId.definition?.value,
+    ["Value 3"],
+  );
+  assert.deepEqual(resolvePageProperties(client, properties)!.values[0]!.value, ["Value 3"]);
+  const privateRow = {
+    ...record(4),
+    id: "private-record",
+    pageId: "private-page",
+    page: { ...record(4).page, id: "private-page" },
+    valuesByPropertyId: {},
+  };
+  publishDatabaseEvent(
+    client,
+    primary,
+    event({ records: [privateRow], sourceVersions: { source: 4 } }, 4),
+  );
+  assert.equal(secondary.pages.get("private-page"), undefined);
+  assert.equal(secondary.databases.records.get("private-record"), undefined);
+  client.clear();
 });

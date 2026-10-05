@@ -408,3 +408,49 @@ Debugging entrypoints:
 Focused feature/type checks, browser document-cache tests, mounted publication
 proofs and Docker application checks verify this removal. Historical AI/tool
 receipts and downloaded export snapshots retain their original values.
+
+### Pass 11 — mounted behavior and measurements
+
+The Docker application fixture uses real PostgreSQL, two independent browser
+clients and existing database/Yjs sockets. It verifies all seven mounted layouts,
+simultaneous sidebar/row/page-pane labels, definition and value consumers,
+optimistic drag before transport, view switching, acknowledgement publication,
+rejection rollback, persistence after reload, peer delivery and reconnect.
+Ordinary title, definition and value edits each assert one normal write and no
+blanket page/navigation/bootstrap reads. A peer's plain page/hierarchy change
+appears after focus through an authorized read with no navigation ticket/socket.
+Yjs body edits propagate between independent page panes.
+
+Confirmed events independently validate each already-interested capability
+owner. Known page metadata also reaches existing authorized aliases; private
+preferences remain scoped. Focus explicitly refreshes navigation and mounted
+access queries even before their stale timer expires. Focused proofs include
+narrower page/host capabilities, excluded private records and actor preferences.
+
+The [after sample](cache-after.json) uses the baseline fixture through the same
+interaction boundary before the additional acceptance checks. Measurements are
+one development run, not a median or a production benchmark:
+
+| Measurement                                                 | Pass 1      | Pass 11     |
+| ----------------------------------------------------------- | ----------- | ----------- |
+| Startup API requests / encoded response bytes               | 19 / 6,796  | 18 / 6,429  |
+| Startup through network idle                                | 3,402 ms    | 3,911 ms    |
+| Original interaction API requests / encoded response bytes  | 53 / 25,007 | 39 / 14,982 |
+| Three original command response bytes                       | 1,829       | 1,862       |
+| Startup JS heap, without forced GC                          | 96,428,320  | 98,655,832  |
+| Heap after original interaction boundary, without forced GC | 155,425,640 | 107,717,964 |
+
+Startup was slower in this sample; command payloads grew slightly with clock and
+scope fields. Uncontrolled heap measurements do not prove retained-memory
+improvement. An additional current-cache measurement forced GC before and after
+five cycles through all seven layouts: 94,627,812 to 96,683,976 bytes. Retained
+Query count stayed 31, with one account scope containing 3 pages, 3 records,
+2 definitions and 4 values. No canonical entities accumulated. The existing
+24-day Query retention lifetime remains unchanged; focused public lifecycle
+proofs separately expire inactive interests and protect mounted/pending users.
+
+Pass 11 checks: 305 feature tests and feature typechecking; web tests; root build;
+UI lint; architecture; three mounted collection-publication proofs; three mounted
+database controller proofs; Docker isolated controller/SQL tests; the existing
+non-deployment database acceptance suite; the expanded Docker application fixture;
+Cloudflare build and 14 Worker tests. Fixtures removed their disposable services.

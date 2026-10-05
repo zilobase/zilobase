@@ -1,5 +1,5 @@
 import { refreshRecordResults } from "../queries/result-refresh";
-import { reconcileBootstrapReferences } from "../cache-references";
+import { publishDatabaseEvent } from "../cache-publication";
 import { sharedClient } from "../../data/client";
 import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import type { QueryClient } from "@tanstack/react-query";
@@ -306,12 +306,7 @@ export class DatabaseRealtimeManager {
       const definitionFields = entities?.databases.definitionChanges(message);
       let admitted;
       try {
-        admitted = entities?.session.batch(() => {
-          const result = entities.databases.ingestEvent(message);
-          if (result === "published")
-            reconcileBootstrapReferences(this.queryClient, message, entities.session.id);
-          return result;
-        });
+        admitted = publishDatabaseEvent(this.queryClient, entities, message);
       } catch {
         invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
         return;

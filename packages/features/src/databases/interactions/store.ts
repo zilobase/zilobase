@@ -1,11 +1,12 @@
 import { type PageNavigationReference } from "../../pages/cache";
 import { refreshRecordResults } from "../queries/result-refresh";
+import { publishDatabaseEvent } from "../cache-publication";
 import { insertionPreviews } from "./shared-records";
 import { sharedMetadataCommand, sharedMetadataPreviews } from "./shared-metadata";
 import { resolveRecordWindow, type DatabaseWindowReference } from "../cache-window";
 import { entityPreview, entityUpsertPreview } from "../../data/commands";
 import { applyConfigurationChanges } from "./configuration";
-import { reconcileBootstrapReferences, resolveDatabaseBootstrap } from "../cache-references";
+import { resolveDatabaseBootstrap } from "../cache-references";
 import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import { valueIdentity } from "../schema/cache-entities";
 import { sharedClient } from "../../data/client";
@@ -382,12 +383,7 @@ export class DatabaseController {
               ack.event.databaseId,
               ack.event.version,
             );
-            const admitted = entities.session.batch(() => {
-              const result = entities.databases.ingestEvent(ack.event);
-              if (result === "published")
-                reconcileBootstrapReferences(this.queryClient, ack.event!, entities.session.id);
-              return result;
-            });
+            const admitted = publishDatabaseEvent(this.queryClient, entities, ack.event);
             job.sharedDefinitionConfirmed = contiguous && definition && admitted === "published";
             job.sharedContentConfirmed = contiguous && content && admitted === "published";
             job.sharedPresentationConfirmed =

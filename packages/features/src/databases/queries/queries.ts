@@ -28,7 +28,7 @@ export const databaseAccessQueryOptions = (
 ) =>
   queryOptions({
     queryKey: databaseAccessQueryKey(databaseId),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     enabled: Boolean(databaseId),
     queryFn: async ({ client, signal }) => {
       if (!databaseId) return { access: [] };

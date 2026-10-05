@@ -43,6 +43,15 @@ failures continue backing off rather than restarting the shortest retry delay.
 Validated `database.mutation` facets are ingested into the shared collections
 within proven host/source scope. Unknown-source payloads and resets require
 recovery reads. Known record content and definition updates publish without a host poke.
+
+[Confirmed publication](../../../packages/features/src/databases/cache-publication.ts)
+also reaches existing same-workspace capability owners that have established host
+interest. Each owner independently validates source, row and property admission;
+one scope cannot borrow another scope's authorization. A narrower scope that
+cannot admit an event uses its own authorized recovery reads. Cross-scope
+publication shares the React publication gate, while private receipts and page
+preferences stay in their captured scope. Page metadata confirmations propagate
+only to already-admitted page references in other capability owners.
 Dependent filter/sort/formula windows refresh selectively; structural record membership
 changes recover through affected server reads. Known presentation fields and
 source/binding/view references update within their cache scope; unknown-source

@@ -131,7 +131,7 @@ export const pagesQueryOptions = (
     queryKey: pagesQueryKey(workspaceId, options?.deleted ?? "active"),
     enabled: Boolean(workspaceId),
     refetchOnReconnect: "always",
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     // Router guards await this same query imperatively. Do not consume the
     // observer-owned signal or a temporary React unsubscribe can cancel the
     // promise that is still required by the router.
@@ -315,7 +315,7 @@ export async function ensurePageDetail(
 export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | undefined) =>
   queryOptions({
     queryKey: pageAccessQueryKey(pageId),
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     enabled: Boolean(pageId),
     queryFn: async ({ client, signal }) => {
       if (!pageId) {

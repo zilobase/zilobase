@@ -82,12 +82,20 @@ export function prepareAuthorizedPages(
       entities.navigation.pagePreferences.stage(references.map(({ preferences }) => preferences)),
     ],
     references: references.map(({ reference }) => reference),
+    metadata: references.map(({ metadata }) => metadata),
   };
 }
 
 export function stageAuthorizedPages(...args: Parameters<typeof prepareAuthorizedPages>) {
   const prepared = prepareAuthorizedPages(...args);
-  prepared.entities.session.ingest(prepared.inputs);
+  sharedClient(args[0]).publication.batch(() => {
+    prepared.entities.session.ingest(prepared.inputs);
+    for (const other of sharedClient(args[0]).all()) {
+      if (other === prepared.entities || other.session.scope.workspaceId !== args[2]) continue;
+      const known = prepared.metadata.filter((page) => other.pages.collection.base.has(page.id));
+      if (known.length) other.session.ingest([other.pages.stage(known)]);
+    }
+  });
   return prepared.references;
 }
 
