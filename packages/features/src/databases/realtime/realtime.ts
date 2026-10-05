@@ -1,5 +1,5 @@
 import { sharedClient } from "../../data/client";
-import { refreshTitleMembership } from "../queries/page-membership";
+import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import type { QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
@@ -271,11 +271,19 @@ export class DatabaseRealtimeManager {
     if (message.type === "database.mutation") {
       const entities = sharedClient(this.queryClient).database(this.databaseId);
       const pageMetadata = entities?.databases.isPageMetadataEvent(message);
+      const definitions = entities?.databases.isDefinitionEvent(message);
       const admitted = entities?.databases.ingestEvent(message);
       if (pageMetadata && admitted === "published") {
         refreshTitleMembership(
           this.queryClient,
           message.changes.records!.map((record) => record.pageId),
+        );
+        return;
+      }
+      if (definitions && admitted === "published") {
+        refreshPropertyMembership(
+          this.queryClient,
+          message.changes.properties!.flatMap((binding) => [binding.id, binding.propertyId]),
         );
         return;
       }

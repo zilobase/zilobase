@@ -18,6 +18,7 @@ export const propertyCacheEntitySchema = z
     createdAt: z.string().datetime({ offset: true }).optional(),
     config: z.unknown().optional(),
     deletedAt: z.string().datetime({ offset: true }).nullable().optional(),
+    deletedById: z.string().nullable().optional(),
   })
   .strict();
 

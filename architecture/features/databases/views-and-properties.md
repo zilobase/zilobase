@@ -10,6 +10,16 @@
 
 [Property implementations](../../../apps/web/src/features/databases/schema) own editing, configuration, relations, formulas and rollups. `property-catalog.ts` owns browser presentation metadata; [property defaults](../../../apps/web/src/features/databases/schema/model/property-defaults.ts) own pure status/default-configuration and classification rules; `property-values.ts` owns browser value conversion. [Shared database rules](../../../packages/features/src/databases) remain the owner of reusable contracts, canonical types, formula/filter logic and queries. Moving the browser catalog does not move shared domain rules into presentation.
 
+Shared definitions and source bindings live in distinct collections. Authorized
+bootstrap queries retain ordered binding IDs; the common bootstrap hook resolves
+current bindings and definitions before deriving headers, form questions and
+option controls. Property-update previews use a supported multi-collection
+transaction, serialized by definition and binding identity. Confirmations update
+all references, including page panels and other host bindings. Known definition
+updates do not refetch bootstrap; dependent filter/sort/formula windows use
+targeted reads. Structural membership and type conversion still use recovery.
+See [reference normalization](../../../packages/features/src/databases/cache-references.ts).
+
 Page and database selection UI is centralized in the [page/database picker](../../../apps/web/src/features/databases/components/page-database-picker.tsx). Relation values, relation configuration, data-source linking and replacement, database setup, and sidebar shortcuts supply typed options to that component rather than implementing their own search lists. Its [search model](../../../apps/web/src/features/databases/components/page-database-picker-model.ts) normalizes case and diacritics, ranks prefix and word-prefix matches before substring matches, and preserves source order for equal matches. Remote page search remains debounced by its owning consumer; the picker owns deferred local filtering, keyboard navigation, selection markers, bounded scrolling, and loading/empty presentation.
 
 ## Flow, access and persistence

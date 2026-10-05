@@ -12,8 +12,12 @@ export class DataCommands {
     preview: Parameters<EntityCollection<T>["collection"]["update"]>[2],
     confirm: () => Promise<R>,
   ): Promise<R> {
-    const key = JSON.stringify([owner.collection.id, id]);
-    const preceding = this.tails.get(key) ?? Promise.resolve();
+    return this.runMany([entityPreview(owner, id, preview)], confirm);
+  }
+
+  runMany<R>(previews: readonly EntityPreview[], confirm: () => Promise<R>): Promise<R> {
+    const keys = [...new Set(previews.map((preview) => preview.resource))];
+    const preceding = Promise.all(keys.map((key) => this.tails.get(key)?.catch(() => undefined)));
     const command = preceding
       .catch(() => undefined)
       .then(async () => {
@@ -35,21 +39,47 @@ export class DataCommands {
           },
         });
         void transaction.when("settled").catch(() => undefined);
-        const release = owner.onConfirmed(id, () => transaction.rollback());
+        const releases = previews.map((preview) =>
+          preview.onConfirmed(() => this.session.publication.batch(() => transaction.rollback())),
+        );
         try {
-          transaction.mutate(() => owner.collection.update(id, preview));
+          this.session.batch(() => {
+            try {
+              transaction.mutate(() => previews.forEach((preview) => preview.apply()));
+            } catch (error) {
+              transaction.rollback();
+              throw error;
+            }
+          });
           void transaction.commit().catch((error) => reject(error));
           return await receipt;
         } finally {
-          release();
+          releases.forEach((release) => release());
         }
       });
-    this.tails.set(key, command);
+    for (const key of keys) this.tails.set(key, command);
     void command
       .finally(() => {
-        if (this.tails.get(key) === command) this.tails.delete(key);
+        for (const key of keys) if (this.tails.get(key) === command) this.tails.delete(key);
       })
       .catch(() => undefined);
     return command;
   }
+}
+
+export type EntityPreview = {
+  resource: string;
+  apply: () => void;
+  onConfirmed: (retire: () => void) => () => void;
+};
+export function entityPreview<T extends { id: string }>(
+  owner: EntityCollection<T>,
+  id: string,
+  update: Parameters<EntityCollection<T>["collection"]["update"]>[2],
+): EntityPreview {
+  return {
+    resource: JSON.stringify([owner.collection.id, id]),
+    apply: () => owner.collection.update(id, update),
+    onConfirmed: (retire) => owner.onConfirmed(id, retire),
+  };
 }

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
@@ -392,7 +392,10 @@ export async function updateDatabaseViewService(input: {
         } else {
           await tx
             .update(pageProperty)
-            .set({ config: parentConfig, updatedAt: now })
+            .set({
+              config: sql`COALESCE(${pageProperty.config}, '{}'::jsonb) || ${JSON.stringify(parentConfig)}::jsonb`,
+              updatedAt: now,
+            })
             .where(eq(pageProperty.id, parentPropertyId));
         }
 
@@ -417,7 +420,10 @@ export async function updateDatabaseViewService(input: {
         } else {
           await tx
             .update(pageProperty)
-            .set({ config: subItemConfig, updatedAt: now })
+            .set({
+              config: sql`COALESCE(${pageProperty.config}, '{}'::jsonb) || ${JSON.stringify(subItemConfig)}::jsonb`,
+              updatedAt: now,
+            })
             .where(eq(pageProperty.id, subItemPropertyId));
         }
 

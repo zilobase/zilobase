@@ -466,6 +466,66 @@ try {
   console.info(
     "Sidebar, database row and page pane share a title acknowledgement with one write and no blanket metadata reads.",
   );
+  measurementPhase = "shared-property-definition";
+  await page.getByRole("button", { name: "Done property options", exact: true }).click();
+  await page.waitForLoadState("networkidle");
+  const definitionRequests = [];
+  const trackDefinition = (request) => {
+    const url = new URL(request.url());
+    if (url.port === "1497" || url.pathname.startsWith("/api/"))
+      definitionRequests.push({
+        method: request.method(),
+        path: url.pathname,
+        fields: url.searchParams.get("fields"),
+      });
+  };
+  page.on("request", trackDefinition);
+  const definitionAck = page.waitForResponse((response) => {
+    const request = response.request();
+    return (
+      request.method() === "POST" &&
+      response.url().endsWith("/commands") &&
+      request.postDataJSON()?.command?.type === "property.update"
+    );
+  });
+  void definitionAck.catch(() => undefined);
+  const propertyName = page.getByRole("textbox", { name: "Property name", exact: true });
+  await propertyName.fill("Complete");
+  await propertyName.press("Enter");
+  assert.ok((await definitionAck).ok());
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Complete property options", exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(() => page.getByText("Complete", { exact: true }).count())
+    .toBeGreaterThanOrEqual(2);
+  await expect(
+    peer.getByRole("button", { name: "Complete property options", exact: true }),
+  ).toBeVisible();
+  await page.waitForTimeout(200);
+  page.off("request", trackDefinition);
+  assert.equal(
+    definitionRequests.filter(
+      (request) => request.method === "POST" && request.path.endsWith("/commands"),
+    ).length,
+    1,
+    JSON.stringify(definitionRequests),
+  );
+  assert.equal(
+    definitionRequests.filter(
+      (request) =>
+        request.method === "GET" &&
+        (request.path.endsWith("/bootstrap") ||
+          request.path.endsWith("/properties") ||
+          (request.path.endsWith("/pages") && request.fields === "nav")),
+    ).length,
+    0,
+    JSON.stringify(definitionRequests),
+  );
+  console.info(
+    "Database header, page property panel and independent peer share one definition confirmation without blanket reads.",
+  );
   const renamedRow = page
     .locator("tr[data-database-row-id]")
     .filter({ hasText: "Shared browser title" });

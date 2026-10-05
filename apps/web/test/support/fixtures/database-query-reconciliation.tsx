@@ -1,3 +1,4 @@
+import { normalizeDatabaseBootstrap } from "../../../../../packages/features/src/databases/cache-references";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
@@ -70,7 +71,10 @@ export function mountQueryReconciliation(container: HTMLElement) {
   owner
     .resolve(owner.capture(), server.database.workspaceId)
     .databases.ingestBootstrap("host", server);
-  queryClient.setQueryData(key, server);
+  queryClient.setQueryData(
+    key,
+    normalizeDatabaseBootstrap(queryClient, owner.capture(), "host", server),
+  );
   const requests: string[] = [];
   let confirm: (() => void) | undefined;
   const sorts = [{ column: "name", direction: "descending" }];

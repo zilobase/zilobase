@@ -1,8 +1,11 @@
-import { refreshTitleMembership } from "../queries/page-membership";
+import { entityPreview } from "../../data/commands";
+import { applyConfigurationChanges } from "./configuration";
+import { resolveDatabaseBootstrap } from "../cache-references";
+import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import { sharedClient } from "../../data/client";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
-import { databaseRecordEntitySchema, databaseBootstrapResponseSchema } from "../core/entities";
+import { databaseRecordEntitySchema } from "../core/entities";
 import { databasePropertyEntitySchema } from "../core/entities";
 import { metadataEffectsForCommand } from "./metadata-command";
 import { databaseCommandPolicies } from "./command-policy";
@@ -42,6 +45,7 @@ type Job = {
   reject: (error: unknown) => void;
   release: (error: Error | null) => void;
   temporaryId?: string;
+  sharedDefinitionConfirmed?: boolean;
 };
 type Window = { dataSourceId: string; sourceVersion: number | null };
 
@@ -106,8 +110,8 @@ export class DatabaseController {
     const snapshots = this.queryClient
       .getQueriesData({ queryKey: ["db", this.sessionId, hostId] })
       .flatMap(([, data]) => {
-        const result = databaseBootstrapResponseSchema.safeParse(data);
-        return result.success ? [result.data] : [];
+        const result = resolveDatabaseBootstrap(this.queryClient, data);
+        return result ? [result] : [];
       })
       .sort((left, right) => right.database.version - left.database.version);
     return snapshots[0] ? projectDatabaseMetadata(snapshots[0], this.snapshot) : undefined;
@@ -118,7 +122,8 @@ export class DatabaseController {
       input,
       [],
       undefined,
-      databaseCommandPolicies[input.command.type].preview === "metadata"
+      databaseCommandPolicies[input.command.type].preview === "metadata" &&
+        input.command.type !== "property.update"
         ? metadataEffectsForCommand(input, this.bootstrap(input.databaseId))
         : [],
     );
@@ -270,7 +275,12 @@ export class DatabaseController {
         const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
           commandId: job.interaction.id,
         });
-        if (ack.event && entities) entities.databases.ingestEvent(ack.event);
+        if (ack.event && entities) {
+          const definition = entities.databases.isDefinitionEvent(ack.event);
+          job.sharedDefinitionConfirmed =
+            definition && entities.databases.ingestEvent(ack.event) === "published";
+          if (!definition) entities.databases.ingestEvent(ack.event);
+        }
         return ack;
       };
       const title = job.input.command.type === "row.change" ? job.input.command.title : undefined;
@@ -278,16 +288,37 @@ export class DatabaseController {
         job.input.command.type === "row.change" && entities
           ? entities.databases.records.get(job.input.command.rowId)
           : undefined;
+      const previews = [];
+      if (entities && record && title !== undefined)
+        previews.push(
+          entityPreview(entities.pages, record.pageId, (draft) => {
+            draft.name = title;
+          }),
+        );
+      const command = job.input.command;
+      if (entities && command.type === "property.update") {
+        const binding = entities.databases.bindings.get(command.propertyId);
+        const definition = binding && entities.databases.definitions.get(binding.propertyId);
+        if (binding && definition) {
+          previews.push(
+            entityPreview(entities.databases.definitions, definition.id, (draft) => {
+              if (command.patch.name !== undefined) draft.name = command.patch.name;
+              // Type conversion can transform values; publish that at confirmation.
+              if (command.patch.configuration)
+                draft.config = applyConfigurationChanges(draft.config, command.patch.configuration);
+            }),
+          );
+          previews.push(
+            entityPreview(entities.databases.bindings, binding.id, (draft) => {
+              if (command.patch.visible !== undefined) draft.visible = command.patch.visible;
+              if (command.patch.width !== undefined) draft.width = command.patch.width;
+            }),
+          );
+        }
+      }
       const ack =
-        entities && record && title !== undefined
-          ? await entities.session.commands.run(
-              entities.pages,
-              record.pageId,
-              (draft) => {
-                draft.name = title;
-              },
-              send,
-            )
+        entities && previews.length
+          ? await entities.session.commands.runMany(previews, send)
           : await send();
       if (this.disposed) return;
       for (const source of job.sources)
@@ -343,7 +374,10 @@ export class DatabaseController {
               favorite: { ...job.interaction.favorite, confirmation: ack.privateConfirmation },
             }
           : {}),
-        sourceVersions: titleOnly(job.input) && entities ? {} : ack.sourceVersions,
+        sourceVersions:
+          (titleOnly(job.input) && entities) || job.sharedDefinitionConfirmed
+            ? {}
+            : ack.sourceVersions,
         ...(titleOnly(job.input) && entities ? { effects: [] } : {}),
         hostVersions: ack.event ? { [ack.event.databaseId]: ack.event.version } : {},
       };
@@ -401,6 +435,13 @@ export class DatabaseController {
     }
   }
   private refresh(job: Job, ack?: DatabaseCommandAck) {
+    if (ack && job.sharedDefinitionConfirmed) {
+      refreshPropertyMembership(
+        this.queryClient,
+        ack.event?.changes.properties?.flatMap((binding) => [binding.id, binding.propertyId]) ?? [],
+      );
+      return;
+    }
     if (ack && titleOnly(job.input)) {
       refreshTitleMembership(
         this.queryClient,
@@ -418,9 +459,9 @@ export class DatabaseController {
       .findAll({ queryKey: ["db", this.sessionId] })) {
       if (query.queryKey[3] === "window" && sources.has(String(query.queryKey[4])))
         hosts.add(String(query.queryKey[2]));
-      const bootstrap = databaseBootstrapResponseSchema.safeParse(query.state.data);
-      if (bootstrap.success && bootstrap.data.dataSources.some(({ id }) => sources.has(id)))
-        hosts.add(bootstrap.data.database.id);
+      const bootstrap = resolveDatabaseBootstrap(this.queryClient, query.state.data);
+      if (bootstrap && bootstrap.dataSources.some(({ id }) => sources.has(id)))
+        hosts.add(bootstrap.database.id);
     }
     if (ack)
       void refreshConfirmedDatabaseReads(
@@ -501,9 +542,8 @@ export class DatabaseController {
           for (const snapshot of this.bootstrapWindows.values())
             if (metadataNeedsProjection(effect, interaction, snapshot)) stale = true;
           for (const query of queries) {
-            const parsed = databaseBootstrapResponseSchema.safeParse(query.state.data);
-            if (!parsed.success || !metadataNeedsProjection(effect, interaction, parsed.data))
-              continue;
+            const parsed = resolveDatabaseBootstrap(this.queryClient, query.state.data);
+            if (!parsed || !metadataNeedsProjection(effect, interaction, parsed)) continue;
             if (!query.isActive() && query.state.fetchStatus === "idle")
               this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
             else stale = true;

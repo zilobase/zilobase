@@ -96,7 +96,8 @@ export async function propertyUpdate(
         isNull(pageProperty.deletedAt),
       ),
     )
-    .limit(1);
+    .limit(1)
+    .for("update", { of: pageProperty });
   if (!record) throw new ServiceMutationError("Property not found", 404);
   const type =
     command.patch.type === undefined

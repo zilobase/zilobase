@@ -1,3 +1,4 @@
+import { normalizeDatabaseBootstrap } from "../databases/cache-references";
 import { QueryClient, type QueryClientConfig } from "@tanstack/react-query";
 import { installSharedClient, sharedClient } from "./client";
 
@@ -14,4 +15,11 @@ export class TestQueryClient extends QueryClient {
     for (const owner of sharedClient(this).all()) void owner.session.dispose();
     super.clear();
   }
+}
+
+export function cacheTestBootstrap(client: QueryClient, key: readonly unknown[], input: unknown) {
+  return client.setQueryData(
+    key,
+    normalizeDatabaseBootstrap(client, sharedClient(client).capture(), String(key[2]), input),
+  );
 }

@@ -1,3 +1,4 @@
+import { resolvePageProperties } from "./property-cache";
 import { useMemo } from "react";
 import { useSharedDataRevision } from "../data/react";
 import { resolveNavigationReference, resolvePageDetailReference } from "./cache";
@@ -162,9 +163,25 @@ export function usePageProperties(
   pageId: string | null | undefined,
   _options?: PagePropertiesOptions,
 ) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery({
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const query = useQuery({
     ...pagePropertiesQueryOptions(apiFetch, pageId),
     enabled: Boolean(pageId),
   });
+  const revision = useSharedDataRevision(queryClient);
+  const data = useMemo(
+    () => resolvePageProperties(queryClient, query.data),
+    [queryClient, query.data, revision],
+  );
+  return {
+    data,
+    error: query.error,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    status: query.status,
+    refetch: query.refetch,
+  };
 }

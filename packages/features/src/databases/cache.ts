@@ -265,6 +265,28 @@ export class DatabaseCollections {
     return "published";
   }
 
+  isDefinitionEvent(event: import("./core/entities").DatabaseMutationEventV2) {
+    const { properties, sourceVersions: _versions, ...other } = event.changes;
+    if (
+      event.requiresReset ||
+      !properties?.length ||
+      Object.values(other).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value !== undefined,
+      )
+    )
+      return false;
+    return properties.every((binding) => {
+      const previous = this.bindings.collection.base.get(binding.id);
+      return (
+        previous &&
+        previous.propertyId === binding.propertyId &&
+        previous.dataSourceId === binding.dataSourceId &&
+        previous.position === binding.position &&
+        !binding.property.deletedAt
+      );
+    });
+  }
+
   /** Full records can confirm page metadata without changing result membership. */
   isPageMetadataEvent(event: import("./core/entities").DatabaseMutationEventV2) {
     const { records, sourceVersions: _versions, ...other } = event.changes;

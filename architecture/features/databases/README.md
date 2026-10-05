@@ -205,6 +205,9 @@ path assignments/removals, not a replacement `config`. Editors compute changes a
 the configuration they displayed. The server applies those same operations to the
 locked current entity, and bootstrap projections apply them to untouched snapshots.
 Full configuration objects are accepted only for creation and template application.
+Property updates lock the shared definition row before reading configuration, so
+different-field changes through different source bindings compose. Existing
+strictly increasing entity stamps order those confirmations across source lanes.
 The view controller reads its latest pending configuration from the session controller;
 there is no separate latest-view configuration cache. Record fetches and prefetches use
 the confirmed bootstrap configuration while loaded rows use the projected configuration.

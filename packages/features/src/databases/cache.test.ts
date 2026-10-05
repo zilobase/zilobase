@@ -1,3 +1,8 @@
+import { TestQueryClient } from "../data/testing";
+import { sharedClient } from "../data/client";
+import { normalizeDatabaseBootstrap, resolveDatabaseBootstrap } from "./cache-references";
+import { normalizePageProperties, resolvePageProperties } from "../pages/property-cache";
+import { entityPreview } from "../data/commands";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DataSession } from "../data/session";
@@ -306,4 +311,164 @@ test("archived definition confirmations preserve bindings and record exclusion p
   assert(pages.get("page"));
   assert(databases.records.get("record"));
   await session.dispose();
+});
+
+test("two bindings and a page-property result resolve one partially read definition", async () => {
+  const client = new TestQueryClient();
+  const owner = sharedClient(client);
+  const read = owner.capture();
+  try {
+    const first = normalizeDatabaseBootstrap(client, read, "host", bootstrap());
+    const secondInput = bootstrap("second-host");
+    secondInput.dataSources[0]!.id = "second-source";
+    secondInput.dataSources[0]!.parentDatabaseId = "second-host";
+    secondInput.properties[0]!.id = "second-binding";
+    secondInput.properties[0]!.dataSourceId = "second-source";
+    secondInput.views[0]!.dataSourceId = "second-source";
+    const second = normalizeDatabaseBootstrap(client, read, "second-host", secondInput);
+    const { config: _config, ...definition } = bootstrap().properties[0]!.property;
+    const page = normalizePageProperties(client, read, "page", {
+      workspaceId: "workspace",
+      properties: [{ ...definition, name: "Latest definition", updatedAt: stamp(3) }],
+      values: [],
+    });
+    assert.equal("properties" in first, false);
+    assert.equal("properties" in page, false);
+    for (const reference of [first, second]) {
+      assert.equal(
+        resolveDatabaseBootstrap(client, reference)!.properties[0]!.property.name,
+        "Latest definition",
+      );
+      assert.deepEqual(
+        resolveDatabaseBootstrap(client, reference)!.properties[0]!.property.config,
+        { options: [{ label: "Open" }] },
+      );
+    }
+    assert.equal(resolvePageProperties(client, page)!.properties[0]!.name, "Latest definition");
+    normalizePageProperties(client, read, "page", {
+      workspaceId: "workspace",
+      properties: [],
+      values: [],
+    });
+    assert.equal(resolveDatabaseBootstrap(client, first)!.properties.length, 1);
+    assert.throws(() =>
+      normalizePageProperties(client, read, "page", {
+        workspaceId: "workspace",
+        properties: [
+          { ...definition, name: "Half batch", updatedAt: stamp(4) },
+          { ...definition, id: "malformed", updatedAt: "invalid" },
+        ],
+        values: [],
+      }),
+    );
+    assert.equal(resolvePageProperties(client, page)!.properties[0]!.name, "Latest definition");
+  } finally {
+    client.clear();
+  }
+});
+
+test("shared definition previews serialize across bindings and retire coherently on a collaborator confirmation", async () => {
+  const { session, databases } = fixture();
+  databases.ingestBootstrap("host", bootstrap());
+  session.ingest([
+    databases.bindings.stage(
+      [{ ...bootstrap().properties[0]!, property: undefined, id: "other-binding" }].map(
+        ({ property: _property, ...binding }) => binding,
+      ),
+    ),
+  ]);
+  const first = Promise.withResolvers<void>();
+  const second = Promise.withResolvers<void>();
+  const calls: string[] = [];
+  const published: string[] = [];
+  const release = session.publication.subscribe(() =>
+    published.push(
+      `${databases.definitions.get("definition")!.name}/${databases.bindings.get("binding")!.width}`,
+    ),
+  );
+  try {
+    const pending = session.commands.runMany(
+      [
+        entityPreview(databases.definitions, "definition", (draft) => {
+          draft.name = "Preview";
+        }),
+        entityPreview(databases.bindings, "binding", (draft) => {
+          draft.width = 220;
+        }),
+      ],
+      async () => {
+        calls.push("first");
+        await first.promise;
+      },
+    );
+    const failed = assert.rejects(pending, /Denied/);
+    const queued = session.commands.runMany(
+      [
+        entityPreview(databases.definitions, "definition", (draft) => {
+          draft.name = "Queued";
+        }),
+        entityPreview(databases.bindings, "other-binding", (draft) => {
+          draft.width = 300;
+        }),
+      ],
+      async () => {
+        calls.push("second");
+        await second.promise;
+      },
+    );
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    assert.deepEqual(calls, ["first"]);
+    assert.deepEqual(published, ["Preview/220"]);
+    session.ingest([
+      databases.definitions.stage([
+        { id: "definition", name: "Collaborator", updatedAt: stamp(3) },
+      ]),
+    ]);
+    assert.equal(databases.definitions.get("definition")!.name, "Collaborator");
+    assert.equal(databases.bindings.get("binding")!.width, null);
+    first.reject(new Error("Denied"));
+    await failed;
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    assert.deepEqual(calls, ["first", "second"]);
+    assert.equal(databases.definitions.get("definition")!.name, "Queued");
+    second.resolve();
+    await queued;
+    assert.equal(databases.definitions.get("definition")!.name, "Collaborator");
+  } finally {
+    release();
+    await session.dispose();
+  }
+});
+
+test("an invalid second preview rolls back the batch before transport or publication", async () => {
+  const { session, databases } = fixture();
+  databases.ingestBootstrap("host", bootstrap());
+  const seen: string[] = [];
+  let sent = false;
+  const release = session.publication.subscribe(() =>
+    seen.push(databases.definitions.get("definition")!.name),
+  );
+  try {
+    await assert.rejects(
+      session.commands.runMany(
+        [
+          entityPreview(databases.definitions, "definition", (draft) => {
+            draft.name = "Partial preview";
+          }),
+          entityPreview(databases.bindings, "missing", (draft) => {
+            draft.width = 200;
+          }),
+        ],
+        async () => {
+          sent = true;
+        },
+      ),
+    );
+    assert.equal(sent, false);
+    assert.equal(databases.definitions.get("definition")!.name, "Status");
+    assert.ok(seen.every((name) => name === "Status"));
+  } finally {
+    release();
+    await session.dispose();
+  }
 });

@@ -30,10 +30,7 @@ export function register({ assert, loadModule, test }) {
       databaseIds: [],
     });
     assert.equal(client.getQueryData(["pages", "workspace-1", "nav", "active"]), undefined);
-    assert.deepEqual(client.getQueryData(["page", "page-1", "properties"]), {
-      properties: [],
-      values: [],
-    });
+    assert.equal(client.getQueryData(["page", "page-1", "properties"]), undefined);
     const other = new QueryClient();
     await cache.hydratePageReadCache({
       queryClient: other,

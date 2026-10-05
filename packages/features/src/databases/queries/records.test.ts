@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TestQueryClient as QueryClient } from "../../data/testing";
+import { cacheTestBootstrap, TestQueryClient as QueryClient } from "../../data/testing";
 
 import { sharedClient } from "../../data/client";
 import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "./keys";
@@ -145,22 +145,29 @@ test("record scope selects newest confirmed metadata without crossing session or
     views: [],
   };
   const rootKey = databaseBootstrapQueryKey("session-1", { databaseId: scope.databaseId });
-  client.setQueryData(rootKey, snapshot);
-  client.setQueryData(databaseBootstrapQueryKey("other-session", scope), {
+  cacheTestBootstrap(client, rootKey, snapshot);
+  cacheTestBootstrap(client, databaseBootstrapQueryKey("other-session", scope), {
     ...snapshot,
     database: { ...snapshot.database, version: 100 },
   });
-  client.setQueryData(databaseBootstrapQueryKey("session-1", { ...scope, includeDeleted: true }), {
-    ...snapshot,
-    database: { ...snapshot.database, version: 200 },
-  });
+  cacheTestBootstrap(
+    client,
+    databaseBootstrapQueryKey("session-1", { ...scope, includeDeleted: true }),
+    {
+      ...snapshot,
+      database: { ...snapshot.database, version: 200 },
+    },
+  );
   try {
     assert.equal(
       confirmedWindowBootstrap(client, "session-1", scope),
       client.getQueryData(rootKey),
     );
     const viewKey = databaseBootstrapQueryKey("session-1", scope);
-    client.setQueryData(viewKey, { ...snapshot, database: { ...snapshot.database, version: 2 } });
+    cacheTestBootstrap(client, viewKey, {
+      ...snapshot,
+      database: { ...snapshot.database, version: 2 },
+    });
     assert.equal(
       confirmedWindowBootstrap(client, "session-1", scope),
       client.getQueryData(viewKey),

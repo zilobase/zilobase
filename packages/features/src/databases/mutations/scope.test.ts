@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { QueryClient } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../data/testing";
 import { resolveDataSourceCommandScope } from "./scope";
 import { createTestDatabasePayload, setTestDatabaseClientState } from "./test-helpers";
 

@@ -1,8 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import {
-  databaseBootstrapResponseSchema,
-  databaseRecordWindowResponseSchema,
-} from "@zilobase/features/databases";
+import { databaseRecordWindowResponseSchema } from "@zilobase/features/databases";
 
 import {
   deletePageSnapshots,
@@ -48,14 +45,6 @@ function snapshotOf(
   }
   if (key[0] === "page" && typeof key[1] === "string" && key[1] !== "none") {
     if (
-      key[2] === "properties" &&
-      isObject(data) &&
-      Array.isArray(data.properties) &&
-      Array.isArray(data.values)
-    ) {
-      return { scope: `page:${key[1]}`, queryKey: key, data };
-    }
-    if (
       key[2] === "access-targets" &&
       isObject(data) &&
       Array.isArray(data.guests) &&
@@ -65,10 +54,7 @@ function snapshotOf(
     }
   }
   if (key[0] !== "db" || key[1] !== sessionId || typeof key[2] !== "string") return null;
-  if (key[3] === "bootstrap") {
-    const parsed = databaseBootstrapResponseSchema.safeParse(data);
-    if (!parsed.success || parsed.data.database.id !== key[2]) return null;
-  } else if (key[3] === "window") {
+  if (key[3] === "window") {
     if (!isObject(data) || !Array.isArray(data.pages) || !Array.isArray(data.pageParams))
       return null;
     const first = databaseRecordWindowResponseSchema.safeParse(data.pages[0]);

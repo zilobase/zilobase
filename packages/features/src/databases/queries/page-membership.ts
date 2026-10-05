@@ -1,27 +1,33 @@
+import { resolveDatabaseBootstrap } from "../cache-references";
 import type { QueryClient } from "@tanstack/react-query";
-import { databaseBootstrapResponseSchema } from "../core/entities";
 import { databaseViewQueryHash } from "../views/query-hash";
 
-function referencesTitle(value: unknown): boolean {
+function referencesFields(value: unknown, fields: ReadonlySet<string>): boolean {
   if (!value || typeof value !== "object") return false;
-  if (Array.isArray(value)) return value.some(referencesTitle);
+  if (Array.isArray(value)) return value.some((value) => referencesFields(value, fields));
   const record = value as Record<string, unknown>;
   return (
-    record.propertyId === "name" ||
-    record.column === "name" ||
-    Object.values(record).some(referencesTitle)
+    (typeof record.propertyId === "string" && fields.has(record.propertyId)) ||
+    (typeof record.column === "string" && fields.has(record.column)) ||
+    Object.values(record).some((value) => referencesFields(value, fields))
   );
 }
 
 /** Titles affect only results evaluated with a dependent filter or sort. */
 export function refreshTitleMembership(client: QueryClient, pageIds: readonly string[]) {
   if (!pageIds.length) return;
+  refreshPropertyMembership(client, ["name"]);
+}
+
+export function refreshPropertyMembership(client: QueryClient, propertyIds: readonly string[]) {
+  if (!propertyIds.length) return;
+  const fields = new Set(propertyIds);
   const windows = new Set<string>();
   for (const query of client.getQueryCache().findAll({ queryKey: ["db"] })) {
     if (query.queryKey[3] !== "bootstrap") continue;
-    const parsed = databaseBootstrapResponseSchema.safeParse(query.state.data);
-    if (!parsed.success) continue;
-    const { database, views, properties } = parsed.data;
+    const parsed = resolveDatabaseBootstrap(client, query.state.data);
+    if (!parsed) continue;
+    const { database, views, properties } = parsed;
     for (const view of views) {
       const config = view.config ?? database.config;
       // Computed-property dependencies are conservatively recovered until the
@@ -30,7 +36,7 @@ export function refreshTitleMembership(client: QueryClient, pageIds: readonly st
         (binding) =>
           binding.dataSourceId === view.dataSourceId && binding.property.type === "formula",
       );
-      if (!referencesTitle(config) && !formulas) continue;
+      if (!referencesFields(config, fields) && !formulas) continue;
       windows.add(
         JSON.stringify([
           query.queryKey[1],

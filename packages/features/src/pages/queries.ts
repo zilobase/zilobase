@@ -1,3 +1,4 @@
+import { normalizePageProperties } from "./property-cache";
 import type {
   ZilobaseAiMode,
   PageDatabase,
@@ -448,15 +449,17 @@ export const pagePropertiesQueryOptions = (
   queryOptions({
     queryKey: pagePropertiesQueryKey(pageId),
     enabled: Boolean(pageId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!pageId) {
         throw new Error("pageId is required");
       }
 
-      return apiFetch<PagePropertiesPayload>(`/pages/${pageId}/properties`, {
+      const read = sharedClient(client).capture();
+      const payload = await apiFetch<PagePropertiesPayload>(`/pages/${pageId}/properties`, {
         method: "GET",
         signal,
       });
+      return normalizePageProperties(client, read, pageId, payload);
     },
   });
 

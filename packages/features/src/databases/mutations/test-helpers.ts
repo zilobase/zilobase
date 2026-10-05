@@ -1,3 +1,4 @@
+import { cacheTestBootstrap } from "../../data/testing";
 import type { QueryClient } from "@tanstack/react-query";
 
 import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "../queries/keys";
@@ -167,7 +168,8 @@ export function setTestDatabaseClientState(
       config: view.config ?? {},
     })),
   };
-  queryClient.setQueryData(
+  cacheTestBootstrap(
+    queryClient,
     databaseBootstrapQueryKey("test-session", {
       databaseId: payload.database.id,
     }),

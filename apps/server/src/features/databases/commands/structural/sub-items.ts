@@ -112,7 +112,10 @@ export async function ensureSubItemRelations(
   if (parent) {
     await context.transaction
       .update(pageProperty)
-      .set({ config: parentConfig, updatedAt: now })
+      .set({
+        config: sql`COALESCE(${pageProperty.config}, '{}'::jsonb) || ${JSON.stringify(parentConfig)}::jsonb`,
+        updatedAt: now,
+      })
       .where(eq(pageProperty.id, parentPropertyId));
   } else {
     await context.transaction.insert(pageProperty).values({
@@ -136,7 +139,10 @@ export async function ensureSubItemRelations(
   if (child) {
     await context.transaction
       .update(pageProperty)
-      .set({ config: childConfig, updatedAt: now })
+      .set({
+        config: sql`COALESCE(${pageProperty.config}, '{}'::jsonb) || ${JSON.stringify(childConfig)}::jsonb`,
+        updatedAt: now,
+      })
       .where(eq(pageProperty.id, subItemPropertyId));
   } else {
     await context.transaction.insert(pageProperty).values({

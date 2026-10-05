@@ -1,6 +1,7 @@
+import { resolveDatabaseBootstrap } from "../cache-references";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TestQueryClient as QueryClient } from "../../data/testing";
+import { cacheTestBootstrap, TestQueryClient as QueryClient } from "../../data/testing";
 
 import { databaseBootstrapQueryKey, sessionIdForQueries } from "./keys";
 import { databaseBootstrapQueryOptions } from "./bootstrap";
@@ -60,7 +61,10 @@ test("bootstrap fetch parses and validates", async () => {
     client: queryClient,
     signal: new AbortController().signal,
   } as never);
-  assert.deepEqual(data, databaseBootstrapResponseSchema.parse(bootstrap));
+  assert.deepEqual(
+    resolveDatabaseBootstrap(queryClient, data),
+    databaseBootstrapResponseSchema.parse(bootstrap),
+  );
   queryClient.clear();
   assert.equal(seen[0], "/databases/database-1/bootstrap?viewId=view-1");
 });
@@ -70,7 +74,7 @@ test("bootstrap prefer-newest guard keeps newer cached version", async () => {
   try {
     const scope = { databaseId: "database-1" };
     const key = databaseBootstrapQueryKey("session-1", scope);
-    queryClient.setQueryData(key, { ...bootstrap });
+    cacheTestBootstrap(queryClient, key, { ...bootstrap });
     const stale = {
       ...bootstrap,
       database: { ...bootstrap.database, version: 1 },

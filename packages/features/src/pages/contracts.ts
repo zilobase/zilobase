@@ -123,6 +123,7 @@ export type PagePropertyValue = {
 };
 
 export type PagePropertiesPayload = {
+  workspaceId: string;
   databaseIds?: string[];
   databaseVersions?: Record<string, number>;
   presenceTargets?: PagePropertyPresenceTarget[];

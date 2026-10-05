@@ -51,6 +51,11 @@ Page width and embedded-item placement are viewer preferences; obsolete page-met
 
 ## Page loading and presentation
 
+[Page-property reads](../../../packages/features/src/pages/property-cache.ts)
+carry an authorized workspace ID and ordered definition IDs. Panels resolve
+current definitions through the session collection while stored values remain
+unmigrated. No covered page-property browser snapshot is hydrated.
+
 Page-property presence targets carry both host and source IDs. Property edits submit
 to the database controller using that explicit scope; membership properties are
 matched by source, not merely by host, so linked sources cannot be confused.

@@ -1,3 +1,10 @@
+import { useMemo } from "react";
+import { useSharedDataRevision } from "../../data/react";
+import {
+  normalizeDatabaseBootstrap,
+  resolveDatabaseBootstrap,
+  type DatabaseBootstrapReference,
+} from "../cache-references";
 import { sharedClient } from "../../data/client";
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
@@ -36,29 +43,21 @@ export function databaseBootstrapQueryOptions(
   return queryOptions({
     queryKey,
     staleTime: 30_000,
-    queryFn: async ({ client, signal }): Promise<DatabaseBootstrapResponse> => {
+    queryFn: async ({ client, signal }): Promise<DatabaseBootstrapReference> => {
       const owner = sharedClient(client);
       const read = owner.capture();
       const incoming = databaseBootstrapResponseSchema.parse(
         await apiFetch<DatabaseBootstrapResponse>(databaseBootstrapPath(scope), { signal }),
       );
-      owner
-        .resolve(
-          read,
-          incoming.database.workspaceId,
-          read.identity.viewer.kind === "public"
-            ? { kind: "public", id: scope.databaseId }
-            : undefined,
-        )
-        .databases.ingestBootstrap(scope.databaseId, incoming);
+      const reference = normalizeDatabaseBootstrap(client, read, scope.databaseId, incoming);
       // Prefer-newest guard: out-of-order GETs must not regress cache.
       if (queryClient) {
-        const cached = queryClient.getQueryData<DatabaseBootstrapResponse>(queryKey);
+        const cached = queryClient.getQueryData<DatabaseBootstrapReference>(queryKey);
         if (cached && incoming.database.version < cached.database.version) {
           return cached;
         }
       }
-      return incoming;
+      return reference;
     },
   });
 }
@@ -77,7 +76,12 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
     ),
     enabled: Boolean(scope),
   });
-  const projected = useProjectedDatabaseBootstrap(query.data);
+  const revision = useSharedDataRevision(queryClient);
+  const resolved = useMemo(
+    () => resolveDatabaseBootstrap(queryClient, query.data),
+    [queryClient, query.data, revision],
+  );
+  const projected = useProjectedDatabaseBootstrap(resolved);
 
   if (!scope || !queryKey) {
     return {
@@ -98,7 +102,7 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
 
   return {
     data: projected,
-    serverData: query.data,
+    serverData: resolved,
     error,
     refetch: () => queryClient.refetchQueries({ exact: true, queryKey }),
     scope,

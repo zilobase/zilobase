@@ -1,9 +1,7 @@
+import { databaseBootstrapReferenceSchema } from "../cache-references";
 import type { QueryClient } from "@tanstack/react-query";
 
-import {
-  databaseBootstrapResponseSchema,
-  databaseRecordWindowResponseSchema,
-} from "../core/entities";
+import { databaseRecordWindowResponseSchema } from "../core/entities";
 
 export const databaseQueryRoot = "db" as const;
 
@@ -45,7 +43,7 @@ export const sessionIdForQueries = (authSessionId: string | null | undefined) =>
   authSessionId ?? "public";
 
 function bootstrapVersionOf(value: unknown): number | null {
-  const parsed = databaseBootstrapResponseSchema.safeParse(value);
+  const parsed = databaseBootstrapReferenceSchema.safeParse(value);
   if (parsed.success) return parsed.data.database.version;
   return null;
 }

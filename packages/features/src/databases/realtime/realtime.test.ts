@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { TestQueryClient as QueryClient } from "../../data/testing";
+import { cacheTestBootstrap, TestQueryClient as QueryClient } from "../../data/testing";
 import type { ApiFetcher } from "../../shared/context";
 
 import {
@@ -227,23 +227,27 @@ test("database realtime control messages require protocol v2", () => {
 test("poke with version <= cached does not invalidate", () => {
   const queryClient = new QueryClient();
   try {
-    queryClient.setQueryData(["db", "test-session", "database-1", "bootstrap", null, false], {
-      database: {
-        accessLevel: null,
-        config: {},
-        createdAt: "2026-09-08T00:00:00.000Z",
-        deletedAt: null,
-        id: "database-1",
-        name: "Projects",
-        pageId: null,
-        updatedAt: "2026-09-08T00:00:00.000Z",
-        version: 10,
-        workspaceId: "workspace-1",
+    cacheTestBootstrap(
+      queryClient,
+      ["db", "test-session", "database-1", "bootstrap", null, false],
+      {
+        database: {
+          accessLevel: null,
+          config: {},
+          createdAt: "2026-09-08T00:00:00.000Z",
+          deletedAt: null,
+          id: "database-1",
+          name: "Projects",
+          pageId: null,
+          updatedAt: "2026-09-08T00:00:00.000Z",
+          version: 10,
+          workspaceId: "workspace-1",
+        },
+        dataSources: [],
+        properties: [],
+        views: [],
       },
-      dataSources: [],
-      properties: [],
-      views: [],
-    });
+    );
     let invalidated = 0;
     const original = queryClient.invalidateQueries.bind(queryClient);
     queryClient.invalidateQueries = (async (...args: never[]) => {

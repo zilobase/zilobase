@@ -59,8 +59,16 @@ hosts, sources, source links, definitions, bindings, persisted value pairs and
 record references. Bootstrap/window returns contain ordered IDs and server counts,
 hashes and snapshots. Known source grants come from authorized bootstrap reads;
 unknown socket sources request another authorized read. Page fields are now shared across database record presentations and page hooks.
-Database result DTOs temporarily retain unmigrated fields until their presentation
-cutover; they are not used as the page metadata owner.
+[Bootstrap references](../../packages/features/src/databases/cache-references.ts)
+keep ordered binding IDs; [page-property references](../../packages/features/src/pages/property-cache.ts) keep definition IDs. Headers, forms, option editors and
+page panels resolve definitions independently of source bindings. These reads
+exclude covered browser snapshot persistence. Other database DTO fields remain
+unmigrated until their presentation cutover.
+
+[Commands](../../packages/features/src/data/commands.ts) serialize transactions
+across every affected entity resource, including one shared definition referenced
+by different bindings. Publication gates both multi-entity previews and conflict
+retirement. Receipt tracking remains independent of preview settlement.
 
 [Publication](../../packages/features/src/data/publication.ts) batches key callbacks
 across collection commits without storing confirmed entity values. Feature owners

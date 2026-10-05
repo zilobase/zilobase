@@ -1,3 +1,5 @@
+import { resolveDatabaseBootstrap, type DatabaseBootstrapReference } from "../cache-references";
+import { useSharedDataRevision } from "../../data/react";
 import {
   infiniteQueryOptions,
   useInfiniteQuery,
@@ -5,12 +7,11 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { sharedClient } from "../../data/client";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
 import {
   databaseRecordWindowResponseSchema,
-  type DatabaseBootstrapResponse,
   type DatabaseInitialPageSize,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
@@ -243,10 +244,10 @@ export function confirmedWindowBootstrap(
   queryClient: QueryClient,
   sessionId: string,
   scope: Omit<DatabaseViewScope, "queryHash"> | null,
-): DatabaseBootstrapResponse | undefined {
+): DatabaseBootstrapReference | undefined {
   if (!scope) return undefined;
-  let newest: DatabaseBootstrapResponse | undefined;
-  for (const [key, bootstrap] of queryClient.getQueriesData<DatabaseBootstrapResponse>({
+  let newest: DatabaseBootstrapReference | undefined;
+  for (const [key, bootstrap] of queryClient.getQueriesData<DatabaseBootstrapReference>({
     queryKey: ["db", sessionId, scope.databaseId, "bootstrap"],
   })) {
     if (key[5] !== (scope.includeDeleted === true) || !bootstrap) continue;
@@ -281,7 +282,12 @@ export function useDatabaseRecords(
     [queryClient, sessionId, hostId],
   );
   const getSnapshot = () => confirmedWindowBootstrap(queryClient, sessionId, requestedScope);
-  const bootstrap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const bootstrapReference = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const revision = useSharedDataRevision(queryClient);
+  const bootstrap = useMemo(
+    () => resolveDatabaseBootstrap(queryClient, bootstrapReference),
+    [queryClient, bootstrapReference, revision],
+  );
   const view = bootstrap?.views.find(
     ({ id, dataSourceId }) =>
       id === requestedScope?.viewId && dataSourceId === requestedScope.dataSourceId,

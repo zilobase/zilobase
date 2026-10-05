@@ -79,6 +79,33 @@ returns 410 and closes old sockets. The old outbox table is inert. Retired publi
 exports are intentionally removed from the architecture baseline. Covered
 navigation browser snapshot persistence is excluded once it holds session references.
 
+## Property definition cutover
+
+Pass 5 removes definitions/bindings from Query bootstrap ownership. Queries keep
+ordered binding IDs, while page-property reads keep definition IDs and their
+authorized workspace identity. Headers, forms, property editors, options and
+page panels resolve the same collection fields. Existing option persistence and
+canonical IDs are preserved. Covered bootstrap/page-property browser snapshots
+are excluded; remaining values and result families migrate in later passes.
+
+Supported multi-entity transactions serialize by shared definition and binding
+identity. Conflict retirement publishes coherently and retains independent HTTP
+tracking. Definition-only acknowledgements/socket frames update known entities
+without blanket reads. Filter/sort/formula dependencies refresh affected windows;
+structural changes and type transformations retain authorized recovery reads.
+The server locks a definition before applying sparse configuration operations.
+Select-option imports lock definitions in ID order; sub-item configuration writers
+merge their own keys atomically to preserve unrelated fields.
+
+287 feature tests include two distinct bindings, partial/empty definition reads,
+malformed-batch rejection and queued/conflicting previews. The Docker application
+asserts identical header/panel/independent-peer labels after one property command
+and no full bootstrap/property/navigation GET. Isolated PostgreSQL commands
+through two hosts/bindings/clients preserve different configuration fields and
+produce strictly increasing definition stamps. Web tests/build/lint and runtime
+contract checks complete this pass. Deploy the page-property workspace payload
+with the client; this is a breaking contract and adds no identity schema changes.
+
 ## Storage identities
 
 Pass 3 preparation adds typed database normalization and source-scoped socket

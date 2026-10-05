@@ -43,7 +43,7 @@ function hookAck(commandId: string) {
     event: {
       actorId: "user-1",
       areas: ["records"],
-      changes: { records: [hookRecord] },
+      changes: { records: [hookRecord], sourceVersions: { "data-source-1": 2 } },
       commandId,
       committedAt: "2026-09-08T00:00:00.000Z",
       databaseId: "database-1",
