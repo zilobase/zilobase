@@ -12,6 +12,7 @@ import {
 import {
   consumeDatabaseMessageAllowance,
   isDatabasePresence,
+  scopeDatabaseRealtimeMessage,
   MAX_DATABASE_REALTIME_MESSAGE_BYTES,
   toDatabaseCollaborator,
   validateDatabaseRealtimeMessage,
@@ -459,7 +460,6 @@ function broadcast(
   attachments: WeakMap<Peer, SocketAttachment>,
   skip?: Peer,
 ) {
-  const encoded = JSON.stringify(message);
   const now = Date.now();
 
   for (const peer of room.peers) {
@@ -468,7 +468,7 @@ function broadcast(
     const attachment = attachments.get(peer);
 
     if (attachment && attachment.claims.exp > now) {
-      peer.send(encoded);
+      peer.send(JSON.stringify(scopeDatabaseRealtimeMessage(message, attachment.claims.sourceIds)));
     }
   }
 }

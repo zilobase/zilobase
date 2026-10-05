@@ -10,6 +10,7 @@ export const DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX = "zilobase.database.auth.";
 export type DatabaseRealtimeTicketClaims = {
   canEdit: boolean;
   databaseId: string;
+  sourceIds: string[];
   exp: number;
   sessionId: string;
   user: {
@@ -127,6 +128,8 @@ function isTicketClaims(value: unknown): value is DatabaseRealtimeTicketClaims {
   return (
     typeof claims.canEdit === "boolean" &&
     typeof claims.databaseId === "string" &&
+    Array.isArray(claims.sourceIds) &&
+    claims.sourceIds.every((id) => typeof id === "string" && id.length > 0 && id.length <= 128) &&
     typeof claims.exp === "number" &&
     typeof claims.sessionId === "string" &&
     (claims.version === undefined || (typeof claims.version === "number" && claims.version >= 0)) &&

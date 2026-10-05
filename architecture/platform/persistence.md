@@ -33,4 +33,14 @@ The stable [schema aggregate](../../apps/server/src/infrastructure/database/sche
 - Navigation, images, search, background work, instance settings and user settings own their focused tables.
 - Column builders hold binary/search column types and timestamp defaults. Soft-delete columns depend on authentication's user declaration and reuse timestamp builders.
 
+The [entity confirmation stamp migration](../../apps/server/drizzle/0107_entity_confirmation_stamps.sql)
+enforces strictly increasing millisecond-safe `updated_at` on pages, property
+definitions, values, records and property bindings. Its BEFORE UPDATE triggers
+compute against the locked persisted row, covering HTTP, Yjs, automation, import
+and lifecycle writers even when a caller supplied an earlier timestamp. There are
+no new revision tables; stamps order only the same storage identity. Readers and
+acknowledgements use persisted stamps, including the content-route confirmation.
+The [isolated persistence verifier](../../apps/server/src/scripts/verify-database-controller.ts)
+exercises competing writers through two independent PostgreSQL clients.
+
 Declarative-schema coverage and clone exclusions follow the schema declarations; application runtime coverage protects the aggregate and migration boundaries.

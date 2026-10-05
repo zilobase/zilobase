@@ -4,8 +4,13 @@ export class DataPublication {
   private pending = new Set<() => void>();
   private listeners = new Set<() => void>();
   private revision = 0;
+  private dirty = false;
 
   getRevision = () => this.revision;
+
+  get isPublishing() {
+    return this.depth !== 0;
+  }
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -23,13 +28,15 @@ export class DataPublication {
   }
 
   changed(listeners: Iterable<() => void>) {
+    this.dirty = true;
     for (const listener of listeners) this.pending.add(listener);
     for (const listener of this.listeners) this.pending.add(listener);
     if (this.depth === 0) this.flush();
   }
 
   private flush() {
-    if (this.pending.size === 0) return;
+    if (!this.dirty && this.pending.size === 0) return;
+    this.dirty = false;
     this.revision += 1;
     const notifications = this.pending;
     this.pending = new Set();
@@ -39,5 +46,6 @@ export class DataPublication {
   dispose() {
     this.listeners.clear();
     this.pending.clear();
+    this.dirty = false;
   }
 }

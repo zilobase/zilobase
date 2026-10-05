@@ -29,6 +29,7 @@ afterEach(() => {
 test("database realtime tickets preserve scope, identity, and edit capability", async () => {
   const ticket = await createDatabaseRealtimeTicket(
     {
+      sourceIds: ["source-1"],
       canEdit: true,
       databaseId: "database-1",
       sessionId: "session-1",
@@ -56,6 +57,7 @@ test("database realtime tickets are capped by temporary membership expiry", asyn
   const maxExpiresAt = new Date(Date.now() + 45_000);
   const ticket = await createDatabaseRealtimeTicket(
     {
+      sourceIds: ["source-1"],
       canEdit: true,
       databaseId: "database-1",
       user: { id: "user-1", name: "User One" },
@@ -73,6 +75,7 @@ test("database realtime tickets are capped by temporary membership expiry", asyn
 test("database realtime tickets reject tampering", async () => {
   const { token } = await createDatabaseRealtimeTicket(
     {
+      sourceIds: ["source-1"],
       canEdit: false,
       databaseId: "database-1",
       user: { id: "user-1", name: "User One" },
@@ -102,6 +105,7 @@ test("database realtime tickets validate shape, expiry, and configuration", asyn
   await assert.rejects(
     createDatabaseRealtimeTicket(
       {
+        sourceIds: ["source-1"],
         canEdit: false,
         databaseId: "database-1",
         user: { id: "user-1", name: "User One" },
@@ -115,6 +119,7 @@ test("database realtime tickets validate shape, expiry, and configuration", asyn
 
   const invalidShape = await createDatabaseRealtimeTicket(
     {
+      sourceIds: ["source-1"],
       canEdit: false,
       databaseId: "database-1",
       user: { id: "user-1", name: "User One" },
@@ -136,6 +141,7 @@ test("database realtime tickets validate shape, expiry, and configuration", asyn
   vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"));
   const expiring = await createDatabaseRealtimeTicket(
     {
+      sourceIds: ["source-1"],
       canEdit: true,
       databaseId: "database-1",
       user: { id: "user-1", name: "User One" },

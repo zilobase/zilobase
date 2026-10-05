@@ -147,6 +147,7 @@ function propertyEntity({ column, property }: PropertyRecord): DatabasePropertyE
     position: column.position,
     property: {
       config: property.config ?? null,
+      deletedAt: nullableTimestamp(property.deletedAt),
       createdAt: timestamp(property.createdAt),
       id: property.id,
       name: property.name,
@@ -218,31 +219,22 @@ function recordEntity(
   };
 }
 
-async function loadDatabaseReadModel(input: {
-  dataSourceId?: string;
+async function loadAccessibleSourceLinks(input: {
   includeDeleted?: boolean;
   record: DatabaseRecord;
   userId?: string;
-}): Promise<DatabaseReadModel> {
-  const [sourceLinks, storedViews] = await Promise.all([
-    db
-      .select({ link: databaseDataSource, source: dataSource })
-      .from(databaseDataSource)
-      .innerJoin(dataSource, eq(databaseDataSource.dataSourceId, dataSource.id))
-      .where(
-        and(
-          eq(databaseDataSource.databaseId, input.record.id),
-          input.includeDeleted ? undefined : isNull(dataSource.deletedAt),
-        ),
-      )
-      .orderBy(asc(databaseDataSource.position), asc(dataSource.id)),
-    db
-      .select()
-      .from(databaseView)
-      .where(eq(databaseView.databaseId, input.record.id))
-      .orderBy(asc(databaseView.position), asc(databaseView.id)),
-  ]);
-
+}) {
+  const sourceLinks = await db
+    .select({ link: databaseDataSource, source: dataSource })
+    .from(databaseDataSource)
+    .innerJoin(dataSource, eq(databaseDataSource.dataSourceId, dataSource.id))
+    .where(
+      and(
+        eq(databaseDataSource.databaseId, input.record.id),
+        input.includeDeleted ? undefined : isNull(dataSource.deletedAt),
+      ),
+    )
+    .orderBy(asc(databaseDataSource.position), asc(dataSource.id));
   const foreignParentIds = [
     ...new Set(
       sourceLinks
@@ -273,6 +265,28 @@ async function loadDatabaseReadModel(input: {
       accessibleLinks.push(link);
     }
   }
+
+  return accessibleLinks;
+}
+
+export async function getAuthorizedDatabaseSourceIds(record: DatabaseRecord, userId: string) {
+  return (await loadAccessibleSourceLinks({ record, userId })).map(({ source }) => source.id);
+}
+
+async function loadDatabaseReadModel(input: {
+  dataSourceId?: string;
+  includeDeleted?: boolean;
+  record: DatabaseRecord;
+  userId?: string;
+}): Promise<DatabaseReadModel> {
+  const [accessibleLinks, storedViews] = await Promise.all([
+    loadAccessibleSourceLinks(input),
+    db
+      .select()
+      .from(databaseView)
+      .where(eq(databaseView.databaseId, input.record.id))
+      .orderBy(asc(databaseView.position), asc(databaseView.id)),
+  ]);
 
   const accessibleSourceIds = accessibleLinks.map(({ source }) => source.id);
   const requestedSourceIds = input.dataSourceId

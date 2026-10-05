@@ -12,6 +12,7 @@ import {
 import {
   consumeDatabaseMessageAllowance,
   isDatabasePresence,
+  scopeDatabaseRealtimeMessage,
   toDatabaseCollaborator,
   type DatabasePresence,
 } from "@zilobase/features/databases/realtime/room-protocol";
@@ -274,13 +275,11 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
   }
 
   private broadcast(message: unknown, skip?: WebSocket) {
-    const encoded = JSON.stringify(message);
-
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === skip || ws.readyState !== WebSocket.OPEN) continue;
       const attachment = readAttachment(ws);
       if (attachment && attachment.claims.exp > Date.now()) {
-        ws.send(encoded);
+        ws.send(JSON.stringify(scopeDatabaseRealtimeMessage(message, attachment.claims.sourceIds)));
       }
     }
   }

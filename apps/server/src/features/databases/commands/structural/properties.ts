@@ -214,7 +214,7 @@ export async function propertyState(
     mutations: await sourceMutations(context, ["properties"], async () =>
       restore
         ? { properties: entities }
-        : { properties: entities, removedPropertyIds: [entity.id] },
+        : { properties: [...entities, entity], removedPropertyIds: [entity.id] },
     ),
     result: entity,
   };

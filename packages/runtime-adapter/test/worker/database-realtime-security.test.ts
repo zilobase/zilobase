@@ -18,6 +18,7 @@ const secret = "database-realtime-route-test-secret";
 async function createWebsocketRequest(databaseId = "database-1") {
   const ticket = await createDatabaseRealtimeTicket(
     {
+      sourceIds: ["source-1"],
       canEdit: true,
       databaseId,
       user: { id: "user-1", name: "User One" },
@@ -135,6 +136,7 @@ describe("database realtime upgrade security", () => {
       "x-zilobase-database-realtime-claims",
       encodeURIComponent(
         JSON.stringify({
+          sourceIds: ["source-1"],
           canEdit: true,
           databaseId: "database-1",
           exp: Date.now() + 60_000,

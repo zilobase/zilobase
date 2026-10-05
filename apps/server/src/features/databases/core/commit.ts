@@ -27,6 +27,7 @@ import {
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
+import { mutationSourceIds, withSourceClocks } from "./source-clocks";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -161,7 +162,21 @@ export async function commitDatabaseMutationBatch<T>(
             typeof mutation.changes === "function"
               ? await mutation.changes(mutation.databaseId)
               : mutation.changes;
-          const prepared = boundedChanges(resolvedChanges, mutation.requiresReset);
+          const ids = mutationSourceIds(resolvedChanges, mutation.dataSourceId);
+          const sourceVersions: Record<string, number> = {};
+          for (const id of ids) {
+            const [source] = await tx
+              .select({ version: dataSource.version })
+              .from(dataSource)
+              .where(eq(dataSource.id, id))
+              .limit(1);
+            if (!source) throw new DatabaseMutationError("Data source not found", 404);
+            sourceVersions[id] = source.version;
+          }
+          const prepared = boundedChanges(
+            withSourceClocks(resolvedChanges, mutation.dataSourceId, sourceVersions),
+            mutation.requiresReset,
+          );
           const event: DatabaseMutationEventV2 = {
             actorId: options.actorId,
             areas: mutation.areas,

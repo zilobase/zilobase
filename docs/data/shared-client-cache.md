@@ -51,6 +51,30 @@ The fixture is independent of the application and does not prove migrated surfac
 
 ## Storage identities
 
+Pass 3 preparation adds typed database normalization and source-scoped socket
+delivery. The collection adapters remain uninstalled. Coverage/removal metadata
+uses TanStack DB's public sync metadata API; delayed staged inputs revalidate
+against the current base before a coherent publication. Result exclusion never
+implicitly deletes a canonical page, definition, value or source.
+
+Confirmed page, definition, value, record and binding ordering uses the existing
+persisted timestamps, enforced by migration 0107. Hosts, sources, links and views
+use their applicable host/source lanes. The existing event JSON carries source
+clocks. Database tickets carry the existing linked-source authorization result;
+Node and Worker rooms send an empty reset hint when an event exceeds that scope.
+No additional journal, revision table, room class or authorization provider was
+introduced. Apply the stamp migration before installing migrated consumers and
+roll out ticket issuance with both runtime verifiers; this document does not
+authorize deployment.
+
+The proof suite covers delayed reads, both confirmation orders, duplicate
+identities, partial metadata, lifecycle/hard-removal barriers, malformed batch
+rejection, canonical value IDs, source unlinking and gated export snapshots.
+Real PostgreSQL tests verify competing entity writers; Node and workerd tests
+verify peers with different source grants. The existing signed-in application
+fixture also passes with the revised ticket contract and stamp migration. Actual
+shared-cache application acceptance remains pending consumer installation.
+
 | Entity owner     | Storage identity                | Normalization                                                                    |
 | ---------------- | ------------------------------- | -------------------------------------------------------------------------------- |
 | Page metadata    | `page.id`                       | Name, metadata/icon/cover, lifecycle and shared metadata; no body or actor flags |

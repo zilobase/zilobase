@@ -6,6 +6,25 @@ The shared feature package publishes the runtime-validated [protocol-v2 database
 
 After the database transaction commits, command and internal mutation paths enqueue only `realtime.database` background tasks. They never call Redis, a Durable Object, or a WebSocket broadcaster directly. Queue/notification failure does not reject an acknowledged mutation: the undelivered outbox reference remains available to the normal recovery sweep.
 
+Command and internal events now include source revisions in their existing
+`changes` JSON. [Source-clock projection](../../../apps/server/src/features/databases/core/source-clocks.ts)
+includes only lanes represented in that event, so a transfer's other reserved
+lanes are not disclosed. The existing journal and outbox retain these clocks.
+Property confirmations carry definition lifecycle state; archive excludes the
+binding from results while retaining its canonical definition tombstone.
+
+Database tickets include source IDs authorized through the same linked-source
+filter as bootstrap reads. Both [Node delivery](../../../packages/runtime-adapter/src/node/features/database-realtime/database-realtime-runtime.ts)
+and the existing [Worker room](../../../packages/runtime-adapter/src/worker/features/database-realtime/database-collaboration-room.ts)
+apply the shared [delivery scope guard](../../../packages/features/src/databases/realtime/room-protocol.ts)
+per peer. A mutation representing a source outside the ticket scope becomes an
+empty `requiresReset` hint with no source identity or entity payload. Ticket
+refresh reevaluates source grants. This changes the signed ticket contract and
+requires coordinated server/runtime rollout; no new room or provider is added.
+The prepared collection normalizer also requires authorized source reads before
+admitting entities. The application's existing poke behavior below remains
+active until its consumer migration.
+
 The [mutation history service](../../../apps/server/src/features/databases/history/service.ts) remains server-only for now and is write-only from the client's perspective: it serves contiguous events after a client version in pages of at most 500 for future cleanup, but the poke-and-refetch client never calls `GET /mutations`. A missing version, malformed event, future client version, expired history, or journal reset marker would return `resetRequired` without applying a partial sequence. Cleanup retains all events from the last seven days and at least the newest 10,000 events per database, and removes expired command receipts. Future cleanup may remove the dead client catch-up path entirely.
 
 Every database websocket server frame uses protocol version `2`, including

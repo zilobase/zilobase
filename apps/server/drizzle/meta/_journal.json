@@ -729,6 +729,13 @@
       "when": 1790553600000,
       "tag": "0106_database_private_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1791158400000,
+      "tag": "0107_entity_confirmation_stamps",
+      "breakpoints": true
     }
   ]
 }

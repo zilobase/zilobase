@@ -28,6 +28,7 @@ import { createBackgroundTask } from "../../../infrastructure/background/contrac
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
 import { lockDatabaseRowOrdering } from "../core/position-service";
+import { mutationSourceIds, withSourceClocks } from "../core/source-clocks";
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
@@ -451,7 +452,28 @@ export async function executeDatabaseCommand<TResult = unknown>(
               )[0]?.version;
         if (version === undefined) throw new ServiceMutationError("Database not found", 404);
 
-        const prepared = boundedChanges(mutation);
+        const eventSourceVersions = { ...sourceVersions };
+        for (const id of mutationSourceIds(mutation.changes, mutation.dataSourceId)) {
+          if (eventSourceVersions[id] !== undefined) continue;
+          const entityVersion = mutation.changes.dataSources?.find(
+            (source) => source.id === id,
+          )?.version;
+          if (entityVersion !== undefined) {
+            eventSourceVersions[id] = entityVersion;
+            continue;
+          }
+          const [source] = await tx
+            .select({ version: dataSource.version })
+            .from(dataSource)
+            .where(eq(dataSource.id, id))
+            .limit(1);
+          if (!source) throw new ServiceMutationError("Data source not found", 404);
+          eventSourceVersions[id] = source.version;
+        }
+        const prepared = boundedChanges({
+          ...mutation,
+          changes: withSourceClocks(mutation.changes, mutation.dataSourceId, eventSourceVersions),
+        });
         const changes = prepared.changes.databases
           ? {
               ...prepared.changes,

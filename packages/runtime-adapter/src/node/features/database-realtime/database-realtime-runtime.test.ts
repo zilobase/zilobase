@@ -13,6 +13,34 @@ import type { NodeRealtimeBus } from "../../realtime-bus";
 
 const env = { BETTER_AUTH_SECRET: "database-realtime-test-secret" };
 
+test("database sockets with different source grants receive scoped entity delivery", async () => {
+  const fixture = await startFixture();
+  const permitted = new RealtimeClient(fixture.url, (await createTicket("permitted", 1)).token);
+  const restricted = new RealtimeClient(
+    fixture.url,
+    (await createTicket("restricted", 1, [])).token,
+  );
+  try {
+    await Promise.all([permitted.opened, restricted.opened]);
+    await Promise.all([permitted.next("realtime.ready"), restricted.next("realtime.ready")]);
+    const event = mutationEvent("scoped-mutation", 2);
+    await fixture.runtime.publishMutation(event);
+    const [full, hint] = await Promise.all([
+      permitted.next("database.mutation"),
+      restricted.next("database.mutation"),
+    ]);
+    assert.deepEqual(full.changes, event.changes);
+    assert.deepEqual(hint.changes, {});
+    assert.equal(hint.dataSourceId, null);
+    assert.equal(hint.requiresReset, true);
+    assert.equal(hint.version, 2);
+  } finally {
+    permitted.websocket.close();
+    restricted.websocket.close();
+    await fixture.close();
+  }
+});
+
 test("serverful database realtime rejects upgrades without a ticket", async () => {
   const fixture = await startFixture();
 
@@ -289,9 +317,10 @@ class TestRealtimeBroker {
   }
 }
 
-async function createTicket(userId: string, version: number) {
+async function createTicket(userId: string, version: number, sourceIds = ["source-1"]) {
   return createDatabaseRealtimeTicket(
     {
+      sourceIds,
       canEdit: true,
       databaseId: "database-1",
       user: { id: userId, name: userId },

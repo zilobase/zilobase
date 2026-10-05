@@ -46,6 +46,20 @@ writer. Immediate commits are used for direct authoritative ingestion; this
 adapter does not implement a subset loader. Unexpected deferred commit receipts
 fail the synchronous publication proof instead of accessing library internals.
 
+The [clock contract](../../packages/features/src/data/clock.ts) compares only the
+same entity, source, host or actor lane. Per-field coverage and removal barriers
+live in the supported sync metadata API. Batch preparation uses transient drafts
+to combine repeated identities before any writes; it rechecks current base rows
+when applying staged responses. Domain-declared partial objects preserve covered
+metadata fields. Session snapshots reject reads during publication.
+
+[Database normalization](../../packages/features/src/databases/cache.ts) separates
+hosts, sources, source links, definitions, bindings, persisted value pairs and
+record references. Bootstrap/window returns contain ordered IDs and server counts,
+hashes and snapshots. Known source grants come from authorized bootstrap reads;
+unknown socket sources request another authorized read. These adapters remain
+uninstalled, so they do not yet own Query results in the application.
+
 [Publication](../../packages/features/src/data/publication.ts) batches key callbacks
 across collection commits without storing confirmed entity values. Feature owners
 may access collections for supported transactions; feature UI uses hooks/actions.

@@ -3,7 +3,7 @@ import { test } from "vitest";
 
 import { getDatabasePropertyEntity } from "./metadata-entities";
 
-test("property entities omit persistence-only soft-delete fields", async () => {
+test("property entities carry lifecycle state without exposing deletion actors", async () => {
   const now = new Date("2026-09-14T00:00:00.000Z");
   const records = [
     {
@@ -54,6 +54,7 @@ test("property entities omit persistence-only soft-delete fields", async () => {
   const entity = await getDatabasePropertyEntity({ transaction } as never, "column-1");
   assert.deepEqual(entity.property, {
     config: null,
+    deletedAt: null,
     createdAt: now.toISOString(),
     id: "property-1",
     name: "Status",

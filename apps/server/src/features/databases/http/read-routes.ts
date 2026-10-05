@@ -23,6 +23,7 @@ import {
   DatabaseViewQueryChangedError,
   MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
+  getAuthorizedDatabaseSourceIds,
   getDatabaseExportService,
   getDatabaseRecordWindowService,
 } from "../read/service";
@@ -241,6 +242,7 @@ databaseReadRoutes.post("/:id/realtime-ticket", resourceWorkspace, async (c) => 
     {
       canEdit: accessLevel === "edit" || accessLevel === "full",
       databaseId: record.id,
+      sourceIds: await getAuthorizedDatabaseSourceIds(record, user.id),
       sessionId,
       user: {
         email: user.email,

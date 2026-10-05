@@ -285,10 +285,11 @@ pageContentRoutes.patch("/:id/content", async (c) => {
     userId: user.id,
   });
 
-  const record = {
-    id: existing.id,
-    updatedAt: new Date(),
-  };
+  const [record] = await db
+    .select({ id: page.id, updatedAt: page.updatedAt })
+    .from(page)
+    .where(eq(page.id, existing.id));
+  if (!record) return c.json({ error: "Page not found" }, 404);
 
   return c.json({ page: record });
 });

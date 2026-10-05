@@ -44,9 +44,21 @@ export class DataSession {
 
   /** Stage every domain's validation before entering the publication boundary. */
   ingest(inputs: readonly PreparedIngestion[]) {
+    this.assertActive();
+    const context = new Map();
+    const writes = inputs.map((input) => input.prepare(context));
     this.batch(() => {
-      for (const input of inputs) input.apply();
+      for (const write of writes) write();
     });
+  }
+
+  /** Exports/context readers must never observe an in-progress join. */
+  snapshot<T>(read: () => T): { revision: number; value: T } {
+    this.assertActive();
+    if (this.publication.isPublishing) throw new Error("Shared data publication is in progress");
+    const value = read();
+    if (value instanceof Promise) throw new Error("Shared data snapshots must be synchronous");
+    return { revision: this.publication.getRevision(), value };
   }
 
   async dispose() {
