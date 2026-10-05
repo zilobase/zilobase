@@ -108,10 +108,12 @@ export function useProjectedDatabaseRecords(input: {
         const owners = sharedClient(queryClient)
           .all()
           .filter((owner) => owner.databases.records.collection.base.has(record.id));
+        const canonical = owners[0]?.databases.resolveRecord(record.id);
         const page = owners[0]?.pages.get(record.pageId);
         return page
           ? {
               ...record,
+              valuesByPropertyId: canonical?.valuesByPropertyId ?? record.valuesByPropertyId,
               page: {
                 ...record.page,
                 name: page.name,
@@ -220,6 +222,11 @@ export function useDatabaseInteractionRecovery() {
   const store = useDatabaseController();
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   return {
+    synchronizationError: useSyncExternalStore(
+      store.subscribe,
+      store.getSynchronizationError,
+      store.getSynchronizationError,
+    ),
     retry: () => store.retryUnconfirmed(),
     hasUnconfirmed: interactions.some(({ status }) => status === "unconfirmed"),
   };

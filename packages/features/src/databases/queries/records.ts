@@ -1,3 +1,8 @@
+import {
+  normalizeRecordWindow,
+  resolveRecordWindow,
+  type DatabaseWindowReference,
+} from "../cache-window";
 import { resolveDatabaseBootstrap, type DatabaseBootstrapReference } from "../cache-references";
 import { useSharedDataRevision } from "../../data/react";
 import {
@@ -118,9 +123,12 @@ export async function fetchRecordWindow(
   if (queryClient && queryKey) {
     const cachedMax = cachedWindowMaxVersion(queryClient, queryKey);
     if (incoming.databaseVersion < cachedMax) {
-      const cached = queryClient.getQueryData<InfiniteData<DatabaseRecordWindowResponse>>(queryKey);
+      const cached = queryClient.getQueryData<InfiniteData<DatabaseWindowReference>>(queryKey);
       const last = cached?.pages.at(-1);
-      if (last) return last;
+      if (last) {
+        const resolved = resolveRecordWindow(queryClient, last);
+        if (resolved) return resolved;
+      }
     }
   }
   return incoming;
@@ -188,7 +196,7 @@ export function databaseWindowQueryOptions(
     staleTime: 30_000,
     retry: (failures, error) => !isViewQueryChangedError(error) && failures < 2,
     initialPageParam: { limit: pageSize, snapshot: undefined },
-    queryFn: async ({ client, pageParam, signal }): Promise<DatabaseRecordWindowResponse> => {
+    queryFn: async ({ client, pageParam, signal }): Promise<DatabaseWindowReference> => {
       const owner = sharedClient(client);
       const read = owner.capture();
       const incoming = await fetchRecordWindow(
@@ -203,18 +211,18 @@ export function databaseWindowQueryOptions(
         throw new Error("Record read belongs to an expired identity");
       const entities = owner.database(scope.databaseId);
       if (!entities) throw new Error("Record read requires an authorized database bootstrap");
-      entities.databases.ingestWindow(
+      return normalizeRecordWindow(
+        client,
         scope.databaseId,
         scope.dataSourceId,
         scope.queryHash,
         incoming,
       );
-      return incoming;
     },
-    getNextPageParam: (last: DatabaseRecordWindowResponse): RecordWindowPageParam | undefined =>
+    getNextPageParam: (last: DatabaseWindowReference): RecordWindowPageParam | undefined =>
       last.hasMore
         ? {
-            limit: last.records.length + pageSize,
+            limit: last.recordIds.length + pageSize,
             snapshot: last.snapshot,
           }
         : undefined,
@@ -356,7 +364,7 @@ export function useDatabaseRecords(
     };
   }
 
-  const latest = query.data?.pages.at(-1);
+  const latest = resolveRecordWindow(queryClient, query.data?.pages.at(-1));
   const error =
     query.error instanceof Error
       ? query.error

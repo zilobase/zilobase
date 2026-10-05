@@ -1,3 +1,5 @@
+import { normalizeRecordWindow } from "../cache-window";
+import { createTestDatabasePayload, setTestDatabaseClientState } from "../mutations/test-helpers";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cacheTestBootstrap, TestQueryClient as QueryClient } from "../../data/testing";
@@ -211,7 +213,19 @@ test("prefer-newest guard ignores stale incoming window", async () => {
   try {
     const key = databaseWindowQueryKey("session-1", scope);
     const cached = windowResponse({ databaseVersion: 10, totalCount: 7 });
-    queryClient.setQueryData(key, { pages: [cached], pageParams: [{ limit: 50 }] });
+    setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+    queryClient.setQueryData(key, {
+      pages: [
+        normalizeRecordWindow(
+          queryClient,
+          scope.databaseId,
+          scope.dataSourceId,
+          scope.queryHash,
+          cached,
+        ),
+      ],
+      pageParams: [{ limit: 50 }],
+    });
     const apiFetch = (async () =>
       windowResponse({
         databaseVersion: 8,

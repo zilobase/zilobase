@@ -83,3 +83,19 @@ export function entityPreview<T extends { id: string }>(
     onConfirmed: (retire) => owner.onConfirmed(id, retire),
   };
 }
+
+/** A new stored value has a stable pair identity before its persisted ID arrives. */
+export function entityUpsertPreview<T extends { id: string }>(
+  owner: EntityCollection<T>,
+  entity: T,
+  update: Parameters<EntityCollection<T>["collection"]["update"]>[2],
+): EntityPreview {
+  return {
+    resource: JSON.stringify([owner.collection.id, entity.id]),
+    apply: () => {
+      if (owner.collection.has(entity.id)) owner.collection.update(entity.id, update);
+      else owner.collection.insert(entity);
+    },
+    onConfirmed: (retire) => owner.onConfirmed(entity.id, retire),
+  };
+}

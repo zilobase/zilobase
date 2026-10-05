@@ -302,10 +302,7 @@ test("creation succeeds without waiting for navigation and reports its refresh f
     assert.equal(h.store.commandState.get({ hostDatabaseId: commandId }).isPending, false);
     rejectRefresh(new Error("Navigation unavailable"));
     await tick();
-    assert.ok(
-      h.store.commandState.get({ hostDatabaseId: commandId }).error instanceof
-        DatabaseReconciliationError,
-    );
+    assert.ok(h.store.getSynchronizationError() instanceof DatabaseReconciliationError);
   } finally {
     h.close();
   }
@@ -328,7 +325,8 @@ test("access refresh failure is synchronization failure, not a rejected committe
     await tick();
     const state = h.store.commandState.get({ hostDatabaseId: "host" });
     assert.equal(state.isPending, false);
-    assert.ok(state.error instanceof DatabaseReconciliationError);
+    assert.equal(state.error, null);
+    assert.ok(h.store.getSynchronizationError() instanceof DatabaseReconciliationError);
   } finally {
     h.close();
   }
@@ -485,6 +483,38 @@ test("failed insertion removes its dependent gestures, without dropping unrelate
     assert.equal(JSON.parse(h.requests[1]!.body).command.rowId, "other");
     h.ack(1);
     await unrelated;
+  } finally {
+    h.close();
+  }
+});
+
+test("queued cell edits coalesce through the existing source scheduler before first delivery", async () => {
+  const h = harness();
+  const cell = (value: string) =>
+    h.store.submit(
+      {
+        databaseId: "host",
+        dataSourceId: "source",
+        command: { type: "row.change", rowId: "row", valuesByPropertyId: { definition: value } },
+      },
+      [{ dataSourceId: "source", rowId: "row", values: { definition: value } }],
+    );
+  try {
+    const first = cell("first");
+    const next = cell("next");
+    const latest = cell("latest");
+    assert.equal(next, latest);
+    assert.equal(h.requests.length, 1);
+    h.ack(0);
+    await first;
+    await tick();
+    assert.equal(h.requests.length, 2);
+    assert.deepEqual(JSON.parse(h.requests[1]!.body).command.valuesByPropertyId, {
+      definition: "latest",
+    });
+    h.ack(1, 3);
+    await next;
+    await latest;
   } finally {
     h.close();
   }

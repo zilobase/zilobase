@@ -526,6 +526,62 @@ try {
   console.info(
     "Database header, page property panel and independent peer share one definition confirmation without blanket reads.",
   );
+  const cellTraffic = [];
+  const captureCell = (request) => {
+    const url = new URL(request.url());
+    if (url.origin === apiOrigin)
+      cellTraffic.push({
+        method: request.method(),
+        path: url.pathname,
+        fields: url.searchParams.get("fields"),
+      });
+  };
+  page.on("request", captureCell);
+  const paneCheckbox = page.getByRole("checkbox", { name: "Complete value", exact: true }).last();
+  const cellAck = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.url().endsWith("/commands") &&
+      response.request().postDataJSON()?.command?.type === "row.change",
+  );
+  void cellAck.catch(() => undefined);
+  const checked = await paneCheckbox.isChecked();
+  await paneCheckbox.click();
+  await cellAck;
+  const sharedRowCheckbox = page
+    .locator("tr[data-database-row-id]")
+    .filter({ hasText: "Shared browser title" })
+    .getByRole("checkbox")
+    .last();
+  await expect(sharedRowCheckbox).toBeChecked({ checked: !checked });
+  await expect(paneCheckbox).toBeChecked({ checked: !checked });
+  await expect(
+    peer
+      .locator("tr[data-database-row-id]")
+      .filter({ hasText: "Shared browser title" })
+      .getByRole("checkbox")
+      .last(),
+  ).toBeChecked({ checked: !checked });
+  await page.waitForTimeout(300);
+  page.off("request", captureCell);
+  assert.equal(
+    cellTraffic.filter((request) => request.method === "POST" && request.path.endsWith("/commands"))
+      .length,
+    1,
+  );
+  assert.deepEqual(
+    cellTraffic.filter(
+      (request) =>
+        request.method === "GET" &&
+        (request.path.endsWith("/bootstrap") ||
+          request.path.endsWith("/properties") ||
+          request.fields === "nav"),
+    ),
+    [],
+  );
+  console.info(
+    "Cell, page property panel and independent browser resolve one value acknowledgement without blanket reads.",
+  );
   const renamedRow = page
     .locator("tr[data-database-row-id]")
     .filter({ hasText: "Shared browser title" });
@@ -565,6 +621,7 @@ try {
       .screenshot({ path: `${root}.dev/database-app-results/failure.png`, fullPage: true })
       .catch(() => {});
   }
+  console.error("Application fixture failed:", error);
   console.error(serverLog.replaceAll(/(postgres|redis):\/\/\S+/g, "$1://[test service]"));
   throw error;
 } finally {

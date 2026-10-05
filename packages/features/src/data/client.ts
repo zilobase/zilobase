@@ -78,7 +78,7 @@ export class SharedClient {
   }
 
   database(id: string) {
-    const matches = this.all().filter((owner) => owner.databases.hosts.collection.base.has(id));
+    const matches = this.all().filter((owner) => owner.databases.hasHostInterest(id));
     if (matches.length > 1) throw new Error("Database read requires an explicit capability scope");
     return matches[0];
   }

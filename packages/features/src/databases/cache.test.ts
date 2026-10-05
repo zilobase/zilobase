@@ -2,7 +2,7 @@ import { TestQueryClient } from "../data/testing";
 import { sharedClient } from "../data/client";
 import { normalizeDatabaseBootstrap, resolveDatabaseBootstrap } from "./cache-references";
 import { normalizePageProperties, resolvePageProperties } from "../pages/property-cache";
-import { entityPreview } from "../data/commands";
+import { entityPreview, entityUpsertPreview } from "../data/commands";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DataSession } from "../data/session";
@@ -469,6 +469,101 @@ test("an invalid second preview rolls back the batch before transport or publica
     assert.ok(seen.every((name) => name === "Status"));
   } finally {
     release();
+    await session.dispose();
+  }
+});
+
+test("a page-only property capability admits its value and rejects another row", async () => {
+  const client = new TestQueryClient();
+  try {
+    const reference = normalizePageProperties(client, sharedClient(client).capture(), "page", {
+      workspaceId: "workspace",
+      properties: [bootstrap().properties[0]!.property],
+      values: [],
+      databaseIds: ["host"],
+      presenceTargets: [
+        {
+          databaseId: "host",
+          dataSourceId: "source",
+          rowId: "record",
+          propertyIds: ["definition"],
+        },
+      ],
+    });
+    const owner = sharedClient(client).database("host")!;
+    assert.equal(owner.databases.hosts.get("host"), undefined);
+    const receipt = Promise.withResolvers<void>();
+    const pending = owner.session.commands.runMany(
+      [
+        entityUpsertPreview(
+          owner.databases.values,
+          {
+            id: valueIdentity("page", "definition"),
+            valueId: "draft-value",
+            pageId: "page",
+            propertyId: "definition",
+            value: ["Preview"],
+            createdAt: stamp(1),
+            updatedAt: stamp(1),
+          },
+          (draft) => {
+            draft.value = ["Preview"];
+          },
+        ),
+      ],
+      () => receipt.promise,
+    );
+    for (let i = 0; i < 12; i++) await Promise.resolve();
+    assert.deepEqual(resolvePageProperties(client, reference)!.values[0]!.value, ["Preview"]);
+    const frame = event({ records: [record(3)], sourceVersions: { source: 3 } }, 3);
+    assert.equal(owner.databases.ingestEvent(frame), "published");
+    assert.deepEqual(resolvePageProperties(client, reference)!.values[0]!.value, ["Value 3"]);
+    assert.equal(resolvePageProperties(client, reference)!.values[0]!.id, "persisted-value");
+    assert.equal(
+      owner.databases.ingestEvent(
+        event(
+          {
+            records: [
+              {
+                ...record(4),
+                id: "other",
+                pageId: "private",
+                page: { ...record(4).page, id: "private" },
+                valuesByPropertyId: {},
+              },
+            ],
+            sourceVersions: { source: 4 },
+          },
+          4,
+        ),
+      ),
+      "authorized-read-required",
+    );
+    assert.equal(owner.pages.get("private"), undefined);
+    owner.databases.ingestEvent(event({ records: [record(2)], sourceVersions: { source: 2 } }, 2));
+    receipt.resolve();
+    await pending;
+    assert.deepEqual(resolvePageProperties(client, reference)!.values[0]!.value, ["Value 3"]);
+  } finally {
+    client.clear();
+  }
+});
+
+test("dependency refresh fields describe changed content and suppress duplicate confirmations", async () => {
+  const { session, databases } = fixture();
+  try {
+    databases.ingestBootstrap("host", bootstrap());
+    databases.ingestWindow("host", "source", "q-fixture", window());
+    const changed = record(3);
+    changed.page.name = record(1).page.name;
+    const frame = event({ records: [changed], sourceVersions: { source: 3 } }, 3);
+    assert.deepEqual(databases.contentChanges(frame), {
+      pageIds: [],
+      propertyIds: ["definition", "binding"],
+    });
+    databases.ingestEvent(frame);
+    assert.deepEqual(databases.contentChanges(frame), { pageIds: [], propertyIds: [] });
+  } finally {
     await session.dispose();
   }
 });

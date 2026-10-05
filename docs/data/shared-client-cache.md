@@ -106,6 +106,28 @@ produce strictly increasing definition stamps. Web tests/build/lint and runtime
 contract checks complete this pass. Deploy the page-property workspace payload
 with the client; this is a breaking contract and adds no identity schema changes.
 
+## Value and command cutover
+
+Pass 6 removes stored values from page-property Query results and record DTOs
+from window Query results. Ordered record references, hashes, counts and growing
+pagination remain server-owned. Cells/page panels resolve canonical pair-keyed
+values with persisted value IDs. Supported insert/update transactions serialize
+shared entities and retire conflicting previews while retaining HTTP tracking.
+The existing source scheduler coalesces consecutive queued cell edits before
+first delivery and preserves request IDs/bodies once sent.
+
+Saving ends at validated acknowledgement. Collection publication and authorized
+recovery failures surface as separate synchronization errors without retrying a
+successful write. Page-only property targets authorize only their exposed rows,
+properties and source identities, never another row from a shared source. Ordinary
+content updates use targeted dependency reads and no blanket metadata reads.
+Structural presentation intentions migrate in Pass 7.
+
+291 feature tests cover new-value previews, late confirmations, narrow page
+admission, queued coalescing and publication failure after acknowledgement. The
+Docker browser fixture checks cells, the page panel and an independent client
+against actual requests in addition to title/property-definition cases.
+
 ## Storage identities
 
 Pass 3 preparation adds typed database normalization and source-scoped socket

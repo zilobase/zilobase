@@ -161,8 +161,9 @@ The [command executor](../../../packages/features/src/databases/mutations/execut
 posts one command with `protocolVersion: 2`, validates receipt and event
 identity, and retries a lost network response once with the identical command
 ID and serialized body. A confirmed server commit remains successful even when
-the following refresh fails; the controller-owned [command state](../../../packages/features/src/databases/mutations/pending.ts)
-exposes that refresh failure separately from a rejected write.
+the following refresh fails; the controller exposes synchronization errors independently of its
+[command state](../../../packages/features/src/databases/mutations/pending.ts). Saving ends
+at validated acknowledgement, including when ingestion or recovery fails.
 
 Editing is online-only. The [save indicator](../../../apps/web/src/features/databases/views/components/database-save-status.tsx)
 shows pending, failed, unconfirmed, and saved-but-refresh-failed states. Failed
@@ -180,14 +181,17 @@ is newer than the incoming payload is kept instead of regressing.
 Shared mutations are grouped into database lifecycle, data sources, views,
 properties/templates, access and rows. Record changes and cells share the
 [interaction store](../../../packages/features/src/databases/interactions/store.ts),
-scoped by QueryClient and auth session. The store publishes synchronously, queues
-writes per affected source, and replays sparse intentions over untouched GET
-windows. Unconfirmed deliveries keep their preview and block dependent writes;
-the save indicator offers receipt-safe retry. Confirmed intentions remain until
-all mounted windows catch up; stale inactive windows are evicted before retirement.
-Refresh errors never reject committed writes. Schema and view metadata now submit
-through the same session controller. Bootstrap hooks project metadata intentions
-over server snapshots, and source schema writes share record ordering lanes.
+scoped by QueryClient and auth session. The store queues writes per affected source and coalesces consecutive queued cell
+edits before their first delivery. Titles, definitions, bindings and stored values
+use supported TanStack transactions, serialized by canonical entity identity.
+Authoritative conflicts retire the preview while HTTP receipt tracking continues.
+Unconfirmed delivery blocks dependent commands and retains the same request ID
+for retry. Structural placement and insertion intentions still reconcile per
+window during the presentation cutover. Query windows hold ordered record IDs,
+counts, hashes and pagination through [window references](../../../packages/features/src/databases/cache-window.ts);
+records resolve current page/value fields from collections. Refresh errors never
+reject committed writes. Schema and view metadata submit through the same session
+controller; their remaining structural intentions migrate with presentations.
 Navigation uses those same metadata intentions, with independent host/source/actor
 revision checks for every mounted consumer. All schema, source and template hooks
 delegate refresh ownership to controller confirmation; no success/settled callback

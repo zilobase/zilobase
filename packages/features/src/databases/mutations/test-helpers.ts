@@ -1,3 +1,4 @@
+import { normalizeRecordWindow } from "../cache-window";
 import { cacheTestBootstrap } from "../../data/testing";
 import type { QueryClient } from "@tanstack/react-query";
 
@@ -220,7 +221,18 @@ export function setTestDatabaseClientState(
         dataSourceId: source.id,
         queryHash: databaseViewQueryHash(view.config),
       }),
-      { pageParams: [{ limit: 50, snapshot: undefined }], pages: [window] },
+      {
+        pageParams: [{ limit: 50, snapshot: undefined }],
+        pages: [
+          normalizeRecordWindow(
+            queryClient,
+            bootstrap.database.id,
+            source.id,
+            window.queryHash,
+            window,
+          ),
+        ],
+      },
     );
   }
 }

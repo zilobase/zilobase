@@ -272,6 +272,8 @@ export class DatabaseRealtimeManager {
       const entities = sharedClient(this.queryClient).database(this.databaseId);
       const pageMetadata = entities?.databases.isPageMetadataEvent(message);
       const definitions = entities?.databases.isDefinitionEvent(message);
+      const content = entities?.databases.isRecordContentEvent(message);
+      const changes = entities?.databases.contentChanges(message);
       const admitted = entities?.databases.ingestEvent(message);
       if (pageMetadata && admitted === "published") {
         refreshTitleMembership(
@@ -285,6 +287,11 @@ export class DatabaseRealtimeManager {
           this.queryClient,
           message.changes.properties!.flatMap((binding) => [binding.id, binding.propertyId]),
         );
+        return;
+      }
+      if (content && admitted === "published") {
+        refreshTitleMembership(this.queryClient, changes?.pageIds ?? []);
+        refreshPropertyMembership(this.queryClient, changes?.propertyIds ?? []);
         return;
       }
       // Result membership continues through the existing recovery reads until Pass 7.

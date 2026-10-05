@@ -1,9 +1,11 @@
+import { parseDatabaseOrderKey } from "./core/order-key";
 import type { DataSession } from "../data/session";
 import type { EntityCollection, PreparedIngestion } from "../data/collection";
 import { entityTimestamp } from "../data/clock";
 import { pageCacheEntitySchema, type PageCacheEntity } from "../pages/cache-entities";
 import {
   databaseBootstrapResponseSchema,
+  databaseRecordEntitySchema,
   databaseRecordWindowResponseSchema,
   databaseMutationEventV2Schema,
   type DatabasePropertyEntity,
@@ -32,6 +34,35 @@ export class DatabaseCollections {
   readonly values;
   readonly records;
   readonly views;
+  private readonly pageInterests = new Map<
+    string,
+    Map<string, { pageId: string; dataSourceId: string; propertyIds: Set<string> }>
+  >();
+  admitPageProperties(
+    pageId: string,
+    targets: readonly {
+      databaseId: string;
+      dataSourceId: string;
+      rowId: string;
+      propertyIds: string[];
+    }[],
+  ) {
+    for (const target of targets) {
+      const rows = this.pageInterests.get(target.databaseId) ?? new Map();
+      rows.set(target.rowId, {
+        pageId,
+        dataSourceId: target.dataSourceId,
+        propertyIds: new Set(target.propertyIds),
+      });
+      this.pageInterests.set(target.databaseId, rows);
+    }
+  }
+  hasHostInterest(id: string) {
+    return this.hosts.collection.base.has(id) || this.pageInterests.has(id);
+  }
+  pageForRecord(hostId: string, rowId: string) {
+    return this.records.get(rowId)?.pageId ?? this.pageInterests.get(hostId)?.get(rowId)?.pageId;
+  }
   private readonly authorizedSources = new Map<string, Set<string>>();
 
   constructor(
@@ -200,7 +231,7 @@ export class DatabaseCollections {
       !this.hosts.collection.base.has(event.databaseId) ||
       [...sourceIds].some((id) => !this.authorizedSources.get(event.databaseId)?.has(id))
     )
-      return "authorized-read-required";
+      return this.ingestPageEvent(event);
     const versions = changes.sourceVersions ?? {};
     const inputs: PreparedIngestion[] = [
       this.hosts.stage([{ id: event.databaseId, version: event.version }]),
@@ -265,6 +296,134 @@ export class DatabaseCollections {
     return "published";
   }
 
+  private ingestPageEvent(
+    event: import("./core/entities").DatabaseMutationEventV2,
+  ): "published" | "authorized-read-required" {
+    const interests = this.pageInterests.get(event.databaseId);
+    if (!interests) return "authorized-read-required";
+    const { records = [], properties = [], sourceVersions = {}, ...other } = event.changes;
+    if (
+      Object.values(other).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value !== undefined,
+      )
+    )
+      return "authorized-read-required";
+    // A page read proves only its rows and exposed definitions, never the rest of a source.
+    if (
+      records.some((record) => {
+        const interest = interests.get(record.id);
+        return (
+          !interest ||
+          interest.pageId !== record.pageId ||
+          interest.dataSourceId !== record.dataSourceId ||
+          Object.keys(record.valuesByPropertyId).some((id) => !interest.propertyIds.has(id))
+        );
+      }) ||
+      properties.some(
+        (binding) =>
+          ![...interests.values()].some(
+            (interest) =>
+              interest.dataSourceId === binding.dataSourceId &&
+              interest.propertyIds.has(binding.propertyId),
+          ),
+      )
+    )
+      return "authorized-read-required";
+    this.session.ingest([
+      ...this.stageRecords(records, sourceVersions),
+      ...this.stageProperties(properties, sourceVersions),
+    ]);
+    return "published";
+  }
+
+  contentChanges(event: import("./core/entities").DatabaseMutationEventV2) {
+    const pageIds = new Set<string>();
+    const propertyIds = new Set<string>();
+    for (const record of event.changes.records ?? []) {
+      if (this.pages.collection.base.get(record.pageId)?.name !== record.page.name)
+        pageIds.add(record.pageId);
+      for (const value of Object.values(record.valuesByPropertyId)) {
+        const previous = this.values.collection.base.get(
+          valueIdentity(value.pageId, value.propertyId),
+        );
+        if (JSON.stringify(previous?.value) !== JSON.stringify(value.value)) {
+          propertyIds.add(value.propertyId);
+          for (const binding of this.bindings.collection.values())
+            if (binding.propertyId === value.propertyId) propertyIds.add(binding.id);
+        }
+      }
+    }
+    return { pageIds: [...pageIds], propertyIds: [...propertyIds] };
+  }
+
+  /** Value/title edits preserve identity, placement and lifecycle membership. */
+  isRecordContentEvent(event: import("./core/entities").DatabaseMutationEventV2) {
+    const { records, sourceVersions: _versions, ...other } = event.changes;
+    if (
+      event.requiresReset ||
+      !records?.length ||
+      Object.values(other).some((value) =>
+        Array.isArray(value) ? value.length > 0 : value !== undefined,
+      )
+    )
+      return false;
+    return records.every((record) => {
+      const current = this.records.collection.base.get(record.id);
+      const page = this.pages.collection.base.get(record.pageId);
+      if (!current) {
+        const interest = this.pageInterests.get(event.databaseId)?.get(record.id);
+        return (
+          interest?.pageId === record.pageId &&
+          interest.dataSourceId === record.dataSourceId &&
+          !record.page.deletedAt
+        );
+      }
+      return (
+        current &&
+        page &&
+        current.pageId === record.pageId &&
+        current.dataSourceId === record.dataSourceId &&
+        parseDatabaseOrderKey(current.orderKey) === parseDatabaseOrderKey(record.orderKey) &&
+        current.parentRowId === record.parentRowId &&
+        page.deletedAt === record.page.deletedAt
+      );
+    });
+  }
+
+  resolveRecord(id: string): DatabaseRecordEntity | undefined {
+    const record = this.records.get(id);
+    const page = record && this.pages.get(record.pageId);
+    if (!record || !page) return undefined;
+    const { valueIds, ...fields } = recordCacheEntitySchema.strip().parse(record);
+    const keys = new Set([
+      ...valueIds,
+      ...[...this.bindings.collection.values()]
+        .filter((binding) => binding.dataSourceId === record.dataSourceId)
+        .map((binding) => valueIdentity(record.pageId, binding.propertyId)),
+    ]);
+    const valuesByPropertyId = Object.fromEntries(
+      [...keys].flatMap((key) => {
+        const value = this.values.get(key);
+        if (!value) return [];
+        const { valueId, ...fields } = valueCacheEntitySchema.strip().parse(value);
+        return [[value.propertyId, { ...fields, id: valueId }]];
+      }),
+    );
+    return databaseRecordEntitySchema.parse({
+      ...fields,
+      valuesByPropertyId,
+      page: {
+        id: page.id,
+        name: page.name,
+        metadata: page.metadata,
+        hasContent: page.hasContent ?? false,
+        deletedAt: page.deletedAt ?? null,
+        createdAt: page.createdAt ?? page.updatedAt,
+        updatedAt: page.updatedAt,
+      },
+    });
+  }
+
   isDefinitionEvent(event: import("./core/entities").DatabaseMutationEventV2) {
     const { properties, sourceVersions: _versions, ...other } = event.changes;
     if (
@@ -306,7 +465,7 @@ export class DatabaseCollections {
         !page ||
         current.pageId !== record.pageId ||
         current.dataSourceId !== record.dataSourceId ||
-        current.orderKey !== record.orderKey ||
+        parseDatabaseOrderKey(current.orderKey) !== parseDatabaseOrderKey(record.orderKey) ||
         current.parentRowId !== record.parentRowId ||
         page.deletedAt !== record.page.deletedAt ||
         page.hasContent !== record.page.hasContent

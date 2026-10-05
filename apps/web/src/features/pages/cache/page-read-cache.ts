@@ -1,5 +1,4 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { databaseRecordWindowResponseSchema } from "@zilobase/features/databases";
 
 import {
   deletePageSnapshots,
@@ -23,7 +22,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function snapshotOf(
   queryKey: readonly unknown[],
   data: unknown,
-  sessionId: string,
+  _sessionId: string,
 ): ReadSnapshot | null {
   const key = [...queryKey];
   if (key[0] === "meetings" && key[1] === "list" && typeof key[2] === "string") {
@@ -53,19 +52,8 @@ function snapshotOf(
       return { scope: `page:${key[1]}`, queryKey: key, data };
     }
   }
-  if (key[0] !== "db" || key[1] !== sessionId || typeof key[2] !== "string") return null;
-  if (key[3] === "window") {
-    if (!isObject(data) || !Array.isArray(data.pages) || !Array.isArray(data.pageParams))
-      return null;
-    const first = databaseRecordWindowResponseSchema.safeParse(data.pages[0]);
-    if (!first.success || first.data.queryHash !== key[5]) return null;
-    // Persist only the first bounded window; continuation pages remain live reads.
-    data = { pages: [first.data], pageParams: [data.pageParams[0]] };
-  } else {
-    return null;
-  }
-  key[1] = SESSION_KEY;
-  return { scope: `database:${key[2]}`, queryKey: key, data };
+  // Shared entity references belong to one active data session and cannot hydrate.
+  return null;
 }
 
 function restoredKey(snapshot: CachedPageSnapshot, sessionId: string): unknown[] | null {

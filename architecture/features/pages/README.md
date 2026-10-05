@@ -84,3 +84,12 @@ endpoint is not in the active database payload, so structural recovery cannot
 reinsert a tombstoned database block and append a new trailing paragraph on
 each page load. Shared lifecycle cache handling still refreshes deleted-aware
 reads on delete and both active and deleted-aware reads on restore.
+
+Page-property Query results contain ordered definition IDs, value property IDs,
+page identity and authorized contextual targets. Canonical stored values retain
+persisted IDs while using `(pageId, propertyId)` collection keys. The page panel
+releases submitted editor drafts to the shared transaction and clears saving at
+acknowledgement; it does not issue a blanket page/property read after an ordinary
+value edit. Covered record-window browser snapshots are also excluded from persistence and
+hydration. Its authorized row targets allow narrowly scoped socket/acknowledgement
+admission without loading a database bootstrap.
