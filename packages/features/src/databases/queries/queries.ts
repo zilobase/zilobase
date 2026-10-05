@@ -1,3 +1,6 @@
+import { normalizeAccessReferences } from "../../pages/access-references";
+import { normalizeDatabaseExportReference } from "../export-references";
+import { sharedClient } from "../../data/client";
 import type { DatabaseAccessPayload } from "../access/access-contracts";
 import type { DatabaseExportPayload } from "../core/export-payload";
 export type {
@@ -26,13 +29,15 @@ export const databaseAccessQueryOptions = (
   queryOptions({
     queryKey: databaseAccessQueryKey(databaseId),
     enabled: Boolean(databaseId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!databaseId) return { access: [] };
       try {
-        return await apiFetch<DatabaseAccessPayload>(`/databases/${databaseId}/access`, {
+        const read = sharedClient(client).capture();
+        const result = await apiFetch<DatabaseAccessPayload>(`/databases/${databaseId}/access`, {
           method: "GET",
           signal,
         });
+        return normalizeAccessReferences(client, read, "database", databaseId, result.access);
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -62,12 +67,14 @@ export const databaseContextExportQueryOptions = (
 ) =>
   queryOptions({
     queryKey: databaseContextExportQueryKey(databaseId, dataSourceId),
-    queryFn: ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
+      const read = sharedClient(client).capture();
       const query = dataSourceId ? `?dataSourceId=${encodeURIComponent(dataSourceId)}` : "";
-      return apiFetch<DatabaseExportPayload>(
+      const payload = await apiFetch<DatabaseExportPayload>(
         `/databases/${encodeURIComponent(databaseId)}/export${query}`,
         { method: "GET", signal },
       );
+      return normalizeDatabaseExportReference(client, read, databaseId, payload);
     },
     staleTime: 30_000,
   });

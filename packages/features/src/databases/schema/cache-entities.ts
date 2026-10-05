@@ -24,7 +24,11 @@ export const propertyCacheEntitySchema = z
 
 export type PropertyCacheEntity = z.infer<typeof propertyCacheEntitySchema>;
 
-export const hostCacheEntitySchema = databaseHostEntitySchema.omit({ accessLevel: true });
+export const hostCacheEntitySchema = databaseHostEntitySchema.omit({ accessLevel: true }).extend({
+  createdById: z.string().nullable().optional(),
+  deletedById: z.string().nullable().optional(),
+  teamspaceId: z.string().nullable().optional(),
+});
 export const sourceCacheEntitySchema = dataSourceEntitySchema.omit({
   position: true,
   linkedAt: true,

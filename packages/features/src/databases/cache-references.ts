@@ -112,7 +112,7 @@ export function resolveDatabaseBootstrap(
     })
     .sort((a, b) => a.position - b.position);
   return {
-    database: databaseHostEntitySchema.parse({
+    database: databaseHostEntitySchema.strip().parse({
       ...hostCacheEntitySchema.strip().parse(host),
       accessLevel,
     }),
@@ -128,14 +128,16 @@ export function reconcileBootstrapReferences(
   event: import("./core/entities").DatabaseMutationEventV2,
   cacheId: string,
 ) {
-  for (const query of client.getQueryCache().findAll({ queryKey: ["db"] })) {
-    if (query.queryKey[2] !== event.databaseId || query.queryKey[3] !== "bootstrap") continue;
-    const parsed = databaseBootstrapReferenceSchema.safeParse(query.state.data);
-    if (!parsed.success || event.version < parsed.data.databaseVersion) continue;
-    const ref = parsed.data;
-    if (ref.cacheId !== cacheId) continue;
-    const owner = sharedClient(client).get(ref.cacheId);
-    if (!owner?.databases.hasHostInterest(event.databaseId)) continue;
+  const reconcile = (
+    ref: DatabaseBootstrapReference,
+    viewId?: string,
+  ): DatabaseBootstrapReference => {
+    if (
+      ref.cacheId !== cacheId ||
+      ref.databaseId !== event.databaseId ||
+      event.version < ref.databaseVersion
+    )
+      return ref;
     const sources = new Set(
       ref.sourceIds.filter((id) => !event.changes.removedDataSourceIds?.includes(id)),
     );
@@ -149,14 +151,66 @@ export function reconcileBootstrapReferences(
         bindings.add(binding.id);
     const views = new Set(ref.viewIds.filter((id) => !event.changes.removedViewIds?.includes(id)));
     for (const view of event.changes.views ?? [])
-      if (sources.has(view.dataSourceId) && (!query.queryKey[4] || query.queryKey[4] === view.id))
-        views.add(view.id);
-    client.setQueryData(query.queryKey, {
+      if (sources.has(view.dataSourceId) && (!viewId || viewId === view.id)) views.add(view.id);
+    return {
       ...ref,
       databaseVersion: event.version,
       sourceIds: [...sources],
       bindingIds: [...bindings],
       viewIds: [...views],
-    });
+    };
+  };
+  for (const query of client.getQueryCache().findAll({ queryKey: ["db"] })) {
+    if (query.queryKey[2] !== event.databaseId || query.queryKey[3] !== "bootstrap") continue;
+    const parsed = databaseBootstrapReferenceSchema.safeParse(query.state.data);
+    if (parsed.success)
+      client.setQueryData(
+        query.queryKey,
+        reconcile(parsed.data, query.queryKey[4] ? String(query.queryKey[4]) : undefined),
+      );
   }
+  for (const query of client
+    .getQueryCache()
+    .findAll({ queryKey: ["database-context-export", event.databaseId] })) {
+    const ref = query.state.data as
+      | import("./export-references").DatabaseExportReference
+      | undefined;
+    if (ref?.bootstrap)
+      client.setQueryData(query.queryKey, { ...ref, bootstrap: reconcile(ref.bootstrap) });
+  }
+  client.setQueriesData<import("../pages/cache").PageNavigationReference>(
+    { queryKey: ["pages"] },
+    (current) => {
+      if (!current?.databases) return current;
+      return {
+        ...current,
+        databases: current.databases.map((ref) => {
+          if (
+            ref.cacheId !== cacheId ||
+            ref.id !== event.databaseId ||
+            event.version < ref.databaseVersion
+          )
+            return ref;
+          const sources = ref.sourceIds.filter(
+            (id) => !event.changes.removedDataSourceIds?.includes(id),
+          );
+          const views = new Set(
+            ref.viewIds.filter((id) => !event.changes.removedViewIds?.includes(id)),
+          );
+          for (const view of event.changes.views ?? [])
+            if (sources.includes(view.dataSourceId)) views.add(view.id);
+          return {
+            ...ref,
+            sourceIds: sources,
+            viewIds: [...views],
+            databaseVersion: event.version,
+            primarySourceId:
+              ref.primarySourceId && sources.includes(ref.primarySourceId)
+                ? ref.primarySourceId
+                : (sources[0] ?? null),
+          };
+        }),
+      };
+    },
+  );
 }

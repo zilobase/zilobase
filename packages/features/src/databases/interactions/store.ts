@@ -1,3 +1,4 @@
+import { type PageNavigationReference } from "../../pages/cache";
 import { refreshRecordResults } from "../queries/result-refresh";
 import { insertionPreviews } from "./shared-records";
 import { sharedMetadataCommand, sharedMetadataPreviews } from "./shared-metadata";
@@ -133,7 +134,26 @@ export class DatabaseController {
         return result ? [result] : [];
       })
       .sort((left, right) => right.database.version - left.database.version);
-    return snapshots[0] ? projectDatabaseMetadata(snapshots[0], this.snapshot) : undefined;
+    if (snapshots[0]) return projectDatabaseMetadata(snapshots[0], this.snapshot);
+    for (const [, data] of this.queryClient.getQueriesData<PageNavigationReference>({
+      queryKey: ["pages"],
+    })) {
+      const ref = data?.databases?.find((item) => item.id === hostId && "cacheId" in item);
+      const owner = ref && sharedClient(this.queryClient).get(ref.cacheId);
+      const host = owner?.databases.hosts.get(hostId);
+      if (ref && owner && host)
+        return resolveDatabaseBootstrap(this.queryClient, {
+          cacheId: owner.session.id,
+          databaseId: hostId,
+          databaseVersion: host.version,
+          accessLevel: null,
+          sourceIds: ref.sourceIds,
+          bindingIds: [],
+          viewIds: ref.viewIds,
+          includeDeleted: false,
+        });
+    }
+    return undefined;
   }
 
   execute(input: DatabaseCommandInput) {
@@ -255,7 +275,10 @@ export class DatabaseController {
       }),
       metadataEffects,
       status: "queued",
-      ...(input.command.type === "database.favorite"
+      ...(input.command.type === "database.favorite" &&
+      !sharedClient(this.queryClient)
+        .database(input.databaseId)
+        ?.navigation.databasePreferences.get(input.databaseId)
         ? { favorite: { hostId: input.databaseId, value: input.command.favorite } }
         : {}),
     };
@@ -377,6 +400,29 @@ export class DatabaseController {
             this.reportSynchronization(error);
           }
         }
+        if (ack.privateConfirmation && entities && job.input.command.type === "database.favorite") {
+          const viewer = entities.session.scope.viewer;
+          if (viewer.kind === "public" || viewer.actorId !== ack.privateConfirmation.actorId)
+            throw new DatabaseCommandUnconfirmedError(
+              new Error("Preference confirmation actor mismatch"),
+            );
+          try {
+            entities.session.ingest([
+              entities.navigation.databasePreferences.stage([
+                {
+                  id: job.input.databaseId,
+                  actorId: ack.privateConfirmation.actorId,
+                  revision: ack.privateConfirmation.revision,
+                  isFavorite: job.input.command.favorite,
+                },
+              ]),
+            ]);
+            job.sharedPresentationConfirmed = true;
+          } catch (error) {
+            job.synchronizationFailed = true;
+            this.reportSynchronization(error);
+          }
+        }
         return ack;
       };
       const title = job.input.command.type === "row.change" ? job.input.command.title : undefined;
@@ -389,6 +435,18 @@ export class DatabaseController {
           ? sharedMetadataPreviews(entities, job.input, this.bootstrap(job.input.databaseId))
           : [];
       if (entities) previews.push(...insertionPreviews(entities, job.previewEffects));
+      if (
+        entities &&
+        job.input.command.type === "database.favorite" &&
+        entities.navigation.databasePreferences.get(job.input.databaseId)
+      ) {
+        const favorite = job.input.command.favorite;
+        previews.push(
+          entityPreview(entities.navigation.databasePreferences, job.input.databaseId, (draft) => {
+            draft.isFavorite = favorite;
+          }),
+        );
+      }
       if (entities && record && title !== undefined)
         previews.push(
           entityPreview(entities.pages, record.pageId, (draft) => {

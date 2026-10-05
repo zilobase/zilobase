@@ -55,6 +55,6 @@ searchRoutes.get("/", async (c) => {
   });
 
   return c.json({
-    results: results.map(({ excerpt: _excerpt, updatedAt: _updatedAt, ...result }) => result),
+    results,
   });
 });

@@ -1,13 +1,10 @@
+import { normalizeNavigationReference } from "./navigation-references";
 import type { QueryClient } from "@tanstack/react-query";
 
-import { applyNavDelta, type NavDelta } from "./nav-delta";
+import { type NavDelta } from "./nav-delta";
 import { pagesNavRootQueryKey } from "./queries";
 import { sharedClient } from "../data/client";
-import {
-  stageAuthorizedPages,
-  resolveNavigationReference,
-  type PageNavigationReference,
-} from "./cache";
+import { type PageNavigationReference } from "./cache";
 
 export function applyNavigationDeltaToCache(
   queryClient: QueryClient,
@@ -26,13 +23,35 @@ export function applyNavigationDeltaToCache(
   }
 
   const read = sharedClient(queryClient).capture();
-  const upserts = stageAuthorizedPages(queryClient, read, workspaceId, delta.upsertPages ?? []);
-  queryClient.setQueriesData<PageNavigationReference | undefined>({ queryKey }, (current) => {
-    if (!current) return current;
-    const updated = applyNavDelta(resolveNavigationReference(queryClient, current), delta)!;
-    const references = new Map(current.pages.map((page) => [page.id, page]));
-    for (const page of upserts) references.set(page.id, page);
-    return { ...updated, pages: updated.pages.map((page) => references.get(page.id)!) };
+  const owner = sharedClient(queryClient).resolve(read, workspaceId);
+  owner.session.batch(() => {
+    const upserts = normalizeNavigationReference(queryClient, read, workspaceId, {
+      pages: delta.upsertPages ?? [],
+      databases: [],
+      placements: delta.upsertPlacements ?? [],
+    });
+    const merge = <T extends { id: string }>(
+      current: T[],
+      updates: T[],
+      removed: readonly string[] = [],
+    ) => {
+      const result = current.filter((item) => !removed.includes(item.id));
+      for (const update of updates) {
+        const index = result.findIndex((item) => item.id === update.id);
+        if (index < 0) result.push(update);
+        else result[index] = update;
+      }
+      return result;
+    };
+    queryClient.setQueriesData<PageNavigationReference | undefined>({ queryKey }, (current) =>
+      current
+        ? {
+            databases: current.databases,
+            pages: merge(current.pages, upserts.pages, delta.removePageIds),
+            placements: merge(current.placements, upserts.placements, delta.removePlacementIds),
+          }
+        : current,
+    );
   });
   if (delta.upsertDatabases?.length || delta.removeDatabaseIds?.length)
     void queryClient.invalidateQueries({ queryKey }).catch(() => undefined);

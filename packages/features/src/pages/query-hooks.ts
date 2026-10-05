@@ -1,3 +1,5 @@
+import { resolvePageAccessReferences } from "./access-references";
+import { resolveAiPageReferences } from "./summary-references";
 import { resolvePageProperties } from "./property-cache";
 import { useMemo } from "react";
 import { useSharedDataRevision } from "../data/react";
@@ -60,8 +62,20 @@ export function usePageNavigation(
 }
 
 export function useZilobaseAiPages(workspaceId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery(zilobaseAiPagesQueryOptions(apiFetch, workspaceId));
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const query = useQuery(zilobaseAiPagesQueryOptions(apiFetch, workspaceId));
+  useSharedDataRevision(queryClient);
+  return {
+    error: query.error,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    status: query.status,
+    refetch: query.refetch,
+    data: query.data && resolveAiPageReferences(queryClient, query.data),
+  };
 }
 
 type PageQueryHookOptions = {
@@ -119,8 +133,20 @@ export function usePageDatabaseIds(
 }
 
 export function usePageAccess(pageId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery(pageAccessQueryOptions(apiFetch, pageId));
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const query = useQuery(pageAccessQueryOptions(apiFetch, pageId));
+  useSharedDataRevision(queryClient);
+  return {
+    error: query.error,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    isSuccess: query.isSuccess,
+    status: query.status,
+    refetch: query.refetch,
+    data: query.data && resolvePageAccessReferences(queryClient, query.data),
+  };
 }
 
 export function usePageAccessTargets(workspaceId: string | null | undefined) {

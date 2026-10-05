@@ -64,14 +64,20 @@ test("search requires identity, a workspace and current membership", async () =>
   assert.equal(mocks.search.mock.calls.length, 0);
 });
 
-test("search delegates valid grants with the user ACL context and returns public search fields", async () => {
+test("search delegates valid grants and retains authorized entity clocks and snippets", async () => {
   mocks.search.mockResolvedValue([
     {
       id: "page-1",
       type: "page",
       name: "Notes",
       excerpt: "Internal excerpt",
-      updatedAt: new Date(),
+      updatedAt: new Date("2026-10-05T00:00:00.000Z"),
+      entity: {
+        id: "page-1",
+        name: "Notes",
+        workspaceId: "granted",
+        updatedAt: "2026-10-05T00:00:00.000Z",
+      },
     },
   ]);
   const response = await app().request(
@@ -89,7 +95,21 @@ test("search delegates valid grants with the user ACL context and returns public
     },
   ]);
   assert.deepEqual(await response.json(), {
-    results: [{ id: "page-1", type: "page", name: "Notes" }],
+    results: [
+      {
+        id: "page-1",
+        type: "page",
+        name: "Notes",
+        excerpt: "Internal excerpt",
+        updatedAt: "2026-10-05T00:00:00.000Z",
+        entity: {
+          id: "page-1",
+          name: "Notes",
+          workspaceId: "granted",
+          updatedAt: "2026-10-05T00:00:00.000Z",
+        },
+      },
+    ],
   });
   assert.equal(
     (await app({ method: "session", scopes: [] }).request("/search?workspaceId=other")).status,

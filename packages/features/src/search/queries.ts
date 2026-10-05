@@ -1,3 +1,5 @@
+import { normalizeSearchReferences } from "./references";
+import { sharedClient } from "../data/client";
 import type { AppSearchResult, AppSearchResultType } from "./contracts";
 import { queryOptions } from "@tanstack/react-query";
 
@@ -20,11 +22,12 @@ export const appSearchQueryOptions = (
     queryKey: appSearchQueryKey(workspaceId, query, types),
     enabled: Boolean(workspaceId) && enabled,
     staleTime: 15_000,
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!workspaceId) {
         return [];
       }
 
+      const read = sharedClient(client).capture();
       const params = new URLSearchParams({
         workspaceId,
         q: query,
@@ -32,12 +35,11 @@ export const appSearchQueryOptions = (
       if (types?.length) params.set("types", types.join(","));
 
       try {
-        const result = await apiFetch<{ results: AppSearchResult[] }>(
-          `/search?${params.toString()}`,
-          { method: "GET", signal },
-        );
+        const result = await apiFetch<{
+          results: Array<AppSearchResult & { entity: unknown; excerpt?: string | null }>;
+        }>(`/search?${params.toString()}`, { method: "GET", signal });
 
-        return result.results;
+        return normalizeSearchReferences(client, read, workspaceId, result.results);
       } catch (error) {
         if (
           typeof error === "object" &&

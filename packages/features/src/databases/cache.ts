@@ -129,7 +129,7 @@ export class DatabaseCollections {
     return inputs;
   }
 
-  private stageRecords(records: DatabaseRecordEntity[], versions: Record<string, number>) {
+  prepareRecords(records: DatabaseRecordEntity[], versions: Record<string, number>) {
     const inputs: PreparedIngestion[] = [];
     for (const { page, valuesByPropertyId, ...record } of records) {
       if (page.id !== record.pageId) throw new Error("Record page identity mismatch");
@@ -151,14 +151,22 @@ export class DatabaseCollections {
     return inputs;
   }
 
-  ingestBootstrap(databaseId: string, input: unknown) {
+  prepareBootstrap(
+    databaseId: string,
+    input: unknown,
+    hostFields: {
+      createdById?: string | null;
+      deletedById?: string | null;
+      teamspaceId?: string | null;
+    } = {},
+  ) {
     const { database, dataSources, properties, views } =
       databaseBootstrapResponseSchema.parse(input);
     this.assertWorkspace(database.workspaceId);
     if (database.id !== databaseId) throw new Error("Bootstrap host identity mismatch");
     const { accessLevel: _accessLevel, ...host } = database;
     const versions = Object.fromEntries(dataSources.map((source) => [source.id, source.version]));
-    const inputs = [this.hosts.stage([host])];
+    const inputs = [this.hosts.stage([{ ...host, ...hostFields }])];
     for (const { position, linkedAt, ...source } of dataSources) {
       this.assertWorkspace(source.workspaceId);
       inputs.push(
@@ -183,10 +191,7 @@ export class DatabaseCollections {
       ...this.stageProperties(properties, versions),
       this.views.stage(views.map((view) => ({ ...view, hostVersion: host.version }))),
     );
-    this.session.ingest(inputs);
-    if (this.hosts.collection.base.get(host.id)?.version === host.version)
-      this.authorizedSources.set(host.id, new Set(dataSources.map((source) => source.id)));
-    return {
+    const membership = {
       databaseId: host.id,
       sourceIds: dataSources.map((source) => source.id),
       bindingIds: properties.map((property) => property.id),
@@ -194,6 +199,21 @@ export class DatabaseCollections {
       version: host.version,
       accessLevel: database.accessLevel,
     };
+    return {
+      inputs,
+      membership,
+      authorize: () => {
+        if (this.hosts.collection.base.get(host.id)?.version === host.version)
+          this.authorizedSources.set(host.id, new Set(dataSources.map((source) => source.id)));
+      },
+    };
+  }
+
+  ingestBootstrap(databaseId: string, input: unknown) {
+    const prepared = this.prepareBootstrap(databaseId, input);
+    this.session.ingest(prepared.inputs);
+    prepared.authorize();
+    return prepared.membership;
   }
 
   ingestWindow(
@@ -212,7 +232,7 @@ export class DatabaseCollections {
       throw new Error("Record window requires an authorized source read");
     if (records.some((record) => record.dataSourceId !== dataSourceId))
       throw new Error("Window source mismatch");
-    this.session.ingest(this.stageRecords(records, { [dataSourceId]: result.dataSourceVersion }));
+    this.session.ingest(this.prepareRecords(records, { [dataSourceId]: result.dataSourceVersion }));
     return { ...result, recordIds: records.map((record) => record.id) };
   }
 
@@ -266,7 +286,7 @@ export class DatabaseCollections {
       throw new Error("Event view scope mismatch");
     inputs.push(
       ...this.stageProperties(changes.properties ?? [], versions),
-      ...this.stageRecords(changes.records ?? [], versions),
+      ...this.prepareRecords(changes.records ?? [], versions),
       this.views.stage(
         (changes.views ?? []).map((view) => ({ ...view, hostVersion: event.version })),
       ),
@@ -330,7 +350,7 @@ export class DatabaseCollections {
     )
       return "authorized-read-required";
     this.session.ingest([
-      ...this.stageRecords(records, sourceVersions),
+      ...this.prepareRecords(records, sourceVersions),
       ...this.stageProperties(properties, sourceVersions),
     ]);
     return "published";

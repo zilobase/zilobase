@@ -9,6 +9,7 @@ export * from "./navigation-cache";
 
 export {
   resolvePageReference,
+  readCachedPage,
   resolvePageDetailReference,
   resolveNavigationReference,
   cachePageDetail,

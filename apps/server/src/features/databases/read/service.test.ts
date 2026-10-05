@@ -539,3 +539,41 @@ test("record window validates offsets and bounded collection limits", async () =
     );
   }
 });
+
+test("complete exports resolve host and values inside the same existing read snapshot", async () => {
+  let inSnapshot = false;
+  await getDatabaseExportService(
+    { databaseId: "database-1", existingRecord: databaseRecord(), userId: "user-1" },
+    {
+      readSnapshot: async (read) => {
+        inSnapshot = true;
+        try {
+          return await read();
+        } finally {
+          inSnapshot = false;
+        }
+      },
+      reloadRecord: async () => {
+        assert.equal(inSnapshot, true);
+        return databaseRecord();
+      },
+      requireAccess: async () => databaseRecord(),
+      loadReadModel: async () => {
+        throw new Error("Exports use the complete payload reader");
+      },
+      getPayload: async () => {
+        assert.equal(inSnapshot, true);
+        return {
+          database: { ...databaseRecord(), dataSourceConfig: null, isFavorite: false },
+          dataSources: [],
+          activeDataSource: null,
+          properties: [],
+          views: [],
+          rows: [],
+          values: [],
+        };
+      },
+    },
+  );
+  assert.equal(inSnapshot, false);
+});

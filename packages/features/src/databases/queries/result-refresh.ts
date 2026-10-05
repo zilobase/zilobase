@@ -20,4 +20,16 @@ export function refreshRecordResults(
       continue;
     void client.invalidateQueries({ queryKey: query.queryKey, exact: true }).catch(() => undefined);
   }
+  for (const query of client.getQueryCache().findAll({ queryKey: ["database-context-export"] })) {
+    const ref = query.state.data as
+      | import("../export-references").DatabaseExportReference
+      | undefined;
+    if (
+      ref?.bootstrap.cacheId !== cacheId ||
+      !ref.activeSourceId ||
+      versions[ref.activeSourceId] === undefined
+    )
+      continue;
+    void client.invalidateQueries({ queryKey: query.queryKey, exact: true }).catch(() => undefined);
+  }
 }

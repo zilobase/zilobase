@@ -609,6 +609,25 @@ try {
 } catch (error) {
   if (page) {
     console.error(
+      "Navigation query diagnostics:",
+      await page
+        .evaluate(async () => {
+          const { queryClient } = await import("/src/app/query-client.ts");
+          return queryClient
+            .getQueryCache()
+            .findAll({ queryKey: ["pages"] })
+            .map((query) => ({
+              key: query.queryKey,
+              status: query.state.status,
+              error: query.state.error?.message ?? null,
+              issues: query.state.error?.issues,
+              pages: query.state.data?.pages?.length,
+              databases: query.state.data?.databases?.length,
+            }));
+        })
+        .catch(() => []),
+    );
+    console.error(
       (
         await page
           .locator("body")

@@ -10,7 +10,7 @@ import type { RecordEffect } from "./model";
 
 /** Temporary identities are library-owned previews; intentions retain only membership. */
 export function insertionPreviews(
-  owner: SessionEntities,
+  owner: Pick<SessionEntities, "session" | "pages" | "databases">,
   effects: readonly RecordEffect[],
 ): EntityPreview[] {
   const previews: EntityPreview[] = [];

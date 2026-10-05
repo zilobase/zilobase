@@ -437,18 +437,21 @@ export async function getDatabaseExportService(
   },
   dependencies: ReadDependencies = defaultDependencies,
 ): Promise<DatabaseExportPayload> {
-  const record = await resolveReadRecord(input, dependencies);
-  const payload = await dependencies.getPayload(
-    record.id,
-    input.userId,
-    record,
-    input.dataSourceId ? { dataSourceId: input.dataSourceId } : undefined,
-  );
-  if (!payload) throw new ServiceMutationError("Database not found", 404);
-  if (input.dataSourceId && payload.activeDataSource?.id !== input.dataSourceId) {
-    throw new ServiceMutationError("Database data source not found", 404);
-  }
-  return payload;
+  const read = async () => {
+    const record = await resolveReadRecord(input, dependencies);
+    const payload = await dependencies.getPayload(
+      record.id,
+      input.userId,
+      record,
+      input.dataSourceId ? { dataSourceId: input.dataSourceId } : undefined,
+    );
+    if (!payload) throw new ServiceMutationError("Database not found", 404);
+    if (input.dataSourceId && payload.activeDataSource?.id !== input.dataSourceId) {
+      throw new ServiceMutationError("Database data source not found", 404);
+    }
+    return payload;
+  };
+  return dependencies.readSnapshot ? dependencies.readSnapshot(read) : read();
 }
 
 function windowSnapshot(input: {

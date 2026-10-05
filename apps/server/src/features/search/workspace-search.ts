@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { canAccessDatabaseInWorkspace, getAccessiblePageIds, getMembership } from "../access";
 import { db } from "../../infrastructure/database";
-import { database, databaseView, searchDocument } from "../../infrastructure/database/schema";
+import { database, databaseView, page, searchDocument } from "../../infrastructure/database/schema";
 
 export type WorkspaceSearchResult = {
   emoji: string | null;
@@ -12,6 +12,7 @@ export type WorkspaceSearchResult = {
   title: string;
   type: "database" | "page";
   updatedAt: Date;
+  entity: unknown;
 };
 
 const DEFAULT_MAX_SEARCH_RESULTS = 50;
@@ -117,18 +118,63 @@ export async function searchWorkspaceItems(input: {
     }),
   );
 
-  return candidates
-    .filter((candidate, index) => permissionChecks[index])
-    .map((candidate): WorkspaceSearchResult => ({
-      emoji: candidate.emoji,
-      excerpt: candidate.type === "page" ? stripSearchHeadlineMarkers(candidate.excerpt) : null,
-      id: candidate.id,
-      path: candidate.path,
-      title: candidate.title,
-      type: candidate.type as WorkspaceSearchResult["type"],
-      updatedAt: candidate.updatedAt,
-    }))
-    .slice(0, limit);
+  const visible = candidates.filter((_, index) => permissionChecks[index]).slice(0, limit);
+  const pageIds = visible.filter((item) => item.type === "page").map((item) => item.id);
+  const hostIds = visible.filter((item) => item.type === "database").map((item) => item.id);
+  const [pages, hosts] = await Promise.all([
+    pageIds.length
+      ? db
+          .select({
+            id: page.id,
+            name: page.name,
+            workspaceId: page.workspaceId,
+            metadata: page.metadata,
+            updatedAt: page.updatedAt,
+            deletedAt: page.deletedAt,
+          })
+          .from(page)
+          .where(
+            and(
+              eq(page.workspaceId, input.workspaceId),
+              inArray(page.id, pageIds),
+              isNull(page.deletedAt),
+            ),
+          )
+      : [],
+    hostIds.length
+      ? db
+          .select()
+          .from(database)
+          .where(
+            and(
+              eq(database.workspaceId, input.workspaceId),
+              inArray(database.id, hostIds),
+              isNull(database.deletedAt),
+            ),
+          )
+      : [],
+  ]);
+  const pagesById = new Map(pages.map((entity) => [entity.id, entity]));
+  const hostsById = new Map(hosts.map((entity) => [entity.id, entity]));
+  // Index ordering and snippets remain contextual. Labels carry storage clocks,
+  // so an index refresh cannot regress an already confirmed shared entity.
+  return visible.flatMap((candidate): WorkspaceSearchResult[] => {
+    const entity =
+      candidate.type === "page" ? pagesById.get(candidate.id) : hostsById.get(candidate.id);
+    if (!entity) return [];
+    return [
+      {
+        emoji: candidate.emoji,
+        excerpt: candidate.type === "page" ? stripSearchHeadlineMarkers(candidate.excerpt) : null,
+        id: candidate.id,
+        path: candidate.path,
+        title: entity.name,
+        type: candidate.type as WorkspaceSearchResult["type"],
+        updatedAt: entity.updatedAt,
+        entity,
+      },
+    ];
+  });
 }
 
 export function normalizeSearchQuery(query: string) {

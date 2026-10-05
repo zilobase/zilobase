@@ -338,9 +338,8 @@ pageBrowseRoutes.get("/", async (c) => {
       activeDatabaseIds.size > 0
         ? db
             .select({
-              config: dataSource.config,
-              id: dataSource.id,
-              version: dataSource.version,
+              ...getTableColumns(dataSource),
+              linkedAt: databaseDataSource.createdAt,
               databaseId: databaseDataSource.databaseId,
               parentDatabaseId: dataSource.parentDatabaseId,
               position: databaseDataSource.position,
@@ -356,6 +355,17 @@ pageBrowseRoutes.get("/", async (c) => {
             .orderBy(asc(databaseDataSource.position))
         : Promise.resolve([]),
     ]);
+    // A host link does not grant access to a foreign source's owning database.
+    const sourcePermissions = await Promise.all(
+      databaseSourceLinks.map(
+        (link) =>
+          link.parentDatabaseId === link.databaseId ||
+          canAccessDatabaseInWorkspace(link.parentDatabaseId, workspaceId, user.id, "view"),
+      ),
+    );
+    const authorizedSourceLinks = databaseSourceLinks.filter(
+      (_, index) => sourcePermissions[index],
+    );
     const creatorsById = new Map(creatorRows.map((creator) => [creator.id, creator]));
     const createdByByPageId = new Map(
       accessibleRecords.map((record) => [
@@ -374,7 +384,7 @@ pageBrowseRoutes.get("/", async (c) => {
     }
     const primarySourceByDatabaseId = new Map<string, (typeof databaseSourceLinks)[number]>();
 
-    for (const sourceLink of databaseSourceLinks) {
+    for (const sourceLink of authorizedSourceLinks) {
       const current = primarySourceByDatabaseId.get(sourceLink.databaseId);
       const isOwned = sourceLink.parentDatabaseId === sourceLink.databaseId;
       const currentIsOwned = current?.parentDatabaseId === current?.databaseId;
@@ -395,17 +405,33 @@ pageBrowseRoutes.get("/", async (c) => {
       isFavorite: boolean;
       lastVisitedAt: Date | null;
       views: typeof databaseViews;
+      dataSources: unknown[];
     };
     const databasePayloads: ActiveDatabasePayload[] = [];
 
     for (const record of activeDatabases) {
       const { actorRevision, favoriteValue, ...publicRecord } = record;
-      const views = [...(viewsByDatabaseId.get(record.id) ?? [])].sort(
-        (first, second) => first.position - second.position,
-      );
+      const links = authorizedSourceLinks.filter((link) => link.databaseId === record.id);
+      const sourceIds = new Set(links.map((link) => link.id));
+      const views = [...(viewsByDatabaseId.get(record.id) ?? [])]
+        .filter((view) => sourceIds.has(view.dataSourceId))
+        .sort((first, second) => first.position - second.position);
 
       databasePayloads.push({
         ...publicRecord,
+        dataSources: links.map((link) => ({
+          id: link.id,
+          workspaceId: link.workspaceId,
+          parentDatabaseId: link.parentDatabaseId,
+          name: link.name,
+          config: link.config,
+          configVersion: link.configVersion,
+          version: link.version,
+          createdAt: link.createdAt,
+          updatedAt: link.updatedAt,
+          linkedAt: link.linkedAt,
+          position: link.position,
+        })),
         metadataState: {
           version: record.version,
           primarySource: primarySourceByDatabaseId.has(record.id)

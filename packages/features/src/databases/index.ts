@@ -27,3 +27,5 @@ export type {
   DatabaseRealtimeServerMessageParseResult,
   RealtimeServerMessage,
 } from "./realtime/realtime";
+
+export { resolveDatabaseExportReference, type DatabaseExportReference } from "./export-references";

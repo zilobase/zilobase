@@ -1,3 +1,5 @@
+import { AccessCollections } from "../pages/access-references";
+import { NavigationCollections } from "../pages/navigation-references";
 import type { QueryClient } from "@tanstack/react-query";
 import { DataPublication } from "./publication";
 import { DataSession, type DataSessionScope } from "./session";
@@ -8,10 +10,14 @@ export class SessionEntities {
   readonly session;
   readonly pages;
   readonly databases;
+  readonly navigation;
+  readonly access;
   constructor(scope: DataSessionScope) {
     this.session = new DataSession(scope);
     this.pages = createPageCollection(this.session);
     this.databases = new DatabaseCollections(this.session, this.pages);
+    this.navigation = new NavigationCollections(this.session);
+    this.access = new AccessCollections(this.session);
   }
 }
 
@@ -21,6 +27,7 @@ const clients = new WeakMap<QueryClient, SharedClient>();
 /** Composition/lifetime only; domain modules validate and normalize their payloads. */
 export class SharedClient {
   readonly publication = new DataPublication();
+  private readSequence = 0;
   private identityKey: string | undefined;
   private readonly sessions = new Map<string, SessionEntities>();
   private readonly sessionIds = new Map<string, SessionEntities>();
@@ -41,7 +48,7 @@ export class SharedClient {
       this.identityKey = key;
       this.publication.changed([]);
     }
-    return { identity, key };
+    return { identity, key, sequence: ++this.readSequence };
   }
 
   resolve(

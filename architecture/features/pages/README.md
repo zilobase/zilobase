@@ -26,14 +26,13 @@ Writes can change hierarchy, database associations and navigation state. Preserv
 
 ## Client mutation ownership
 
-Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [React entrypoint](../../../packages/features/src/pages/react.ts) exports each operation family directly; the page root exposes contracts and pure query builders, not hooks. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
+Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [React entrypoint](../../../packages/features/src/pages/react.ts) exports each operation family directly; the page root exposes contracts and pure query builders, not hooks. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Metadata and favorite previews use supported collection transactions; body and historical snapshots keep their feature ownership.
 
-The navigation hook composes database metadata and favorite intentions from the shared
-database controller; page state remains page-owned. Authenticated
+The navigation hook resolves pages, database hosts, sources, views, placements and actor-scoped favorites from shared collections. Query owns ordered result references. Authenticated
 [navigation reads](../../../apps/server/src/features/pages/page-browse-routes.ts) return
 host, primary-source and actor revision envelopes from a read-only repeatable-read
 snapshot. Envelopes appear only on these reads, not on workspace navigation deltas;
-database deltas request a refresh instead of patching database state.
+database deltas request a refresh instead of patching database state. Navigation source facets now use the same owning-database authorization rule as bootstrap. Local read ordinals order unversioned placement, page preference and access reads within their authorization session; they do not compare shared host/source/entity revisions or claim cross-client event ordering. Page bodies and creator profiles stay contextual.
 
 ## Verification and change points
 

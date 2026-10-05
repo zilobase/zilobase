@@ -1,3 +1,6 @@
+import { normalizeAccessReferences } from "./access-references";
+import { normalizeAiPageReferences } from "./summary-references";
+import { normalizeNavigationReference } from "./navigation-references";
 import { normalizePageProperties } from "./property-cache";
 import type {
   ZilobaseAiMode,
@@ -24,14 +27,8 @@ import {
 } from "../shared/api-errors";
 import type { ApiFetcher } from "../shared/api-fetcher";
 import type { EmbeddedItemsOpenAs } from "./item-relationships";
-import { preferNewestDatabaseNavigation } from "../databases/interactions/navigation";
 import { sharedClient } from "../data/client";
-import {
-  stageAuthorizedPages,
-  resolveNavigationReference,
-  type PageNavigationReference,
-  type PageDetailReference,
-} from "./cache";
+import { stageAuthorizedPages, type PageDetailReference } from "./cache";
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -138,7 +135,7 @@ export const pagesQueryOptions = (
     // Router guards await this same query imperatively. Do not consume the
     // observer-owned signal or a temporary React unsubscribe can cancel the
     // promise that is still required by the router.
-    queryFn: async ({ client, queryKey }) => {
+    queryFn: async ({ client }) => {
       if (!workspaceId) {
         return { databases: [], pages: [], placements: [] };
       }
@@ -160,19 +157,11 @@ export const pagesQueryOptions = (
           pages: Page[];
         }>(`/pages?${params.toString()}`, { method: "GET" });
 
-        const current = client.getQueryData<PageNavigationReference>(queryKey);
-        const accepted = preferNewestDatabaseNavigation(
-          {
-            databases: result.databases ?? [],
-            pages: result.pages,
-            placements: result.placements ?? [],
-          },
-          current ? resolveNavigationReference(client, current) : undefined,
-        );
-        return {
-          ...accepted,
-          pages: stageAuthorizedPages(client, read, workspaceId, accepted.pages),
-        };
+        return normalizeNavigationReference(client, read, workspaceId, {
+          databases: result.databases ?? [],
+          pages: result.pages,
+          placements: result.placements ?? [],
+        });
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -195,12 +184,13 @@ export const zilobaseAiPagesQueryOptions = (
   queryOptions({
     queryKey: zilobaseAiPagesQueryKey(workspaceId),
     enabled: Boolean(workspaceId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!workspaceId) {
         return [];
       }
 
       try {
+        const read = sharedClient(client).capture();
         const params = new URLSearchParams({
           fields: "summary",
           zilobaseai: "instruction,skill",
@@ -211,7 +201,7 @@ export const zilobaseAiPagesQueryOptions = (
           { method: "GET", signal },
         );
 
-        return result.pages;
+        return normalizeAiPageReferences(client, read, workspaceId, result.pages);
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -312,16 +302,18 @@ export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | nu
   queryOptions({
     queryKey: pageAccessQueryKey(pageId),
     enabled: Boolean(pageId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!pageId) {
         return { access: [] };
       }
 
       try {
-        return await apiFetch<PageAccessPayload>(`/pages/${pageId}/access`, {
+        const read = sharedClient(client).capture();
+        const result = await apiFetch<PageAccessPayload>(`/pages/${pageId}/access`, {
           method: "GET",
           signal,
         });
+        return normalizeAccessReferences(client, read, "page", pageId, result.access);
       } catch (error) {
         if (
           typeof error === "object" &&

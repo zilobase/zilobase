@@ -1,3 +1,4 @@
+import { sharedClient } from "@zilobase/features/data";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 
@@ -7,7 +8,8 @@ import { useZilobaseFeatures } from "@zilobase/features";
 import {
   databaseContextExportQueryKey,
   databaseContextExportQueryOptions,
-  type DatabaseExportPayload,
+  type DatabaseExportReference,
+  resolveDatabaseExportReference,
 } from "@zilobase/features/databases";
 import {
   ensurePageDetail,
@@ -73,8 +75,11 @@ async function resolveDatabaseContext(
     return contextCache.get(cacheKey) ?? null;
   }
 
-  const exportedCached = queryClient.getQueryData<DatabaseExportPayload | null>(
-    databaseContextExportQueryKey(databaseId, dataSourceId),
+  const exportedCached = resolveDatabaseExportReference(
+    queryClient,
+    queryClient.getQueryData<DatabaseExportReference | null>(
+      databaseContextExportQueryKey(databaseId, dataSourceId),
+    ),
   );
 
   if (
@@ -88,8 +93,11 @@ async function resolveDatabaseContext(
   }
 
   try {
-    const payload = await queryClient.fetchQuery(
-      databaseContextExportQueryOptions(apiFetch, databaseId, dataSourceId),
+    const payload = resolveDatabaseExportReference(
+      queryClient,
+      await queryClient.fetchQuery(
+        databaseContextExportQueryOptions(apiFetch, databaseId, dataSourceId),
+      ),
     );
 
     if (!payload) {
@@ -387,7 +395,10 @@ export function usePageAiContext({
 
   useEffect(() => {
     void buildContext();
-  }, [buildContext]);
+    return sharedClient(queryClient).publication.subscribe(() => {
+      void buildContext();
+    });
+  }, [buildContext, queryClient]);
 
   useEffect(() => {
     if (!enabled || trackedDatabaseIds.length === 0) {

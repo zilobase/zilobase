@@ -1,3 +1,4 @@
+import { useSharedDataRevision } from "@zilobase/features/data/react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
@@ -51,6 +52,7 @@ import { TaskDatabaseListAdapter } from "../components/task-database-list-adapte
 import { getDatabaseEmoji } from "@zilobase/features/databases";
 import {
   databaseContextExportQueryOptions,
+  resolveDatabaseExportReference,
   type DatabaseExportPayload,
   type DatabasePropertyEntity,
   type DatabaseRecordEntity,
@@ -117,7 +119,8 @@ const emptyAsync = async () => undefined;
 
 export default function TasksPage() {
   const workspaceId = useActiveWorkspaceId();
-  const { apiFetch } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  useSharedDataRevision(queryClient);
   const { data: session } = useSession();
   const { data: navigation, isLoading: navigationLoading } = usePageNavigation(workspaceId);
   const { data: userSettings = defaultUserSettings } = useUserSettings();
@@ -140,7 +143,7 @@ export default function TasksPage() {
     ),
   });
   const payloads = databaseQueries
-    .map((query) => query.data)
+    .map((query) => resolveDatabaseExportReference(queryClient, query.data))
     .filter((payload): payload is DatabaseExportPayload => Boolean(payload));
   const isLoading = navigationLoading || databaseQueries.some((query) => query.isLoading);
   const eligiblePayloads = payloads.filter(

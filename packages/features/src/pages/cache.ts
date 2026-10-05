@@ -1,3 +1,8 @@
+import {
+  resolveNavigationDatabase,
+  resolvePlacement,
+  pagePreferenceSchema,
+} from "./navigation-references";
 import { pageCacheEntitySchema } from "./cache-entities";
 import type { QueryClient } from "@tanstack/react-query";
 import { sharedClient, type SharedClient } from "../data/client";
@@ -19,11 +24,13 @@ export type PageReference = {
   >;
 };
 export type PageDetailReference = Omit<PageDetail, "page"> & { page: PageReference };
-export type PageNavigationReference = Omit<PageNavigationPayload, "pages"> & {
+export type PageNavigationReference = {
   pages: PageReference[];
+  databases: import("./navigation-references").NavigationDatabaseReference[];
+  placements: import("./navigation-references").PlacementReference[];
 };
 
-export function stageAuthorizedPages(
+export function prepareAuthorizedPages(
   queryClient: QueryClient,
   read: ReturnType<SharedClient["capture"]>,
   workspaceId: string,
@@ -46,6 +53,15 @@ export function stageAuthorizedPages(
     } = page;
     return {
       metadata: pageCacheEntitySchema.parse(metadata),
+      preferences: {
+        id: page.id,
+        readSequence: read.sequence,
+        publishedOwnerPreferences,
+        isFavorite,
+        isShared,
+        lastVisitedAt,
+        parentPageId,
+      },
       reference: {
         id: page.id,
         cacheId: entities.session.id,
@@ -54,28 +70,43 @@ export function stageAuthorizedPages(
             content,
             createdBy,
             deletedBy,
-            publishedOwnerPreferences,
-            isFavorite,
-            isShared,
-            lastVisitedAt,
-            parentPageId,
           }).filter(([, value]) => value !== undefined),
         ),
       } satisfies PageReference,
     };
   });
-  entities.session.ingest([entities.pages.stage(references.map(({ metadata }) => metadata))]);
-  return references.map(({ reference }) => reference);
+  return {
+    entities,
+    inputs: [
+      entities.pages.stage(references.map(({ metadata }) => metadata)),
+      entities.navigation.pagePreferences.stage(references.map(({ preferences }) => preferences)),
+    ],
+    references: references.map(({ reference }) => reference),
+  };
+}
+
+export function stageAuthorizedPages(...args: Parameters<typeof prepareAuthorizedPages>) {
+  const prepared = prepareAuthorizedPages(...args);
+  prepared.entities.session.ingest(prepared.inputs);
+  return prepared.references;
 }
 
 export function resolvePageReference(
   queryClient: QueryClient,
   reference: PageReference,
 ): Page | null {
-  const page = sharedClient(queryClient).get(reference.cacheId)?.pages.get(reference.id);
+  const owner = sharedClient(queryClient).get(reference.cacheId);
+  const page = owner?.pages.get(reference.id);
+  const preference = owner?.navigation.pagePreferences.get(reference.id);
+  const {
+    id: _id,
+    readSequence: _sequence,
+    ...preferences
+  } = preference ? pagePreferenceSchema.strip().parse(preference) : {};
   if (!page) return null;
   return {
     ...reference.context,
+    ...preferences,
     ...pageCacheEntitySchema.strip().parse(page),
     createdAt: page.createdAt ?? page.updatedAt,
     type: page.type ?? "pageblock",
@@ -87,8 +118,13 @@ export function resolveNavigationReference(
   reference: PageNavigationReference,
 ): PageNavigationPayload {
   return {
-    ...reference,
     pages: reference.pages.flatMap((page) => resolvePageReference(queryClient, page) ?? []),
+    databases: reference.databases.flatMap(
+      (database) => resolveNavigationDatabase(queryClient, database) ?? [],
+    ),
+    placements: reference.placements.flatMap(
+      (placement) => resolvePlacement(queryClient, placement) ?? [],
+    ),
   };
 }
 
@@ -145,9 +181,31 @@ export function updatePageContexts(
   id: string,
   patch: PageReference["context"],
 ) {
+  const read = sharedClient(queryClient).capture();
+  for (const owner of sharedClient(queryClient).all()) {
+    if (!owner.pages.collection.base.has(id)) continue;
+    const { isFavorite, isShared, lastVisitedAt, parentPageId, publishedOwnerPreferences } = patch;
+    owner.session.ingest([
+      owner.navigation.pagePreferences.stage([
+        {
+          id,
+          readSequence: read.sequence,
+          isFavorite,
+          isShared,
+          lastVisitedAt,
+          parentPageId,
+          publishedOwnerPreferences,
+        },
+      ]),
+    ]);
+  }
+  const { content, createdBy, deletedBy } = patch;
+  const context = Object.fromEntries(
+    Object.entries({ content, createdBy, deletedBy }).filter(([, value]) => value !== undefined),
+  );
   queryClient.setQueryData<PageDetailReference | null>(["page", id], (current) =>
     current
-      ? { ...current, page: { ...current.page, context: { ...current.page.context, ...patch } } }
+      ? { ...current, page: { ...current.page, context: { ...current.page.context, ...context } } }
       : current,
   );
   queryClient.setQueriesData<PageNavigationReference>({ queryKey: ["pages"] }, (current) =>
@@ -155,7 +213,7 @@ export function updatePageContexts(
       ? {
           ...current,
           pages: current.pages.map((page) =>
-            page.id === id ? { ...page, context: { ...page.context, ...patch } } : page,
+            page.id === id ? { ...page, context: { ...page.context, ...context } } : page,
           ),
         }
       : current,

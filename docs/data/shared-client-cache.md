@@ -143,13 +143,41 @@ and structural record membership recover through authorized reads. Targeted
 filter/sort dependencies follow title aliases and transitive formulas; dynamic
 formulas, definition renames, edited-time fields and rollups use conservative
 computed-result recovery. Presentation-only grouping does not refresh membership.
-Sidebar-only metadata owners finish migrating in Pass 8.
+Sidebar-only metadata owners migrate with navigation references in Pass 8.
 
 297 feature tests include coherent temporary insertion rollback, no-op transport,
 formula closure and scoped membership reconciliation. Mounted table/Kanban query
 fixtures verify settings preview versus confirmed hashes. Docker application
 fixtures verify actual requests and two independent database clients. Build,
 web, UI lint and runtime checks complete the pass.
+
+## Remaining references and coherent complete reads
+
+Pass 8 moves navigation hosts/sources/views/placements, search labels, AI page
+summaries, task/context exports, page preferences and access rules into scoped
+collections. Query results contain ordered references and context, preserving
+search rank/snippets and complete-read row positions/counts. Relation links prefer
+authorized current page metadata while retaining persisted summaries as fallback.
+Database favorite acknowledgements use their existing actor revision. Unversioned
+page preferences, placements and ACL reads use request-issuance ordinals only
+within their session; these are read barriers, not storage clocks or a new
+synchronization provider. Omitted facets survive partial reads.
+
+Navigation now returns complete authorized source facets and filters foreign
+source links/views through the owning host permission. Export normalization
+validates all families before publication and requires the actual stored record
+order key; it never derives canonical order from export positions. Synchronous
+context snapshots reject in-progress publication. Historical bodies, downloaded
+exports, AI receipts and Yjs content keep their existing semantics. Opaque AI tool
+receipts lack entity clocks, so their existing explicit authorized recovery reads
+remain a documented targeted-read case.
+
+301 feature tests prove current labels/values across navigation, search, summaries
+and exports, stale export/read barriers, atomic invalid-batch rejection and
+one-request sidebar metadata/favorites. Web checks, 39 focused server tests,
+production build, mounted database fixtures and the Docker two-client application
+fixture pass. UI lint, architecture/export boundaries, Cloudflare build and all
+14 Worker tests pass. Session retention and authorization recovery follow in Pass 9.
 
 ## Storage identities
 
