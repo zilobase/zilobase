@@ -664,3 +664,14 @@ test("admitted metadata updates bootstrap references within their cache scope", 
     client.clear();
   }
 });
+
+test("delivery gaps require recovery while duplicate and reversed acknowledgements converge", async () => {
+  const { session, databases } = fixture();
+  databases.ingestBootstrap("host", bootstrap());
+  assert.equal(databases.observeDelivery("host", 1), true);
+  assert.equal(databases.observeDelivery("host", 3), false);
+  assert.equal(databases.observeDelivery("host", 2), true);
+  assert.equal(databases.observeDelivery("host", 3), true);
+  assert.equal(databases.observeDelivery("unknown", 1), false);
+  await session.dispose();
+});

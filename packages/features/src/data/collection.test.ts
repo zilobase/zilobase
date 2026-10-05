@@ -233,3 +233,17 @@ test("session client scopes isolate equal IDs and disposal rejects late ingestio
   await first.session.dispose();
   await second.session.dispose();
 });
+
+test("public cleanup and preload restart a custom collection without internal APIs", async () => {
+  const { session, pages } = fixture();
+  await pages.collection.cleanup();
+  assert.equal(pages.collection.size, 0);
+  await pages.collection.preload();
+  session.ingest([
+    pages.stage([
+      { id: "page", name: "Reauthorized", workspaceId: "workspace", updatedAt: timestamp },
+    ]),
+  ]);
+  assert.equal(pages.get("page")?.name, "Reauthorized");
+  await session.dispose();
+});

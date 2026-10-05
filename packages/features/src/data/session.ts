@@ -19,7 +19,16 @@ export class DataSession {
   readonly commands = new DataCommands(this);
   readonly id: string;
   private disposed = false;
-  private readonly collections = new Map<string, { dispose: () => Promise<void> }>();
+  private holds = 0;
+  onRelease: (() => void) | undefined;
+  private readonly collections = new Map<
+    string,
+    {
+      dispose: () => Promise<void>;
+      ready: () => Promise<void>;
+      releaseInactive: () => Promise<void>;
+    }
+  >();
 
   constructor(readonly scope: DataSessionScope) {
     this.id = JSON.stringify([
@@ -34,7 +43,13 @@ export class DataSession {
     this.assertActive();
     if (this.collections.has(registration.name))
       throw new Error(`Collection already registered: ${registration.name}`);
-    const collection = new EntityCollection(this.client, this.id, registration, this.publication);
+    const collection = new EntityCollection(
+      this.client,
+      this.id,
+      registration,
+      this.publication,
+      () => this.retain(),
+    );
     this.collections.set(registration.name, collection);
     return collection;
   }
@@ -61,6 +76,37 @@ export class DataSession {
     const value = read();
     if (value instanceof Promise) throw new Error("Shared data snapshots must be synchronous");
     return { revision: this.publication.getRevision(), value };
+  }
+
+  retain() {
+    this.assertActive();
+    this.holds++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.holds--;
+      this.onRelease?.();
+    };
+  }
+
+  async ready() {
+    this.assertActive();
+    await Promise.all([...this.collections.values()].map((collection) => collection.ready()));
+    this.assertActive();
+  }
+
+  async releaseInactive(interests: ReadonlySet<string>, tracked: ReadonlySet<string>) {
+    if (this.disposed || this.holds) return;
+    await Promise.all(
+      [...this.collections]
+        .filter(([name]) => tracked.has(name) && !interests.has(name))
+        .map(([, collection]) => collection.releaseInactive()),
+    );
+  }
+
+  get isRetained() {
+    return this.holds > 0;
   }
 
   async dispose() {

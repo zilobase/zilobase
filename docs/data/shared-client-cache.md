@@ -333,3 +333,38 @@ actually applied Cloudflare forward rollback migration restoring
 `NavigationNotificationRoom` and deleting `ApplicationDataRoom`; Git's restored
 migration list is not sufficient evidence. Retiring navigation clients/producers
 does not authorize deleting deployed class exports or editing migration history.
+
+### Pass 9 — session isolation and recovery
+
+Request issuance captures deployment, actor/session, workspace and an existing
+capability owner before transport. Database bootstrap/export responses declare
+member, guest or public authorization; a signed-in publication fallback uses the
+public capability and excludes private foreign-source authorization. Property
+reads declare member/guest scope. Private page preference confirmations stay in
+one captured owner. Known read/ticket denials dispose the affected scope, expire
+older receipts and invalidate retained references for authorized recovery. ACL
+management denials retire those facets with a request barrier while preserving
+independent view authorization. Authorization classification changes rotate the
+old scope. This disposal epoch orders no storage entities.
+
+Database delivery tracks a contiguous existing host version watermark and seen
+acknowledgements/frames. A missing version, reset, invalid frame or unknown source
+forces existing bootstrap/window/export/page-property recovery reads even when
+the version equals the cached host. Duplicate and reversed deliveries remain
+idempotent. Saving still ends at the validated receipt; successful actual active
+recovery reads clear synchronization failure separately.
+
+Query references derive collection-family interests. Retained results preserve
+entities until the existing Query `gcTime` expires (24 days in the application).
+Mounted entity subscriptions and queued/pending library transactions hold their
+session. After the final interest expires, public collection `cleanup()` releases
+base state and synchronization metadata; an authorized read awaits cleanup then
+uses public `preload()` to restart. Concurrent restart callers share one promise.
+No internal TanStack lifecycle API is used. Entire scopes without retained
+references or holds are disposed. Yjs persistence remains independent.
+
+Focused proofs cover deployment/account/workspace/capability isolation, private
+facets, denied recovery and late responses, Query GC with mounted/pending holds,
+family cleanup/restart and contiguous delivery. The public lifecycle fixture
+passes, so no dependent migration gate is blocked. Docker application coverage
+continues to verify mounted surfaces and two independent database clients.

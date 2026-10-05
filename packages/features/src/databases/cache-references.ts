@@ -44,7 +44,11 @@ export function normalizeDatabaseBootstrap(
   const owner = sharedClient(client).resolve(
     read,
     incoming.database.workspaceId,
-    read.identity.viewer.kind === "public" ? { kind: "public", id: databaseId } : undefined,
+    incoming.viewerType === "guest" || incoming.viewerType === "public"
+      ? { kind: incoming.viewerType, id: databaseId }
+      : read.identity.viewer.kind === "public"
+        ? { kind: "public", id: databaseId }
+        : undefined,
   );
   const result = owner.databases.ingestBootstrap(databaseId, incoming);
   return {

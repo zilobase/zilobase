@@ -2,7 +2,7 @@ import { sharedClient } from "../data/client";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import { setPageDetailCache } from "../shared/item-action-cache";
-import { updatePageContexts, readCachedPage } from "./cache";
+import { updatePageContexts, type PageDetailReference } from "./cache";
 import type { Page } from "./contracts";
 
 type SetPageFavoriteInput = {
@@ -20,18 +20,24 @@ export function useSetPageFavorite() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ isFavorite, pageId }: SetPageFavoriteInput) => {
-      const page = readCachedPage(queryClient, pageId);
-      const owner =
-        page &&
-        sharedClient(queryClient)
-          .all()
-          .find((entity) => entity.pages.collection.base.has(pageId));
+      const cache = sharedClient(queryClient);
+      const detail = queryClient.getQueryData<PageDetailReference>(["page", pageId]);
+      const owner = detail
+        ? cache.get(detail.page.cacheId)
+        : cache
+            .all()
+            .find(
+              (entity) =>
+                entity.session.scope.viewer.kind === "account" &&
+                entity.pages.collection.base.has(pageId),
+            );
+      const read = await cache.captureRead(owner?.session.id);
       const send = async () => {
         const result = await apiFetch<{ page: Page }>(`/pages/${pageId}/favorite`, {
           method: isFavorite ? "PUT" : "DELETE",
         });
-        setPageDetailCache(queryClient, result.page);
-        updatePageContexts(queryClient, pageId, { isFavorite: result.page.isFavorite });
+        setPageDetailCache(queryClient, result.page, read);
+        updatePageContexts(queryClient, pageId, { isFavorite: result.page.isFavorite }, read);
         return result.page;
       };
       return owner?.navigation.pagePreferences.get(pageId)
@@ -52,27 +58,31 @@ export function useRecordItemVisit() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async (input: RecordItemVisitInput) =>
-      apiFetch<{
+    mutationFn: async (input: RecordItemVisitInput) => {
+      const read = await sharedClient(queryClient).captureRead();
+      const result = await apiFetch<{
         itemId: string;
         itemKind: RecordItemVisitInput["itemKind"];
         lastVisitedAt: string;
-      }>("/pages/item-visits", {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
-    onSuccess: (result, variables) => {
+      }>("/pages/item-visits", { method: "POST", body: JSON.stringify(input) });
+      if (!sharedClient(queryClient).isCurrent(read)) throw new Error("Expired visit confirmation");
+      const variables = input;
       if (result.itemKind === "agent") {
         return queryClient.invalidateQueries({
           queryKey: ["workspaces", variables.workspaceId, "ai-agent-profiles"],
         });
       }
-      const read = sharedClient(queryClient).capture();
       if (result.itemKind === "page")
-        updatePageContexts(queryClient, result.itemId, { lastVisitedAt: result.lastVisitedAt });
+        updatePageContexts(
+          queryClient,
+          result.itemId,
+          { lastVisitedAt: result.lastVisitedAt },
+          read,
+        );
       else
         for (const owner of sharedClient(queryClient).all()) {
           if (
+            owner.session.scope.viewer.kind !== "account" ||
             owner.session.scope.workspaceId !== variables.workspaceId ||
             !owner.databases.hosts.collection.base.has(result.itemId)
           )
@@ -87,6 +97,7 @@ export function useRecordItemVisit() {
             ]),
           ]);
         }
+      return result;
     },
   });
 }

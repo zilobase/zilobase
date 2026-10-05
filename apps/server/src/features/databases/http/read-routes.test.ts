@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   createTicket: vi.fn(),
   getRecord: vi.fn(),
   membership: vi.fn(),
+  principal: vi.fn(),
   payload: vi.fn(),
   published: vi.fn(),
   realtimeExpiration: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock("../../access", () => ({
   canAccessDatabaseRecord: mocks.access,
   getEffectiveDatabaseAccessForRecord: mocks.accessLevel,
   getMembership: mocks.membership,
+  getWorkspacePrincipalKind: mocks.principal,
   getWorkspaceRealtimeAccessExpiration: mocks.realtimeExpiration,
   isDatabasePublishedInWorkspace: mocks.published,
 }));
@@ -99,6 +101,7 @@ beforeEach(() => {
   mocks.getRecord.mockResolvedValue(record);
   mocks.access.mockResolvedValue(true);
   mocks.accessLevel.mockResolvedValue("full");
+  mocks.principal.mockResolvedValue("member");
   mocks.membership.mockResolvedValue({ id: "membership-1" });
   mocks.payload.mockResolvedValue({ database: { id: "database-1" }, rows: [] });
   mocks.published.mockResolvedValue(false);
@@ -231,4 +234,23 @@ test("OAuth database workspace binding retains the existing ACL", async () => {
   assert.equal(mocks.payload.mock.calls.length, 0);
   mocks.access.mockResolvedValue(true);
   assert.equal((await app.request("/database-1/bootstrap")).status, 200);
+});
+
+test("signed-in published fallbacks use the public capability and exclude private source reads", async () => {
+  mocks.access.mockResolvedValue(false);
+  mocks.accessLevel.mockResolvedValue("none");
+  mocks.published.mockResolvedValue(true);
+  const response = await sessionApp().request("/database-1/bootstrap");
+  assert.equal(response.status, 200);
+  const body = await responseJson<{ viewerType: string; database: { accessLevel: unknown } }>(
+    response,
+  );
+  assert.equal(body.viewerType, "public");
+  assert.equal(body.database.accessLevel, null);
+});
+test("guest database reads declare their capability scope", async () => {
+  mocks.principal.mockResolvedValue("guest");
+  const response = await sessionApp().request("/database-1/bootstrap");
+  assert.equal(response.status, 200);
+  assert.equal((await responseJson<{ viewerType: string }>(response)).viewerType, "guest");
 });

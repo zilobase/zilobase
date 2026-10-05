@@ -8,7 +8,7 @@ import {
 
 export const databaseWindowReferenceSchema = databaseRecordWindowResponseSchema
   .omit({ records: true })
-  .extend({ cacheId: z.string(), recordIds: z.array(z.string()) });
+  .extend({ cacheId: z.string(), recordIds: z.array(z.string()), dataSourceId: z.string() });
 export type DatabaseWindowReference = z.infer<typeof databaseWindowReferenceSchema>;
 export function normalizeRecordWindow(
   client: QueryClient,
@@ -16,11 +16,14 @@ export function normalizeRecordWindow(
   dataSourceId: string,
   queryHash: string,
   input: unknown,
+  cacheId?: string,
 ): DatabaseWindowReference {
-  const owner = sharedClient(client).database(databaseId);
+  const owner = cacheId
+    ? sharedClient(client).get(cacheId)
+    : sharedClient(client).database(databaseId);
   if (!owner) throw new Error("Record read requires an authorized bootstrap");
   const result = owner.databases.ingestWindow(databaseId, dataSourceId, queryHash, input);
-  return { ...result, cacheId: owner.session.id };
+  return { ...result, cacheId: owner.session.id, dataSourceId };
 }
 export function resolveRecordWindow(
   client: QueryClient,
@@ -28,14 +31,14 @@ export function resolveRecordWindow(
 ): DatabaseRecordWindowResponse | undefined {
   const parsed = databaseWindowReferenceSchema.safeParse(input);
   if (!parsed.success) return undefined;
-  const { cacheId, recordIds, ...result } = parsed.data;
+  const { cacheId, recordIds, dataSourceId, ...result } = parsed.data;
   const owner = sharedClient(client).get(cacheId);
   if (!owner) return undefined;
   return {
     ...result,
     records: recordIds.flatMap((id) => {
       const record = owner.databases.resolveRecord(id);
-      return record ? [record] : [];
+      return record?.dataSourceId === dataSourceId ? [record] : [];
     }),
   };
 }

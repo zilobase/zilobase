@@ -91,6 +91,39 @@ test("record window uses growing limit with offset 0", async () => {
 test("changed query responses never enter the old cache or retry its obsolete hash", async () => {
   for (const mode of ["response", "conflict", "continuation"] as const) {
     const client = new QueryClient();
+    const owner = sharedClient(client);
+    const stamp = "2026-10-05T00:00:00.000Z";
+    owner.resolve(owner.capture(), "workspace").databases.ingestBootstrap(scope.databaseId, {
+      database: {
+        id: scope.databaseId,
+        workspaceId: "workspace",
+        name: "Host",
+        config: {},
+        accessLevel: "full",
+        pageId: null,
+        deletedAt: null,
+        createdAt: stamp,
+        updatedAt: stamp,
+        version: 5,
+      },
+      dataSources: [
+        {
+          id: scope.dataSourceId,
+          workspaceId: "workspace",
+          parentDatabaseId: scope.databaseId,
+          name: "Source",
+          config: {},
+          configVersion: 0,
+          version: 2,
+          position: 0,
+          linkedAt: stamp,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+      properties: [],
+      views: [],
+    });
     const key = databaseWindowQueryKey("session-1", scope);
     const metadataKey = databaseBootstrapQueryKey("session-1", scope);
     const otherSessionKey = databaseBootstrapQueryKey("other-session", scope);

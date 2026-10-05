@@ -125,7 +125,7 @@ export function useUpdatePage() {
   return useMutation({
     mutationFn: async ({ id, ...patch }: UpdatePageInput) => {
       const client = sharedClient(queryClient);
-      const read = client.capture();
+      const read = await client.captureRead();
       const current = readCachedPage(queryClient, id);
       const reference = queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(id));
       const entities = reference

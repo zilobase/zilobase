@@ -1,3 +1,4 @@
+import { sharedClient, type SharedClient } from "../data/client";
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
@@ -45,6 +46,7 @@ export async function favoritePages({
     return;
   }
 
+  const read = await sharedClient(queryClient).captureRead();
   const results = await Promise.all(
     uniquePageIds.map((pageId) =>
       apiFetch<{ page: Page }>(`/pages/${pageId}/favorite`, {
@@ -54,8 +56,8 @@ export async function favoritePages({
   );
 
   for (const { page } of results) {
-    setPageDetailCache(queryClient, page);
-    updatePageContexts(queryClient, page.id, { isFavorite: page.isFavorite });
+    setPageDetailCache(queryClient, page, read);
+    updatePageContexts(queryClient, page.id, { isFavorite: page.isFavorite }, read);
   }
 }
 
@@ -144,14 +146,22 @@ export async function invalidateRestoredItems({
   ]);
 }
 
-export function setPageDetailCache(queryClient: QueryClient, page: Page) {
+export function setPageDetailCache(
+  queryClient: QueryClient,
+  page: Page,
+  read: ReturnType<SharedClient["capture"]> = sharedClient(queryClient).capture(),
+) {
   const current = queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(page.id));
-  cachePageDetail(queryClient, {
-    ...current,
-    page,
-    accessLevel: current?.accessLevel ?? null,
-    databaseIds: current?.databaseIds ?? [],
-  });
+  cachePageDetail(
+    queryClient,
+    {
+      ...current,
+      page,
+      accessLevel: current?.accessLevel ?? null,
+      databaseIds: current?.databaseIds ?? [],
+    },
+    read,
+  );
 }
 
 function getPageFromCache(queryClient: QueryClient, pageId: string, _workspaceId?: string | null) {

@@ -168,11 +168,11 @@ export function readCachedPage(queryClient: QueryClient, id: string) {
     const reference = navigation?.pages?.find((page) => page.id === id);
     if (reference) return resolvePageReference(queryClient, reference);
   }
-  for (const entities of sharedClient(queryClient).all()) {
-    const page = entities.pages.get(id);
-    if (page)
-      return resolvePageReference(queryClient, { id, cacheId: entities.session.id, context: {} });
-  }
+  const owners = sharedClient(queryClient)
+    .all()
+    .filter((owner) => owner.pages.get(id));
+  if (owners.length === 1)
+    return resolvePageReference(queryClient, { id, cacheId: owners[0]!.session.id, context: {} });
   return null;
 }
 
@@ -180,9 +180,18 @@ export function updatePageContexts(
   queryClient: QueryClient,
   id: string,
   patch: PageReference["context"],
+  read = sharedClient(queryClient).capture(),
 ) {
-  const read = sharedClient(queryClient).capture();
-  for (const owner of sharedClient(queryClient).all()) {
+  if (!sharedClient(queryClient).isCurrent(read))
+    throw new Error("Expired page preference confirmation");
+  const detail = queryClient.getQueryData<PageDetailReference>(["page", id]);
+  const scopeId = read.scopeId ?? detail?.page.cacheId;
+  const owners = scopeId
+    ? [sharedClient(queryClient).get(scopeId)].filter((owner) => !!owner)
+    : sharedClient(queryClient)
+        .all()
+        .filter((owner) => owner.session.scope.viewer.kind === "account");
+  for (const owner of owners) {
     if (!owner.pages.collection.base.has(id)) continue;
     const { isFavorite, isShared, lastVisitedAt, parentPageId, publishedOwnerPreferences } = patch;
     owner.session.ingest([

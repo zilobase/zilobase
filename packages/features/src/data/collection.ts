@@ -32,7 +32,11 @@ export class EntityCollection<T extends { id: string }> {
   private writer!: SyncWriter<T>;
   private disposed = false;
   private readonly listeners = new Map<string, Set<() => void>>();
-  private readonly subscription;
+  private subscription;
+  private inactive = false;
+  private readyPromise: Promise<void> | undefined;
+  private cleanupPromise: Promise<void> | undefined;
+  private used = false;
   private readonly confirmations = new Map<string, Set<() => void>>();
 
   constructor(
@@ -40,6 +44,7 @@ export class EntityCollection<T extends { id: string }> {
     scopeId: string,
     readonly registration: EntityRegistration<T>,
     private readonly publication: DataPublication,
+    private readonly retain: () => () => void = () => () => {},
   ) {
     this.collection = client.collection(
       collectionOptions<T, string, {}>({
@@ -55,7 +60,11 @@ export class EntityCollection<T extends { id: string }> {
         },
       }),
     );
-    this.subscription = this.collection.subscribeChanges((changes) => {
+    this.subscription = this.observe();
+  }
+
+  private observe() {
+    return this.collection.subscribeChanges((changes) => {
       const callbacks = new Set<() => void>();
       for (const change of changes) {
         for (const callback of this.listeners.get(change.key) ?? []) callbacks.add(callback);
@@ -167,6 +176,7 @@ export class EntityCollection<T extends { id: string }> {
       if (JSON.stringify(this.collection.base.get(entity.id)) !== JSON.stringify(entity))
         for (const retire of this.confirmations.get(entity.id) ?? []) retire();
     }
+    this.used = true;
     this.writer.begin({ immediate: true });
     for (const entity of entities) {
       this.writer.write({
@@ -209,6 +219,7 @@ export class EntityCollection<T extends { id: string }> {
       planned.set(id, { fields: {}, removal: { kind, clock } });
       return () => {
         this.assertActive();
+        this.used = true;
         this.writer.begin({ immediate: true });
         const entity = this.collection.base.get(id);
         if (entity) this.writer.write({ type: "delete", value: entity });
@@ -240,19 +251,61 @@ export class EntityCollection<T extends { id: string }> {
   }
 
   get(id: string): T | undefined {
-    this.assertActive();
+    if (this.disposed || this.inactive) return undefined;
     return this.collection.get(id);
   }
 
   subscribe(id: string, callback: () => void): () => void {
     this.assertActive();
+    const release = this.retain();
     const listeners = this.listeners.get(id) ?? new Set();
     listeners.add(callback);
     this.listeners.set(id, listeners);
     return () => {
       listeners.delete(callback);
       if (listeners.size === 0) this.listeners.delete(id);
+      release();
     };
+  }
+
+  get hasSubscribers() {
+    return this.listeners.size > 0;
+  }
+
+  /** Public lifecycle APIs only; cleanup must finish before preload starts. */
+  async ready() {
+    if (this.readyPromise) return this.readyPromise;
+    this.readyPromise = (async () => {
+      if (this.disposed) throw new Error("Shared data collection is disposed");
+      await this.cleanupPromise;
+      if (this.disposed) throw new Error("Shared data collection is disposed");
+      if (!this.inactive) return;
+      await this.collection.preload();
+      if (this.disposed) return;
+      this.inactive = false;
+      this.subscription = this.observe();
+    })();
+    try {
+      await this.readyPromise;
+    } finally {
+      this.readyPromise = undefined;
+    }
+  }
+
+  async releaseInactive() {
+    if (
+      this.disposed ||
+      this.inactive ||
+      !this.used ||
+      this.hasSubscribers ||
+      this.confirmations.size
+    )
+      return;
+    this.inactive = true;
+    this.subscription.unsubscribe();
+    this.cleanupPromise = this.collection.cleanup();
+    await this.cleanupPromise;
+    this.publication.changed([]);
   }
 
   async dispose() {
@@ -261,10 +314,12 @@ export class EntityCollection<T extends { id: string }> {
     for (const callbacks of this.confirmations.values()) for (const retire of callbacks) retire();
     this.confirmations.clear();
     this.subscription.unsubscribe();
+    await this.cleanupPromise;
     await this.collection.cleanup();
   }
 
   private assertActive() {
     if (this.disposed) throw new Error("Shared data collection is disposed");
+    if (this.inactive) throw new Error("Inactive collection requires an authorized recovery read");
   }
 }

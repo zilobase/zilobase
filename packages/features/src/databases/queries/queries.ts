@@ -1,4 +1,4 @@
-import { normalizeAccessReferences } from "../../pages/access-references";
+import { normalizeAccessReferences, revokeAccessReferences } from "../../pages/access-references";
 import { normalizeDatabaseExportReference } from "../export-references";
 import { sharedClient } from "../../data/client";
 import type { DatabaseAccessPayload } from "../access/access-contracts";
@@ -28,11 +28,14 @@ export const databaseAccessQueryOptions = (
 ) =>
   queryOptions({
     queryKey: databaseAccessQueryKey(databaseId),
+    refetchOnWindowFocus: true,
     enabled: Boolean(databaseId),
     queryFn: async ({ client, signal }) => {
       if (!databaseId) return { access: [] };
+      const owner = sharedClient(client).database(databaseId);
+      const read = await sharedClient(client).captureRead(owner?.session.id);
+      const previous = client.getQueryData(databaseAccessQueryKey(databaseId));
       try {
-        const read = sharedClient(client).capture();
         const result = await apiFetch<DatabaseAccessPayload>(`/databases/${databaseId}/access`, {
           method: "GET",
           signal,
@@ -45,6 +48,7 @@ export const databaseAccessQueryOptions = (
           "status" in error &&
           error.status === 403
         ) {
+          revokeAccessReferences(client, "database", previous, read);
           return { access: [] };
         }
         throw error;
@@ -68,11 +72,18 @@ export const databaseContextExportQueryOptions = (
   queryOptions({
     queryKey: databaseContextExportQueryKey(databaseId, dataSourceId),
     queryFn: async ({ client, signal }) => {
-      const read = sharedClient(client).capture();
+      const read = await sharedClient(client).captureRead();
       const query = dataSourceId ? `?dataSourceId=${encodeURIComponent(dataSourceId)}` : "";
       const payload = await apiFetch<DatabaseExportPayload>(
         `/databases/${encodeURIComponent(databaseId)}/export${query}`,
         { method: "GET", signal },
+      );
+      sharedClient(client).revalidateScope(
+        read,
+        client.getQueryData(databaseContextExportQueryKey(databaseId, dataSourceId)),
+        payload.viewerType === "guest" || payload.viewerType === "public"
+          ? payload.viewerType
+          : "account",
       );
       return normalizeDatabaseExportReference(client, read, databaseId, payload);
     },

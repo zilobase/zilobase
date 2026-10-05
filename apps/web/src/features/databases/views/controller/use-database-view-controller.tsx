@@ -183,6 +183,7 @@ export function useDatabaseViewController({
       : null,
   );
   const projectedRecords = useProjectedDatabaseRecords({
+    databaseId,
     dataSourceId: activeDataSourceId,
     sourceVersion: recordWindow.dataSourceVersion,
     records: recordWindow.records,

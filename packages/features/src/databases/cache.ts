@@ -63,6 +63,17 @@ export class DatabaseCollections {
   pageForRecord(hostId: string, rowId: string) {
     return this.records.get(rowId)?.pageId ?? this.pageInterests.get(hostId)?.get(rowId)?.pageId;
   }
+  private readonly delivery = new Map<string, { version: number; seen: Set<number> }>();
+
+  observeDelivery(databaseId: string, version: number) {
+    const state = this.delivery.get(databaseId);
+    if (!state) return false;
+    if (version <= state.version) return true;
+    state.seen.add(version);
+    while (state.seen.delete(state.version + 1)) state.version++;
+    return version <= state.version;
+  }
+
   private readonly authorizedSources = new Map<string, Set<string>>();
 
   constructor(
@@ -109,6 +120,15 @@ export class DatabaseCollections {
       schema: viewCacheEntitySchema,
       clock: (view) => ({ scope: "host", id: view.databaseId!, revision: view.hostVersion! }),
     });
+  }
+
+  releaseInactiveInterests(families: ReadonlySet<string>) {
+    if (this.session.isRetained) return;
+    if (!families.has("property-values") && !families.has("records")) this.pageInterests.clear();
+    if (!families.has("source-links")) {
+      this.authorizedSources.clear();
+      this.delivery.clear();
+    }
   }
 
   private assertWorkspace(workspaceId: string) {
@@ -203,6 +223,9 @@ export class DatabaseCollections {
       inputs,
       membership,
       authorize: () => {
+        const prior = this.delivery.get(host.id);
+        if (!prior || host.version > prior.version)
+          this.delivery.set(host.id, { version: host.version, seen: new Set() });
         if (this.hosts.collection.base.get(host.id)?.version === host.version)
           this.authorizedSources.set(host.id, new Set(dataSources.map((source) => source.id)));
       },

@@ -5,11 +5,11 @@ import type { PagePropertiesPayload } from "./contracts";
 import { propertyCacheEntitySchema } from "../databases/schema/cache-entities";
 import { valueIdentity, valueCacheEntitySchema } from "../databases/schema/cache-entities";
 import { pagePropertyValueEntitySchema } from "../databases/core/entities";
-import type { PageDetailReference } from "./cache";
 
 const payloadSchema = z
   .object({
     workspaceId: z.string().min(1),
+    viewerType: z.enum(["member", "guest"]).optional(),
     properties: z.array(propertyCacheEntitySchema),
     values: z.array(pagePropertyValueEntitySchema),
     databaseIds: z.array(z.string()).optional(),
@@ -46,12 +46,11 @@ export function normalizePageProperties(
     throw new Error("Page property workspace mismatch");
   if (payload.values.some((value) => value.pageId !== pageId))
     throw new Error("Page property value identity mismatch");
-  const detail = client.getQueryData<PageDetailReference>(["page", pageId]);
-  const owner = detail ? sharedClient(client).get(detail.page.cacheId) : undefined;
-  const entities = owner ?? sharedClient(client).resolve(read, payload.workspaceId);
-  // Captured identity is checked even when the detail already has a scoped owner.
-  if (sharedClient(client).capture().key !== read.key)
-    throw new Error("Expired page properties read");
+  const entities = sharedClient(client).resolve(
+    read,
+    payload.workspaceId,
+    payload.viewerType === "guest" ? { kind: "guest", id: pageId } : undefined,
+  );
   if (entities.session.scope.workspaceId !== payload.workspaceId)
     throw new Error("Page property scope mismatch");
   entities.session.ingest([

@@ -106,3 +106,28 @@ export function resolveDatabaseAccessReferences(
     }),
   };
 }
+
+/** A management-read denial retires its ACL facets without widening a view capability. */
+export function revokeAccessReferences(
+  client: QueryClient,
+  kind: "page" | "database",
+  input: unknown,
+  read: ReturnType<SharedClient["capture"]>,
+) {
+  const refs = z
+    .object({ access: z.array(z.object({ cacheId: z.string(), id: z.string() })) })
+    .safeParse(input);
+  if (!refs.success || !sharedClient(client).isCurrent(read)) return;
+  for (const ref of refs.data.access) {
+    const owner = sharedClient(client).get(ref.cacheId);
+    if (!owner) continue;
+    const collection = kind === "page" ? owner.access.pages : owner.access.databases;
+    owner.session.ingest([
+      collection.stageRemoval(ref.id, "access-loss", {
+        scope: "actor",
+        id: `${owner.session.id}:${ref.id}`,
+        revision: read.sequence,
+      }),
+    ]);
+  }
+}

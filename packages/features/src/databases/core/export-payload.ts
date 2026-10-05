@@ -98,6 +98,7 @@ export type DatabaseRowsPagination = {
 };
 
 export type DatabaseExportPayload = {
+  viewerType?: "member" | "guest" | "public";
   activeDataSource: DataSourceRecord | null;
   dataSources: DataSourceRecord[];
   database: DatabaseRecord;

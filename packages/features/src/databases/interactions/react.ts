@@ -76,13 +76,18 @@ export function useProjectedDatabaseNavigation(snapshot: PageNavigationPayload |
 }
 
 export function useProjectedDatabaseRecords(input: {
+  databaseId?: string | null;
   dataSourceId: string | null;
   sourceVersion: number | null;
   records: DatabaseRecordEntity[];
 }) {
   const store = useDatabaseController();
+  const sessionId = useDatabaseSessionId();
   const { queryClient } = useZilobaseFeatures();
   const revision = useSharedDataRevision(queryClient);
+  const owner = input.databaseId
+    ? sharedClient(queryClient).database(input.databaseId, sessionId)
+    : undefined;
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const key = useRef({});
   useEffect(() => {
@@ -102,19 +107,12 @@ export function useProjectedDatabaseRecords(input: {
         ? projectRecordInteractions(input.records, interactions, {
             dataSourceId: input.dataSourceId,
             sourceVersion: input.sourceVersion,
-            resolveRecord: (id) =>
-              sharedClient(queryClient)
-                .all()
-                .find((owner) => owner.databases.records.collection.has(id))
-                ?.databases.resolveRecord(id),
+            resolveRecord: (id) => owner?.databases.resolveRecord(id),
           })
         : input.records
       ).map((record) => {
-        const owners = sharedClient(queryClient)
-          .all()
-          .filter((owner) => owner.databases.records.collection.has(record.id));
-        const canonical = owners[0]?.databases.resolveRecord(record.id);
-        const page = owners[0]?.pages.get(record.pageId);
+        const canonical = owner?.databases.resolveRecord(record.id);
+        const page = owner?.pages.get(record.pageId);
         return page
           ? {
               ...record,
@@ -132,7 +130,15 @@ export function useProjectedDatabaseRecords(input: {
             }
           : record;
       }),
-    [input.records, input.dataSourceId, input.sourceVersion, interactions, queryClient, revision],
+    [
+      input.records,
+      input.dataSourceId,
+      input.sourceVersion,
+      interactions,
+      queryClient,
+      revision,
+      owner,
+    ],
   );
 }
 

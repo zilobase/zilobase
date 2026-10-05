@@ -5,6 +5,7 @@ import {
   canAccessDatabaseRecord,
   getEffectiveDatabaseAccessForRecord,
   getMembership,
+  getWorkspacePrincipalKind,
   getWorkspaceRealtimeAccessExpiration,
   isDatabasePublishedInWorkspace,
 } from "../../access";
@@ -75,7 +76,11 @@ async function readableDatabase(
           : null
         : accessLevel,
     record,
-    user,
+    viewerType:
+      canView && user
+        ? ((await getWorkspacePrincipalKind(record.workspaceId, user.id)) ?? "guest")
+        : "public",
+    user: canView ? user : null,
   };
 }
 
@@ -97,7 +102,7 @@ databaseReadRoutes.get("/:id/bootstrap", resourceWorkspace, async (c) => {
     userId: readable.user?.id,
     viewId: c.req.query("viewId") || undefined,
   });
-  return c.json(bootstrap);
+  return c.json({ ...bootstrap, viewerType: readable.viewerType });
 });
 
 databaseReadRoutes.get("/:id/export", resourceWorkspace, async (c) => {
@@ -113,7 +118,7 @@ databaseReadRoutes.get("/:id/export", resourceWorkspace, async (c) => {
     existingRecord: readable.record,
     userId: readable.user?.id,
   });
-  return c.json(payload);
+  return c.json({ ...payload, viewerType: readable.viewerType });
 });
 
 databaseReadRoutes.get("/:id/data-sources/:dataSourceId/records", resourceWorkspace, async (c) => {

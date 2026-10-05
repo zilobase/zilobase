@@ -60,6 +60,7 @@ type Job = {
   sharedResultsConfirmed?: boolean;
   contentChanges?: { pageIds: string[]; propertyIds: string[] };
   synchronizationFailed?: boolean;
+  scopeExpired?: boolean;
 };
 type Window = { dataSourceId: string; sourceVersion: number | null };
 
@@ -165,7 +166,7 @@ export class DatabaseController {
         input.command.type !== "property.update" &&
         (!sharedMetadataCommand(input) ||
           !sharedClient(this.queryClient)
-            .database(input.databaseId)
+            .database(input.databaseId, this.sessionId)
             ?.databases.hosts.get(input.databaseId))
         ? metadataEffectsForCommand(input, this.bootstrap(input.databaseId))
         : [],
@@ -262,7 +263,7 @@ export class DatabaseController {
     const interaction: DatabaseIntention = {
       id,
       effects: effects.map((effect) => {
-        const owner = sharedClient(this.queryClient).database(input.databaseId);
+        const owner = sharedClient(this.queryClient).database(input.databaseId, this.sessionId);
         if (!owner?.databases.pageForRecord(input.databaseId, effect.rowId)) return effect;
         const {
           values: _values,
@@ -277,7 +278,7 @@ export class DatabaseController {
       status: "queued",
       ...(input.command.type === "database.favorite" &&
       !sharedClient(this.queryClient)
-        .database(input.databaseId)
+        .database(input.databaseId, this.sessionId)
         ?.navigation.databasePreferences.get(input.databaseId)
         ? { favorite: { hostId: input.databaseId, value: input.command.favorite } }
         : {}),
@@ -300,6 +301,9 @@ export class DatabaseController {
       resources.add(`host:${input.command.source.databaseId}`);
     const targets = targetsForCommand(input);
     this.commandState.begin(targets);
+    const releaseCache = sharedClient(this.queryClient)
+      .database(input.databaseId, this.sessionId)
+      ?.session.retain();
     let accept!: (ack: DatabaseCommandAck) => void;
     let fail!: (error: unknown) => void;
     const promise = new Promise<DatabaseCommandAck>((resolve, reject) => {
@@ -316,7 +320,10 @@ export class DatabaseController {
       resolve: accept,
       reject: fail,
       temporaryId,
-      release: (error) => this.commandState.end(targets, error),
+      release: (error) => {
+        releaseCache?.();
+        this.commandState.end(targets, error);
+      },
     });
     this.publish([...this.snapshot, interaction]);
     this.pump();
@@ -372,12 +379,14 @@ export class DatabaseController {
     job.previewEffects = this.remapReferences(job.previewEffects);
     try {
       const owner = sharedClient(this.queryClient);
-      const entities = owner.database(job.input.databaseId);
+      const entities = owner.database(job.input.databaseId, this.sessionId);
+      const authorization = owner.capture();
       const send = async () => {
         const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
           commandId: job.interaction.id,
         });
-        if (ack.event && entities) {
+        job.scopeExpired = !owner.isCurrent(authorization);
+        if (ack.event && entities && !job.scopeExpired) {
           try {
             const definition = entities.databases.isDefinitionEvent(ack.event);
             const content = entities.databases.isRecordContentEvent(ack.event);
@@ -385,22 +394,32 @@ export class DatabaseController {
             const results = entities.databases.isRecordResultEvent(ack.event);
             job.contentChanges = entities.databases.contentChanges(ack.event);
             job.definitionFields = entities.databases.definitionChanges(ack.event);
+            const contiguous = entities.databases.observeDelivery(
+              ack.event.databaseId,
+              ack.event.version,
+            );
             const admitted = entities.session.batch(() => {
               const result = entities.databases.ingestEvent(ack.event);
               if (result === "published")
                 reconcileBootstrapReferences(this.queryClient, ack.event!, entities.session.id);
               return result;
             });
-            job.sharedDefinitionConfirmed = definition && admitted === "published";
-            job.sharedContentConfirmed = content && admitted === "published";
-            job.sharedPresentationConfirmed = presentation && admitted === "published";
-            job.sharedResultsConfirmed = results && admitted === "published";
+            job.sharedDefinitionConfirmed = contiguous && definition && admitted === "published";
+            job.sharedContentConfirmed = contiguous && content && admitted === "published";
+            job.sharedPresentationConfirmed =
+              contiguous && presentation && admitted === "published";
+            job.sharedResultsConfirmed = contiguous && results && admitted === "published";
           } catch (error) {
             job.synchronizationFailed = true;
             this.reportSynchronization(error);
           }
         }
-        if (ack.privateConfirmation && entities && job.input.command.type === "database.favorite") {
+        if (
+          ack.privateConfirmation &&
+          entities &&
+          !job.scopeExpired &&
+          job.input.command.type === "database.favorite"
+        ) {
           const viewer = entities.session.scope.viewer;
           if (viewer.kind === "public" || viewer.actorId !== ack.privateConfirmation.actorId)
             throw new DatabaseCommandUnconfirmedError(
@@ -562,6 +581,7 @@ export class DatabaseController {
       job.interaction = {
         ...job.interaction,
         status: "committed",
+        ...(job.scopeExpired ? { effects: [], metadataEffects: [], favorite: undefined } : {}),
         ...(job.interaction.favorite && ack.privateConfirmation
           ? {
               favorite: { ...job.interaction.favorite, confirmation: ack.privateConfirmation },
@@ -636,13 +656,14 @@ export class DatabaseController {
     }
   }
   private refresh(job: Job, ack?: DatabaseCommandAck) {
+    if (job.scopeExpired) return;
     if (ack && job.sharedContentConfirmed) {
       refreshTitleMembership(this.queryClient, job.contentChanges?.pageIds ?? []);
       refreshPropertyMembership(this.queryClient, job.contentChanges?.propertyIds ?? []);
       return;
     }
     if (ack && job.sharedResultsConfirmed) {
-      const owner = sharedClient(this.queryClient).database(job.input.databaseId);
+      const owner = sharedClient(this.queryClient).database(job.input.databaseId, this.sessionId);
       if (owner) refreshRecordResults(this.queryClient, owner.session.id, ack.sourceVersions);
       return;
     }
@@ -685,6 +706,11 @@ export class DatabaseController {
         if (!this.disposed) this.reportSynchronization(cause);
       });
     for (const host of hosts) {
+      const recoveryReads = this.queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["db", this.sessionId, host] })
+        .filter((query) => query.isActive())
+        .map((query) => ({ query, before: query.state.dataUpdatedAt }));
       invalidateDatabaseQueries(this.queryClient, this.sessionId, host);
       // React Query normally swallows refetch failures. Explicitly surface them,
       // without rejecting the already acknowledged write or dropping its preview.
@@ -693,6 +719,20 @@ export class DatabaseController {
           { queryKey: ["db", this.sessionId, host], type: "active" },
           { throwOnError: true, cancelRefetch: false },
         )
+        .then(() => {
+          if (
+            !this.disposed &&
+            this.synchronizationError &&
+            recoveryReads.length > 0 &&
+            recoveryReads.every(
+              ({ query, before }) =>
+                query.state.status === "success" && query.state.dataUpdatedAt > before,
+            )
+          ) {
+            this.synchronizationError = null;
+            this.publish(this.snapshot);
+          }
+        })
         .catch((cause) => {
           if (!this.disposed) this.reportSynchronization(cause);
         });

@@ -45,9 +45,18 @@ export function databaseBootstrapQueryOptions(
     staleTime: 30_000,
     queryFn: async ({ client, signal }): Promise<DatabaseBootstrapReference> => {
       const owner = sharedClient(client);
-      const read = owner.capture();
+      const read = await owner.captureRead();
       const incoming = databaseBootstrapResponseSchema.parse(
         await apiFetch<DatabaseBootstrapResponse>(databaseBootstrapPath(scope), { signal }),
+      );
+      const previous = client.getQueryData<DatabaseBootstrapReference>(queryKey);
+      owner.revalidateScope(
+        read,
+        previous,
+        incoming.viewerType === "guest" || incoming.viewerType === "public"
+          ? incoming.viewerType
+          : "account",
+        Boolean(previous?.accessLevel && previous.accessLevel !== incoming.database.accessLevel),
       );
       const reference = normalizeDatabaseBootstrap(
         client,

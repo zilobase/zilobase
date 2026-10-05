@@ -22,6 +22,7 @@ test("route-owned page queries survive their component observer detaching", asyn
 
   const routeRequest = queryClient.fetchQuery(options);
   unsubscribe();
+  await new Promise<void>((resolve) => setImmediate(resolve));
   resolveRequest({
     page: {
       id: "page-1",
@@ -52,6 +53,7 @@ test("route-owned navigation queries survive their component observer detaching"
 
   const routeRequest = queryClient.fetchQuery(options);
   unsubscribe();
+  await new Promise<void>((resolve) => setImmediate(resolve));
   resolveRequest({ pages: [] });
 
   assert.deepEqual(await routeRequest, { databases: [], pages: [], placements: [] });

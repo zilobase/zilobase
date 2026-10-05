@@ -10,7 +10,7 @@ validated main-process IPC channels.
 
 ### Database view
 
-A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout and pointer geometry. One session-level database controller owns pending commands across records, schema, configuration, lifecycle and access. Reliable record and metadata intentions are projected over server snapshots before filtering, sorting, grouping and hierarchy; server-derived and access changes remain pending until confirmed.
+A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout and pointer geometry. One session-level database controller owns pending commands across records, schema, configuration, lifecycle and access. Canonical entities and supported optimistic transactions live in the session-owned TanStack DB cache. Query retains authorized result references, server ordering and counts. Temporary record placement intentions remain in command scheduling; server-derived and access changes require confirmed authorization.
 
 ### Database
 
@@ -26,7 +26,7 @@ The client-side rendering aggregate for one database row. It embeds the row page
 
 ### Database mutation journal
 
-The authoritative, version-ordered history of committed database mutation events used for command replay and realtime delivery. Reconnect catch-up through the journal feed is server-only for now; the client converges through poke plus refetch instead. It is separate from the realtime outbox, which tracks delivery work.
+The authoritative, version-ordered history of committed database mutation events used for command replay and realtime delivery. Reconnect catch-up through the journal feed is server-only for now; the client ingests authorized acknowledgement/socket facets and recovers gaps through existing reads. It is separate from the realtime outbox, which tracks delivery work.
 
 ### Database command acknowledgement
 
@@ -37,9 +37,7 @@ confirmation is a synchronization failure, not a rejected database write.
 ### Database projection watermark
 
 The committed version below which a client query must not accept a
-replacement payload. Client-side collection watermarks are deleted; the
-remaining guards are prefer-newest checks on QueryClient bootstrap and window
-data plus poke comparison against the minimum cached version. Different loaded
+replacement payload. The shared cache protects per-field storage/source/host clocks and tracks contiguous delivery; Query bootstrap/window references retain their read revisions. Different loaded
 views can have different versions; one newer view does not prove that the
 other views are fresh.
 

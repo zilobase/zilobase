@@ -198,7 +198,9 @@ export function databaseWindowQueryOptions(
     initialPageParam: { limit: pageSize, snapshot: undefined },
     queryFn: async ({ client, pageParam, signal }): Promise<DatabaseWindowReference> => {
       const owner = sharedClient(client);
-      const read = owner.capture();
+      const entities = owner.database(scope.databaseId, sessionId);
+      if (!entities) throw new Error("Record read requires an authorized database bootstrap");
+      const read = await owner.captureRead(entities.session.id);
       const incoming = await fetchRecordWindow(
         apiFetch,
         scope,
@@ -207,16 +209,15 @@ export function databaseWindowQueryOptions(
         queryKey,
         signal,
       );
-      if (owner.capture().key !== read.key)
+      if (!owner.isCurrent(read) || !owner.get(read.scopeId!))
         throw new Error("Record read belongs to an expired identity");
-      const entities = owner.database(scope.databaseId);
-      if (!entities) throw new Error("Record read requires an authorized database bootstrap");
       return normalizeRecordWindow(
         client,
         scope.databaseId,
         scope.dataSourceId,
         scope.queryHash,
         incoming,
+        read.scopeId,
       );
     },
     getNextPageParam: (last: DatabaseWindowReference): RecordWindowPageParam | undefined =>

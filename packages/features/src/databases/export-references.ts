@@ -88,7 +88,11 @@ export function normalizeDatabaseExportReference(
   const owner = sharedClient(client).resolve(
     read,
     bootstrap.database.workspaceId,
-    read.identity.viewer.kind === "public" ? { kind: "public", id: databaseId } : undefined,
+    input.viewerType === "guest" || input.viewerType === "public"
+      ? { kind: input.viewerType, id: databaseId }
+      : read.identity.viewer.kind === "public"
+        ? { kind: "public", id: databaseId }
+        : undefined,
   );
   const prepared = owner.databases.prepareBootstrap(databaseId, bootstrap);
   const versions = Object.fromEntries(

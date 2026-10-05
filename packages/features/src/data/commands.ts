@@ -16,6 +16,7 @@ export class DataCommands {
   }
 
   runMany<R>(previews: readonly EntityPreview[], confirm: () => Promise<R>): Promise<R> {
+    const releaseSession = this.session.retain();
     const keys = [...new Set(previews.map((preview) => preview.resource))];
     const preceding = Promise.all(keys.map((key) => this.tails.get(key)?.catch(() => undefined)));
     const command = preceding
@@ -84,7 +85,7 @@ export class DataCommands {
         for (const key of keys) if (this.tails.get(key) === command) this.tails.delete(key);
       })
       .catch(() => undefined);
-    return command;
+    return command.finally(releaseSession);
   }
 }
 

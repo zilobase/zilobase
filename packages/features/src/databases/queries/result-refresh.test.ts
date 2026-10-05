@@ -13,6 +13,7 @@ test("record membership recovery reads only affected source windows in the same 
     pages: [
       {
         cacheId,
+        dataSourceId: "source",
         recordIds: [],
         databaseVersion: 1,
         dataSourceVersion: 1,

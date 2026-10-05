@@ -136,6 +136,7 @@ export type DatabaseRecordEntity = z.infer<typeof databaseRecordEntitySchema>;
 
 export const databaseBootstrapResponseSchema = z
   .object({
+    viewerType: z.enum(["member", "guest", "public"]).optional(),
     database: databaseHostEntitySchema,
     dataSources: z.array(dataSourceEntitySchema),
     properties: z.array(databasePropertyEntitySchema),

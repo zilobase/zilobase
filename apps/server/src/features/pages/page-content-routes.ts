@@ -6,6 +6,7 @@ import {
   canAccessDatabaseInWorkspace,
   getWorkspaceRealtimeAccessExpiration,
   hasAccess,
+  getWorkspacePrincipalKind,
 } from "../access";
 import { db } from "../../infrastructure/database";
 import {
@@ -39,7 +40,10 @@ pageContentRoutes.get("/:id/properties", async (c) => {
   if (!authorization.ok) return authorization.response;
   const { user, record } = authorization;
 
-  return c.json(await getPagePropertyPayload(record.id, record.workspaceId, user.id));
+  return c.json({
+    ...(await getPagePropertyPayload(record.id, record.workspaceId, user.id)),
+    viewerType: (await getWorkspacePrincipalKind(record.workspaceId, user.id)) ?? "guest",
+  });
 });
 
 pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {

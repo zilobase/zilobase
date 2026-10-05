@@ -1,4 +1,4 @@
-import { normalizeAccessReferences } from "./access-references";
+import { normalizeAccessReferences, revokeAccessReferences } from "./access-references";
 import { normalizeAiPageReferences } from "./summary-references";
 import { normalizeNavigationReference } from "./navigation-references";
 import { normalizePageProperties } from "./property-cache";
@@ -140,8 +140,11 @@ export const pagesQueryOptions = (
         return { databases: [], pages: [], placements: [] };
       }
 
+      const read = await sharedClient(client).captureRead();
+      const retained = client.getQueryData(
+        pagesQueryKey(workspaceId, options?.deleted ?? "active"),
+      );
       try {
-        const read = sharedClient(client).capture();
         const params = new URLSearchParams({
           fields: "nav",
           workspaceId,
@@ -169,6 +172,7 @@ export const pagesQueryOptions = (
           "status" in error &&
           (error.status === 401 || error.status === 403)
         ) {
+          if (sharedClient(client).isCurrent(read)) sharedClient(client).revokeReferences(retained);
           return { databases: [], pages: [], placements: [] };
         }
 
@@ -190,7 +194,7 @@ export const zilobaseAiPagesQueryOptions = (
       }
 
       try {
-        const read = sharedClient(client).capture();
+        const read = await sharedClient(client).captureRead();
         const params = new URLSearchParams({
           fields: "summary",
           zilobaseai: "instruction,skill",
@@ -230,8 +234,9 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
         throw new Error("pageId is required");
       }
 
+      const read = await sharedClient(client).captureRead();
+      const retained = client.getQueryData<PageDetailReference>(pageQueryKey(pageId));
       try {
-        const read = sharedClient(client).capture();
         const result = await apiFetch<{
           accessLevel?: AccessLevel;
           databaseIds?: string[];
@@ -239,6 +244,14 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
           viewerType?: PageDetail["viewerType"];
         }>(`/pages/${pageId}`, { method: "GET" });
 
+        sharedClient(client).revalidateScope(
+          read,
+          retained,
+          result.viewerType === "guest" || result.viewerType === "public"
+            ? result.viewerType
+            : "account",
+          Boolean(retained?.accessLevel && retained.accessLevel !== result.accessLevel),
+        );
         return {
           accessLevel: result.accessLevel ?? null,
           databaseIds: result.databaseIds ?? [],
@@ -282,6 +295,7 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
           "status" in error &&
           (error.status === 401 || error.status === 403 || error.status === 404)
         ) {
+          if (sharedClient(client).isCurrent(read)) sharedClient(client).revokeReferences(retained);
           return null;
         }
 
@@ -301,14 +315,17 @@ export async function ensurePageDetail(
 export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | undefined) =>
   queryOptions({
     queryKey: pageAccessQueryKey(pageId),
+    refetchOnWindowFocus: true,
     enabled: Boolean(pageId),
     queryFn: async ({ client, signal }) => {
       if (!pageId) {
         return { access: [] };
       }
 
+      const detail = client.getQueryData<PageDetailReference>(pageQueryKey(pageId));
+      const read = await sharedClient(client).captureRead(detail?.page.cacheId);
+      const previous = client.getQueryData(pageAccessQueryKey(pageId));
       try {
-        const read = sharedClient(client).capture();
         const result = await apiFetch<PageAccessPayload>(`/pages/${pageId}/access`, {
           method: "GET",
           signal,
@@ -321,6 +338,7 @@ export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | nu
           "status" in error &&
           error.status === 403
         ) {
+          revokeAccessReferences(client, "page", previous, read);
           return { access: [] };
         }
 
@@ -446,11 +464,17 @@ export const pagePropertiesQueryOptions = (
         throw new Error("pageId is required");
       }
 
-      const read = sharedClient(client).capture();
+      const previous = client.getQueryData<PageDetailReference>(pageQueryKey(pageId));
+      const read = await sharedClient(client).captureRead(previous?.page.cacheId);
       const payload = await apiFetch<PagePropertiesPayload>(`/pages/${pageId}/properties`, {
         method: "GET",
         signal,
       });
+      sharedClient(client).revalidateScope(
+        read,
+        previous,
+        "viewerType" in payload && payload.viewerType === "guest" ? "guest" : "account",
+      );
       return normalizePageProperties(client, read, pageId, payload);
     },
   });

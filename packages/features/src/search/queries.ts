@@ -27,7 +27,7 @@ export const appSearchQueryOptions = (
         return [];
       }
 
-      const read = sharedClient(client).capture();
+      const read = await sharedClient(client).captureRead();
       const params = new URLSearchParams({
         workspaceId,
         q: query,

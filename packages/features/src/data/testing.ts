@@ -12,7 +12,7 @@ export class TestQueryClient extends QueryClient {
     }));
   }
   override clear() {
-    for (const owner of sharedClient(this).all()) void owner.session.dispose();
+    sharedClient(this).clear();
     super.clear();
   }
 }

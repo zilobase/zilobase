@@ -124,6 +124,7 @@ export type PagePropertyValue = {
 };
 
 export type PagePropertiesPayload = {
+  viewerType?: "member" | "guest";
   workspaceId: string;
   databaseIds?: string[];
   databaseVersions?: Record<string, number>;
