@@ -10,7 +10,7 @@
 
 The page route composition mounts browse, visit, hierarchy, sharing, content and lifecycle routes in order. Web page composition selects authenticated, guest or public presentation and embeds the editor. [Page normalization](../../../packages/features/src/pages/cache.ts) stores shared metadata in session collections and returns Query-owned page references plus authorized context. [React hooks](../../../packages/features/src/pages/query-hooks.ts) resolve current metadata for panes, headers, breadcrumbs and sidebar labels; database rows resolve the same page identity.
 
-For authenticated visits, the [route guard](../../../apps/web/src/app/routing/guards.ts) hydrates visited page data from the [read cache](../../../apps/web/src/features/pages/cache/page-read-cache.ts) before rendering. Successful server queries refresh bounded snapshots for meetings, layout, user settings and database views. Their reads are independent of the page collaboration ticket; the account- and deployment-scoped store is pruned with the Yjs page cache.
+For authenticated visits, the [route guard](../../../apps/web/src/app/routing/guards.ts) resolves already-active scoped references or awaits an authorized read before rendering. A cold reload does not restore page metadata or authorization from IndexedDB. The [read cache](../../../apps/web/src/features/pages/cache/page-read-cache.ts) retains bounded unrelated snapshots for meetings, layout and user settings; covered page/navigation/database/property/access/search snapshots are removed. Its account- and deployment-scoped store is pruned with the independent Yjs page cache.
 
 The [page pane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) renders authorized page metadata and its last HTTP content while a cold Yjs document loads, then binds the collaborative document when ready. Page-body and comment edits use the bounded online Yjs bridge. Metadata PATCH writes are sparse and merge JSON fields atomically on the server. Their acknowledgements update collections without full detail/navigation/bootstrap reads. [Command coordination](../../../packages/features/src/data/commands.ts) serializes overlapping page previews using supported library transactions; authoritative changes retire the preview while HTTP confirmation continues. Database and page metadata commands use their own online HTTP paths and permissions without waiting for the page socket; offline cached data is read only.
 
@@ -52,8 +52,8 @@ Page width and embedded-item placement are viewer preferences; obsolete page-met
 
 [Page-property reads](../../../packages/features/src/pages/property-cache.ts)
 carry an authorized workspace ID and ordered definition IDs. Panels resolve
-current definitions through the session collection while stored values remain
-unmigrated. No covered page-property browser snapshot is hydrated.
+current definitions and stored values through session collections. No covered
+page-property browser snapshot is hydrated.
 
 Page-property presence targets carry both host and source IDs. Property edits submit
 to the database controller using that explicit scope; membership properties are

@@ -22,10 +22,10 @@ empty `requiresReset` hint with no source identity or entity payload. Ticket
 refresh reevaluates source grants. This changes the signed ticket contract and
 requires coordinated server/runtime rollout; no new room or provider is added.
 The installed collection normalizer requires authorized source reads before
-admitting entities. Page labels now resolve these ingested records; result recovery
-reads remain until the database presentation migration.
+admitting entities. All database layouts and page labels resolve ingested records;
+targeted recovery reads preserve server-owned result membership and ordering.
 
-The [mutation history service](../../../apps/server/src/features/databases/history/service.ts) remains server-only for now and is write-only from the client's perspective: it serves contiguous events after a client version in pages of at most 500 for future cleanup, but the poke-and-refetch client never calls `GET /mutations`. A missing version, malformed event, future client version, expired history, or journal reset marker would return `resetRequired` without applying a partial sequence. Cleanup retains all events from the last seven days and at least the newest 10,000 events per database, and removes expired command receipts. Future cleanup may remove the dead client catch-up path entirely.
+The [mutation history service](../../../apps/server/src/features/databases/history/service.ts) remains server-only: it serves contiguous events after a client version in pages of at most 500, but the installed client never calls `GET /mutations`. A missing version, malformed event, future client version, expired history, or journal reset marker returns `resetRequired` without applying a partial sequence. Cleanup retains all events from the last seven days and at least the newest 10,000 events per database, and removes expired command receipts. Client recovery uses existing authorized bootstrap, window, property and export reads.
 
 Every database websocket server frame uses protocol version `2`, including
 `realtime.ready`, `presence.update`, `presence.clear`, and

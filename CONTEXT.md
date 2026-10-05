@@ -22,7 +22,11 @@ The page-backed Database that owns views and may display one or more linked data
 
 ### Database record
 
-The client-side rendering aggregate for one database row. It embeds the row page metadata and values keyed by property ID while PostgreSQL remains normalized.
+The rendering aggregate for one database row. HTTP responses carry page metadata and values; normalization retains canonical row/page/value identities and Query-owned ordered IDs. Mounted aggregates resolve current shared fields at one coherent publication revision while PostgreSQL remains normalized.
+
+### Shared client cache
+
+The deployment, account/session, workspace and capability owner of canonical TanStack DB collections. Authorized reads and database confirmations validate and ingest partial entity facets; Query owns result membership, counts, ordering and HTTP orchestration. Library transactions own previews. Yjs bodies and historical action receipts retain separate ownership.
 
 ### Database mutation journal
 

@@ -17,8 +17,10 @@ IndexedDB. A cached document renders immediately. While the browser appears
 online, the page body can be edited during a bounded connection startup window;
 the changes are persisted locally and merged into the same document when the
 provider connects. A confirmed disconnect, failed authorization, expired startup
-window or offline state stops editing. Offline reloads may view a cached page
-read only. This is a connection bridge, not an offline editing mode.
+window or offline state stops editing. An already-open authorized page can show
+its cached body read only. Under [ADR 0014](0014-shared-client-entity-cache.md),
+cold reloads require an authorized metadata read and cannot restore page access
+from browser snapshots. This is a connection bridge, not an offline editing mode.
 
 Cold pages request an authorized Yjs state and ticket. Warm pages request only
 a fresh ticket. Navigation intent can prefetch cold state without opening a

@@ -15,7 +15,7 @@ production state or its applied Durable Object migration history.
 | Mounted startup                        | 19 primary-browser API requests; 6,796 encoded response-body bytes; 3,402 ms through network-idle                                     |
 | Existing Kanban move / checkbox writes | Three command POSTs, 1,829 response-body bytes; surrounding interaction phase includes 53 API requests and 25,007 response-body bytes |
 | Browser heap                           | 96,428,320 bytes at startup; 155,425,640 after view switches/reloads; no forced GC                                                    |
-| Title edit / retained mount-cycle heap | Not measured yet; these remain acceptance work                                                                                        |
+| Title edit / retained mount-cycle heap | Not measured in the baseline; completed separately in Pass 11                                                                         |
 
 The [one-sample baseline](cache-baseline.json) was captured while Pass 2 remained
 uninstalled, using the unchanged signed-in application fixture with optional
@@ -454,3 +454,98 @@ UI lint; architecture; three mounted collection-publication proofs; three mounte
 database controller proofs; Docker isolated controller/SQL tests; the existing
 non-deployment database acceptance suite; the expanded Docker application fixture;
 Cloudflare build and 14 Worker tests. Fixtures removed their disposable services.
+
+### Pass 12 — final audit and release handoff
+
+The consumer/writer/persistence inventory is cut over. Public `data` and
+`data/react` entrypoints own sessions, validated publication and library command
+transactions; feature schemas/actions remain beside their domains. Canonical
+identity is unchanged: page/host/source/property-definition/binding/record/view/
+placement storage IDs, host/source link pairs, and page/property value pairs
+retaining persisted value IDs. Access and private preferences remain scoped.
+Query stores references and contextual results, not another confirmed entity map.
+The intention controller retains delivery and temporary placement state, not
+bootstrap/navigation DTO ownership. Yjs documents and historical snapshots are
+preserved. The obsolete development navigation WebSocket proxy is removed.
+
+The ownership audit checked real consumer imports, Query writes, record/bootstrap
+normalizers, controller fields, browser persistence and server/runtime navigation
+paths. Query writes now update result membership/context or unrelated feature
+state. The inert navigation outbox schema and Cloudflare deployed class boundary
+remain intentionally present. Architecture guides and ADR supersession pointers
+now describe the installed owners rather than unfinished migrations.
+
+| Refresh trigger                                                 | Authorized read boundary                                                    |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Ordinary known title, value, definition or presentation field   | Merge acknowledgement/socket entities; no blanket metadata reads            |
+| Title/value affecting filters, sorts or formula dependencies    | Affected source windows and matching complete-context results               |
+| Row insertion/removal/transfer, order or replacement rows       | Affected server windows; keep server hashes/counts/continuation authority   |
+| Filter/sort configuration or saved-query mismatch               | Confirmed bootstrap/configuration plus the new server query window          |
+| Unknown source/record, structural membership or source access   | Authorized bootstrap/window/property reads before entity admission          |
+| Delivery gap, reset, malformed event, reconnect                 | Existing host bootstrap/window and matching property/context recovery reads |
+| Opaque AI/tool receipt or unversioned database navigation delta | Existing authorized feature read; never invent entity ordering              |
+| Other-client page/hierarchy/access changes                      | Explicit focus, reopen or authorized read; no navigation push channel       |
+| Logout, capability replacement, known denial/access loss        | Dispose affected scope, expire captured reads and remove scoped references  |
+
+Local verification completes only after actual Docker fixtures, mounted browser
+proofs and final root/runtime checks pass. Release-image upgrade and production
+Cloudflare dry-run checks are separate operator release gates; they require
+release images/configuration and were not executed as part of this request.
+One-sample measurements show fewer surrounding requests/bytes, but establish no
+production latency or retained-memory improvement. Public lifecycle fixtures
+prove inactive collection cleanup; the application keeps its existing Query
+retention lifetime.
+
+Release ordering for a separately authorized deployment:
+
+1. Back up PostgreSQL and apply the core forward migration
+   [0107 entity confirmation stamps](../../apps/server/drizzle/0107_entity_confirmation_stamps.sql)
+   before the new application serves writes. It atomically strengthens existing
+   timestamps across five entity tables; it introduces no revision tables and
+   changes no identity schema.
+2. Release the matching server and Node/Cloudflare runtime contracts: mutation
+   source clocks in existing changes/journal JSON, sparse configuration commands,
+   authorized viewer classifications and current search metadata. Database
+   tickets carry authorized source IDs; update socket delivery guards and reissue
+   old tickets/reconnect clients. Client/server compatibility shims are excluded.
+3. Release the shared-cache client after these contracts are available. Other
+   clients' non-database page/hierarchy/access changes refresh on focus/reopen;
+   database collaborators and Yjs retain their existing sockets. Saving ends at
+   validated acknowledgement; synchronization recovery has separate status.
+4. Before any future Cloudflare declaration cleanup, reconcile **actual deployed
+   migration history**, including the applied forward rollback that restored
+   `NavigationNotificationRoom` and deleted `ApplicationDataRoom`. The current
+   Git migration list alone does not prove applied history. Preserve class
+   exports/bindings/migration declarations until a separately reviewed deployment
+   cleanup defines a forward migration against that history. Do not delete or
+   rewrite historical tags to match the client retirement.
+
+No production migration, deployment, reset, push or identity-schema change was
+executed. Disposable local fixtures cleaned their own containers. The adjacent
+Cloudflare repository contains only retirement assertions/documentation; class
+exports and migration declarations are unchanged. Identity remains untouched.
+
+Final checks passed on the completed implementation:
+
+- `verify:core`: formatting, tokens, tooling/community boundaries, all workspace
+  typechecks, package/web suites, production build and server quality checks.
+  Feature suite: 305 passing. Server coverage suite: 1,017 passing, 13 existing
+  skips. Query regression: 238 passing. Web bundle: 0.54 MB initial; 29 route
+  chunks within the configured budget.
+- UI `lint`, architecture links and published-export boundaries; final route
+  fixtures explicitly verify member/guest/public classifications and ensure a
+  signed-in public fallback never supplies private source authorization.
+- Docker isolated controller/SQL and signed-in application fixtures, existing
+  database acceptance, mounted controller/browser suites and public collection
+  publication proofs passed in Pass 11. The final pass changes route-test mocks,
+  removes an unused development proxy and completes documentation.
+- Cloudflare full suite: 67 passing unit tests, one existing skip, 14 passing
+  Worker-pool tests; Cloudflare build passes. Class exports and migration
+  declarations match the inspected baseline. Identity HEAD and files are unchanged.
+- Core runtime adapter: 119 passing tests and 26 passing Worker-pool tests;
+  unused navigation test mocks are removed along with the retired flow.
+
+All twelve requested subjects are separate commits on `codex/shared-client-cache`.
+No unsupported TanStack internals or replacement synchronization infrastructure
+were required by a proof gate. Production and release-image upgrade verification
+remain release responsibilities, outside this local implementation acceptance.

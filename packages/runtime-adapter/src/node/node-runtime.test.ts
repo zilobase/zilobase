@@ -49,10 +49,6 @@ const mocks = vi.hoisted(() => {
     },
     meetingAudio: { destroy: vi.fn(async () => undefined) },
     migrate: vi.fn(async () => undefined),
-    navigationRealtime: {
-      destroy: vi.fn(async () => undefined),
-      publish: vi.fn(async () => undefined),
-    },
     publishBackground: vi.fn(async () => undefined),
     realtimeBus,
     runWithDbEnv: vi.fn(async (_env: unknown, operation: () => unknown) => operation()),

@@ -133,7 +133,7 @@ and logs must never contain property values.
 | Frequent `WINDOW_STALE` responses                      | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration.                                                                                                                                                                                                                                                        |
 | Repeated invalidations without settling                | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. A refetch loop or rapidly changing view configuration can also keep the version moving.                                                                                                                                                                                         |
 | `ROW_MOVE_CONFLICT`                                    | An anchor was deleted, foreign, reversed, or changed concurrently. Reload the source ordering and retry using current visible neighbors.                                                                                                                                                                                                                                                                             |
-| A v2 event has `requiresReset`                         | The client ignores the frame payload and refetches on the version bump. Do not attempt to infer a partial entity patch.                                                                                                                                                                                                                                                                                              |
+| A v2 event has `requiresReset`                         | The client ignores the frame payload and forces existing authorized recovery reads, including when its version equals the cached host. Do not infer a partial entity patch or admit unknown sources.                                                                                                                                                                                                                 |
 | Cloud acknowledgements succeed but sockets are quiet   | Check Queue backlog and retry state, the background Worker binding, then the database Durable Object. The API Worker must not invoke the Durable Object directly.                                                                                                                                                                                                                                                    |
 | Outbox backlog grows while workers are healthy         | Inspect retry/discard metrics and journal-event availability. Missing canonical history is a recovery fault, not a reason to synthesize a payload.                                                                                                                                                                                                                                                                   |
 
@@ -181,6 +181,16 @@ on success or failure. Screenshots go to ignored `.dev/database-app-results/`.
 A second independent browser verifies the committed drag arrives through a real
 realtime socket without reload and catches up after reconnect. The test also
 rejects background lane failures.
+
+The application fixture additionally mounts all seven layouts, edits shared
+title/definition/value consumers, rejects a write, verifies Yjs collaboration,
+and checks focus recovery without navigation sockets. Ordinary non-membership
+edits assert one write and no blanket metadata reads. Set
+`ZILOBASE_APP_MEASUREMENTS=/private/tmp/cache-measurements.json` to capture
+sanitized request sizes, timing and heap/cache counts through repeated mount
+cycles. See [shared-cache verification and release ordering](../data/shared-client-cache.md#pass-12--final-audit-and-release-handoff)
+for the timestamp migration, socket contract update and separate Cloudflare
+migration-history reconciliation. No production operation is part of the fixtures.
 
 The full matrix additionally needs explicit previous/current self-host images
 and deployable Cloudflare production configuration:

@@ -164,7 +164,6 @@ export default defineConfig(async () => ({
       "/ready": createBackendProxy(),
       "/.well-known": createBackendProxy(),
       "/collaboration": createBackendProxy({ ws: true }),
-      "/navigation-realtime": createBackendProxy({ ws: true }),
       "/api": createBackendProxy(),
       ...Object.fromEntries(
         adapterWebSocketPaths.map((path) => [path, createBackendProxy({ ws: true })]),

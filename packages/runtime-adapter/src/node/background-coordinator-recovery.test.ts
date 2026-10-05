@@ -20,7 +20,6 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   databaseAutomationEventWindow: {},
   databaseRealtimeOutbox: {},
   inProductNotificationOutbox: {},
-  navigationRealtimeOutbox: {},
   db: {
     select: () => ({
       from: () =>
@@ -34,7 +33,6 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   drainDatabaseAutomationRuns: vi.fn(),
   drainDatabaseRealtimeOutbox: mocks.realtime,
   drainInProductNotificationOutbox: vi.fn(),
-  drainNavigationRealtimeOutbox: vi.fn(),
   runAiJobBatch: vi.fn(),
   runDueBackgroundMaintenance: mocks.maintenance,
   runWithDbEnv: mocks.database,

@@ -34,8 +34,8 @@ runtime bus.
 
 Database clients validate socket changes and ingest authorized entity facets into
 the [shared collections](../../packages/features/src/databases/cache.ts). Database
-result membership still uses the existing host recovery reads during the staged
-consumer migration. Unknown sources and reset hints require authorized reads.
+result membership uses targeted existing host/source recovery reads. Unknown
+sources and reset hints require authorized reads.
 Presence remains separate. There is no navigation socket or server producer;
 page/hierarchy/access reads refresh on focus and reopen. Cloudflare retains its
 existing navigation class export and migration declarations as an inert boundary.

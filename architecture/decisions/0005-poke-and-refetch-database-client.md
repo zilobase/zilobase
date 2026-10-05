@@ -1,10 +1,13 @@
 # Poke-and-refetch database client
 
-Status: accepted and implemented. Supersedes [0004-responsive-database-client](0004-responsive-database-client.md).
+Status: superseded by [0014-shared-client-entity-cache](0014-shared-client-entity-cache.md).
+This historical decision superseded [0004-responsive-database-client](0004-responsive-database-client.md).
 
 Record interaction ownership and acknowledgement clocks are superseded by
-[0011-shared-record-interactions](0011-shared-record-interactions.md). QueryClient
-still owns server snapshots; record gestures now share a session-owned sparse projection.
+[0011-shared-record-interactions](0011-shared-record-interactions.md). The installed
+client now uses public custom collections for shared entities and supported
+transactions; Query retains authorized result references and targeted recovery.
+The remaining sections record the earlier implementation and its rationale.
 
 ## Context
 

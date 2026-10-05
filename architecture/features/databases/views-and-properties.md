@@ -87,8 +87,9 @@ serializes conflicting source writes, retains unconfirmed intentions for receipt
 retry, and removes only rejected intentions. It reconciles each mounted window
 against committed source versions, including placeholders and linked hosts;
 stale inactive cache windows are evicted before an intention is retired.
-Projection precedes filtering, sorting, grouping and hierarchy. QueryClient
-contains only server snapshots, never speculative rows or versions.
+Temporary placement and library field previews precede local grouping and
+hierarchy. Query owns server result references, counts, ordering and query hashes;
+speculative fields resolve from collections rather than Query snapshots.
 
 The [manual placement provider](../../../apps/web/src/features/databases/views/state/manual-record-placement.tsx)
 owns one clear-sort policy and [confirmation dialog](../../../apps/web/src/features/databases/views/components/database-manual-placement-dialog.tsx)

@@ -1,6 +1,6 @@
 # Shared client entity cache
 
-Status: accepted; page metadata consumers are migrated. Remaining entity migrations are in progress.
+Status: accepted and implemented; all entity families and covered consumers are migrated.
 
 ## Context
 
@@ -63,4 +63,6 @@ production data resets and deployment remain outside this task.
 
 The [ownership inventory and acceptance contract](../../docs/data/shared-client-cache.md)
 records migration destinations, proof gates and the local baseline. Existing
-[database ownership](../features/databases/README.md) remains active until cutover.
+[database ownership](../features/databases/README.md) describes the installed collections,
+result references and command coordinator. Local Docker and mounted-browser
+acceptance is recorded in the ownership inventory; deployment is a separate handoff.
