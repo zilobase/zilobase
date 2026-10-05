@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
+    "@tanstack/db": "0.11.3",
+    "@tanstack/react-db": "0.5.3",
     "@zilobase/runtime-ports": "file:../runtime-ports",
     "zod": "^4.4.3"
   },
@@ -25,6 +27,14 @@
     "react": "^19.1.0"
   },
   "exports": {
+    "./data": {
+      "types": "./src/data/index.ts",
+      "default": "./src/data/index.ts"
+    },
+    "./data/react": {
+      "types": "./src/data/react.ts",
+      "default": "./src/data/react.ts"
+    },
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"

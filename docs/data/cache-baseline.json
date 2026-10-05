@@ -1,0 +1,209 @@
+{
+  "sampleCount": 1,
+  "fixture": "scripts/databases/test-app-browser.mjs",
+  "runtime": "Colima aarch64; Node 26.8.2; Chrome headless; development Vite; disposable PostgreSQL/Valkey/RustFS",
+  "startupMs": 3401.9963750000006,
+  "heap": [
+    {
+      "phase": "startup",
+      "metrics": [
+        {
+          "name": "JSHeapUsedSize",
+          "value": 96428320
+        }
+      ]
+    },
+    {
+      "phase": "after-view-switches-and-reloads",
+      "metrics": [
+        {
+          "name": "JSHeapUsedSize",
+          "value": 155425640
+        }
+      ]
+    }
+  ],
+  "requests": {
+    "startup GET /api/auth/workspace/list": {
+      "count": 1,
+      "responseBodyBytes": 174,
+      "requestBodyBytes": 0
+    },
+    "startup GET /session": {
+      "count": 1,
+      "responseBodyBytes": 416,
+      "requestBodyBytes": 0
+    },
+    "startup POST /workspaces/:id/navigation-realtime-ticket": {
+      "count": 1,
+      "responseBodyBytes": 480,
+      "requestBodyBytes": 2
+    },
+    "startup GET /databases/:id/bootstrap": {
+      "count": 2,
+      "responseBodyBytes": 1208,
+      "requestBodyBytes": 0
+    },
+    "startup GET /.well-known/zilobase": {
+      "count": 1,
+      "responseBodyBytes": 307,
+      "requestBodyBytes": 0
+    },
+    "startup GET /workspaces/:id/notifications": {
+      "count": 1,
+      "responseBodyBytes": 72,
+      "requestBodyBytes": 0
+    },
+    "startup GET /user-settings": {
+      "count": 1,
+      "responseBodyBytes": 439,
+      "requestBodyBytes": 0
+    },
+    "startup GET /pages": {
+      "count": 1,
+      "responseBodyBytes": 1069,
+      "requestBodyBytes": 0
+    },
+    "startup GET /api/ai/agents": {
+      "count": 1,
+      "responseBodyBytes": 109,
+      "requestBodyBytes": 0
+    },
+    "startup POST /pages/item-visits": {
+      "count": 1,
+      "responseBodyBytes": 137,
+      "requestBodyBytes": 124
+    },
+    "startup GET /workspaces/:id/teamspaces": {
+      "count": 1,
+      "responseBodyBytes": 414,
+      "requestBodyBytes": 0
+    },
+    "startup GET /workspaces/:id/teamspace-settings": {
+      "count": 1,
+      "responseBodyBytes": 91,
+      "requestBodyBytes": 0
+    },
+    "startup GET /workspaces/:id/calendar/sources": {
+      "count": 2,
+      "responseBodyBytes": 162,
+      "requestBodyBytes": 0
+    },
+    "startup GET /workspaces/:id/calendar/preferences": {
+      "count": 1,
+      "responseBodyBytes": 310,
+      "requestBodyBytes": 0
+    },
+    "startup GET /databases/:id/automation-capability": {
+      "count": 1,
+      "responseBodyBytes": 53,
+      "requestBodyBytes": 0
+    },
+    "startup POST /databases/:id/realtime-ticket": {
+      "count": 1,
+      "responseBodyBytes": 642,
+      "requestBodyBytes": 2
+    },
+    "startup GET /databases/:id/data-sources/:id/records": {
+      "count": 1,
+      "responseBodyBytes": 713,
+      "requestBodyBytes": 0
+    },
+    "interactions POST /databases/:id/data-sources/:id/commands": {
+      "count": 3,
+      "responseBodyBytes": 1829,
+      "requestBodyBytes": 739
+    },
+    "interactions GET /databases/:id/bootstrap": {
+      "count": 10,
+      "responseBodyBytes": 6042,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /databases/:id/data-sources/:id/records": {
+      "count": 5,
+      "responseBodyBytes": 4131,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /pages": {
+      "count": 5,
+      "responseBodyBytes": 5384,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /api/auth/workspace/list": {
+      "count": 2,
+      "responseBodyBytes": 348,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /session": {
+      "count": 2,
+      "responseBodyBytes": 844,
+      "requestBodyBytes": 0
+    },
+    "interactions POST /workspaces/:id/navigation-realtime-ticket": {
+      "count": 2,
+      "responseBodyBytes": 960,
+      "requestBodyBytes": 4
+    },
+    "interactions GET /.well-known/zilobase": {
+      "count": 2,
+      "responseBodyBytes": 614,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /workspaces/:id/notifications": {
+      "count": 2,
+      "responseBodyBytes": 144,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /api/ai/agents": {
+      "count": 2,
+      "responseBodyBytes": 218,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /user-settings": {
+      "count": 2,
+      "responseBodyBytes": 878,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /workspaces/:id/calendar/sources": {
+      "count": 4,
+      "responseBodyBytes": 324,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /workspaces/:id/teamspaces": {
+      "count": 2,
+      "responseBodyBytes": 828,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /workspaces/:id/teamspace-settings": {
+      "count": 2,
+      "responseBodyBytes": 182,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /workspaces/:id/calendar/preferences": {
+      "count": 2,
+      "responseBodyBytes": 620,
+      "requestBodyBytes": 0
+    },
+    "interactions GET /databases/:id/automation-capability": {
+      "count": 2,
+      "responseBodyBytes": 106,
+      "requestBodyBytes": 0
+    },
+    "interactions POST /pages/item-visits": {
+      "count": 2,
+      "responseBodyBytes": 272,
+      "requestBodyBytes": 248
+    },
+    "interactions POST /databases/:id/realtime-ticket": {
+      "count": 2,
+      "responseBodyBytes": 1283,
+      "requestBodyBytes": 4
+    }
+  },
+  "limitations": [
+    "One sample; no median or production latency claim",
+    "Heap is JSHeapUsedSize without forced GC; reload/view-switch exercise, not retained mount-cycle measurement",
+    "Primary browser API requests only; setup, peer browser, static assets and websocket bytes excluded",
+    "Kanban move and checkbox value writes; title writes not measured"
+  ]
+}

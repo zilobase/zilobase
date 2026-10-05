@@ -5,11 +5,15 @@ import { promisify } from "node:util";
 import { setTimeout } from "node:timers/promises";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { chromium, expect } from "@playwright/test";
 import { CookieJar, createApiClient } from "../selfhost/api-conformance.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
+const measurementFile = process.env.ZILOBASE_APP_MEASUREMENTS;
+const measurements = { sampleCount: 1, requests: [], startupMs: null, heap: [] };
+const measurementsPending = [];
+let measurementPhase = "startup";
 const exec = promisify(execFile);
 const runId = randomUUID();
 const containers = [];
@@ -200,6 +204,29 @@ try {
     [...jar.cookies].map(([name, value]) => ({ name, value, url: webOrigin })),
   );
   page = await context.newPage();
+  const devtools = measurementFile ? await context.newCDPSession(page) : null;
+  if (devtools) {
+    await devtools.send("Performance.enable");
+    page.on("requestfinished", (request) => {
+      const url = new URL(request.url());
+      if (url.port !== "1497" && !url.pathname.startsWith("/api/")) return;
+      const phase = measurementPhase;
+      measurementsPending.push(
+        request
+          .sizes()
+          .then((sizes) =>
+            measurements.requests.push({
+              phase,
+              method: request.method(),
+              path: url.pathname,
+              query: url.search,
+              ...sizes,
+            }),
+          )
+          .catch(() => {}),
+      );
+    });
+  }
   page.setDefaultTimeout(20000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -207,8 +234,20 @@ try {
     if (message.type() === "error" && message.text().includes("Cannot update a component"))
       errors.push(message.text());
   });
+  const startupStart = performance.now();
   await page.goto(`${webOrigin}/d/${host}`);
   await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
+  if (devtools) {
+    await page.waitForLoadState("networkidle");
+    measurements.startupMs = performance.now() - startupStart;
+    measurements.heap.push({
+      phase: "startup",
+      metrics: (await devtools.send("Performance.getMetrics")).metrics.filter(
+        ({ name }) => name === "JSHeapUsedSize",
+      ),
+    });
+    measurementPhase = "interactions";
+  }
   console.info("Signed-in application loaded real PostgreSQL records.");
   await page.getByText("Board", { exact: true }).filter({ visible: true }).first().click();
   await expect(page.getByText("Alpha browser row", { exact: true }).first()).toBeVisible();
@@ -357,6 +396,16 @@ try {
     !serverLog.includes('"event":"background.node_lane_operation"'),
     "Background lane operations must not fail",
   );
+  if (devtools) {
+    measurements.heap.push({
+      phase: "after-view-switches-and-reloads",
+      metrics: (await devtools.send("Performance.getMetrics")).metrics.filter(
+        ({ name }) => name === "JSHeapUsedSize",
+      ),
+    });
+    await Promise.all(measurementsPending);
+    await writeFile(measurementFile, JSON.stringify(measurements, null, 2));
+  }
   console.info("Passed signed-in application browser verification.");
 } catch (error) {
   if (page) {

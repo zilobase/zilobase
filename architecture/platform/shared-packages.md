@@ -29,5 +29,31 @@ See [page-context and editor utility ownership](page-context-and-editor-utilitie
 The `@zilobase/features/databases/appearance` entrypoint provides pure stored-config decisions for database lock state, emoji and cover. Navigation/library models can consume appearance without React bindings.
 The database feature root likewise exports data contracts, query builders and pure model helpers; its session provider and hooks belong to `@zilobase/features/databases/react`.
 
+## Shared data preparation
+
+The [data entrypoint](../../packages/features/src/data/index.ts) exposes an
+uninstalled session/collection foundation. Its [React entrypoint](../../packages/features/src/data/react.ts)
+subscribes to key-specific coherent session publications. Domain fixture schemas
+remain in pages and database schema modules. No application consumer imports the
+foundation yet, so QueryClient/controller ownership above remains active.
+
+[DataSession](../../packages/features/src/data/session.ts) uses a TanStack DB client
+transaction scope per deployment/viewer/workspace session and disposes registered
+collections. [EntityCollection](../../packages/features/src/data/collection.ts)
+validates staged merges against the library's public authoritative `base` rows,
+never optimistic rows. It commits prepared inputs using the supported custom-sync
+writer. Immediate commits are used for direct authoritative ingestion; this
+adapter does not implement a subset loader. Unexpected deferred commit receipts
+fail the synchronous publication proof instead of accessing library internals.
+
+[Publication](../../packages/features/src/data/publication.ts) batches key callbacks
+across collection commits without storing confirmed entity values. Feature owners
+may access collections for supported transactions; feature UI uses hooks/actions.
+The [foundation proofs](../../packages/features/src/data/collection.test.ts) exercise
+partial/empty inputs, authoritative base isolation, rollback, acknowledgement,
+conflicting preview retirement and session disposal. The [mounted browser fixture](../../scripts/data/test-cache-browser.mjs) proves three
+React consumers and a page/property join see completed publications. These isolated
+proofs do not establish migrated application timing or network behavior.
+
 The `@zilobase/features/calendar-layout` [entrypoint](../../packages/features/src/calendar-layout/index.ts) exposes provider-independent date, timezone and layout functions. The Calendar entrypoint re-exports the subset used by provider-aware consumers directly from that implementation.
 The layout index preserves day-array identity for unchanged memberships, normalizes immutable timing through weak references, and uses heap-based timed overlap placement. Its pure tests cover DST, exclusive boundaries and dense overlap inputs.

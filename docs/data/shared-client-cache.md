@@ -9,26 +9,45 @@ Implementation branch: `codex/shared-client-cache`. Production runtime state has
 not been queried or changed. Historical rollback SHAs do not establish current
 production state or its applied Durable Object migration history.
 
-| Measurement                                            | Baseline status                                                   |
-| ------------------------------------------------------ | ----------------------------------------------------------------- |
-| Production web build                                   | Initial bundle budget reports 0.54 MB; 29 route chunks below 1 MB |
-| Mounted startup HTTP count, response bytes and latency | Not measured: Docker daemon unavailable                           |
-| Title/value mutation HTTP count and response bytes     | Not measured: Docker daemon unavailable                           |
-| Retained heap after mount/unmount cycles               | Not measured: Docker daemon unavailable                           |
+| Measurement                            | Baseline status                                                                                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Production web build                   | Initial bundle budget reports 0.54 MB; 29 route chunks below 1 MB                                                                     |
+| Mounted startup                        | 19 primary-browser API requests; 6,796 encoded response-body bytes; 3,402 ms through network-idle                                     |
+| Existing Kanban move / checkbox writes | Three command POSTs, 1,829 response-body bytes; surrounding interaction phase includes 53 API requests and 25,007 response-body bytes |
+| Browser heap                           | 96,428,320 bytes at startup; 155,425,640 after view switches/reloads; no forced GC                                                    |
+| Title edit / retained mount-cycle heap | Not measured yet; these remain acceptance work                                                                                        |
 
-`colima start` reports already running, but Docker cannot connect to its existing
-socket even outside the sandbox. Do not reset the existing VM or development
-database to obtain a measurement. Run the disposable application harness when
-Docker is available, before installing migrated consumers. Preparation that is
-not imported by the app cannot change that runtime baseline.
+The [one-sample baseline](cache-baseline.json) was captured while Pass 2 remained
+uninstalled, using the unchanged signed-in application fixture with optional
+measurement instrumentation. It is a development Vite measurement, not a
+production latency claim or a median. Setup requests, peer-browser requests,
+static assets and socket bytes are excluded. Response sizes are encoded body
+bytes; heap readings are Chrome `JSHeapUsedSize`, not retained-size measurements.
 
-Baseline application verification uses
-[the signed-in application harness](../../scripts/databases/test-app-browser.mjs),
-which starts disposable PostgreSQL, Valkey and object storage and two independent
-browser contexts. Instrument its real network responses for request count and
-encoded bytes, page performance marks for latency, and browser heap/collection
-counts for repeated mounts. Compare identical seeded fixtures and loaded windows;
-record runtime, sample count and medians rather than treating a build as UI proof.
+Colima's daemon responded inside its VM but its host Unix socket was broken. A
+temporary Unix-socket proxy to `colima ssh -- docker system dial-stdio` allowed
+disposable PostgreSQL, Valkey and RustFS fixtures to run without resetting the VM
+or development data. The real application fixture passed Kanban move and value
+editing, view switches, persistence after reload, independent-peer delivery and
+reconnect recovery. This establishes the existing behavior, not cache migration
+acceptance.
+
+Reproduce via `ZILOBASE_APP_MEASUREMENTS=/private/tmp/cache-measurements.json npm run
+test:databases:app-browser` using a working Docker connection. The optional
+instrumentation in [the harness](../../scripts/databases/test-app-browser.mjs)
+records only request sizes/paths and timing/heap metrics, without headers or
+bodies. Compare identical seeded fixtures and loaded windows; repeat samples for
+medians and add title/mount-cycle measurements before final acceptance.
+
+## Foundation proof
+
+Pass 2 pins DB 0.11.3 and React DB 0.5.3. The app still has no imports of the new
+foundation. Eleven focused collection/boundary proofs, the 265-test feature suite,
+feature typechecking, production build, UI lint and architecture checks pass.
+The [mounted browser fixture](../../scripts/data/test-cache-browser.mjs) verifies
+three independent React consumers and a page/property join render only complete
+publications. Run `npm run test:data:browser`; SSR lookup is not its substitute.
+The fixture is independent of the application and does not prove migrated surfaces.
 
 ## Storage identities
 
