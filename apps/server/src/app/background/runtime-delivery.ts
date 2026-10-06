@@ -4,7 +4,6 @@ import {
   getBackgroundCellId,
   type BackgroundLane,
 } from "../../infrastructure/background/contracts";
-import { decodeBackgroundTaskV2 } from "../../infrastructure/background/task-v2";
 import { processBackgroundTask } from "./processor";
 import { runBackgroundDelivery } from "./delivery";
 import type { RuntimeEnv } from "../../shared/config/config";
@@ -47,36 +46,4 @@ export async function deliverBackgroundTask(
   });
 }
 
-export async function recordBackgroundExhaustion(
-  env: RuntimeEnv,
-  body: unknown,
-  lane: BackgroundLane,
-) {
-  const task = decodeBackgroundTaskV2(body, getBackgroundCellId(env));
-  const { backgroundTaskLane } = await import("../../infrastructure/background/contracts");
-  if (backgroundTaskLane(task.kind) !== lane) throw new Error("BACKGROUND_TASK_LANE_MISMATCH");
-  const { db } = await import("../../infrastructure/database");
-  const { backgroundDispatch } = await import("../../infrastructure/database/schema");
-  const { and, eq, inArray, isNull, lte, or, sql } = await import("drizzle-orm");
-  await db
-    .update(backgroundDispatch)
-    .set({
-      status: "exhausted",
-      errorCode: "TRANSPORT_RETRIES_EXHAUSTED",
-      completedAt: new Date(),
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(backgroundDispatch.id, task.taskId),
-        eq(backgroundDispatch.cellId, task.cellId),
-        inArray(backgroundDispatch.status, ["pending", "published", "running"]),
-        or(
-          isNull(backgroundDispatch.leaseExpiresAt),
-          lte(backgroundDispatch.leaseExpiresAt, sql`current_timestamp`),
-        ),
-      ),
-    );
-}
+export { recordBackgroundExhaustion, reconcileBackgroundFailures } from "./failures";

@@ -40,3 +40,5 @@ Production deployment and cutover are separate operator actions, not test setup.
 Disposable integration fixtures must never discover production database URLs.
 
 Node requires `QUEUE_REDIS_URL` in every role, identifying a broker separate from `REALTIME_REDIS_URL`. Bundled Compose and source development use persistent `queue-valkey` with AOF and `noeviction`; queue data has its own volume. The API role produces only; worker/all roles consume four lanes and run maintenance. BullMQ is pinned to 6.3.11 and uses the public ioredis adapter.
+
+Cloudflare retains the four work queues and four DLQs. DLQ consumers record exhaustion before acknowledging; database failures retain the message. Feature hooks update unfinished execution and presentation records after live owners expire. Existing Durable Object exports, bindings and migration history are retained.

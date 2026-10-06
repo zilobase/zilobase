@@ -12,6 +12,10 @@ import {
   publishBackgroundDispatches,
   createBackgroundDeliveryStore,
 } from "../infrastructure/background/publication";
+import {
+  recordBackgroundExhaustion,
+  reconcileBackgroundFailures,
+} from "../app/background/failures";
 import { enqueueAiJob } from "../features/ai/jobs/ai-jobs";
 import { runBackgroundDelivery } from "../app/background/delivery";
 
@@ -115,6 +119,64 @@ try {
         "Business retry is a new occurrence",
       );
       assert.equal(rows.find((row) => row.id === task.taskId)?.status, "completed");
+      const failing = await enqueueAiJob({
+        env,
+        workspaceId: "workspace",
+        type: "fixture",
+        input: {},
+        dedupeKey: "exhaustion",
+      });
+      const [ticket] = await first.db
+        .select()
+        .from(backgroundDispatch)
+        .where(eq(backgroundDispatch.resourceId, failing.id));
+      await first.db
+        .update(aiJob)
+        .set({
+          status: "running",
+          workerId: "live-owner",
+          leaseExpiresAt: new Date(Date.now() + 60_000),
+        })
+        .where(eq(aiJob.id, failing.id));
+      await recordBackgroundExhaustion(env, ticket.task, "ai");
+      assert.equal(
+        (await first.db.select().from(aiJob).where(eq(aiJob.id, failing.id)))[0].status,
+        "running",
+        "Exhaustion preserves live feature ownership",
+      );
+      assert.equal(
+        (
+          await first.db
+            .select()
+            .from(backgroundDispatch)
+            .where(eq(backgroundDispatch.id, ticket.id))
+        )[0].status,
+        "exhausted",
+      );
+      await first.db
+        .update(aiJob)
+        .set({ leaseExpiresAt: new Date(0) })
+        .where(eq(aiJob.id, failing.id));
+      await reconcileBackgroundFailures(env);
+      assert.equal(
+        (await first.db.select().from(aiJob).where(eq(aiJob.id, failing.id)))[0].status,
+        "failed",
+      );
+      const [failure] = await first.db
+        .select()
+        .from(backgroundDispatch)
+        .where(eq(backgroundDispatch.id, ticket.id));
+      assert.ok(failure.failureHandledAt);
+      await first.db
+        .update(backgroundDispatch)
+        .set({ nextPublicationAt: new Date(0) })
+        .where(eq(backgroundDispatch.id, ticket.id));
+      await publishBackgroundDispatches(env);
+      assert.equal(
+        sent.filter((id) => id === ticket.id).length,
+        1,
+        "Exhaustion cannot be replayed by publication recovery",
+      );
     }),
   );
   console.info(

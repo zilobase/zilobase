@@ -79,6 +79,7 @@ export function createNodeBackgroundCoordinator(
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastMaintenanceAt: number | null = null;
   let maintenanceBusy = false;
+  const failureCursor = new Map<BackgroundLane, number>();
   const log = (error: unknown) =>
     console.warn(
       JSON.stringify({
@@ -107,7 +108,9 @@ export function createNodeBackgroundCoordinator(
     try {
       // Failed-job events are best effort; scanning retained failures repairs an interrupted failure hook.
       for (const lane of LANES) {
-        const failures = await queues.get(lane)!.getFailed(0, 49);
+        const offset = failureCursor.get(lane) ?? 0;
+        const failures = await queues.get(lane)!.getFailed(offset, offset + 49);
+        failureCursor.set(lane, failures.length < 50 ? 0 : offset + 50);
         for (const job of failures) await callbacks.exhausted(job.data, lane);
       }
       await callbacks.maintain();

@@ -238,4 +238,5 @@ export { drainCalendarOutbox } from "../features/calendar/realtime/outbox";
 export {
   deliverBackgroundTask,
   recordBackgroundExhaustion,
+  reconcileBackgroundFailures,
 } from "../app/background/runtime-delivery";

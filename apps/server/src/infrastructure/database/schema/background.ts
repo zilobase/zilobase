@@ -30,6 +30,7 @@ export const backgroundDispatch = pgTable(
     leaseOwner: text("lease_owner"),
     leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
     errorCode: text("error_code"),
+    failureHandledAt: timestamp("failure_handled_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     ...timestampColumns(),
   },

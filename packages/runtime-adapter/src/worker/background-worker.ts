@@ -2,7 +2,9 @@ import {
   backgroundTaskLane,
   getBackgroundCellId,
   parseBackgroundTask,
-  processBackgroundTask,
+  deliverBackgroundTask,
+  recordBackgroundExhaustion,
+  publishBackgroundDispatches,
   runDueBackgroundMaintenance,
   runWithBackgroundTraceContext,
   runWithDbEnv,
@@ -81,11 +83,12 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
   return {
     async queue(batch: MessageBatch<unknown>, env: Env) {
       try {
-        const expectedLane = queueLanes[batch.queue];
+        const deadLetter = batch.queue.endsWith("-dlq");
+        const expectedLane = queueLanes[deadLetter ? batch.queue.slice(0, -4) : batch.queue];
         await runWithRuntimePorts(portsFor(env), () =>
-          runWithDbEnv(env, async () => {
-            await Promise.all(
-              batch.messages.map(async (message) => {
+          Promise.all(
+            batch.messages.map((message) =>
+              runWithDbEnv(env, async () => {
                 const parsed = parseBackgroundTask(message.body, getBackgroundCellId(env));
                 if (
                   !parsed.ok ||
@@ -96,65 +99,38 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                     code: parsed.ok ? "BACKGROUND_TASK_LANE_MISMATCH" : parsed.errorCode,
                     queue: batch.queue,
                   });
-                  console.warn(
-                    JSON.stringify({
-                      code: parsed.ok ? "BACKGROUND_TASK_LANE_MISMATCH" : parsed.errorCode,
-                      event: "background.message",
-                      messageId: message.id,
-                      outcome: "terminal",
-                    }),
-                  );
                   message.ack();
                   return;
                 }
                 try {
-                  const result = await runWithBackgroundTraceContext(parsed.task, () =>
-                    processBackgroundTask({
-                      env,
-                      task: parsed.task,
-                      workerId: `cloudflare:${expectedLane}:${crypto.randomUUID()}`,
-                    }),
-                  );
-                  if (result.outcome === "retry") {
-                    message.retry({
-                      delaySeconds: retryDelaySeconds(result.availableAt),
-                    });
+                  if (deadLetter) {
+                    await recordBackgroundExhaustion(env, parsed.task, expectedLane);
+                    message.ack();
                     return;
                   }
-                  message.ack();
-                  if (result.outcome === "terminal") {
-                    await telemetryFor(env).event("background_task_terminal", {
-                      code: result.errorCode ?? "BACKGROUND_TASK_TERMINAL",
-                      kind: parsed.task.kind,
-                    });
-                    console.warn(
-                      JSON.stringify({
-                        code: result.errorCode ?? "BACKGROUND_TASK_TERMINAL",
-                        event: "background.message",
-                        kind: parsed.task.kind,
-                        outcome: "terminal",
-                      }),
-                    );
-                  }
+                  const result = await runWithBackgroundTraceContext(parsed.task, () =>
+                    deliverBackgroundTask(
+                      env,
+                      parsed.task,
+                      expectedLane,
+                      `cloudflare:${expectedLane}:${message.id}:${crypto.randomUUID()}`,
+                    ),
+                  );
+                  if (result.outcome === "defer")
+                    message.retry({ delaySeconds: retryDelaySeconds(result.availableAt) });
+                  else message.ack();
                 } catch (error) {
                   await telemetryFor(env).error(error, {
                     code: boundedErrorCode(error),
                     kind: parsed.task.kind,
                     outcome: "retry",
+                    deadLetter,
                   });
-                  console.warn(
-                    JSON.stringify({
-                      code: boundedErrorCode(error),
-                      event: "background.message",
-                      kind: parsed.task.kind,
-                      outcome: "retry",
-                    }),
-                  );
-                  message.retry();
+                  message.retry(deadLetter ? { delaySeconds: 30 } : undefined);
                 }
               }),
-            );
-          }),
+            ),
+          ),
         );
       } catch (error) {
         await telemetryFor(env).error(error, {
@@ -167,6 +143,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
       try {
         await runWithRuntimePorts(portsFor(env), () =>
           runWithDbEnv(env, async () => {
+            await publishBackgroundDispatches(env);
             const result = await runDueBackgroundMaintenance({
               env,
               workerId: `cloudflare-maintenance:${crypto.randomUUID()}`,

@@ -66,7 +66,7 @@ export const inProductNotificationOutbox = pgTable(
       .where(sql`${table.status} = 'pending'`),
     check(
       "in_product_notification_outbox_status_check",
-      sql`${table.status} in ('pending', 'published')`,
+      sql`${table.status} in ('pending', 'published', 'failed')`,
     ),
   ],
 );

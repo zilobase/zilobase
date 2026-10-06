@@ -64,3 +64,5 @@ names or potentially dependent computed properties; ordinary title acknowledgeme
 need no page/navigation/bootstrap refetch.
 
 [Database overview](README.md). [Operations and troubleshooting](../../../docs/databases/operations.md).
+
+Transport exhaustion marks the delivery outbox failed through the [feature hook](../../../apps/server/src/features/databases/realtime/background.ts). Drains ignore failed rows. The committed mutation journal and acknowledged domain writes remain unchanged; replay requires an explicit eligible operator action.

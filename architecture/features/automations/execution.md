@@ -13,3 +13,5 @@ A lost lease must not let an old worker complete another worker's claim. Termina
 [Execution-context tests](../../../apps/server/src/features/automations/execution/execution-context.test.ts) exercise pinned-definition parsing and the generated revision/worker predicates, including a newer current revision, invalid pinned content and missing scheduled occurrences. These tests ran against the original engine before the split. Structural assertions for the now-covered pinned revision and step identity were removed; [remaining source assertions](../../../apps/server/src/features/automations/execution/run-engine-architecture.test.ts) protect composition and provider-specific safeguards. Controlled tests do not establish concurrent PostgreSQL locking behavior or real provider delivery. No live provider action is part of refactor verification.
 
 [Automation overview](README.md).
+
+[Delivery failure hooks](../../../apps/server/src/features/automations/execution/delivery-failure.ts) discard unfinished event windows or fail unfinished runs only after execution ownership expires. Completed domain writes and receipts remain intact.

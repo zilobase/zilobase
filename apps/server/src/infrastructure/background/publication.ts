@@ -146,7 +146,7 @@ export function createBackgroundDeliveryStore(env: Record<string, unknown>, work
     and(
       scope(task),
       eq(backgroundDispatch.leaseOwner, workerId),
-      eq(backgroundDispatch.status, "running"),
+      inArray(backgroundDispatch.status, ["running", "exhausted"]),
     );
   return {
     async load(task: BackgroundTaskV2): Promise<"ready" | "done" | { availableAt: string }> {
@@ -201,7 +201,11 @@ export function createBackgroundDeliveryStore(env: Record<string, unknown>, work
       await db
         .update(backgroundDispatch)
         .set({ status: "published", leaseOwner: null, leaseExpiresAt: null, updatedAt: new Date() })
-        .where(owned(task));
+        .where(and(owned(task), eq(backgroundDispatch.status, "running")));
+      await db
+        .update(backgroundDispatch)
+        .set({ leaseOwner: null, leaseExpiresAt: null, updatedAt: new Date() })
+        .where(and(owned(task), eq(backgroundDispatch.status, "exhausted")));
     },
     async complete(task: BackgroundTaskV2, result: { outcome: string; errorCode?: string }) {
       const rows = await db
@@ -220,6 +224,18 @@ export function createBackgroundDeliveryStore(env: Record<string, unknown>, work
     },
     async reschedule(task: BackgroundTaskV2, availableAt: string) {
       await backgroundTransaction(env, async (tx) => {
+        const [current] = await tx
+          .select()
+          .from(backgroundDispatch)
+          .where(owned(task))
+          .for("update");
+        if (current?.status === "exhausted") {
+          await tx
+            .update(backgroundDispatch)
+            .set({ leaseOwner: null, leaseExpiresAt: null })
+            .where(owned(task));
+          return;
+        }
         const next = { ...task, taskId: crypto.randomUUID(), availableAt };
         await persistBackgroundTasks(
           env,

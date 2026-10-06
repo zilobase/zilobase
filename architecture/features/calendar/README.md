@@ -193,3 +193,5 @@ Continuous scroll reports viewport demand separately from buffered demand. Settl
 Observed foreground latency and scroll speed raise prefetch thresholds up to twice their baseline. Overscan is directional and bounded; large in-memory windows reduce buffer targets at 20,000 events. Structured metrics report latency, cache size, duplicate reads, layout duration and mounted columns without event content. The existing Calendar rollout flag gates this implementation; UI acceptance remains manual.
 
 Cache materialization keys exclude viewport movement within an already materialized buffer. Such movement reads coverage metadata and missing intervals, without re-reading buffered event records or initiating canonical synchronization. Out-of-window explicit destinations retain a separately tagged cache snapshot.
+
+[Calendar delivery failure](../../../apps/server/src/features/calendar/delivery-failure.ts) clears abandoned synchronization work after ownership expires. Newer dirty markers survive old delivery exhaustion and can create a fresh occurrence.

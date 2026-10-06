@@ -1,5 +1,5 @@
 import { drainDatabaseRealtimeOutbox } from "./outbox";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { resultForDueRow } from "../../../infrastructure/background/task-result";
 import { db } from "../../../infrastructure/database";
@@ -13,8 +13,30 @@ export async function processDatabaseRealtimeTask(env: RuntimeEnv, resourceId: s
         await db
           .select({ nextAttemptAt: databaseRealtimeOutbox.nextAttemptAt })
           .from(databaseRealtimeOutbox)
-          .where(eq(databaseRealtimeOutbox.id, resourceId))
+          .where(
+            and(eq(databaseRealtimeOutbox.id, resourceId), isNull(databaseRealtimeOutbox.failedAt)),
+          )
           .limit(1)
       )[0],
   );
+}
+
+export async function failDatabaseRealtimeDelivery(resourceId: string) {
+  const [live] = await db
+    .select()
+    .from(databaseRealtimeOutbox)
+    .where(eq(databaseRealtimeOutbox.id, resourceId))
+    .limit(1);
+  if (!live || live.failedAt) return true;
+  if (live.nextAttemptAt > new Date()) return false;
+  await db
+    .update(databaseRealtimeOutbox)
+    .set({ failedAt: new Date() })
+    .where(
+      and(
+        eq(databaseRealtimeOutbox.id, resourceId),
+        lte(databaseRealtimeOutbox.nextAttemptAt, sql`current_timestamp`),
+      ),
+    );
+  return true;
 }
