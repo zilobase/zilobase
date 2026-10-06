@@ -29,11 +29,11 @@ export { createNodeRoomHost, type NodeRoomHost, type NodeRoomPeer } from "./room
 export { createNodeRoomState } from "./room-state";
 export { createNodeFanout } from "./fanout";
 export {
-  createNodeBackgroundCoordinator,
+  createNodeQueueRuntime,
   getQueueRedisUrl,
   NODE_BACKGROUND_QUEUE_NAMES,
-  type NodeBackgroundCoordinator,
-} from "./background-coordinator";
+  type NodeQueueRuntime,
+} from "./queue-runtime";
 export {
   attachNodeCollaborationRuntime,
   NODE_COLLABORATION_MAX_PAYLOAD_BYTES,

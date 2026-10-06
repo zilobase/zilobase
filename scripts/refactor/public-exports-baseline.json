@@ -180,22 +180,6 @@
       "value": true,
       "type": false
     },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -537,14 +521,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -826,22 +802,6 @@
       "value": true,
       "type": false
     },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -1183,14 +1143,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -1472,22 +1424,6 @@
       "value": true,
       "type": false
     },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -1829,14 +1765,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -2118,22 +2046,6 @@
       "value": true,
       "type": false
     },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -2475,14 +2387,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -2773,22 +2677,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
       "value": true,
       "type": false
     },
@@ -3141,14 +3029,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -3446,22 +3326,6 @@
       "value": true,
       "type": false
     },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
     "EditionExtensionOptions": {
       "value": false,
       "type": true
@@ -3811,14 +3675,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },

@@ -17,7 +17,7 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
       select 'fast', least(closes_at, next_attempt_at) from database_automation_event_window
         where status in ('accumulating', 'ready')
       union all select 'fast', lease_expires_at from database_automation_event_window where status = 'processing'
-      union all select 'fast', next_attempt_at from database_realtime_outbox
+      union all select 'fast', next_attempt_at from database_realtime_outbox where failed_at is null
       union all select 'fast', next_attempt_at from in_product_notification_outbox where status = 'pending'
       union all select 'automation', available_at from database_automation_run where status = 'queued'
       union all select 'automation', lease_expires_at from database_automation_run where status = 'running'
@@ -79,11 +79,13 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
     Number(lease?.stale_count ?? 0) === 0 &&
     maintenance.every((task) => task.consecutiveFailures < 2) &&
     heartbeatFresh &&
-    readiness.producerReady !== false;
+    readiness.producerReady !== false &&
+    readiness.consumerReady !== false &&
+    readiness.maintenanceFresh !== false;
   return {
     capturedAt: now.toISOString(),
     cellId: getBackgroundCellId(env),
-    coordinator: readiness,
+    queue: readiness,
     heartbeatFresh,
     healthy,
     lanes,

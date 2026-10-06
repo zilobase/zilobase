@@ -90,7 +90,7 @@ export function createDbClientForUrl(
   });
 
   // pg rejects pending operations, but also emits errors when the connection
-  // dies between queries. Handle those events before connect/LISTEN can run.
+  // dies between queries. Handle those events before connecting.
   client.on("error", () => {
     console.warn(
       JSON.stringify({

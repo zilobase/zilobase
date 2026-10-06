@@ -23,6 +23,17 @@ export async function recordBackgroundExhaustion(
 ) {
   const task = decodeBackgroundTaskV2(body, getBackgroundCellId(env));
   if (backgroundTaskLane(task.kind) !== lane) throw new Error("BACKGROUND_TASK_LANE_MISMATCH");
+  const [persisted] = await db
+    .select()
+    .from(backgroundDispatch)
+    .where(and(eq(backgroundDispatch.id, task.taskId), eq(backgroundDispatch.cellId, task.cellId)))
+    .limit(1);
+  if (!persisted) throw new Error("BACKGROUND_TASK_NOT_ADMITTED");
+  if (
+    Object.entries(task).some(([key, value]) => value !== persisted.task[key as keyof typeof task])
+  )
+    throw new Error("BACKGROUND_TASK_PERSISTED_MISMATCH");
+  if (["completed", "terminal", "cancelled", "exhausted"].includes(persisted.status)) return;
   await backgroundTransaction(env, async (tx) => {
     const [row] = await tx
       .select()

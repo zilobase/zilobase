@@ -1,4 +1,4 @@
-import { Queue, Worker, DelayedError, createIORedisClient } from "bullmq";
+import { Queue, Worker, DelayedError, UnrecoverableError, createIORedisClient } from "bullmq";
 import Redis from "ioredis";
 import type {
   BackgroundLane,
@@ -14,7 +14,7 @@ export const NODE_BACKGROUND_QUEUE_NAMES: Record<BackgroundLane, string> = {
   calendar: "calendar-jobs",
 };
 const LANES = Object.keys(NODE_BACKGROUND_QUEUE_NAMES) as BackgroundLane[];
-export type NodeBackgroundCoordinator = ReturnType<typeof createNodeBackgroundCoordinator>;
+export type NodeQueueRuntime = ReturnType<typeof createNodeQueueRuntime>;
 export type NodeQueueCallbacks = {
   lane(task: BackgroundTask): BackgroundLane;
   validate(body: unknown): BackgroundTask;
@@ -47,7 +47,7 @@ export function getQueueRedisUrl(env: Record<string, unknown>) {
   }
 }
 
-export function createNodeBackgroundCoordinator(
+export function createNodeQueueRuntime(
   env: Record<string, unknown>,
   callbacks: NodeQueueCallbacks,
 ) {
@@ -111,7 +111,10 @@ export function createNodeBackgroundCoordinator(
         const offset = failureCursor.get(lane) ?? 0;
         const failures = await queues.get(lane)!.getFailed(offset, offset + 49);
         failureCursor.set(lane, failures.length < 50 ? 0 : offset + 50);
-        for (const job of failures) await callbacks.exhausted(job.data, lane);
+        for (const job of failures) {
+          if (job.failedReason === "BACKGROUND_INVALID_ENVELOPE") continue;
+          await callbacks.exhausted(job.data, lane);
+        }
       }
       await callbacks.maintain();
       lastMaintenanceAt = Date.now();
@@ -165,6 +168,16 @@ export function createNodeBackgroundCoordinator(
             : lastMaintenanceAt !== null && Date.now() - lastMaintenanceAt < 120_000,
       };
     },
+    metrics() {
+      const state = this.readiness();
+      return Object.entries(state)
+        .filter(([, value]) => value !== null)
+        .map(([key, value]) => {
+          const metric = `zilobase_background_queue_${key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`;
+          return `# TYPE ${metric} gauge\n${metric} ${value ? 1 : 0}\n`;
+        })
+        .join("");
+    },
     async start() {
       if (running) return;
       running = true;
@@ -187,19 +200,49 @@ export function createNodeBackgroundCoordinator(
         const worker = new Worker(
           NODE_BACKGROUND_QUEUE_NAMES[lane],
           async (job, token) => {
-            const result = await callbacks.deliver(job.data, lane, `${workerId}:${job.id}`);
-            if (result.outcome === "defer") {
-              await job.moveToDelayed(
-                Math.max(Date.now() + 1000, Date.parse(result.availableAt)),
-                token,
-              );
-              throw new DelayedError();
+            try {
+              callbacks.validate(job.data);
+            } catch {
+              throw new UnrecoverableError("BACKGROUND_INVALID_ENVELOPE");
+            }
+            try {
+              const result = await callbacks.deliver(job.data, lane, `${workerId}:${job.id}`);
+              if (result.outcome === "defer") {
+                await job.moveToDelayed(
+                  Math.max(Date.now() + 1000, Date.parse(result.availableAt)),
+                  token,
+                );
+                throw new DelayedError();
+              }
+            } catch (error) {
+              if (error instanceof DelayedError) throw error;
+              if (
+                error instanceof Error &&
+                [
+                  "BACKGROUND_TASK_NOT_ADMITTED",
+                  "BACKGROUND_TASK_PERSISTED_MISMATCH",
+                  "BACKGROUND_TASK_CELL_MISMATCH",
+                  "BACKGROUND_TASK_LANE_MISMATCH",
+                ].includes(error.message)
+              )
+                throw new UnrecoverableError("BACKGROUND_INVALID_ENVELOPE");
+              if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) {
+                try {
+                  await callbacks.exhausted(job.data, lane);
+                } catch (recordingError) {
+                  log(recordingError);
+                  await job.moveToDelayed(Date.now() + 30_000, token);
+                  throw new DelayedError();
+                }
+              }
+              throw error;
             }
           },
           { prefix, connection: createIORedisClient(client), concurrency },
         );
         worker.on("error", log);
-        worker.on("failed", (job) => {
+        worker.on("failed", (job, error) => {
+          if (error.message === "BACKGROUND_INVALID_ENVELOPE") return;
           if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
             void track(callbacks.exhausted(job.data, lane)).catch(log);
         });

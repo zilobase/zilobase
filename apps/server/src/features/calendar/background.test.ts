@@ -64,7 +64,7 @@ test("list tasks refresh metadata, queue events, clear the durable marker and ma
     { id: "busy", permissions: { read: true, freeBusyOnly: true } },
   ]);
   expect((await processCalendarSyncTask(env, '["account",null]')).outcome).toBe("completed");
-  expect(mocks.queue).toHaveBeenCalledExactlyOnceWith(env, "account", "primary");
+  expect(mocks.refresh).toHaveBeenCalledExactlyOnceWith("account", "binding", {}, env);
   expect(mocks.update).toHaveBeenCalledOnce();
   expect(mocks.watches).toHaveBeenCalledOnce();
   expect(mocks.drain).toHaveBeenCalledOnce();

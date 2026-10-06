@@ -1,7 +1,7 @@
 import type { Jobs } from "@zilobase/runtime-ports";
-import type { NodeBackgroundCoordinator } from "./background-coordinator";
+import type { NodeQueueRuntime } from "./queue-runtime";
 
-export function createNodeJobs(getQueue: () => NodeBackgroundCoordinator | null): Jobs {
+export function createNodeJobs(getQueue: () => NodeQueueRuntime | null): Jobs {
   return {
     async dispatch(tasks) {
       const queue = getQueue();

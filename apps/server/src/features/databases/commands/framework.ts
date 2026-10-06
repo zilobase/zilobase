@@ -26,6 +26,7 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import {
+  backgroundTransaction,
   persistBackgroundTasks,
   publishBackgroundDispatches,
 } from "../../../infrastructure/background/dispatch";

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const coordinator = {
+    metrics: () => "",
     dispatch: vi.fn(async () => undefined),
     readiness: vi.fn(() => ({ producerReady: true, consumerReady: true, maintenanceFresh: true })),
     start: vi.fn(async () => undefined),
@@ -68,9 +69,9 @@ vi.mock("./features/meeting-audio/meeting-audio-runtime", () => ({
 vi.mock("./features/calendar-realtime/calendar-realtime-runtime", () => ({
   attachNodeCalendarRealtimeRuntime: vi.fn(() => mocks.calendarRealtime),
 }));
-vi.mock("./background-coordinator", async (original) => ({
-  ...(await original<typeof import("./background-coordinator")>()),
-  createNodeBackgroundCoordinator: vi.fn(() => mocks.coordinator),
+vi.mock("./queue-runtime", async (original) => ({
+  ...(await original<typeof import("./queue-runtime")>()),
+  createNodeQueueRuntime: vi.fn(() => mocks.coordinator),
 }));
 vi.mock("./pinned-webhook", () => ({ fetchPinnedNodeWebhook: vi.fn() }));
 vi.mock("@zilobase/server/node-adapter-api", () => ({

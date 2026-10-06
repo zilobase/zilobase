@@ -195,3 +195,5 @@ Observed foreground latency and scroll speed raise prefetch thresholds up to twi
 Cache materialization keys exclude viewport movement within an already materialized buffer. Such movement reads coverage metadata and missing intervals, without re-reading buffered event records or initiating canonical synchronization. Out-of-window explicit destinations retain a separately tagged cache snapshot.
 
 [Calendar delivery failure](../../../apps/server/src/features/calendar/delivery-failure.ts) clears abandoned synchronization work after ownership expires. Newer dirty markers survive old delivery exhaustion and can create a fresh occurrence.
+
+Calendar list refresh stages dirty markers and calendar dispatch intent atomically. [Calendar recovery](../../../apps/server/src/features/calendar/sync/sync.ts) republishes references using the dirty-marker clock; maintenance does not synchronize provider events directly.

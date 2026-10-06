@@ -20,7 +20,6 @@ export { getAppEditionExtension } from "../shared/edition-extension-registry";
 export { renderPrometheusBackgroundMetrics } from "../infrastructure/background/telemetry";
 export { renderPrometheusDatabaseMetrics } from "../features/databases/observability";
 export { boundedErrorCode } from "../infrastructure/background/dispatch";
-export { drainAgentRuns } from "../features/ai/execution/agent-run-service";
 export { db, createDbClientForUrl, runWithIndependentDbEnv } from "../infrastructure/database";
 export {
   aiJob,

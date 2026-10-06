@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createNodeBackgroundCoordinator } from "@zilobase/runtime-adapter/node";
+import { createNodeQueueRuntime } from "@zilobase/runtime-adapter/node";
 import {
   BACKGROUND_LANE_POLICY,
   createBackgroundTaskV2,
@@ -48,14 +48,8 @@ async function until(check: () => boolean | Promise<boolean>, timeout = 60_000) 
     await sleep(50);
   }
 }
-const producer = createNodeBackgroundCoordinator(
-  { ...env, ZILOBASE_PROCESS_ROLE: "api" },
-  callbacks,
-);
-const worker = createNodeBackgroundCoordinator(
-  { ...env, ZILOBASE_PROCESS_ROLE: "worker" },
-  callbacks,
-);
+const producer = createNodeQueueRuntime({ ...env, ZILOBASE_PROCESS_ROLE: "api" }, callbacks);
+const worker = createNodeQueueRuntime({ ...env, ZILOBASE_PROCESS_ROLE: "worker" }, callbacks);
 try {
   await producer.start();
   const tasks = BACKGROUND_TASK_KINDS.map((kind) =>
@@ -116,10 +110,7 @@ try {
     await producer.queues.get("ai")!.getJob(retained.taskId),
     "Queue survives broker restart",
   );
-  const restarted = createNodeBackgroundCoordinator(
-    { ...env, ZILOBASE_PROCESS_ROLE: "all" },
-    callbacks,
-  );
+  const restarted = createNodeQueueRuntime({ ...env, ZILOBASE_PROCESS_ROLE: "all" }, callbacks);
   try {
     await restarted.start();
     await until(() => effects.includes("restart"));

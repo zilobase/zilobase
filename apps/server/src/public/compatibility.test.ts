@@ -19,7 +19,7 @@ test("external consumer entrypoints retain their runtime exports", () => {
     "createApp",
     "runAiChatTurn",
     "createCollaborationHocuspocus",
-    "drainDatabaseAutomationRuns",
+    "deliverBackgroundTask",
     "editionPersistencePort",
   ]);
   assertExports(nodeAdapterApi, [

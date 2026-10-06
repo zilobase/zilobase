@@ -2,7 +2,7 @@ import { execFile, spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
-import { setTimeout } from "node:timers/promises";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const exec = promisify(execFile);
 const name = `zilobase-background-test-${randomUUID()}`;
@@ -34,7 +34,7 @@ try {
       break;
     } catch (error) {
       if (attempt >= 100) throw error;
-      await setTimeout(200);
+      await sleep(200);
     }
   }
   const { stdout } = await exec("docker", ["port", name, "5432/tcp"]);
@@ -69,7 +69,7 @@ try {
       break;
     } catch (error) {
       if (attempt >= 100) throw error;
-      await setTimeout(200);
+      await sleep(200);
     }
   }
   const redisPort = await exec("docker", ["port", broker, "6379/tcp"]);
@@ -90,19 +90,28 @@ try {
       {
         cwd: new URL("../../", import.meta.url),
         stdio: "inherit",
-        timeout: 120_000,
+        detached: true,
         env: {
           ...process.env,
+          ZILOBASE_BACKGROUND_VERIFY_SQL_ONLY: process.argv.includes("--sql-only") ? "true" : "",
           ZILOBASE_QUEUE_VERIFY_URL: `redis://${redisEndpoint}`,
           ZILOBASE_QUEUE_VERIFY_CONTAINER: broker,
           ZILOBASE_BACKGROUND_VERIFY_URL: `postgres://postgres:background-test-only@${endpoint}/zilobase_background_verify`,
         },
       },
     );
-    child.once("error", reject);
-    child.once("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`Dispatch verification exited ${code}`)),
-    );
+    const watchdog = setTimeout(() => {
+      process.kill(-child.pid, "SIGKILL");
+    }, 180_000);
+    child.once("error", (error) => {
+      clearTimeout(watchdog);
+      reject(error);
+    });
+    child.once("exit", (code) => {
+      clearTimeout(watchdog);
+      if (code === 0) resolve();
+      else reject(new Error(`Dispatch verification exited ${code}`));
+    });
   });
 } finally {
   if (brokerCreated) await exec("docker", ["stop", "--time", "1", broker]);

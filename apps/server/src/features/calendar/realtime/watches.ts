@@ -231,7 +231,7 @@ export async function maintainAccountWatches(
     return;
   const gateway = await createCalendarGateway(env, account);
   if (listDirty) {
-    await refreshCalendarList(account.id, binding.id, gateway);
+    await refreshCalendarList(account.id, binding.id, gateway, env);
     calendars = await db
       .select()
       .from(calendarProviderCalendar)

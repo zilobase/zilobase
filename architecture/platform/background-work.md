@@ -4,7 +4,7 @@
 
 The processor maps task kinds to automation, agent, AI-job, Calendar, realtime and notification operations. The [Calendar handler](../../apps/server/src/features/calendar/background.ts) accepts event and calendar-list work through the existing `calendar.sync` task kind and drains completed revision notifications before returning. Durable dirty markers retain recovery when webhook dispatch fails. It records queue/execution telemetry and converts pending outbox state into completed or retry outcomes. Node BullMQ supplies transport and invokes shared maintenance.
 
-Start at the [entrypoint](../../apps/server/src/app/background/processor.ts); follow the [implementation](../../apps/server/src/infrastructure/background/contracts.ts) and the [Node coordinator](../../packages/runtime-adapter/src/node/background-coordinator.ts).
+Start at the [entrypoint](../../apps/server/src/app/background/processor.ts); follow the [implementation](../../apps/server/src/infrastructure/background/contracts.ts) and the [Node queue runtime](../../packages/runtime-adapter/src/node/queue-runtime.ts).
 
 ## Invariants and failure handling
 
@@ -48,3 +48,7 @@ Worker alone publishes through the per-database Durable Object. See the
 [Isolated PostgreSQL verification](../../scripts/background/test-isolated.mjs) exercises migrations, rollback, failed enqueue recovery, competing publishers and duplicate delivery against a disposable database.
 
 Cloudflare queue and DLQ consumers share the [durable delivery entrypoint](../../apps/server/src/app/background/runtime-delivery.ts). Every batch message gets a separate database scope, so concurrent transactions cannot share one Worker PostgreSQL connection. Acknowledgement follows persisted completion or rescheduling. [Failure reconciliation](../../apps/server/src/app/background/failures.ts) invokes feature-owned failure hooks, preserving live leases, completed effects and uncertain agent writes. Exhaustion remains terminal while hooks wait for expired ownership.
+
+Shared maintenance publishes recoverable dispatches and finalizes exhausted failures. Calendar recovery enqueues dirty references; synchronization runs only in the calendar lane. Maintenance runs claimed callbacks sequentially so Worker transactions do not share a connection concurrently. Public feature-drain entrypoints are removed; runtime execution enters through the shared delivery runner. Queue readiness reports producer connectivity, role-specific consumer readiness and maintenance freshness through health and metrics.
+
+Source command and mutation transactions carry the dispatch transaction marker through nested writes. Publication is suppressed until the outer transaction commits. Node records final-attempt exhaustion before retiring a failed job; if failure bookkeeping is unavailable, it delays that final attempt until the durable outcome can be saved. Invalid or unadmitted envelopes do not reach a feature.

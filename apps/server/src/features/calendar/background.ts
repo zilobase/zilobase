@@ -12,7 +12,7 @@ import {
 } from "../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../infrastructure/background/dispatch";
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
-import { advanceCalendarSync, queueCalendarSync, refreshCalendarList } from "./sync/sync";
+import { advanceCalendarSync, refreshCalendarList } from "./sync/sync";
 import { createCalendarGateway } from "./provider/oauth";
 import { maintainAccountWatches } from "./realtime/watches";
 import { drainCalendarOutbox } from "./realtime/outbox";
@@ -80,15 +80,7 @@ async function refreshAccountCalendars(env: RuntimeEnv, accountId: string) {
     .where(eq(calendarAccount.id, accountId));
   if (!binding || !account || account.status !== "connected") return;
   const checkpoint = new Date();
-  const calendars = await refreshCalendarList(
-    accountId,
-    binding.id,
-    await createCalendarGateway(env, account),
-  );
-  for (const calendar of calendars.filter(
-    (calendar) => calendar.permissions.read && !calendar.permissions.freeBusyOnly,
-  ))
-    await queueCalendarSync(env, accountId, calendar.id);
+  await refreshCalendarList(accountId, binding.id, await createCalendarGateway(env, account), env);
   await db
     .update(calendarWatchChannel)
     .set({ dirtyAt: null })

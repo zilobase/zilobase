@@ -19,7 +19,7 @@ export {
 } from "../features/ai/conversations/chat-persistence";
 export { createAuth } from "../features/auth";
 export { AI_JOB_HANDLERS } from "../features/ai/jobs/ai-job-handlers";
-export { runAiJobBatch, runAiJobById, type AiJobHandler } from "../features/ai/jobs/ai-jobs";
+export { type AiJobHandler } from "../features/ai/jobs/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
@@ -121,29 +121,19 @@ export {
   verifyMeetingAudioTicket,
   type MeetingAudioTicketClaims,
 } from "../features/meetings/audio/meeting-audio-ticket";
-export {
-  drainDatabaseRealtimeOutbox,
-  type DatabaseMutationEventV2,
-} from "../features/databases/realtime/outbox";
+export { type DatabaseMutationEventV2 } from "../features/databases/realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
 export {
   getDatabaseAutomationEventCaptureMetrics,
   promoteClosedDatabaseAutomationEventWindows,
 } from "../features/automations/triggers/event-capture";
-export {
-  drainDatabaseAutomationEventWindows,
-  processDatabaseAutomationEventWindow,
-} from "../features/automations/triggers/event-evaluator";
-export {
-  drainDatabaseAutomationRuns,
-  processDatabaseAutomationRun,
-} from "../features/automations/execution/run-engine";
+export { processDatabaseAutomationEventWindow } from "../features/automations/triggers/event-evaluator";
+export { processDatabaseAutomationRun } from "../features/automations/execution/run-engine";
 export { scanDueDatabaseAutomationSchedules } from "../features/automations/triggers/scheduler";
 export {
   cleanupDatabaseAutomationHistory,
   getDatabaseAutomationOperationalSnapshot,
 } from "../features/automations/history/history-maintenance";
-export { drainInProductNotificationOutbox } from "../features/notifications/outbox";
 export {
   MembershipService,
   TransactionalAdmissionError,
@@ -230,7 +220,6 @@ export {
   publishCalendarNotification,
   type CalendarNotificationEvent,
 } from "@zilobase/runtime-adapter/capabilities";
-export { advancePendingCalendars } from "../features/calendar/sync/sync";
 
 export { maintainCalendarWatches } from "../features/calendar/realtime/watches";
 export { drainCalendarOutbox } from "../features/calendar/realtime/outbox";

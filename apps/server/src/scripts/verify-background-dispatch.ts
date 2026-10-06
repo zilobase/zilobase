@@ -1,10 +1,19 @@
+import {
+  ensureBackgroundMaintenanceTasks,
+  runDueBackgroundMaintenance,
+} from "../app/background/maintenance";
 import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
 import { runMigrationSets } from "@zilobase/runtime-adapter/node";
 import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { createDbClientForUrl, runWithDb } from "../infrastructure/database";
 import { CORE_MIGRATION_SET } from "../public/node-adapter-api";
-import { backgroundDispatch, workspace, aiJob } from "../infrastructure/database/schema";
+import {
+  backgroundDispatch,
+  workspace,
+  aiJob,
+  backgroundMaintenanceTask,
+} from "../infrastructure/database/schema";
 import { createBackgroundTask } from "../infrastructure/background/contracts";
 import {
   backgroundTransaction,
@@ -63,6 +72,22 @@ try {
   await first.db.insert(workspace).values({ id: "workspace", name: "Fixture", slug: "fixture" });
   await runWithRuntimePorts(ports, () =>
     runWithDb(first.db, async () => {
+      await assert.rejects(
+        backgroundTransaction(env, async () => {
+          await enqueueAiJob({
+            env,
+            workspaceId: "workspace",
+            type: "fixture",
+            input: {},
+            dedupeKey: "nested-rollback",
+          });
+          assert.deepEqual(await publishBackgroundDispatches(env), { published: 0, claimed: 0 });
+          assert.equal(sent.length, 0, "Nested source writes cannot publish before outer commit");
+          throw new Error("nested rollback");
+        }),
+      );
+      assert.equal((await first.db.select().from(aiJob)).length, 0);
+      assert.equal((await first.db.select().from(backgroundDispatch)).length, 0);
       const job = await enqueueAiJob({
         env,
         workspaceId: "workspace",
@@ -177,6 +202,35 @@ try {
         1,
         "Exhaustion cannot be replayed by publication recovery",
       );
+      const queued = await enqueueAiJob({
+        env,
+        workspaceId: "workspace",
+        type: "fixture",
+        input: {},
+        dedupeKey: "maintenance",
+      });
+      await ensureBackgroundMaintenanceTasks();
+      await first.db
+        .update(backgroundMaintenanceTask)
+        .set({ nextRunAt: new Date(Date.now() + 86400_000) });
+      await first.db
+        .update(backgroundMaintenanceTask)
+        .set({ nextRunAt: new Date(0) })
+        .where(eq(backgroundMaintenanceTask.taskKey, "background.reconcile"));
+      await runDueBackgroundMaintenance({ env, workerId: "fixture-maintenance" });
+      assert.equal(
+        (await first.db.select().from(aiJob).where(eq(aiJob.id, queued.id)))[0].status,
+        "queued",
+        "Maintenance cannot invoke an AI handler",
+      );
+      assert.ok(
+        (
+          await first.db
+            .select()
+            .from(backgroundMaintenanceTask)
+            .where(eq(backgroundMaintenanceTask.taskKey, "background.reconcile"))
+        )[0].lastSucceededAt,
+      );
     }),
   );
   console.info(
@@ -187,4 +241,5 @@ try {
   await second.client.end();
 }
 
-await import("./verify-node-queues");
+if (process.env.ZILOBASE_BACKGROUND_VERIFY_SQL_ONLY !== "true")
+  await import("./verify-node-queues");

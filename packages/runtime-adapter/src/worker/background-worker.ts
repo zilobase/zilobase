@@ -72,7 +72,16 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
       meetings: createWorkerMeetings(env),
       outbound: createWorkerOutboundFetch(),
       readiness: {
-        background: () => ({ producerReady: null, consumerReady: null, maintenanceFresh: null }),
+        background: () => ({
+          producerReady: !!(
+            env.BACKGROUND_FAST &&
+            env.AUTOMATION_RUNS &&
+            env.AI_JOBS &&
+            env.CALENDAR_JOBS
+          ),
+          consumerReady: null,
+          maintenanceFresh: null,
+        }),
         realtime: () => true,
       },
       telemetry: telemetryFor(env),

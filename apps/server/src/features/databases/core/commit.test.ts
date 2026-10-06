@@ -12,6 +12,8 @@ vi.mock("../../../infrastructure/database", () => ({
   db: { transaction: mocks.transaction },
 }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
+  backgroundTransaction: async (_env: unknown, work: (tx: unknown) => unknown) =>
+    mocks.transaction(work),
   persistBackgroundTasks: mocks.dispatch,
   publishBackgroundDispatches: async () => ({ published: 0, claimed: 0 }),
 }));

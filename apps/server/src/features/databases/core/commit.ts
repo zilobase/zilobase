@@ -23,6 +23,7 @@ import {
 } from "../../automations/triggers/event-capture";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import {
+  backgroundTransaction,
   persistBackgroundTasks,
   publishBackgroundDispatches,
 } from "../../../infrastructure/background/dispatch";
@@ -102,7 +103,7 @@ export async function commitDatabaseMutationBatch<T>(
     "commit_duration_ms",
     { operation: "internal", scope: "source" },
     () =>
-      db.transaction(async (tx) => {
+      backgroundTransaction(options.env ?? {}, async (tx) => {
         const mutationResult = await mutate(tx);
         agentTriggerFacts = mutationResult.automationFacts ?? [];
         if (mutationResult.automationFacts?.length) {

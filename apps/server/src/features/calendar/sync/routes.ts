@@ -7,7 +7,7 @@ import { calendarProviderCalendar } from "../../../infrastructure/database/schem
 import { requireCalendarBinding } from "../connections/ownership";
 import { createCalendarGateway } from "../provider/oauth";
 import { CalendarProviderError, normalizeEvent } from "../provider/gateway";
-import { refreshCalendarList, queueCalendarSync } from "./sync";
+import { refreshCalendarList } from "./sync";
 import { calendarRangeSchema, readCalendarRange } from "./ranges";
 export const calendarSyncRoutes = new Hono<AppBindings>();
 calendarSyncRoutes.post("/connections/:bindingId/sync", async (c) => {
@@ -17,9 +17,7 @@ calendarSyncRoutes.post("/connections/:bindingId/sync", async (c) => {
     c.req.param("bindingId"),
   );
   const gateway = await createCalendarGateway(c.env, account),
-    calendars = await refreshCalendarList(account.id, binding.id, gateway);
-  for (const calendar of calendars.filter((c) => !c.permissions.freeBusyOnly))
-    await queueCalendarSync(c.env, account.id, calendar.id);
+    calendars = await refreshCalendarList(account.id, binding.id, gateway, c.env);
   const states = await db
     .select()
     .from(calendarProviderCalendar)

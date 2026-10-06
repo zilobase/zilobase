@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getQueueRedisUrl, NODE_BACKGROUND_QUEUE_NAMES } from "./background-coordinator";
+import { getQueueRedisUrl, NODE_BACKGROUND_QUEUE_NAMES } from "./queue-runtime";
 import { createNodeJobs } from "./jobs";
 
 describe("dedicated Node queues", () => {

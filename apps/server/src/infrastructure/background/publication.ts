@@ -55,6 +55,7 @@ export async function persistBackgroundTasks(
 }
 
 export async function publishBackgroundDispatches(env: Record<string, unknown>, limit = 100) {
+  if (inBackgroundTransaction()) return { published: 0, claimed: 0 };
   const cellId = getBackgroundCellId(env);
   const owner = crypto.randomUUID();
   const now = new Date();
@@ -70,7 +71,13 @@ export async function publishBackgroundDispatches(env: Record<string, unknown>, 
             backgroundDispatch.availableAt,
             new Date(now.getTime() + BACKGROUND_PUBLICATION_HORIZON_MS),
           ),
-          lte(backgroundDispatch.nextPublicationAt, now),
+          or(
+            lte(backgroundDispatch.nextPublicationAt, now),
+            and(
+              eq(backgroundDispatch.status, "running"),
+              lte(backgroundDispatch.leaseExpiresAt, now),
+            ),
+          ),
           or(
             isNull(backgroundDispatch.leaseExpiresAt),
             lte(backgroundDispatch.leaseExpiresAt, now),
