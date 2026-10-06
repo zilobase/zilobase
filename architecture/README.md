@@ -69,3 +69,5 @@ entities and navigation socket retirement. Pages, properties, values, database
 presentations, navigation, search labels and access facets use shared collections;
 the [inventory and acceptance contract](../docs/data/shared-client-cache.md) records
 the current owners and verification gates.
+
+Editor view/transfer ownership and session-only paired history are recorded in [ADR 0016](decisions/0016-session-editor-transfers.md).

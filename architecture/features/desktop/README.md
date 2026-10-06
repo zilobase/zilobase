@@ -25,3 +25,7 @@ Deep-link completion, network failures, server replacement and window cleanup ha
 Start with [the packaged desktop smoke test](../../../apps/desktop/e2e/electron-smoke.mjs) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
 
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
+
+## Editor drag boundary
+
+Desktop tab drag detection reads the editor's application MIME contract through [block-drag-session](../../../apps/web/src/features/editor/drag-drop/block-drag-session.ts). That module contains payload parsing and pure predicates; it no longer owns global editor registrations or an active drag. The application editor workspace owns drag state and view registrations. Existing tab reorder behavior and native bridge contracts remain separate.
