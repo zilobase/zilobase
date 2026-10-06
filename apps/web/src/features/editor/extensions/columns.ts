@@ -1,7 +1,6 @@
 import { Extension, mergeAttributes, Node } from "@tiptap/core";
 import type { JSONContent } from "@tiptap/core";
-import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model";
-import { NodeSelection, Selection, SelectionRange, TextSelection } from "@tiptap/pm/state";
+import { Fragment, type Node as ProseMirrorNode, type ResolvedPos } from "@tiptap/pm/model";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -79,85 +78,6 @@ const findParentNodeClosestToPos = (
 
   throw new Error("no ancestor found");
 };
-
-class ColumnSelection extends Selection {
-  private resolvedFrom: ResolvedPos;
-  private resolvedTo: ResolvedPos;
-
-  constructor(selection: Selection) {
-    super(selection.$from, selection.$to);
-    this.resolvedFrom = selection.$from;
-    this.resolvedTo = selection.$to;
-  }
-
-  get $from() {
-    return this.resolvedFrom;
-  }
-
-  get $to() {
-    return this.resolvedTo;
-  }
-
-  map() {
-    return this;
-  }
-
-  content() {
-    return this.$from.doc.slice(this.from, this.to, true);
-  }
-
-  eq(other: Selection) {
-    return other instanceof ColumnSelection && other.anchor === this.anchor;
-  }
-
-  toJSON() {
-    return { from: this.from, to: this.to, type: "column" };
-  }
-
-  expandSelection(doc: ProseMirrorNode) {
-    const where = ({ node, pos }: ParentNodeMatch) => {
-      if (node.type.name === Column.name) {
-        return true;
-      }
-
-      return doc.resolve(pos).depth <= 0;
-    };
-
-    const { pos: fromPos } = findParentNodeClosestToPos(this.$from, where);
-    this.resolvedFrom = doc.resolve(fromPos);
-
-    const { node: toNode, pos: toPos } = findParentNodeClosestToPos(this.$to, where);
-    this.resolvedTo = doc.resolve(toPos + toNode.nodeSize);
-
-    if (this.getFirstNode()?.type.name === ColumnBlock.name) {
-      const offset = 2;
-      this.resolvedFrom = doc.resolve(this.$from.pos + offset);
-      this.resolvedTo = doc.resolve(this.$to.pos + offset);
-    }
-
-    const mutableSelection = this as unknown as {
-      $anchor: ResolvedPos;
-      $head: ResolvedPos;
-      ranges: SelectionRange[];
-    };
-
-    mutableSelection.$anchor = this.resolvedFrom;
-    mutableSelection.$head = this.resolvedTo;
-    mutableSelection.ranges = [new SelectionRange(this.resolvedFrom, this.resolvedTo)];
-  }
-
-  static create(doc: ProseMirrorNode, from: number, to: number) {
-    const $from = doc.resolve(from);
-    const $to = doc.resolve(to);
-    const selection = new TextSelection($from, $to);
-
-    return new ColumnSelection(selection);
-  }
-
-  getFirstNode() {
-    return this.content().content.firstChild;
-  }
-}
 
 const Column = Node.create({
   name: "column",
@@ -249,88 +169,47 @@ const ColumnBlock = Node.create({
         () =>
         ({ dispatch, tr }) => {
           try {
-            if (!dispatch) {
+            const selected = tr.doc.nodeAt(tr.selection.from);
+            const match =
+              selected?.type === this.type
+                ? { node: selected, pos: tr.selection.from }
+                : findParentNodeClosestToPos(
+                    tr.selection.$from,
+                    ({ node }) => node.type === this.type,
+                  );
+            const children: ProseMirrorNode[] = [];
+            match.node.forEach((column) => column.forEach((child) => children.push(child)));
+            const content = children.length
+              ? children
+              : [tr.doc.type.schema.nodes.paragraph.create()];
+            const $pos = tr.doc.resolve(match.pos);
+            if (
+              !$pos.parent.canReplace($pos.index(), $pos.index() + 1, Fragment.fromArray(content))
+            )
               return false;
-            }
-
-            const where = ({ node }: ParentNodeMatch) => {
-              if (!this.options.nestedColumns && node.type === this.type) {
-                return true;
-              }
-
-              return node.type === this.type;
-            };
-            const firstAncestor = findParentNodeClosestToPos(tr.selection.$from, where);
-            let nodes: ProseMirrorNode[] = [];
-
-            firstAncestor.node.descendants((node, _pos, parent) => {
-              if (parent?.type.name === Column.name) {
-                nodes.push(node);
-              }
-            });
-            nodes = nodes.reverse().filter((node) => node.content.size > 0);
-
-            const resolvedPos = tr.doc.resolve(firstAncestor.pos);
-            const selection = new NodeSelection(resolvedPos);
-            let nextTr = tr.setSelection(selection);
-
-            nodes.forEach((node) => {
-              nextTr = nextTr.insert(firstAncestor.pos, node);
-            });
-            nextTr = nextTr.deleteSelection();
-
-            dispatch(nextTr);
+            if (dispatch) tr.replaceWith(match.pos, match.pos + match.node.nodeSize, content);
             return true;
-          } catch (error) {
-            console.error(error);
+          } catch {
             return false;
           }
         },
       setColumns:
-        (count: number, keepContent = false) =>
+        (count, keepContent = false) =>
         ({ dispatch, tr }) => {
-          try {
-            if (!dispatch) {
-              return false;
-            }
-
-            const selection = new ColumnSelection(tr.selection);
-            selection.expandSelection(tr.doc);
-
-            const { openEnd, openStart } = selection.content();
-
-            if (openStart !== openEnd) {
-              console.warn("failed depth check");
-              return false;
-            }
-
-            const columnBlock = keepContent
-              ? buildColumnBlock({
-                  content: [
-                    buildColumn({
-                      content: selection.content().toJSON()?.content,
-                    }),
-                    ...buildNColumns(count - 1),
-                  ],
-                })
-              : buildColumnBlock({ content: buildNColumns(count) });
-            const newNode = tr.doc.type.schema.nodeFromJSON(columnBlock);
-            const parent = selection.$anchor.parent.type;
-            const canAcceptColumnBlockChild =
-              parent.contentMatch.matchType(this.type) &&
-              (this.options.nestedColumns || parent.name !== Column.name);
-
-            if (!canAcceptColumnBlockChild) {
-              console.warn("content not allowed");
-              return false;
-            }
-
-            dispatch(tr.setSelection(selection).replaceSelectionWith(newNode, false));
-            return true;
-          } catch (error) {
-            console.error(error);
+          if (!Number.isInteger(count) || count < 2) return false;
+          const range = tr.selection.$from.blockRange(tr.selection.$to);
+          if (!range || (!this.options.nestedColumns && range.parent.type.name === Column.name))
             return false;
-          }
+          const selected = tr.doc.slice(range.start, range.end);
+          const content = keepContent ? selected.toJSON()?.content : undefined;
+          const block = keepContent
+            ? buildColumnBlock({ content: [buildColumn({ content }), ...buildNColumns(count - 1)] })
+            : buildColumnBlock({ content: buildNColumns(count) });
+          const node = tr.doc.type.schema.nodeFromJSON(block);
+          if (!range.parent.canReplaceWith(range.startIndex, range.endIndex, this.type))
+            return false;
+          if (dispatch) tr.replaceWith(range.start, range.end, node);
+          return true;
         },
     };
   },

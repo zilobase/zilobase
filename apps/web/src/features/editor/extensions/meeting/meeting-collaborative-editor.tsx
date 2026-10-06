@@ -71,28 +71,31 @@ export function MeetingCollaborativeEditor({
       onPointerDownCapture={focusNestedEditor}
     >
       <Editor
-        collaboration={{
-          document,
-          provider: provider ?? undefined,
-          status,
-          unsyncedChanges: 0,
-          user,
-          users: [],
+        session={{
+          kind: "meeting",
+          documentId: document.guid,
+          pageId,
+          workspaceId,
+          collaborationField: field,
+          collaboration: {
+            document,
+            provider: provider ?? undefined,
+            status,
+            unsyncedChanges: 0,
+            user,
+            users: [],
+          },
         }}
-        collaborationField={field}
-        commentsEditable={false}
-        databaseEditable={editable}
-        editable={editable}
-        editorTabIndex={0}
-        enableComments={false}
-        fullWidth
-        hideMetadata
-        metadataEditable={false}
-        onEditorReady={onEditorReady}
-        onOpenPage={onOpenPage}
-        pageId={pageId}
-        structuralEditingEnabled={editable}
-        workspaceId={workspaceId}
+        capabilities={{
+          content: editable,
+          metadata: false,
+          structural: editable,
+          comments: false,
+          database: editable,
+        }}
+        presentation={{ enableComments: false, fullWidth: true, hideMetadata: true }}
+        actions={{ onOpenPage }}
+        view={{ editorTabIndex: 0, onEditorReady }}
       />
     </div>
   );

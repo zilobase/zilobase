@@ -1,3 +1,4 @@
+import { isNodeRangeSelection } from "@tiptap/extension-node-range";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
@@ -39,6 +40,7 @@ function MeetingBlockView({ editor, extension, getPos, node }: ReactNodeViewProp
     const { doc, selection } = editor.state;
     const meetingIsSelected =
       selection instanceof AllSelection ||
+      isNodeRangeSelection(selection) ||
       (selection instanceof NodeSelection && selection.from === pos);
 
     if (!meetingIsSelected) {
@@ -106,6 +108,13 @@ export const MeetingBlock = Node.create<MeetingBlockOptions>({
       className: "meeting-block",
       stopEvent: ({ event }) => {
         const target = event.target;
+        if (
+          target instanceof HTMLElement &&
+          event.type === "mousemove" &&
+          target.closest(".meeting-block-header")
+        )
+          return false;
+        if (event.type === "mouseleave") return false;
         return target instanceof HTMLElement && Boolean(target.closest(".meeting-block-shell"));
       },
     });

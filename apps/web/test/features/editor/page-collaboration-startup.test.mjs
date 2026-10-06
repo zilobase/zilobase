@@ -1,13 +1,4 @@
 export function register({ assert, loadModule, readSource, test }) {
-  test("page collaboration acquires one cached document before connecting", async () => {
-    const source = await readSource("/src/features/editor/collaboration/use-page-collaboration.ts");
-
-    assert.match(source, /await acquirePageDocument\(user\.id, pageId\)/);
-    assert.match(source, /if \(!next\.hasPersistedState\)/);
-    assert.match(source, /setEntry\(next\)/);
-    assert.doesNotMatch(source, /new Y\.Doc\(/);
-  });
-
   test("page edit bridge closes on offline, errors, denial, and startup expiry", async () => {
     const { canEditPageDuringConnection } = await loadModule(
       "/src/features/editor/collaboration/collaboration-readiness.ts",

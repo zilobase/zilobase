@@ -346,19 +346,24 @@ function LayoutEditor({ onClose, target }: { onClose: () => void; target: Layout
         <main className="min-w-0 flex-1 overflow-hidden bg-surface-subtle">
           <div className="h-full w-full">
             <Editor
-              content={page?.content ?? ""}
-              cover={previewCover ?? undefined}
-              databaseId={databaseId}
-              editable={false}
-              emoji={previewIcon ?? undefined}
-              iconPosition={previewIconPosition}
-              fullWidth={fullWidth}
-              layoutConfig={draft}
-              layoutPreview
-              onLayoutChange={setDraft}
-              pageId={effectivePreviewPageId}
-              title={previewName}
-              workspaceId={previewWorkspaceId}
+              session={{
+                kind: "local",
+                content: page?.content ?? "",
+                databaseId,
+                pageId: effectivePreviewPageId,
+                workspaceId: previewWorkspaceId,
+              }}
+              capabilities={{ content: false }}
+              presentation={{
+                cover: previewCover ?? undefined,
+                emoji: previewIcon ?? undefined,
+                iconPosition: previewIconPosition,
+                fullWidth,
+                layoutConfig: draft,
+                layoutPreview: true,
+                onLayoutChange: setDraft,
+                title: previewName,
+              }}
             />
           </div>
         </main>

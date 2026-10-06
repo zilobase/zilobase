@@ -85,7 +85,8 @@
     "test:calendar:browser": "playwright test --config scripts/calendar/e2e/playwright.config.mjs",
     "test:data:browser": "node scripts/data/test-cache-browser.mjs",
     "test:background:isolated": "node scripts/background/test-isolated.mjs",
-    "background:ops": "npm exec --workspace @zilobase/server -- tsx src/scripts/background-ops.ts"
+    "background:ops": "npm exec --workspace @zilobase/server -- tsx src/scripts/background-ops.ts",
+    "test:editor:browser": "playwright test --config scripts/editor/e2e/playwright.config.mjs"
   },
   "dependencies": {
     "@dotenvx/dotenvx": "1.75.1",

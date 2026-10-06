@@ -90,7 +90,7 @@ export async function upsertPageItemPlacement(
 ) {
   const now = new Date();
 
-  await tx
+  const [created] = await tx
     .insert(pageItemPlacement)
     .values({
       id: input.id ?? crypto.randomUUID(),
@@ -105,7 +105,9 @@ export async function upsertPageItemPlacement(
       createdAt: now,
       updatedAt: now,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: pageItemPlacement.id });
+  return created?.id ?? null;
 }
 
 export async function softDeletePageItemPlacement(
@@ -115,6 +117,7 @@ export async function softDeletePageItemPlacement(
     workspaceId: string;
     parentId: string;
     parentKind: NavItemKind;
+    placementId?: string;
   },
 ) {
   const now = new Date();
@@ -130,6 +133,7 @@ export async function softDeletePageItemPlacement(
         eq(pageItemPlacement.itemKind, input.item.kind),
         eq(pageItemPlacement.itemId, input.item.id),
         isNull(pageItemPlacement.deletedAt),
+        input.placementId ? eq(pageItemPlacement.id, input.placementId) : undefined,
       ),
     );
 }

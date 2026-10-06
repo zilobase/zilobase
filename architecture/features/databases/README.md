@@ -139,7 +139,10 @@ A database is page-backed; data sources, rows, views and property values are sep
 Row/property changes can update database realtime outboxes and automations. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
 
 Database deletion is a reversible lifecycle transition. The database, its rows,
-and nested descendants are soft-deleted as one batch. If a page Yjs document
+and nested descendants are soft-deleted as one batch. Header mouse movement passes
+through the database node view to the enclosing editor's whole-block DragHandle;
+database inputs, row gestures and shortcuts remain owned by the database view.
+If a page Yjs document
 still contains a deleted database reference, the
 [database node view](../../../apps/web/src/features/databases/core/database-block.tsx)
 removes that reference without recording another editor undo step. Deleted
@@ -269,3 +272,7 @@ Table and toolbar composition keep named local render sections for property cell
 [Row mutations](../../../packages/features/src/databases/mutations/rows.ts) complete after row confirmation. Adding a favorited page refreshes navigation in the background, so navigation latency or failure cannot delay the editor’s success callback or reject an already committed row. [Row mutation tests](../../../packages/features/src/databases/mutations/rows.test.ts) cover atomic initial values and neighbor-anchor construction.
 
 Complete task and AI context reads use [export references](../../../packages/features/src/databases/export-references.ts). HTTP exports normalize authorized host/source/link/property/record/value entities and retain ordered row references plus contextual pagination and creator information. Every resolver captures one synchronous session publication revision. Downloaded bodies and durable AI action receipts retain their historical semantics. Opaque AI tool receipts still request existing authorized reads because they lack entity clocks; those reads enter the same normalizers. Sidebar-only metadata and actor favorites now have collection owners, including their library previews and acknowledgement ingestion.
+
+## Editor resource movement
+
+Editor-linked views use operation-owned page-placement receipts. Moving a primary database block uses the existing `database.update` command with `pageId` and `expectedPageId`: the transactional handler rejects stale locations, verifies destination page edit access and cycle restrictions, updates the primary placement and publishes the host metadata through the database controller. Relocation refreshes navigation placement membership; ordinary metadata updates keep their sparse path. The editor's shared history pairs this confirmed resource change with both view changes and revalidates native history before undo/redo.

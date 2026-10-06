@@ -1,3 +1,4 @@
+import { createPositionAnchor } from "../operations/position-anchor";
 import type { Content } from "@tiptap/core";
 import type { Editor } from "@tiptap/react";
 
@@ -195,9 +196,17 @@ export async function insertBlockFromPlus(
   } = {},
 ) {
   const isEmptyTextBlock = target.node.isTextblock && target.node.content.size === 0;
+  const anchor = createPositionAnchor(editor, target.pos);
 
   const insert = (content: Content | null) => {
-    if (!content) {
+    const pos = anchor.resolve();
+    if (
+      !content ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      pos === null ||
+      !editor.state.doc.nodeAt(pos)?.eq(target.node)
+    ) {
       return;
     }
 
@@ -205,36 +214,39 @@ export async function insertBlockFromPlus(
       editor
         .chain()
         .focus()
-        .deleteRange({ from: target.pos, to: target.pos + target.node.nodeSize })
-        .insertContentAt(target.pos, content)
+        .replaceBlocksRange({ from: pos, to: pos + target.node.nodeSize }, content)
         .run();
-      selectInsertedBlock(editor, target.pos, item);
+      selectInsertedBlock(editor, pos, item);
       return;
     }
 
-    const insertPos = target.pos + target.node.nodeSize;
+    const insertPos = pos + target.node.nodeSize;
 
-    editor.chain().focus().insertContentAt(insertPos, content).run();
+    editor.chain().focus().insertBlocksAt(insertPos, content).run();
     selectInsertedBlock(editor, insertPos, item);
   };
 
-  if (item.title === "Database") {
-    await runStructuralInsertion({
-      create: options.onCreateDatabase,
-      insert: (databaseId) => insert(blockContentForItem(item, { databaseId })),
-      onPendingChange: options.onStructuralInsertionPendingChange,
-    });
-    return;
-  }
+  try {
+    if (item.title === "Database") {
+      await runStructuralInsertion({
+        create: options.onCreateDatabase,
+        insert: (databaseId) => insert(blockContentForItem(item, { databaseId })),
+        onPendingChange: options.onStructuralInsertionPendingChange,
+      });
+      return;
+    }
 
-  if (item.title === "Meeting notes") {
-    await runStructuralInsertion({
-      create: options.onCreateMeeting,
-      insert: (meetingId) => insert(blockContentForItem(item, { meetingId })),
-      onPendingChange: options.onStructuralInsertionPendingChange,
-    });
-    return;
-  }
+    if (item.title === "Meeting notes") {
+      await runStructuralInsertion({
+        create: options.onCreateMeeting,
+        insert: (meetingId) => insert(blockContentForItem(item, { meetingId })),
+        onPendingChange: options.onStructuralInsertionPendingChange,
+      });
+      return;
+    }
 
-  insert(blockContentForItem(item));
+    insert(blockContentForItem(item));
+  } finally {
+    anchor.dispose();
+  }
 }

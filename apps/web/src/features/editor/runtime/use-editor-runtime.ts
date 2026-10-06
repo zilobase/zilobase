@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { DatabaseBlockEditorRuntime } from "@/features/databases";
 
 export const useEditorRuntime = (editable: boolean) => {
@@ -18,5 +18,9 @@ export const useEditorRuntime = (editable: boolean) => {
     [],
   );
 
+  useEffect(() => {
+    editorRuntimeRef.current.editable = editable;
+    editorRuntimeRef.current.listeners.forEach((listener) => listener());
+  }, [editable]);
   return { databaseEditorRuntime, editorRuntimeRef };
 };

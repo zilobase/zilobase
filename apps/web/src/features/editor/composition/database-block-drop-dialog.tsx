@@ -15,6 +15,7 @@ export type PendingDatabaseBlockDrop = {
   databaseId: string;
   payload: BlockDragPayload;
   pos: number;
+  anchor: import("../operations/position-anchor").PositionAnchor;
 };
 
 export function DatabaseBlockDropDialog({
@@ -50,10 +51,25 @@ export function DatabaseBlockDropDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onCopy} variant={pending?.canMove ? "outline" : "default"}>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              onCopy();
+            }}
+            variant={pending?.canMove ? "outline" : "default"}
+          >
             Create linked view
           </AlertDialogAction>
-          {pending?.canMove ? <AlertDialogAction onClick={onMove}>Move</AlertDialogAction> : null}
+          {pending?.canMove ? (
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                onMove();
+              }}
+            >
+              Move
+            </AlertDialogAction>
+          ) : null}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

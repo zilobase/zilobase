@@ -23,3 +23,7 @@ Adding messages changes shared document state and selection anchors. Preserve th
 Start with [the existing tests or model](../../../apps/web/src/features/comments/model/yjs-comments.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
 
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
+
+## Structural transfers
+
+Threads persist in the page's Yjs `commentThreads` map and text/block anchors use comment marks with `commentId`. They do not require Tiptap UniqueID or globally persisted block IDs. [Block operations](../../../apps/web/src/features/editor/operations/block-operations.ts) strip comment marks from destination copies and cross-page moves. Threads remain on the original page; paired undo restores the original marked source. Same-document moves preserve marks and their anchors.

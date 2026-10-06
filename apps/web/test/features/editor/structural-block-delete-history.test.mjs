@@ -1,106 +1,135 @@
 export function register({ assert, loadModule, readSource, test }) {
-  const flush = () => new Promise((resolve) => setImmediate(resolve));
-
-  test("structural delete undo restores the editor node and resource together", async () => {
-    const { createStructuralBlockDeleteHistoryAction } = await loadModule(
-      "/src/features/editor/drag-drop/structural-block-delete-history.ts",
-    );
+  const load = () => loadModule("/src/features/editor/operations/resource-history.ts");
+  test("structural deletion awaits resource history before advancing editor history", async () => {
+    const { createResourceHistoryAction } = await load();
     const events = [];
-    const action = createStructuralBlockDeleteHistoryAction({
+    const action = createResourceHistoryAction({
+      label: "Delete structural block",
       editor: {
-        redo: () => events.push("editor:redo"),
-        undo: () => events.push("editor:undo"),
-      },
-      onError: (error) => assert.fail(error),
-      resource: {
-        redo: async () => events.push("resource:redo"),
-        undo: async () => events.push("resource:undo"),
-      },
-    });
-
-    action.undo();
-    await flush();
-    action.redo();
-    await flush();
-
-    assert.deepEqual(events, ["editor:undo", "resource:undo", "editor:redo", "resource:redo"]);
-  });
-
-  test("structural resource transitions stay ordered across rapid undo and redo", async () => {
-    const { createStructuralBlockDeleteHistoryAction } = await loadModule(
-      "/src/features/editor/drag-drop/structural-block-delete-history.ts",
-    );
-    const events = [];
-    let finishRestore;
-    const restorePending = new Promise((resolve) => {
-      finishRestore = resolve;
-    });
-    const action = createStructuralBlockDeleteHistoryAction({
-      editor: {
-        redo: () => events.push("editor:redo"),
-        undo: () => events.push("editor:undo"),
-      },
-      onError: (error) => assert.fail(error),
-      resource: {
-        redo: async () => events.push("resource:redo"),
-        undo: async () => {
-          events.push("resource:undo:start");
-          await restorePending;
-          events.push("resource:undo:end");
+        canUndo: () => true,
+        canRedo: () => true,
+        undo: () => {
+          events.push("editor:undo");
+          return true;
+        },
+        redo: () => {
+          events.push("editor:redo");
+          return true;
         },
       },
+      resource: {
+        undo: async () => events.push("resource:undo"),
+        redo: async () => events.push("resource:redo"),
+      },
+      onError: assert.fail,
     });
-
-    action.undo();
-    action.redo();
-    await flush();
-    assert.deepEqual(events, ["editor:undo", "editor:redo", "resource:undo:start"]);
-
-    finishRestore();
-    await flush();
+    assert.equal(await action.undo(), true);
+    assert.equal(await action.redo(), true);
+    assert.deepEqual(events, ["resource:undo", "editor:undo", "resource:redo", "editor:redo"]);
+  });
+  test("rapid structural resource transitions remain serialized", async () => {
+    const { createResourceHistoryAction } = await load();
+    const events = [];
+    let finish;
+    const pending = new Promise((resolve) => {
+      finish = resolve;
+    });
+    const action = createResourceHistoryAction({
+      label: "Delete structural block",
+      editor: {
+        canUndo: () => true,
+        canRedo: () => true,
+        undo: () => {
+          events.push("editor:undo");
+          return true;
+        },
+        redo: () => {
+          events.push("editor:redo");
+          return true;
+        },
+      },
+      resource: {
+        undo: async () => {
+          events.push("resource:undo:start");
+          await pending;
+          events.push("resource:undo:end");
+        },
+        redo: async () => events.push("resource:redo"),
+      },
+      onError: assert.fail,
+    });
+    const undo = action.undo(),
+      redo = action.redo();
+    await Promise.resolve();
+    assert.deepEqual(events, ["resource:undo:start"]);
+    finish();
+    await Promise.all([undo, redo]);
     assert.deepEqual(events, [
-      "editor:undo",
-      "editor:redo",
       "resource:undo:start",
       "resource:undo:end",
+      "editor:undo",
       "resource:redo",
+      "editor:redo",
     ]);
   });
-
-  test("failed editor history commands do not mutate the resource", async () => {
-    const { createStructuralBlockDeleteHistoryAction } = await loadModule(
-      "/src/features/editor/drag-drop/structural-block-delete-history.ts",
-    );
+  test("stale native receipt cancels resource history without touching another entry", async () => {
+    const { createResourceHistoryAction } = await load();
     const events = [];
-    const action = createStructuralBlockDeleteHistoryAction({
+    let valid = false;
+    const action = createResourceHistoryAction({
+      label: "Delete structural block",
       editor: {
-        redo: () => false,
-        undo: () => false,
+        canUndo: () => valid,
+        canRedo: () => valid,
+        undo: () => assert.fail("must not undo"),
+        redo: () => assert.fail("must not redo"),
       },
-      onError: (error) => assert.fail(error),
       resource: {
-        redo: async () => events.push("resource:redo"),
-        undo: async () => events.push("resource:undo"),
+        undo: async () => {
+          events.push("restore");
+          valid = false;
+        },
+        redo: async () => events.push("compensate"),
       },
+      onError: assert.fail,
     });
-
-    assert.equal(action.undo(), false);
-    assert.equal(action.redo(), false);
-    await flush();
+    assert.equal(await action.undo(), false);
     assert.deepEqual(events, []);
+    valid = true;
+    assert.equal(await action.undo(), false);
+    assert.deepEqual(events, ["restore", "compensate"]);
   });
-
-  test("database deletion wires resource restoration into one editor history action", async () => {
+  test("failed resource history leaves the editor unchanged", async () => {
+    const { createResourceHistoryAction } = await load();
+    const errors = [];
+    const action = createResourceHistoryAction({
+      label: "Delete structural block",
+      editor: {
+        canUndo: () => true,
+        canRedo: () => true,
+        undo: () => assert.fail("must not undo"),
+        redo: () => assert.fail("must not redo"),
+      },
+      resource: {
+        undo: async () => {
+          throw new Error("denied");
+        },
+        redo: async () => {},
+      },
+      onError: (e) => errors.push(e.message),
+    });
+    assert.equal(await action.undo(), false);
+    assert.deepEqual(errors, ["denied"]);
+  });
+  test("database deletion registers a captured receipt with resource restoration", async () => {
     const [menu, pane, types] = await Promise.all([
       readSource("/src/features/editor/drag-drop/drag-block-menu.tsx"),
       readSource("/src/features/pages/pane/page-editor-pane.tsx"),
       readSource("/src/features/editor/core/types.ts"),
     ]);
-
     assert.match(types, /Promise<StructuralBlockDeleteHistory \| void>/);
-    assert.match(menu, /undoHistory\.runWithoutRecording\(deleteEditorBlock\)/);
-    assert.match(menu, /createStructuralBlockDeleteHistoryAction/);
+    assert.match(menu, /workspace\.history\.suppress\(deleteEditorBlock\)/);
+    assert.match(menu, /workspace\.history\.capture\(editor\)/);
     assert.match(pane, /await restoreDatabase\.mutateAsync\(request\.id\)/);
-    assert.match(pane, /await embedPageItem\.mutateAsync\(input\)/);
   });
 }

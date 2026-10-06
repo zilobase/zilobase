@@ -54,306 +54,40 @@ export function register({ assert, loadModule, test }) {
     assert.equal(getDraggedEditorBlockPayload(dataTransfer), null);
   });
 
-  test("block drag payload parser accepts valid payloads", async () => {
+  test("block drag payload requires an operation and complete source slice", async () => {
     const { EDITOR_BLOCK_DRAG_MIME, getDraggedEditorBlockPayload } = await loadModule(
-      "/src/features/editor/drag-drop/block-drag.ts",
+      "/src/features/editor/drag-drop/block-drag-session.ts",
     );
     const payload = {
-      editorId: "editor-1",
-      node: { type: "paragraph" },
-      pos: 4,
-      textContent: "Hello",
-      typeName: "paragraph",
-    };
-    const dataTransfer = {
-      getData: (type) => (type === EDITOR_BLOCK_DRAG_MIME ? JSON.stringify(payload) : ""),
-    };
-
-    assert.deepEqual(getDraggedEditorBlockPayload(dataTransfer), payload);
-  });
-
-  test("block drag payload parser accepts complete multi-block ranges", async () => {
-    const {
-      EDITOR_BLOCK_DRAG_MIME,
-      getBlockDragDatabaseId,
-      getDraggedEditorBlockPayload,
-      isMultiBlockDragPayload,
-    } = await loadModule("/src/features/editor/drag-drop/block-drag.ts");
-    const payload = {
-      blockCount: 3,
-      editorId: "editor-1",
-      from: 4,
-      node: { attrs: { databaseId: "tasks" }, type: "databaseBlock" },
-      parentTypeName: "doc",
-      pos: 4,
-      slice: { content: [{ type: "databaseBlock" }, { type: "paragraph" }] },
-      textContent: "",
-      to: 12,
-      typeName: "databaseBlock",
-    };
-    const dataTransfer = {
-      getData: (type) => (type === EDITOR_BLOCK_DRAG_MIME ? JSON.stringify(payload) : ""),
-    };
-    const parsed = getDraggedEditorBlockPayload(dataTransfer);
-
-    assert.deepEqual(parsed, payload);
-    assert.equal(isMultiBlockDragPayload(parsed), true);
-    assert.equal(getBlockDragDatabaseId(parsed), null);
-
-    delete payload.to;
-    assert.equal(getDraggedEditorBlockPayload(dataTransfer), null);
-  });
-
-  test("block drag session bridges browsers that hide custom transfer data", async () => {
-    const { armBlockDrag, endBlockDrag, getDraggedEditorBlockPayload } = await loadModule(
-      "/src/features/editor/drag-drop/block-drag.ts",
-    );
-    const target = {
-      node: {
-        textContent: "Hello",
-        toJSON: () => ({ type: "paragraph" }),
-        type: { name: "paragraph" },
-      },
-      pos: 4,
-    };
-
-    armBlockDrag("editor-1", target);
-
-    assert.deepEqual(getDraggedEditorBlockPayload(null), {
-      editorId: "editor-1",
-      node: { type: "paragraph" },
-      pos: 4,
-      textContent: "Hello",
-      typeName: "paragraph",
-    });
-
-    endBlockDrag();
-    assert.equal(getDraggedEditorBlockPayload(null), null);
-  });
-
-  test("same-position block drops restore focus and end the drag session", async () => {
-    const { Schema } = await import("@tiptap/pm/model");
-    const { EditorState } = await import("@tiptap/pm/state");
-    const { armBlockDrag, dropEditorBlock, getDraggedEditorBlockPayload, registerBlockDragSource } =
-      await loadModule("/src/features/editor/drag-drop/block-drag.ts");
-    const schema = new Schema({
-      nodes: {
-        doc: { content: "block+" },
-        paragraph: { content: "text*", group: "block" },
-        text: {},
-      },
-      marks: {},
-    });
-    const node = schema.node("paragraph", null, schema.text("Hello"));
-    const editorView = statefulEditorView(
-      EditorState.create({ doc: schema.node("doc", null, [node]) }),
-    );
-    const target = { node, pos: 0 };
-    const unregister = registerBlockDragSource("editor-1", {
-      view: editorView.view,
-    });
-    let prevented = false;
-
-    armBlockDrag("editor-1", target);
-
-    assert.equal(
-      dropEditorBlock(
-        editorView.view,
-        {
-          dataTransfer: null,
-          preventDefault() {
-            prevented = true;
-          },
-        },
-        0,
-      ),
-      true,
-    );
-    assert.equal(prevented, true);
-    assert.equal(editorView.focused(), true);
-    assert.equal(getDraggedEditorBlockPayload(null), null);
-
-    unregister();
-  });
-
-  test("database block drags expose their source database id", async () => {
-    const { canMoveDatabaseBlockToPage, getBlockDragDatabaseId } = await loadModule(
-      "/src/features/editor/drag-drop/block-drag.ts",
-    );
-    const payload = {
-      editorId: "editor-1",
-      node: {
-        attrs: { databaseId: "tasks" },
-        type: "databaseBlock",
-      },
-      pos: 4,
-      textContent: "",
-      typeName: "databaseBlock",
-    };
-
-    assert.equal(getBlockDragDatabaseId(payload), "tasks");
-    assert.equal(getBlockDragDatabaseId({ ...payload, node: { type: "databaseBlock" } }), null);
-    assert.equal(getBlockDragDatabaseId({ ...payload, typeName: "paragraph" }), null);
-    assert.equal(canMoveDatabaseBlockToPage("tasks", "tasks", ["tasks"]), false);
-    assert.equal(canMoveDatabaseBlockToPage("tasks", null, ["tasks"]), false);
-    assert.equal(canMoveDatabaseBlockToPage("tasks", "projects", ["projects"]), true);
-  });
-
-  test("cross-editor database drops copy or move the source block", async () => {
-    const { dropCrossEditorBlock, registerBlockDragSource } = await loadModule(
-      "/src/features/editor/drag-drop/block-drag.ts",
-    );
-    const payload = {
-      editorId: "source-editor",
-      node: {
-        attrs: { databaseId: "tasks" },
-        type: "databaseBlock",
-      },
-      pos: 2,
-      textContent: "",
-      typeName: "databaseBlock",
-    };
-    const source = fakeEditorView();
-    const firstTarget = fakeEditorView();
-    const unregister = registerBlockDragSource("source-editor", {
-      view: source.view,
-    });
-
-    assert.equal(dropCrossEditorBlock(firstTarget.view, payload, 5, "copy"), true);
-    assert.equal(firstTarget.dispatches.length, 1);
-    assert.equal(source.dispatches.length, 0);
-
-    const secondTarget = fakeEditorView();
-    assert.equal(dropCrossEditorBlock(secondTarget.view, payload, 5, "move"), true);
-    assert.equal(secondTarget.dispatches.length, 1);
-    assert.equal(source.dispatches.length, 1);
-
-    unregister();
-  });
-
-  test("cross-editor multi-block drops move the complete selected range", async () => {
-    const { Schema } = await import("@tiptap/pm/model");
-    const { EditorState } = await import("@tiptap/pm/state");
-    const { dropCrossEditorBlock, registerBlockDragSource } = await loadModule(
-      "/src/features/editor/drag-drop/block-drag.ts",
-    );
-    const schema = new Schema({
-      nodes: {
-        doc: { content: "block+" },
-        paragraph: { content: "text*", group: "block" },
-        text: {},
-      },
-      marks: {},
-    });
-    const paragraph = (text) => schema.node("paragraph", null, schema.text(text));
-    const source = statefulEditorView(
-      EditorState.create({
-        doc: schema.node("doc", null, [paragraph("First"), paragraph("Second"), paragraph("Keep")]),
-      }),
-    );
-    const target = statefulEditorView(
-      EditorState.create({
-        doc: schema.node("doc", null, [paragraph("Target")]),
-      }),
-    );
-    const secondEnd =
-      source.view.state.doc.child(0).nodeSize + source.view.state.doc.child(1).nodeSize;
-    const slice = source.view.state.doc.slice(0, secondEnd);
-    const payload = {
-      blockCount: 2,
-      editorId: "source-editor",
-      from: 0,
-      node: source.view.state.doc.child(0).toJSON(),
-      parentTypeName: "doc",
+      operationId: "operation",
+      editorId: "view",
       pos: 0,
-      slice: slice.toJSON(),
-      textContent: "First",
-      to: secondEnd,
+      from: 0,
+      to: 3,
+      blockCount: 1,
+      node: { type: "paragraph" },
+      slice: { content: [{ type: "paragraph" }] },
+      parentTypeName: "doc",
+      textContent: "A",
       typeName: "paragraph",
     };
-    const unregister = registerBlockDragSource("source-editor", {
-      view: source.view,
+    const transfer = (value) => ({
+      getData: (type) => (type === EDITOR_BLOCK_DRAG_MIME ? JSON.stringify(value) : ""),
     });
-
-    assert.equal(dropCrossEditorBlock(target.view, payload, 0, "move"), true);
-    assert.deepEqual(
-      Array.from(
-        { length: target.view.state.doc.childCount },
-        (_, index) => target.view.state.doc.child(index).textContent,
-      ),
-      ["First", "Second", "Target"],
+    assert.deepEqual(getDraggedEditorBlockPayload(transfer(payload)), payload);
+    assert.equal(
+      getDraggedEditorBlockPayload(transfer({ ...payload, operationId: undefined })),
+      null,
     );
-    assert.deepEqual(
-      Array.from(
-        { length: source.view.state.doc.childCount },
-        (_, index) => source.view.state.doc.child(index).textContent,
-      ),
-      ["Keep"],
-    );
-
-    unregister();
+    assert.equal(getDraggedEditorBlockPayload(transfer({ ...payload, to: 0 })), null);
+    assert.equal(getDraggedEditorBlockPayload(null), null);
   });
-}
-
-function statefulEditorView(initialState) {
-  let state = initialState;
-  let hasFocused = false;
-  const classList = { remove() {} };
-  const view = {
-    get state() {
-      return state;
-    },
-    dispatch(transaction) {
-      state = state.apply(transaction);
-    },
-    dom: { classList },
-    focus() {
-      hasFocused = true;
-    },
-  };
-
-  return { focused: () => hasFocused, view };
-}
-
-function fakeEditorView() {
-  const dispatches = [];
-  const node = {
-    marks: [],
-    nodeSize: 1,
-    sameMarkup: () => true,
-    textContent: "",
-    type: { name: "databaseBlock" },
-  };
-  const transaction = {
-    delete() {
-      return transaction;
-    },
-    insert() {
-      return transaction;
-    },
-    scrollIntoView() {
-      return transaction;
-    },
-  };
-  const view = {
-    dispatch(value) {
-      dispatches.push(value);
-    },
-    dom: { classList: { remove() {} } },
-    focus() {},
-    state: {
-      doc: {
-        nodeAt: () => node,
-        resolve: () => ({
-          depth: 0,
-          index: () => 0,
-          node: () => ({ canReplaceWith: () => true }),
-        }),
-      },
-      schema: { nodeFromJSON: () => node },
-      tr: transaction,
-    },
-  };
-
-  return { dispatches, view };
+  test("database cycle checks distinguish host and ancestor placements", async () => {
+    const { canMoveDatabaseBlockToPage } = await loadModule(
+      "/src/features/editor/drag-drop/block-drag-session.ts",
+    );
+    assert.equal(canMoveDatabaseBlockToPage("a", "a", []), false);
+    assert.equal(canMoveDatabaseBlockToPage("a", "b", ["a"]), false);
+    assert.equal(canMoveDatabaseBlockToPage("a", "b", []), true);
+  });
 }

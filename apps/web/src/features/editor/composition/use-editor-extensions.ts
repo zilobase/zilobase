@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import type { Content, Extensions } from "@tiptap/core";
 import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents";
 import { normalizeEditorContent } from "./create-base-extensions";
@@ -14,7 +14,6 @@ export const useEditorExtensions = ({
   createEditorDatabase,
   createEditorMeeting,
   databaseEditorRuntime,
-  editable,
   structuralEditingEnabled,
   onCreatePage,
   onEmbedPage,
@@ -25,39 +24,47 @@ export const useEditorExtensions = ({
 }: UseEditorExtensionsOptions) => {
   const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([]);
 
+  const structural = useRef(structuralEditingEnabled);
+  structural.current = structuralEditingEnabled;
+  const latest = useRef({
+    createEditorDatabase,
+    createEditorMeeting,
+    onCreatePage,
+    onEmbedPage,
+    onOpenPage,
+    onStructuralInsertionPendingChange,
+  });
+  latest.current = {
+    createEditorDatabase,
+    createEditorMeeting,
+    onCreatePage,
+    onEmbedPage,
+    onOpenPage,
+    onStructuralInsertionPendingChange,
+  };
+  const document = collaboration?.document;
+  const awareness = collaboration?.awareness ?? collaboration?.provider?.awareness;
   const editorExtensions = useMemo<Extensions>(
     () =>
       createBaseExtensions({
         collaboration,
         collaborationField,
-        createEditorDatabase,
-        createEditorMeeting,
         databaseEditorRuntime,
-        editable,
-        structuralEditingEnabled,
-        onCreatePage,
-        onEmbedPage,
-        onOpenPage,
-        onStructuralInsertionPendingChange,
-        onTocUpdate: setTocItems,
+        editable: true,
+        structuralEditingEnabled: true,
+        isStructuralEditingEnabled: () => structural.current,
+        createEditorDatabase: () => latest.current.createEditorDatabase(),
+        createEditorMeeting: () => latest.current.createEditorMeeting(),
+        onCreatePage: onCreatePage ? () => latest.current.onCreatePage!() : undefined,
+        onEmbedPage: (id) => latest.current.onEmbedPage?.(id),
+        onOpenPage: (id, options) => latest.current.onOpenPage?.(id, options),
+        onStructuralInsertionPendingChange: (pending) =>
+          latest.current.onStructuralInsertionPendingChange?.(pending),
+        onTocUpdate: (items) => queueMicrotask(() => setTocItems(items)),
         workspaceId,
         pageId,
       }),
-    [
-      createEditorDatabase,
-      createEditorMeeting,
-      collaboration,
-      collaborationField,
-      databaseEditorRuntime,
-      editable,
-      structuralEditingEnabled,
-      onCreatePage,
-      onEmbedPage,
-      onOpenPage,
-      onStructuralInsertionPendingChange,
-      workspaceId,
-      pageId,
-    ],
+    [document, awareness, collaborationField, databaseEditorRuntime, workspaceId, pageId],
   );
 
   // Tiptap's Collaboration extension binds to one Y.XmlFragment when the
@@ -69,7 +76,7 @@ export const useEditorExtensions = ({
       ? "presence"
       : "content-only";
   const editorLifecycleKey = collaboration
-    ? `${pageId ?? "collaboration"}:${collaborationField ?? "default"}:${collaborationPresenceKey}`
+    ? `${document?.guid ?? pageId ?? "collaboration"}:${collaborationField ?? "default"}:${collaborationPresenceKey}`
     : (pageId ?? "draft");
   const initialContent = collaboration ? undefined : (normalizeEditorContent(content) as Content);
 

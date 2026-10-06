@@ -1,5 +1,7 @@
 import type { ConfigurationChange } from "../interactions/configuration";
 import { useDatabaseController } from "../interactions/react";
+import { useZilobaseFeatures } from "../../shared/context";
+import { pagesQueryKey } from "../../pages/queries";
 import { useMutation } from "@tanstack/react-query";
 import type { NavDelta } from "../../pages/nav-delta";
 import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
@@ -17,6 +19,8 @@ type CreateDatabaseResponse = {
 };
 export type UpdateDatabaseInput = {
   databaseId: string;
+  pageId?: string | null;
+  expectedPageId?: string | null;
   name?: string;
   configuration?: ConfigurationChange[];
 };
@@ -48,6 +52,7 @@ export function useCreateDatabase() {
 }
 export function useUpdateDatabase() {
   const controller = useDatabaseController();
+  const { queryClient } = useZilobaseFeatures();
   return useMutation({
     mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) => {
       const ack = await controller.execute({
@@ -55,6 +60,14 @@ export function useUpdateDatabase() {
         databaseId,
       });
       return ack.result as DatabaseHostEntity;
+    },
+    onSuccess: async (result, input) => {
+      if (input.pageId !== undefined) {
+        // Placement membership changes on relocation; ordinary metadata edits stay sparse.
+        await queryClient
+          .invalidateQueries({ queryKey: pagesQueryKey(result.workspaceId) })
+          .catch(() => {});
+      }
     },
   });
 }

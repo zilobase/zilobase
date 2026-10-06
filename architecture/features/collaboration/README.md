@@ -26,3 +26,9 @@ Concurrent editing, reconnect, document replacement and comment/transcript updat
 Start with [the existing tests or model](../../../apps/server/src/features/collaboration/service.test.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
 
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
+
+## Browser session ownership
+
+The [page-session owner](../../../apps/web/src/features/editor/collaboration/page-document-session.ts) owns cache acquisition, awareness, readiness gates, connection subscriptions and release. The app registry leases one session by deployment/account/kind/resource; its last consumer closes the transport and returns the document to the bounded cache. Cold bootstrap hydrates and flushes Yjs before exposing a collaborative editor. Warm startup typing uses that same Y.Doc. Disconnect, denial, cache errors and startup expiry close the edit gate until confirmed synchronization. The thin React hook exposes a stable external-store snapshot and cannot return a previous resource's session during a document switch.
+
+Editor transfers and paired history use the client session boundary described in [ADR 0016](../../decisions/0016-session-editor-transfers.md). Each Yjs document retains its existing server persistence contract; there is no server transfer journal or cross-document atomic Yjs transaction.

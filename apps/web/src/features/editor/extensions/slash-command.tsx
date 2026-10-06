@@ -41,13 +41,14 @@ import { ExcalidrawIcon, FigmaIcon, MiroIcon, YouTubeIcon } from "./embed-block"
 import { openAskAiPopover } from "./ask-ai-block";
 import type { CreatedPage } from "./page-block";
 import {
-  runStructuralInsertion,
+  insertCreatedBlock,
   type StructuralInsertionPendingChange,
 } from "../commands/structural-insertion";
 
 import { SlashCommandMenu } from "./slash-command-menu";
 
 type SlashCommandOptions = {
+  isEnabled?: () => boolean;
   onCreateDatabase?: () => Promise<string | null>;
   onCreateMeeting?: () => Promise<string | null>;
   onCreatePage?: () => Promise<CreatedPage>;
@@ -408,19 +409,11 @@ function createSlashCommandItems(options: SlashCommandOptions = {}): SlashComman
       description: "Record, transcribe, and summarize a meeting",
       icon: CalendarDays,
       command: async ({ editor, range }) => {
-        await runStructuralInsertion({
+        await insertCreatedBlock({
+          editor,
+          range,
           create: options.onCreateMeeting,
-          insert: (meetingId) => {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertContentAt(range.from, {
-                type: "meetingBlock",
-                attrs: { meetingId },
-              })
-              .run();
-          },
+          content: (meetingId) => ({ type: "meetingBlock", attrs: { meetingId } }),
           onPendingChange: options.onStructuralInsertionPendingChange,
         });
       },
@@ -430,17 +423,11 @@ function createSlashCommandItems(options: SlashCommandOptions = {}): SlashComman
       description: "Table where every row is a page",
       icon: Database,
       command: async ({ editor, range }) => {
-        await runStructuralInsertion({
+        await insertCreatedBlock({
+          editor,
+          range,
           create: options.onCreateDatabase,
-          insert: (databaseId) => {
-            editor
-              .chain()
-              .focus(undefined, { scrollIntoView: false })
-              .deleteRange(range)
-              .insertContentAt(range.from, createDatabaseSetupBlockContent(databaseId))
-              .setTextSelection(range.from + 2)
-              .run();
-          },
+          content: createDatabaseSetupBlockContent,
           onPendingChange: options.onStructuralInsertionPendingChange,
         });
       },

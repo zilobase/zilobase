@@ -15,7 +15,7 @@ export function register({ assert, loadModule, readSource, test }) {
       readSource("/src/features/pages/pane/page-editor-pane.tsx"),
     ]);
 
-    assert.match(pane, /onEditorReady=\{handleEditorReady\}/);
+    assert.match(pane, /onEditorReady: handleEditorReady/);
     assert.match(pane, /getEditorHandle,[\s\S]*editorReadyRevision,[\s\S]*navigation/);
     assert.match(editor, /window\.addEventListener\("beforeunload"/);
     assert.match(editor, /hasPendingCollaborationChanges\(collaboration\)/);

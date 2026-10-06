@@ -62,6 +62,22 @@ A Page is the page item represented by a Database row and opened from the editor
 
 The deployment- and account-scoped browser store of Yjs page updates and unrelated bounded read snapshots. Page metadata, properties and database entities are session-owned TanStack DB collections and require authorized reads after reload. A cached document renders immediately during collaboration startup and retains page-body edits made during a bounded online connection window; a disconnected page is read only.
 
+### Document session
+
+The application-owned collaboration lifecycle for one deployment/account/document kind/resource. Page consumers lease a shared cached Y.Doc, transport, awareness and readiness snapshot. Last release closes the transport without discarding unconfirmed durable updates.
+
+### Editor view
+
+A mounted Tiptap instance identified independently from its pane placement and bound to one document field. Promotion preserves the view; switching its document or collaboration field creates a new view. A document field has one editable owner.
+
+### Editor transfer receipt
+
+An in-memory record pairing the participating views' native history entries for a structural operation. It validates native ownership before undo/redo and becomes invalid when a required view closes. Yjs persists each document independently; the receipt does not survive process termination.
+
+### Resource placement receipt
+
+The ID of the relationship created by an embedding operation. Compensation uses that ID to avoid deleting preexisting relationships. It is separate from an editor block identity and from a server transfer journal.
+
 ### Clip
 
 A Clip is a webpage captured by the Web Clipper into a Page. It stores the source URL on page metadata, optional database properties, and Tiptap body content converted from sanitized HTML.

@@ -41,6 +41,7 @@ export function isOpenInNewTabShortcut(event: ShortcutPointerEvent) {
 }
 
 export function matchesAppShortcut(event: ShortcutKeyboardEvent, shortcutId: AppShortcutId) {
+  if (typeof event.key !== "string") return false;
   const shortcut = appShortcutDefinitions[shortcutId];
   const hasPrimaryModifier = event.metaKey || event.ctrlKey;
 

@@ -74,44 +74,52 @@ export type StructuralBlockDeleteRequest = {
 
 export type StructuralBlockDeleteAction = "move-to-trash" | "remove-link";
 
+export type EditorResourceReceipt = {
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+};
+export type EditorResourceLink = (
+  id: string,
+) => void | EditorResourceReceipt | Promise<void | EditorResourceReceipt>;
+
 export type StructuralBlockDeleteHistory = {
   redo: () => Promise<void>;
   undo: () => Promise<void>;
 };
 
-export type EditorProps = {
-  commentController?: PageCommentController;
-  content?: unknown;
+export type DocumentSession = {
+  kind?: "page" | "meeting" | "local";
+  documentId?: string;
+  pageId?: string | null;
+  workspaceId?: string | null;
   collaboration?: EditorCollaboration;
   collaborationField?: string;
-  cover?: string;
+  content?: unknown;
   databaseId?: string | null;
   databaseIds?: string[];
-  editorContentRef?: MutableRefObject<(() => unknown) | null>;
-  editorTabIndex?: number;
-  onEditorReady?: (editor: Editor | null) => void;
-  emoji?: string;
-  iconPosition?: PageIconPosition;
-  editable?: boolean;
-  contentEditable?: boolean;
-  metadataEditable?: boolean;
-  structuralEditingEnabled?: boolean;
-  commentsEditable?: boolean;
-  databaseEditable?: boolean;
-  enableComments?: boolean;
-  afterMetadata?: ReactNode;
-  fullWidth?: boolean;
-  hideEditorContent?: boolean;
-  hideMetadata?: boolean;
-  layoutConfig?: PageLayoutConfig;
-  layoutPanelMode?: PageLayoutPanelMode;
-  layoutPreview?: boolean;
-  onLayoutChange?: (config: PageLayoutConfig) => void;
-  onContentChange?: (content: unknown) => void;
+};
+export type EditorCapabilities = {
+  content?: boolean;
+  metadata?: boolean;
+  structural?: boolean;
+  comments?: boolean;
+  database?: boolean;
+};
+export type EditorRuntimeHandle = {
+  getSession: () => DocumentSession;
+  getCapabilities: () => EditorCapabilities;
+  getActions: () => EditorResourceActions;
+};
+export type EditorResourceActions = {
+  onContentChange?: (
+    readContent: () => unknown,
+    transaction?: import("@tiptap/pm/state").Transaction,
+  ) => void;
   onCoverChange?: (cover: string) => void;
   onCreatePage?: () => Promise<CreatedPage>;
-  onEmbedDatabase?: (databaseId: string) => void | Promise<void>;
-  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onEmbedDatabase?: EditorResourceLink;
+  onMoveDatabase?: (databaseId: string, sourcePageId: string) => Promise<EditorResourceReceipt>;
+  onEmbedPage?: EditorResourceLink;
   onEmojiChange?: (emoji: string) => void;
   onIconPositionChange?: (position: PageIconPosition) => void;
   getStructuralBlockDeleteAction?: (
@@ -123,11 +131,38 @@ export type EditorProps = {
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
   onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
   onTitleChange?: (title: string) => void;
-  workspaceId?: string | null;
+};
+export type EditorPresentation = {
+  afterMetadata?: ReactNode;
+  commentController?: PageCommentController;
+  cover?: string;
+  emoji?: string;
+  iconPosition?: PageIconPosition;
+  fullWidth?: boolean;
+  enableComments?: boolean;
+  hideEditorContent?: boolean;
+  hideMetadata?: boolean;
+  layoutConfig?: PageLayoutConfig;
+  layoutPanelMode?: PageLayoutPanelMode;
+  layoutPreview?: boolean;
+  onLayoutChange?: (config: PageLayoutConfig) => void;
   title?: string;
   reviewDiff?: { beforeMarkdown: string; afterMarkdown: string } | null;
+};
+export type EditorViewHandle = {
+  viewId?: string;
+  paneId?: string;
+  editorContentRef?: MutableRefObject<(() => unknown) | null>;
+  editorTabIndex?: number;
+  onEditorReady?: (editor: Editor | null) => void;
   pageEditPreviewRef?: MutableRefObject<PageEditPreviewControls | null>;
-  pageId?: string | null;
+};
+export type EditorProps = {
+  session?: DocumentSession;
+  capabilities?: EditorCapabilities;
+  actions?: EditorResourceActions;
+  presentation?: EditorPresentation;
+  view?: EditorViewHandle;
 };
 
 export type UseEditorExtensionsOptions = {
@@ -139,8 +174,9 @@ export type UseEditorExtensionsOptions = {
   databaseEditorRuntime: import("@/features/databases").DatabaseBlockEditorRuntime;
   editable: boolean;
   structuralEditingEnabled: boolean;
+  isStructuralEditingEnabled?: () => boolean;
   onCreatePage?: () => Promise<CreatedPage>;
-  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onEmbedPage?: EditorResourceLink;
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
   onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
   workspaceId?: string | null;

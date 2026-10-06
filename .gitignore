@@ -75,3 +75,6 @@ target
 coverage/
 *.tsbuildinfo
 graft/.cache/
+
+# Editor browser acceptance artifacts
+.dev/editor-e2e-results/

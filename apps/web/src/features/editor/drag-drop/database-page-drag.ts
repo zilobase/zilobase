@@ -1,6 +1,7 @@
+import type { EditorWorkspace } from "../runtime/editor-workspace";
+import { removeBlocks } from "../operations/block-operations";
 import type { EditorView } from "@tiptap/pm/view";
 import {
-  deleteDraggedEditorBlockSource,
   getDraggedEditorBlockPayload,
   getEditorInsertDropTarget,
   isMultiBlockDragPayload,
@@ -20,7 +21,7 @@ export { getDropDatabaseElement } from "./database-page-drop-target";
 export const insertDraggedDatabasePage = (
   view: EditorView,
   event: DragEvent,
-  onEmbedPage?: (pageId: string) => void | Promise<void>,
+  onEmbedPage?: import("../core/types").EditorResourceLink,
   currentPageId?: string | null,
   onSelfDrop?: () => void,
   onError: (error: unknown) => void = () => {},
@@ -54,8 +55,12 @@ export const insertDraggedDatabasePage = (
   return true;
 };
 
-const getDraggedPageBlockPayload = (event: DragEvent): DatabasePageDropPayload | null => {
-  const blockPayload = getDraggedEditorBlockPayload(event.dataTransfer);
+const getDraggedPageBlockPayload = (
+  event: DragEvent,
+  workspace?: EditorWorkspace,
+): DatabasePageDropPayload | null => {
+  const blockPayload =
+    workspace?.drag.read(event.dataTransfer) ?? getDraggedEditorBlockPayload(event.dataTransfer);
   if (
     !blockPayload ||
     isMultiBlockDragPayload(blockPayload) ||
@@ -77,8 +82,9 @@ const getDraggedPageBlockPayload = (event: DragEvent): DatabasePageDropPayload |
 const getDatabasePageDropPayload = (event: DragEvent): DatabasePageDropPayload | null =>
   getDraggedPageBlockPayload(event) ?? getNativeDatabasePageDragPayload(event.dataTransfer);
 
-export const isDraggingPageToEditor = (event: DragEvent) =>
-  hasDatabasePageDragPayload(event.dataTransfer) || getDraggedPageBlockPayload(event) !== null;
+export const isDraggingPageToEditor = (event: DragEvent, workspace?: EditorWorkspace) =>
+  hasDatabasePageDragPayload(event.dataTransfer) ||
+  getDraggedPageBlockPayload(event, workspace) !== null;
 
 export const shouldSkipEditorDropLine = (event: DragEvent) =>
   event.target instanceof HTMLElement && Boolean(event.target.closest(".database-table-wrap"));
@@ -86,6 +92,7 @@ export const shouldSkipEditorDropLine = (event: DragEvent) =>
 export const dropPageOnDatabase = (
   event: DragEvent,
   options: {
+    workspace: EditorWorkspace;
     addDatabaseRow: {
       isPending: boolean;
       mutate: (
@@ -114,6 +121,11 @@ export const dropPageOnDatabase = (
   event.preventDefault();
   event.stopPropagation();
   if (options.addDatabaseRow.isPending) return true;
+  if (dropPayload.blockPayload && !options.workspace.drag.source(dropPayload.blockPayload)) {
+    options.workspace.drag.reset();
+    return true;
+  }
+  options.workspace.drag.transition("awaiting-resource");
 
   options.addDatabaseRow.mutate(
     {
@@ -123,11 +135,17 @@ export const dropPageOnDatabase = (
       title: dropPayload.title,
     },
     {
-      onError: (error) =>
-        options.onError(error instanceof Error ? error.message : "Could not move page."),
+      onError: (error) => {
+        options.workspace.drag.reset();
+        options.onError(error instanceof Error ? error.message : "Could not move page.");
+      },
       onSuccess: () => {
         if (dropPayload.blockPayload) {
-          deleteDraggedEditorBlockSource(dropPayload.blockPayload as BlockDragPayload);
+          const source = options.workspace.drag.source(
+            dropPayload.blockPayload as BlockDragPayload,
+          );
+          if (source) removeBlocks(source.editor, source.from, source.to);
+          options.workspace.drag.reset();
         }
       },
     },

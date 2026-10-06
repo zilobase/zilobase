@@ -167,7 +167,7 @@
   }
 
   .drag-handle {
-    @apply pointer-events-none fixed z-10 hidden h-7 w-16 items-center justify-between bg-transparent pr-2 text-content-secondary opacity-100 md:flex;
+    @apply pointer-events-none absolute z-10 hidden h-7 w-16 items-center justify-between bg-transparent pr-2 text-content-secondary opacity-100 md:flex;
     transform: translate3d(0, 0, 0);
   }
 

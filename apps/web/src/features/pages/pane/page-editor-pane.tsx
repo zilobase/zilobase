@@ -1,9 +1,10 @@
+import { changedPageReferences } from "@/features/editor/operations/changed-page-references";
 import { resolvePageEditability } from "./page-editability";
 import {
   recoverMissingPlacedDatabaseBlocks,
   recoverPageEditorContent,
 } from "./page-content-recovery";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Button } from "@/shared/ui/button";
 import { TrashedItemBanner } from "../components/trashed-item-banner";
@@ -17,7 +18,11 @@ import {
   resolvePageFullWidth,
   type PageIconPosition,
 } from "@zilobase/features/pages";
-import { useDeleteDatabase, useRestoreDatabase } from "@zilobase/features/databases/react";
+import {
+  useDeleteDatabase,
+  useRestoreDatabase,
+  useUpdateDatabase,
+} from "@zilobase/features/databases/react";
 import { useDeleteMeeting, useWorkspaceMeetings } from "@zilobase/features/meetings/react";
 import {
   useUpdatePage,
@@ -136,6 +141,7 @@ export function PageEditorPane({
       : undefined;
   const createPage = useCreatePage();
   const embedPageItem = useEmbedPageItem();
+  const updateDatabase = useUpdateDatabase();
   const removePageEmbed = useRemovePageEmbed();
   const deleteDatabase = useDeleteDatabase();
   const restoreDatabase = useRestoreDatabase();
@@ -161,6 +167,7 @@ export function PageEditorPane({
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
   const onlineActionsReadyRef = useRef(demoMode);
+  const paneId = useId();
   const paneRef = useRef<HTMLElement | null>(null);
   const navigationTimingRef = useRef<{
     pageId: string;
@@ -174,7 +181,7 @@ export function PageEditorPane({
       measured: new Set(),
     };
   }
-  const { getEditorHandle, registerEditor, unregisterEditor } = usePageEditorRegistry();
+  const { getEditorHandle, registerEditor } = usePageEditorRegistry();
 
   const handleStructuralInsertionPendingChange = useCallback((pending: boolean) => {
     pendingStructuralInsertionsRef.current = Math.max(
@@ -291,7 +298,10 @@ export function PageEditorPane({
     if (page && pendingContentRef.current !== null) {
       updatePage.mutate({
         id: page.id,
-        content: pendingContentRef.current,
+        content:
+          typeof pendingContentRef.current === "function"
+            ? pendingContentRef.current()
+            : pendingContentRef.current,
       });
       pendingContentRef.current = null;
     }
@@ -549,7 +559,7 @@ export function PageEditorPane({
   };
 
   const updateContent = useCallback(
-    (content: unknown) => {
+    (content: unknown | (() => unknown), transaction?: import("@tiptap/pm/state").Transaction) => {
       if (!page) {
         return;
       }
@@ -557,51 +567,33 @@ export function PageEditorPane({
         return;
       }
 
-      const serializedContent = serializePageContent(content);
-
-      if (demoMode && demoPersistenceReadyPageId !== pageId) {
-        lastSavedContentRef.current = serializedContent;
-        return;
-      }
-
-      if (serializedContent && serializedContent === lastSavedContentRef.current) {
-        return;
-      }
-
-      if (serializedContent) {
-        lastSavedContentRef.current = serializedContent;
-      }
-
-      const nextPageBlockIds = extractPageBlockIds(content);
-      for (const retainedId of nextPageBlockIds) {
-        pendingPageEmbedRemovalsRef.current.delete(retainedId);
-      }
-      const removedPageBlockIds = [...lastPageBlockIdsRef.current].filter(
-        (pageId) => !nextPageBlockIds.has(pageId),
-      );
-
-      lastPageBlockIdsRef.current = nextPageBlockIds;
-      for (const pageId of removedPageBlockIds) {
-        if (collaboration.document && !collaboration.synced) {
-          pendingPageEmbedRemovalsRef.current.add(pageId);
-          continue;
-        }
-        removePageEmbed.mutate({
-          hostPageId: page.id,
-          itemId: pageId,
-          kind: "page",
-        });
-      }
-
       if (collaboration.document) {
+        if (transaction) {
+          const changes = changedPageReferences(transaction);
+          for (const itemId of changes.added) {
+            lastPageBlockIdsRef.current.add(itemId);
+            pendingPageEmbedRemovalsRef.current.delete(itemId);
+          }
+          for (const itemId of changes.removed) {
+            lastPageBlockIdsRef.current.delete(itemId);
+            if (!collaboration.synced) pendingPageEmbedRemovalsRef.current.add(itemId);
+            else removePageEmbed.mutate({ hostPageId: page.id, itemId, kind: "page" });
+          }
+          // Typing persists through Yjs; no JSON serialization or HTTP body write.
+        }
         return;
       }
-
+      if (demoMode && demoPersistenceReadyPageId !== pageId) return;
       clearContentSaveTimeout();
-      pendingContentRef.current = content;
-
+      const read = typeof content === "function" ? (content as () => unknown) : () => content;
+      pendingContentRef.current = read;
       contentSaveTimeoutRef.current = window.setTimeout(() => {
-        updatePage.mutate({ id: page.id, content });
+        const nextContent = read();
+        const serialized = serializePageContent(nextContent);
+        if (serialized && serialized !== lastSavedContentRef.current) {
+          lastSavedContentRef.current = serialized;
+          updatePage.mutate({ id: page.id, content: nextContent });
+        }
         contentSaveTimeoutRef.current = null;
         pendingContentRef.current = null;
       }, 800);
@@ -631,7 +623,7 @@ export function PageEditorPane({
   }, [collaboration.synced, page, removePageEmbed]);
 
   useEffect(() => {
-    registerEditor(
+    return registerEditor(
       pageId,
       createPageEditorHandle({
         editable: pageEditable && liveEditingReady,
@@ -642,10 +634,6 @@ export function PageEditorPane({
         pageEditPreviewRef,
       }),
     );
-
-    return () => {
-      unregisterEditor(pageId);
-    };
   }, [
     liveEditingReady,
     collaboration.document,
@@ -653,7 +641,6 @@ export function PageEditorPane({
     collaboration.unsyncedChanges,
     pageEditable,
     registerEditor,
-    unregisterEditor,
     updateContent,
     pageId,
   ]);
@@ -734,34 +721,60 @@ export function PageEditorPane({
     structuralInsertionRevision,
   ]);
 
-  const embedLinkedPage = useCallback(
-    async (pageId: string) => {
-      if (!page || !onlineActionsReady) {
-        return;
-      }
-
-      await embedPageItem.mutateAsync({
-        hostPageId: page.id,
-        itemId: pageId,
-        kind: "page",
-      });
+  const linkResource = useCallback(
+    async (itemId: string, kind: "page" | "database") => {
+      if (!page || !pageEditable || !onlineActionsReady)
+        throw new Error("Page embedding is unavailable.");
+      const input = { hostPageId: page.id, itemId, kind };
+      let result = await embedPageItem.mutateAsync(input);
+      // An existing relationship belongs to its original creator, not this operation.
+      if (!result.placementId) return;
+      return {
+        undo: async () => {
+          if (result.placementId)
+            await removePageEmbed.mutateAsync({ ...input, placementId: result.placementId });
+        },
+        redo: async () => {
+          result = await embedPageItem.mutateAsync(input);
+        },
+      };
     },
-    [embedPageItem, onlineActionsReady, page],
+    [page, pageEditable, onlineActionsReady, embedPageItem, removePageEmbed],
+  );
+  const embedLinkedPage = useCallback((id: string) => linkResource(id, "page"), [linkResource]);
+  const embedLinkedDatabase = useCallback(
+    (id: string) => linkResource(id, "database"),
+    [linkResource],
   );
 
-  const embedLinkedDatabase = useCallback(
-    async (databaseId: string) => {
-      if (!page || !onlineActionsReady) {
-        return;
-      }
-
-      await embedPageItem.mutateAsync({
-        hostPageId: page.id,
-        itemId: databaseId,
-        kind: "database",
-      });
+  const moveDatabase = useCallback(
+    async (databaseId: string, sourcePageId: string) => {
+      if (!page || !pageEditable || !onlineActionsReady)
+        throw new Error("Database movement is unavailable.");
+      const previous = navigation?.databases.find((item) => item.id === databaseId)?.pageId;
+      if (previous !== sourcePageId)
+        throw new Error(
+          "Only the database's primary block can be moved. Create a linked view instead.",
+        );
+      await updateDatabase.mutateAsync({ databaseId, pageId: page.id, expectedPageId: previous });
+      return {
+        undo: async () => {
+          await updateDatabase.mutateAsync({
+            databaseId,
+            pageId: previous,
+            expectedPageId: page.id,
+          });
+        },
+        redo: async () => {
+          await updateDatabase.mutateAsync({
+            databaseId,
+            pageId: page.id,
+            expectedPageId: previous,
+          });
+        },
+      };
     },
-    [embedPageItem, onlineActionsReady, page],
+    [page, pageEditable, onlineActionsReady, navigation, updateDatabase],
   );
 
   const createNestedPage = useCallback(async () => {
@@ -840,6 +853,7 @@ export function PageEditorPane({
           : undefined
       }
       ref={paneRef}
+      data-editor-pane-id={paneId}
     >
       {page.deletedAt ? (
         <TrashedItemBanner
@@ -860,9 +874,13 @@ export function PageEditorPane({
       ) : null}
       <Editor
         key={page.id}
-        afterMetadata={afterMetadata}
-        collaboration={
-          collaboration.document
+        session={{
+          pageId: page.id,
+          workspaceId: page.workspaceId,
+          content: page.content ?? "",
+          databaseId: effectiveDatabaseId,
+          databaseIds: pageDatabaseIds,
+          collaboration: collaboration.document
             ? {
                 document: collaboration.document,
                 awareness: collaboration.awareness ?? undefined,
@@ -872,46 +890,46 @@ export function PageEditorPane({
                 unsyncedChanges: collaboration.unsyncedChanges,
                 users: showCollaborationPresence ? collaboration.users : [],
               }
-            : undefined
-        }
-        commentController={commentController ?? undefined}
-        content={page.content ?? ""}
-        cover={cover}
-        databaseId={effectiveDatabaseId}
-        databaseIds={pageDatabaseIds}
-        editorContentRef={editorContentRef}
-        editable={pageEditable && liveEditingReady}
-        contentEditable={pageEditable && liveEditingReady}
-        metadataEditable={pageEditable && onlineActionsReady}
-        structuralEditingEnabled={pageEditable && liveEditingReady}
-        commentsEditable={commentsEditable && collaboration.canEdit && enableComments}
-        databaseEditable={databaseEditingReady}
-        enableComments={enableComments}
-        hideEditorContent={hideEditorContent}
-        getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
-        onEditorReady={handleEditorReady}
-        emoji={emoji}
-        iconPosition={iconPosition}
-        fullWidth={hideChrome ? true : fullWidth}
-        hideMetadata={hideChrome}
-        layoutConfig={hideChrome ? undefined : appliedLayout}
-        layoutPanelMode={layoutPanelMode}
-        onContentChange={updateContent}
-        onCoverChange={updateCover}
-        onCreatePage={createNestedPage}
-        onEmbedDatabase={embedLinkedDatabase}
-        onEmbedPage={embedLinkedPage}
-        onEmojiChange={updateEmoji}
-        onIconPositionChange={updateIconPosition}
-        onDeleteStructuralBlock={deleteStructuralBlock}
-        onOpenPage={onOpenPage}
-        onStructuralInsertionPendingChange={handleStructuralInsertionPendingChange}
-        onTitleChange={setName}
-        workspaceId={page.workspaceId}
-        title={name}
-        pageEditPreviewRef={pageEditPreviewRef}
-        reviewDiff={reviewDiff}
-        pageId={page.id}
+            : undefined,
+        }}
+        capabilities={{
+          content: pageEditable && liveEditingReady,
+          metadata: pageEditable && onlineActionsReady,
+          structural: pageEditable && liveEditingReady,
+          comments: commentsEditable && collaboration.canEdit && enableComments,
+          database: databaseEditingReady,
+        }}
+        presentation={{
+          afterMetadata,
+          commentController: commentController ?? undefined,
+          cover,
+          emoji,
+          iconPosition,
+          fullWidth: hideChrome ? true : fullWidth,
+          hideMetadata: hideChrome,
+          hideEditorContent,
+          enableComments,
+          layoutConfig: hideChrome ? undefined : appliedLayout,
+          layoutPanelMode,
+          title: name,
+          reviewDiff,
+        }}
+        actions={{
+          onContentChange: updateContent,
+          onCoverChange: updateCover,
+          onCreatePage: createNestedPage,
+          onMoveDatabase: moveDatabase,
+          onEmbedDatabase: embedLinkedDatabase,
+          onEmbedPage: embedLinkedPage,
+          onEmojiChange: updateEmoji,
+          onIconPositionChange: updateIconPosition,
+          onDeleteStructuralBlock: deleteStructuralBlock,
+          getStructuralBlockDeleteAction,
+          onOpenPage,
+          onStructuralInsertionPendingChange: handleStructuralInsertionPendingChange,
+          onTitleChange: setName,
+        }}
+        view={{ editorContentRef, onEditorReady: handleEditorReady, pageEditPreviewRef, paneId }}
       />
     </section>
   );

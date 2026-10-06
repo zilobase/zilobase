@@ -26,6 +26,7 @@ export function createPageEditorHandle(input: {
   const getPreviewControls = () => input.pageEditPreviewRef?.current ?? null;
 
   return {
+    focus: () => input.getEditor()?.view.dom.focus({ preventScroll: true }),
     acceptEditDiffPreview: () => getPreviewControls()?.accept() ?? false,
     clearEditDiffPreview: (options) => {
       getPreviewControls()?.clear(options);

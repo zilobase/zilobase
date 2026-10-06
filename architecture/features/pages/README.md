@@ -92,3 +92,9 @@ acknowledgement; it does not issue a blanket page/property read after an ordinar
 value edit. Covered record-window browser snapshots are also excluded from persistence and
 hydration. Its authorized row targets allow narrowly scoped socket/acknowledgement
 admission without loading a database bootstrap.
+
+## Editor sessions and structural relationships
+
+The pane binds the app-owned document session and registers a token-owned live document handle for page and AI consumers. Opening an already open page focuses its existing view. Pane promotion preserves the editor instance, selection and session history. Body transactions reconcile structural relationship changes by inspecting changed ranges; JSON materialization is reserved for explicit reads and local/demo persistence.
+
+Resource link mutations return the newly created `placementId`, or null when the relationship already exists. Compensation sends that ID to the existing DELETE embed endpoint, which limits deletion to the operation's placement. This preserves preexisting relationships. The identifier is a relationship receipt, not a persisted block ID or transfer journal. Hierarchy recovery waits for locally pending structural operations before restoring content.

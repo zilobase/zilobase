@@ -310,16 +310,18 @@ export function openAskAiPopover({
   );
 }
 
-function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
+function AskAiBlockView({
+  editor,
+  getPos,
+  node,
+  workspaceId,
+}: ReactNodeViewProps & { workspaceId?: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [prompt, setPrompt] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
   const generatedRangeRef = useRef<GeneratedRange | null>(null);
   const latestMarkdownRef = useRef("");
-  const workspaceId = editor.extensionManager.extensions.find(
-    (extension) => extension.name === "askAiBlock",
-  )?.options.workspaceId as string | null | undefined;
 
   useEffect(() => {
     return () => {
@@ -584,6 +586,9 @@ export const AskAiBlock = Node.create<AskAiBlockOptions>({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(AskAiBlockView);
+    const workspaceId = this.options.workspaceId;
+    return ReactNodeViewRenderer((props) => (
+      <AskAiBlockView {...props} workspaceId={workspaceId} />
+    ));
   },
 });

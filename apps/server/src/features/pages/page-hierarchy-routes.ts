@@ -448,9 +448,10 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
           ? "setParent"
           : "addLink";
 
+    let placementId: string | null = null;
     if (primaryPlacement[0]?.parentId !== host.id) {
-      await db.transaction(async (tx) => {
-        await upsertPageItemPlacement(tx, {
+      placementId = await db.transaction(async (tx) => {
+        return upsertPageItemPlacement(tx, {
           workspaceId: host.workspaceId,
           parentKind: "page",
           parentId: host.id,
@@ -464,6 +465,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
     return c.json({
       action,
       host,
+      placementId,
     });
   }
 
@@ -495,11 +497,11 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
   }
 
   if (databaseRecord.pageId === host.id) {
-    return c.json({ action: "setParent", host });
+    return c.json({ action: "setParent", host, placementId: null });
   }
 
-  await db.transaction(async (tx) => {
-    await upsertPageItemPlacement(tx, {
+  const placementId = await db.transaction(async (tx) => {
+    return upsertPageItemPlacement(tx, {
       workspaceId: host.workspaceId,
       parentKind: "page",
       parentId: host.id,
@@ -509,7 +511,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
     });
   });
 
-  return c.json({ action: "addLink", host });
+  return c.json({ action: "addLink", host, placementId });
 });
 
 pageHierarchyRoutes.delete("/:id/embed-item", async (c) => {
@@ -526,9 +528,10 @@ pageHierarchyRoutes.delete("/:id/embed-item", async (c) => {
     return c.json({ error: "A JSON body is required" }, 400);
   }
 
-  const { itemId, kind } = body as {
+  const { itemId, kind, placementId } = body as {
     itemId?: unknown;
     kind?: unknown;
+    placementId?: unknown;
   };
 
   if (typeof itemId !== "string" || itemId.length === 0) {
@@ -581,6 +584,7 @@ pageHierarchyRoutes.delete("/:id/embed-item", async (c) => {
       parentKind: "page",
       parentId: host.id,
       item: ref,
+      placementId: typeof placementId === "string" ? placementId : undefined,
     });
   });
 
