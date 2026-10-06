@@ -14,10 +14,9 @@ type ShadcnTaskItemOptions = {
   nested: boolean;
 };
 
-function ShadcnTaskItemView({ editor, extension, getPos, node, updateAttributes }: NodeViewProps) {
+function ShadcnTaskItemView({ editor, getPos, node, updateAttributes }: NodeViewProps) {
   const checked = Boolean(node.attrs.checked);
-  const options = extension.options as { editable?: boolean };
-  const isEditable = options.editable !== false && editor.isEditable;
+  const isEditable = editor.isEditable;
 
   return (
     <NodeViewWrapper as="li" data-checked={checked} data-type="taskItem" className="task-item">

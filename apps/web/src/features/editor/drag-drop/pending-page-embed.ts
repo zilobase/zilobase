@@ -1,3 +1,6 @@
+import { workspaceForView } from "../runtime/editor-integration";
+import { dispatchVerified } from "../operations/dispatch-verified";
+import type { EditorResourceReceipt } from "../core/types";
 import { Extension } from "@tiptap/core";
 import { closeHistory } from "@tiptap/pm/history";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -55,7 +58,7 @@ export function insertPendingPageEmbed(
   pos: number,
   pageId: string,
   title: string,
-  embed: () => void | Promise<void>,
+  embed: () => void | EditorResourceReceipt | Promise<void | EditorResourceReceipt>,
   onError: (error: unknown) => void,
 ) {
   const id = {};
@@ -66,8 +69,11 @@ export function insertPendingPageEmbed(
   );
   view.focus();
 
-  const finish = (error?: { cause: unknown }) => {
-    if (view.isDestroyed) return;
+  const finish = async (resource: void | EditorResourceReceipt, error?: { cause: unknown }) => {
+    if (view.isDestroyed) {
+      await resource?.undo();
+      return;
+    }
     const pending = pendingEmbeds
       .getState(view.state)
       ?.find(undefined, undefined, (spec) => spec.id === id)[0];
@@ -80,7 +86,25 @@ export function insertPendingPageEmbed(
       }
     }
     if (!tr.docChanged) tr.setMeta("addToHistory", false);
-    view.dispatch(tr);
+    const workspace = workspaceForView(view);
+    const editor = workspace?.getEditor(view);
+    const operationId = crypto.randomUUID();
+    let applied: boolean;
+    if (editor && tr.docChanged)
+      applied = workspace!.history.group(
+        [editor],
+        "Link page",
+        () => dispatchVerified(editor, tr).applied,
+        operationId,
+      );
+    else {
+      view.dispatch(tr);
+      applied = view.state.doc.eq(tr.doc);
+    }
+    if (resource) {
+      if (!tr.docChanged || !applied) await resource.undo();
+      else workspace?.history.attachResource(operationId, resource, onError);
+    }
     if (error) onError(error.cause);
   };
 
@@ -88,7 +112,8 @@ export function insertPendingPageEmbed(
   void Promise.resolve()
     .then(embed)
     .then(
-      () => finish(),
-      (error) => finish({ cause: error }),
-    );
+      (resource) => finish(resource),
+      (error) => finish(undefined, { cause: error }),
+    )
+    .catch(onError);
 }

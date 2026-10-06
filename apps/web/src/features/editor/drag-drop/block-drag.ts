@@ -18,12 +18,4 @@ export {
 
 export { getDatabaseBlockDragImagePlacement } from "./block-drag-preview";
 
-export {
-  armBlockDrag,
-  deleteDraggedEditorBlockSource,
-  EDITOR_BLOCK_DRAG_MIME,
-  endBlockDrag,
-  getDraggedEditorBlockPayload,
-  registerBlockDragSource,
-  startBlockDrag,
-} from "./block-drag-session";
+export { EDITOR_BLOCK_DRAG_MIME, getDraggedEditorBlockPayload } from "./block-drag-session";

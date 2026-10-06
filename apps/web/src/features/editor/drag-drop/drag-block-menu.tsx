@@ -1,3 +1,4 @@
+import { closeEditorHistory } from "@/shared/shortcuts/editor-history";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,12 +36,10 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { slashCommandItems, type SlashCommandItem } from "../extensions/slash-command";
 import { SlashCommandMenu } from "../extensions/slash-command-menu";
-import { getSelectedBlockRangesForTarget } from "../extensions/block-selection";
 
 import { blockContentForConversion, insertBlockFromPlus } from "../commands/block-insert";
-import { armBlockDrag, endBlockDrag, startBlockDrag } from "./block-drag";
+import { useEditorWorkspace } from "../runtime/page-editor-registry";
 import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
-import { setDatabasePageDragPayload } from "@/features/databases";
 import type { DragHandleTarget } from "../toolbar/toolbar-contracts";
 import type {
   StructuralBlockDeleteAction,
@@ -50,8 +49,7 @@ import type {
 import type { StructuralInsertionPendingChange } from "../commands/structural-insertion";
 import { toast } from "sonner";
 import { ColorPicker } from "../toolbar/color-menu";
-import { useOptionalUndoHistory } from "@/shared/shortcuts";
-import { createStructuralBlockDeleteHistoryAction } from "./structural-block-delete-history";
+import { createResourceHistoryAction } from "../operations/resource-history";
 
 type PendingStructuralBlockDelete = StructuralBlockDeleteRequest & {
   action: StructuralBlockDeleteAction;
@@ -106,12 +104,10 @@ export function DragBlockMenu({
   onCreateDatabase,
   onCreateMeeting,
   onStructuralInsertionPendingChange,
-  editorId,
   getStructuralBlockDeleteAction,
   onDeleteStructuralBlock,
 }: {
   editor: Editor;
-  editorId: string;
   isOpen: boolean;
   target: DragHandleTarget | null;
   onOpenChange: (open: boolean) => void;
@@ -126,7 +122,7 @@ export function DragBlockMenu({
     request: StructuralBlockDeleteRequest,
   ) => Promise<StructuralBlockDeleteHistory | void>;
 }) {
-  const undoHistory = useOptionalUndoHistory();
+  const workspace = useEditorWorkspace();
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -318,7 +314,7 @@ export function DragBlockMenu({
         }
 
         if (!pointer.moved) {
-          endBlockDrag(editor.view);
+          workspace.drag.endNative();
         }
 
         gripPointerRef.current = null;
@@ -329,7 +325,7 @@ export function DragBlockMenu({
 
     const handlePointerCancel = () => {
       gripPointerRef.current = null;
-      endBlockDrag(editor.view);
+      workspace.drag.endNative();
       unbindGripPointerTracking();
     };
 
@@ -377,11 +373,11 @@ export function DragBlockMenu({
       editor
         .chain()
         .focus()
-        .deleteRange({
+        .removeBlocksRange({
           from: target.pos,
           to: target.pos + target.node.nodeSize,
         })
-        .insertContentAt(target.pos, content)
+        .insertBlocksAt(target.pos, content)
         .run();
     });
   };
@@ -436,7 +432,7 @@ export function DragBlockMenu({
       editor
         .chain()
         .focus()
-        .insertContentAt(target.pos + target.node.nodeSize, target.node.toJSON())
+        .insertBlocksAt(target.pos + target.node.nodeSize, target.node.toJSON())
         .run();
     });
   };
@@ -490,7 +486,7 @@ export function DragBlockMenu({
       editor
         .chain()
         .focus()
-        .deleteRange({
+        .removeBlocksRange({
           from: target.pos,
           to: target.pos + target.node.nodeSize,
         })
@@ -522,20 +518,21 @@ export function DragBlockMenu({
           editor
             .chain()
             .focus()
-            .deleteRange({
+            .removeBlocksRange({
               from: match.pos,
               to: match.pos + match.node.nodeSize,
             })
             .run();
 
-        if (resourceHistory && undoHistory) {
-          undoHistory.runWithoutRecording(deleteEditorBlock);
-          undoHistory.pushAction(
-            createStructuralBlockDeleteHistoryAction({
-              editor: {
-                redo: () => undoHistory.runWithoutRecording(() => editor.commands.redo()),
-                undo: () => undoHistory.runWithoutRecording(() => editor.commands.undo()),
-              },
+        if (resourceHistory) {
+          closeEditorHistory(editor);
+          workspace.history.suppress(deleteEditorBlock);
+          closeEditorHistory(editor);
+          workspace.history.push({
+            participants: [editor],
+            ...createResourceHistoryAction({
+              label: "Delete structural block",
+              editor: workspace.history.capture(editor),
               onError: (error) => {
                 toast.error(
                   error instanceof Error ? error.message : "Could not update the deleted block.",
@@ -543,7 +540,7 @@ export function DragBlockMenu({
               },
               resource: resourceHistory,
             }),
-          );
+          });
         } else {
           deleteEditorBlock();
         }
@@ -600,52 +597,13 @@ export function DragBlockMenu({
                 event.stopPropagation();
               }}
               onDragEnd={() => {
-                endBlockDrag(editor.view);
+                workspace.drag.endNative();
                 markGripDragInteraction();
                 window.setTimeout(() => {
                   suppressGripMenuOpenRef.current = false;
                 }, 300);
               }}
-              onDragStart={(event) => {
-                if (!target) {
-                  event.preventDefault();
-                  return;
-                }
-
-                const { doc, selection } = editor.state;
-                const draggingMultipleBlocks =
-                  getSelectedBlockRangesForTarget(doc, selection.from, selection.to, target.pos)
-                    .length > 1;
-
-                event.stopPropagation();
-                event.nativeEvent.stopImmediatePropagation();
-                const didStartDrag = startBlockDrag({
-                  editorId,
-                  event: event.nativeEvent,
-                  target,
-                  view: editor.view,
-                });
-
-                if (!didStartDrag) {
-                  event.preventDefault();
-                  return;
-                }
-
-                markGripDragInteraction();
-
-                const pageId = target.node.attrs.pageId;
-
-                if (
-                  !draggingMultipleBlocks &&
-                  target.node.type.name === "pageBlock" &&
-                  typeof pageId === "string"
-                ) {
-                  setDatabasePageDragPayload(event.dataTransfer, {
-                    pageId,
-                    title: target.node.textContent || "Untitled",
-                  });
-                }
-              }}
+              onDragStart={() => markGripDragInteraction()}
               onKeyDown={(event) => {
                 if (event.key !== "Enter" && event.key !== " ") {
                   return;
@@ -668,10 +626,6 @@ export function DragBlockMenu({
                   y: event.clientY,
                 };
                 bindGripPointerTracking();
-
-                if (target) {
-                  armBlockDrag(editorId, target);
-                }
               }}
               role="button"
               tabIndex={0}

@@ -19,12 +19,12 @@ export function register({ readSource, assert, test }) {
     ]);
 
     assert.match(summaryEditorSource, /import \{ Editor \}/);
-    assert.match(summaryEditorSource, /collaborationField=\{field\}/);
+    assert.match(summaryEditorSource, /collaborationField: field/);
     assert.match(summaryEditorSource, /user,\s+users: \[\]/);
-    assert.match(summaryEditorSource, /databaseEditable=\{editable\}/);
-    assert.match(summaryEditorSource, /editorTabIndex=\{0\}/);
+    assert.match(summaryEditorSource, /database: editable/);
+    assert.match(summaryEditorSource, /editorTabIndex: 0/);
     assert.match(summaryEditorSource, /onPointerDownCapture=\{focusNestedEditor\}/);
-    assert.match(summaryEditorSource, /pageId=\{pageId\}/);
+    assert.match(summaryEditorSource, /documentId: document\.guid,\s+pageId/);
     assert.match(meetingViewSource, /const transcriptEditable\s*=\s*editable/);
     assert.match(meetingViewSource, /editable=\{transcriptEditable\}/);
     assert.match(meetingViewSource, /livePreview=\{transcriptPreview\}/);

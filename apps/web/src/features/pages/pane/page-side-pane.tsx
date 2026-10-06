@@ -1,3 +1,4 @@
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 import {
   createContext,
   useCallback,
@@ -534,6 +535,7 @@ export function usePageSidePaneState(
   });
   const sidePanePageId = getSearchParam(location.searchStr, SIDE_PANE_PAGE_PARAM);
   const sidePaneDatabaseId = getSearchParam(location.searchStr, SIDE_PANE_DATABASE_PARAM);
+  const { getEditorHandle } = usePageEditorRegistry();
   const [dialogPageId, setDialogPageId] = useState<string | null>(null);
   const [dialogDatabaseId, setDialogDatabaseId] = useState<string | null>(null);
   const [renderedSidePanePageId, setRenderedSidePanePageId] = useState<string | null>(null);
@@ -586,6 +588,11 @@ export function usePageSidePaneState(
   }, []);
   const openSidePane = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
+      const existing = getEditorHandle(nextPageId);
+      if (existing?.focus) {
+        existing.focus();
+        return;
+      }
       closeEmbeddedPageDialog();
 
       if (isMobile || isMobileViewport()) {
@@ -595,7 +602,7 @@ export function usePageSidePaneState(
 
       writeSidePaneParams(nextPageId, options?.databaseId);
     },
-    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
+    [getEditorHandle, closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   );
   const openDatabaseSidePane = useCallback(
     (databaseId: string) => {
@@ -608,10 +615,15 @@ export function usePageSidePaneState(
 
       writeSidePaneParams(null, databaseId);
     },
-    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
+    [getEditorHandle, closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   );
   const openPageInMainPane = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
+      const existing = getEditorHandle(nextPageId);
+      if (existing?.focus) {
+        existing.focus();
+        return;
+      }
       closeEmbeddedPageDialog();
 
       if (isMobile || isMobileViewport()) {
@@ -622,7 +634,7 @@ export function usePageSidePaneState(
       pendingMainPanePathRef.current = getFullPagePath(nextPageId);
       writeSidePaneParams(nextPageId, options?.databaseId);
     },
-    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
+    [getEditorHandle, closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   );
   const openDatabaseInMainPane = useCallback(
     (databaseId: string) => {
@@ -636,7 +648,7 @@ export function usePageSidePaneState(
       pendingMainPanePathRef.current = getFullDatabasePath(databaseId);
       writeSidePaneParams(null, databaseId);
     },
-    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
+    [getEditorHandle, closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   );
   const openSidePaneAsFullPage = useCallback(() => {
     const targetPath = sidePanePageId
@@ -660,6 +672,11 @@ export function usePageSidePaneState(
   }, [sidePaneDatabaseId, sidePanePageId]);
   const openEmbeddedPageDialog = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
+      const existing = getEditorHandle(nextPageId);
+      if (existing?.focus) {
+        existing.focus();
+        return;
+      }
       if (isMobile || isMobileViewport()) {
         setDialogPageId(null);
         setDialogDatabaseId(null);

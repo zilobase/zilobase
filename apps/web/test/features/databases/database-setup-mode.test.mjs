@@ -53,6 +53,8 @@ export function register({ assert, loadModule, readSource, test }) {
 
     assert.doesNotMatch(setupCard, /<PromptInputTextarea\s+autoFocus/);
     assert.match(setupCard, /promptInputRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
-    assert.match(databaseCommand, /\.focus\(undefined, \{ scrollIntoView: false \}\)/);
+    assert.match(databaseCommand, /insertCreatedBlock/);
+    const insertion = await readSource("/src/features/editor/commands/structural-insertion.ts");
+    assert.match(insertion, /\.focus\(undefined, \{ scrollIntoView: false \}\)/);
   });
 }

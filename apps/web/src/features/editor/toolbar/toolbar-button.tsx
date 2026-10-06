@@ -1,3 +1,4 @@
+import { useEditorState } from "@tiptap/react";
 import { Button } from "@/shared/ui/button";
 
 import type { RunToolbarCommand, ToolbarItem } from "./toolbar-contracts";
@@ -15,8 +16,10 @@ export function ToolbarButton({
 }) {
   const { action, attrs, icon: Icon, isActive, label } = item;
   const activeValue = isActive();
-  const isActiveButton =
-    typeof activeValue === "string" ? editor?.isActive(activeValue) : editor?.isActive(activeValue);
+  const isActiveButton = useEditorState({
+    editor,
+    selector: ({ editor: current }) => Boolean(current?.isActive(activeValue)),
+  });
   const handlePress = () => runCommand(action, attrs);
 
   return (

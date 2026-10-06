@@ -5,11 +5,7 @@ import { Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { toast } from "sonner";
 import type { DatabaseBlockEditorRuntime } from "@/features/databases";
-import {
-  createEditorDragDrop,
-  registerBlockDragSource,
-  type BlockDragPayload,
-} from "../drag-drop/block-drag";
+import { createEditorDragDrop, type BlockDragPayload } from "../drag-drop/block-drag";
 import {
   getDropDatabaseElement,
   insertDraggedDatabasePage,
@@ -21,19 +17,12 @@ import {
   handleTypedLinkChoice,
   normalizePastedEditorHTML,
 } from "../paste/paste";
-import { updateExtensionOptions } from "./update-extension-options";
+import { EditorIntegration } from "./editor-integration";
+import type { EditorWorkspace } from "./editor-workspace";
 import type { BlockDropLine, PasteChoiceState } from "../core/types";
 import type { OpenPageOptions } from "@/features/pages";
 import { useLatestRef } from "./use-latest-ref";
-import {
-  closeEditorHistory,
-  getEditorHistoryDepths,
-  getEditorHistoryTransition,
-  isEditorHistoryOperation,
-  recordActiveUndoHistoryEditorTransition,
-  registerEditorHistoryBoundary,
-  type EditorHistoryDepths,
-} from "@/shared/shortcuts";
+
 import {
   handleProtectedStructuralBlockClipboardMutation,
   handleProtectedStructuralBlockDeleteKey,
@@ -45,6 +34,9 @@ import {
 } from "../extensions/block-selection";
 
 type UseEditorInstanceOptions = {
+  workspace: EditorWorkspace;
+  runtime: import("../core/types").EditorRuntimeHandle;
+  documentKey: string;
   databaseEditorRuntime: DatabaseBlockEditorRuntime;
   dropPageOnDatabase: (event: DragEvent) => boolean;
   editable: boolean;
@@ -53,16 +45,15 @@ type UseEditorInstanceOptions = {
   editorExtensions: Extensions;
   editorId: string;
   editorLifecycleKey: string;
-  editorRuntimeRef: MutableRefObject<{
-    editable: boolean;
-    listeners: Set<() => void>;
-  }>;
   editorTabIndex?: number;
   initialContent: Content | undefined;
-  onContentChange?: (content: unknown) => void;
+  onContentChange?: (
+    readContent: () => unknown,
+    transaction?: import("@tiptap/pm/state").Transaction,
+  ) => void;
   onCrossEditorDatabaseDrop?: (input: { payload: BlockDragPayload; pos: number }) => boolean;
   onEditorReady?: (editor: Editor | null) => void;
-  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onEmbedPage?: import("../core/types").EditorResourceLink;
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
   onMoveToTitle?: () => boolean;
   setPasteChoice: (choice: PasteChoiceState | null) => void;
@@ -92,7 +83,9 @@ function isClickAboveFirstNonTextBlock(view: EditorView, pos: number, event: Mou
 }
 
 export const useEditorInstance = ({
-  databaseEditorRuntime,
+  workspace,
+  runtime,
+  documentKey,
   dropPageOnDatabase,
   editable,
   editorContentRef,
@@ -100,24 +93,18 @@ export const useEditorInstance = ({
   editorExtensions,
   editorId,
   editorLifecycleKey,
-  editorRuntimeRef,
   editorTabIndex,
   initialContent,
   onContentChange,
   onCrossEditorDatabaseDrop,
   onEditorReady,
   onEmbedPage,
-  onOpenPage,
   onMoveToTitle,
   setPasteChoice,
   pageId,
 }: UseEditorInstanceOptions) => {
   const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(null);
   const editorRef = useRef<Editor | null>(null);
-  const editorHistoryDepthsRef = useRef<EditorHistoryDepths>({
-    redo: 0,
-    undo: 0,
-  });
 
   const onContentChangeRef = useLatestRef(onContentChange);
   const onCrossEditorDatabaseDropRef = useLatestRef(onCrossEditorDatabaseDrop);
@@ -138,6 +125,8 @@ export const useEditorInstance = ({
   const dragDrop = useMemo(
     () =>
       createEditorDragDrop(setBlockDropLine, {
+        workspace,
+        viewId: editorId,
         deferCrossEditorDatabaseDrop: (_view, payload, pos) =>
           payload.editorId !== editorId &&
           (onCrossEditorDatabaseDropRef.current?.({ payload, pos }) ?? false),
@@ -154,17 +143,18 @@ export const useEditorInstance = ({
             (error) =>
               toast.error(error instanceof Error ? error.message : "Could not embed page."),
           ),
-        isDraggingPage: isDraggingPageToEditor,
+        isDraggingPage: (event) => isDraggingPageToEditor(event, workspace),
         isOverDatabaseDrop: (event) => Boolean(getDropDatabaseElement(event)),
         shouldSkipDropLine: shouldSkipEditorDropLine,
         surfaceRef: editorSurfaceRef,
       }),
-    [editorId, editorSurfaceRef],
+    [workspace, editorId, editorSurfaceRef],
   );
 
   const editor = useEditor(
     {
-      extensions: editorExtensions,
+      extensions: [...editorExtensions, EditorIntegration.configure({ workspace })],
+      immediatelyRender: false,
       content: initialContent,
       editable,
       // ProseMirror updates its own DOM. Keep transactions from rerendering the
@@ -172,30 +162,10 @@ export const useEditorInstance = ({
       shouldRerenderOnTransaction: false,
       onCreate: ({ editor: currentEditor }) => {
         editorRef.current = currentEditor;
-        editorHistoryDepthsRef.current = getEditorHistoryDepths(currentEditor);
       },
-      onTransaction: ({ editor: currentEditor, transaction }) => {
-        const nextDepths = getEditorHistoryDepths(currentEditor);
-        const transition = getEditorHistoryTransition(
-          editorHistoryDepthsRef.current,
-          nextDepths,
-          isEditorHistoryOperation(currentEditor, transaction),
-        );
-
-        editorHistoryDepthsRef.current = nextDepths;
-
-        if (!transition) return;
-
-        recordActiveUndoHistoryEditorTransition({
-          ...transition,
-          label: "Edit page",
-          owner: currentEditor,
-          redo: () => !currentEditor.isDestroyed && currentEditor.commands.redo(),
-          undo: () => !currentEditor.isDestroyed && currentEditor.commands.undo(),
-        });
-      },
-      onUpdate: ({ editor: currentEditor }) => {
-        if (editable) onContentChangeRef.current?.(currentEditor.getJSON());
+      onUpdate: ({ editor: currentEditor, transaction }) => {
+        if (editableRef.current)
+          onContentChangeRef.current?.(() => currentEditor.getJSON(), transaction);
       },
       editorProps: {
         attributes: {
@@ -215,6 +185,10 @@ export const useEditorInstance = ({
         },
         handleDOMEvents: {
           ...dragDrop.domEvents,
+          mousemove: (_view, event) =>
+            event.target instanceof Element &&
+            event.target.closest("[data-editor-view-id]")?.getAttribute("data-editor-view-id") !==
+              editorId,
           beforeinput: (view, event) =>
             editableRef.current && handleBlockSelectionBeforeInput(view, event),
           keydown: (view, event) => {
@@ -266,15 +240,13 @@ export const useEditorInstance = ({
     [editorLifecycleKey],
   );
 
-  useEffect(() => () => dragDrop.destroy(), [dragDrop]);
+  useEffect(() => {
+    dragDrop.bind();
+    return () => dragDrop.destroy();
+  }, [dragDrop, editor]);
 
   useEffect(() => {
     editorRef.current = editor;
-  }, [editor]);
-
-  useEffect(() => {
-    if (!editor) return;
-    return registerEditorHistoryBoundary(() => closeEditorHistory(editor));
   }, [editor]);
 
   useEffect(() => {
@@ -293,20 +265,26 @@ export const useEditorInstance = ({
   }, [editor, onEditorReady]);
 
   useEffect(() => {
-    if (!editor || editor.isDestroyed || !editor.extensionManager) return;
-    updateExtensionOptions(editor, {
-      databaseEditorRuntime,
-      editable,
-      editorRuntimeRef,
-      onOpenPage,
-      pageId,
-    });
-  }, [databaseEditorRuntime, editor, editable, editorRuntimeRef, onOpenPage, pageId]);
+    if (!editor || editor.isDestroyed) return;
+    editor.setEditable(
+      editable && (!workspace.views.has(editorId) || workspace.ownsField(editorId, documentKey)),
+      false,
+    );
+  }, [editor, editable, workspace, editorId, documentKey]);
 
   useEffect(() => {
     if (!editor) return;
-    return registerBlockDragSource(editorId, editor);
-  }, [editor, editorId]);
+    let release: (() => void) | undefined;
+    const register = () => {
+      release ??= workspace.registerView(editorId, editor, documentKey, runtime);
+    };
+    editor.on("create", register);
+    if (editor.isInitialized) register();
+    return () => {
+      editor.off("create", register);
+      release?.();
+    };
+  }, [workspace, editor, editorId, documentKey, runtime]);
 
   return { blockDropLine, editor, surfaceDragHandlers: dragDrop.surfaceProps };
 };

@@ -1,3 +1,4 @@
+import { getSelectionRanges, NodeRangeSelection } from "@tiptap/extension-node-range";
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model";
 import {
@@ -139,7 +140,15 @@ export const getBlockSelectionRanges = (
 ) => {
   const ranges = new Map<string, BlockRange>();
 
-  doc.descendants((node, pos, parent) => {
+  const aligned = getSelectionRanges(
+    doc.resolve(selectionFrom),
+    doc.resolve(selectionTo),
+    undefined,
+    { extendOnBoundaryOverlap: false },
+  );
+  const start = aligned[0]?.$from.pos ?? selectionFrom;
+  const end = aligned.at(-1)?.$to.pos ?? selectionTo;
+  doc.nodesBetween(start, end, (node, pos, parent) => {
     if (parent?.type.name === "doc") {
       if (listContainerTypes.has(node.type.name)) {
         return;
@@ -216,14 +225,14 @@ export const BlockSelection = Extension.create({
         const { state } = editor;
         const { selection, doc } = state;
 
-        if (selection instanceof AllSelection) {
+        if (selection instanceof AllSelection || isBlockSelectionActive(state)) {
           return true;
         }
 
         const contentRange = getActiveBlockContentRange(selection.$anchor);
 
         if (!contentRange) {
-          const tr = state.tr.setSelection(new AllSelection(doc));
+          const tr = state.tr.setSelection(NodeRangeSelection.create(doc, 0, doc.content.size, 0));
           tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta);
           editor.view.dispatch(tr);
           return true;
@@ -233,7 +242,7 @@ export const BlockSelection = Extension.create({
           selection.from === contentRange.from && selection.to === contentRange.to;
 
         if (blockFullySelected) {
-          const tr = state.tr.setSelection(new AllSelection(doc));
+          const tr = state.tr.setSelection(NodeRangeSelection.create(doc, 0, doc.content.size, 0));
           tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta);
           editor.view.dispatch(tr);
           return true;

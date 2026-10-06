@@ -154,6 +154,11 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
         const target = event.target;
 
         if (target instanceof HTMLElement && target.closest(".database-block-shell")) {
+          // Header hover belongs to the outer editor's block handle. Keep
+          // database inputs, row gestures and shortcuts inside the node view.
+          if (event.type === "mousemove" && target.closest(".database-toolbar-section"))
+            return false;
+          if (event.type === "mouseleave") return false;
           return true;
         }
 

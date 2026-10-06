@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { EditorContent } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
 import { SelectionAiDiffDock } from "../selection/selection-ai-diff-dock";
@@ -19,7 +19,9 @@ import type {
 } from "../core/types";
 import { useEditorDatabaseActions } from "../commands/use-editor-database-actions";
 import { useEditorMeetingActions } from "../commands/use-editor-meeting-actions";
-import { useEditorDragHandle } from "../drag-drop/use-editor-drag-handle";
+import { resolveBlockDragTargetFromPoint } from "../drag-drop/block-drag-geometry";
+import { useEditorWorkspace } from "../runtime/page-editor-registry";
+import { createPositionAnchor } from "../operations/position-anchor";
 import { useEditorExtensions } from "./use-editor-extensions";
 import { useEditorInstance } from "../runtime/use-editor-instance";
 import { useEditorMenuEffects } from "../runtime/use-editor-menu-effects";
@@ -32,7 +34,6 @@ import {
   getBlockDragDatabaseId,
 } from "../drag-drop/block-drag";
 import { cn } from "@/shared/lib/utils";
-import { UndoHistoryScope } from "@/shared/shortcuts";
 import { toast } from "sonner";
 import {
   DatabaseBlockDropDialog,
@@ -41,52 +42,72 @@ import {
 import { hasPendingCollaborationChanges } from "../collaboration/collaboration-readiness";
 
 export function Editor({
-  afterMetadata,
-  commentController,
-  collaboration,
-  collaborationField,
-  content = starterContent,
-  cover,
-  databaseId,
-  databaseIds = [],
-  editorContentRef,
-  editorTabIndex,
-  editable = true,
-  enableComments = true,
-  contentEditable = editable,
-  metadataEditable = editable,
-  structuralEditingEnabled = editable,
-  commentsEditable = enableComments && editable,
-  databaseEditable = editable,
-  emoji,
-  iconPosition,
-  fullWidth = true,
-  hideEditorContent = false,
-  hideMetadata = false,
-  layoutConfig,
-  layoutPanelMode = "auto",
-  layoutPreview = false,
-  onLayoutChange,
-  onContentChange,
-  onCoverChange,
-  onCreatePage,
-  onEmbedDatabase,
-  onEmbedPage,
-  onEditorReady,
-  onEmojiChange,
-  onIconPositionChange,
-  getStructuralBlockDeleteAction,
-  onDeleteStructuralBlock,
-  onOpenPage,
-  onStructuralInsertionPendingChange,
-  onTitleChange,
-  workspaceId,
-  title,
-  pageEditPreviewRef,
-  reviewDiff,
-  pageId,
+  session = {},
+  capabilities = {},
+  actions = {},
+  presentation = {},
+  view = {},
 }: EditorProps = {}) {
-  const editorId = useId();
+  const {
+    collaboration,
+    collaborationField,
+    content = starterContent,
+    databaseId,
+    databaseIds = [],
+    pageId,
+    workspaceId,
+  } = session;
+  const {
+    afterMetadata,
+    commentController,
+    cover,
+    emoji,
+    iconPosition,
+    fullWidth = true,
+    hideEditorContent = false,
+    hideMetadata = false,
+    layoutConfig,
+    layoutPanelMode = "auto",
+    layoutPreview = false,
+    onLayoutChange,
+    title,
+    reviewDiff,
+    enableComments = true,
+  } = presentation;
+  const { editorContentRef, editorTabIndex, onEditorReady, pageEditPreviewRef } = view;
+  const {
+    onContentChange,
+    onCoverChange,
+    onCreatePage,
+    onEmbedDatabase,
+    onEmbedPage,
+    onEmojiChange,
+    onIconPositionChange,
+    getStructuralBlockDeleteAction,
+    onDeleteStructuralBlock,
+    onOpenPage,
+    onStructuralInsertionPendingChange,
+    onTitleChange,
+  } = actions;
+  const editable = capabilities.content ?? true;
+  const contentEditable = editable;
+  const metadataEditable = capabilities.metadata ?? editable;
+  const structuralEditingEnabled = capabilities.structural ?? editable;
+  const commentsEditable = capabilities.comments ?? (enableComments && editable);
+  const databaseEditable = capabilities.database ?? editable;
+  const generatedViewId = useId();
+  const editorId = view.viewId ?? generatedViewId;
+  const workspace = useEditorWorkspace();
+  const runtimeStateRef = useRef({ session, capabilities, actions });
+  runtimeStateRef.current = { session, capabilities, actions };
+  const runtime = useMemo(
+    () => ({
+      getSession: () => runtimeStateRef.current.session,
+      getCapabilities: () => runtimeStateRef.current.capabilities,
+      getActions: () => runtimeStateRef.current.actions,
+    }),
+    [],
+  );
   const editorSurfaceRef = useRef<HTMLElement | null>(null);
   const pageMetadataRef = useRef<PageMetadataHandle | null>(null);
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
@@ -97,6 +118,15 @@ export function Editor({
   const [pendingDatabaseBlockDrop, setPendingDatabaseBlockDrop] =
     useState<PendingDatabaseBlockDrop | null>(null);
   const [activeLayoutTab, setActiveLayoutTab] = useState("content");
+  const pendingDatabaseCommitRef = useRef(false);
+  const pendingDropRef = useRef(pendingDatabaseBlockDrop);
+  pendingDropRef.current = pendingDatabaseBlockDrop;
+  useEffect(
+    () => () => {
+      pendingDropRef.current?.anchor.dispose();
+    },
+    [],
+  );
   const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null);
   const pageContentLayout = fullWidth
     ? { className: "", mode: "full" as const }
@@ -125,7 +155,7 @@ export function Editor({
     return () => window.removeEventListener("beforeunload", preventUnsyncedReload);
   }, [collaborationHasPendingChanges]);
 
-  const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(databaseEditable);
+  const { databaseEditorRuntime } = useEditorRuntime(databaseEditable);
   const { createEditorDatabase, handleDatabasePageDrop } = useEditorDatabaseActions(
     workspaceId,
     pageId,
@@ -150,6 +180,9 @@ export function Editor({
   });
 
   const { blockDropLine, editor, surfaceDragHandlers } = useEditorInstance({
+    workspace,
+    runtime,
+    documentKey: `${session.kind ?? "page"}:${session.documentId ?? pageId ?? editorId}:${collaborationField ?? "default"}:${layoutPreview ? editorId : ""}`,
     databaseEditorRuntime,
     dropPageOnDatabase: handleDatabasePageDrop,
     editable: contentEditable,
@@ -158,20 +191,25 @@ export function Editor({
     editorExtensions,
     editorId,
     editorLifecycleKey,
-    editorRuntimeRef,
     editorTabIndex,
     initialContent,
     onContentChange,
     onCrossEditorDatabaseDrop: ({ payload, pos }) => {
       const sourceDatabaseId = getBlockDragDatabaseId(payload);
-      if (!sourceDatabaseId) return false;
+      if (!sourceDatabaseId || !workspace.drag.source(payload)) return false;
 
       setPendingDatabaseBlockDrop({
-        canMove: canMoveDatabaseBlockToPage(sourceDatabaseId, databaseId, databaseIds),
+        canMove:
+          Boolean(
+            actions.onMoveDatabase &&
+            workspace.runtimes.get(workspace.drag.active!.editor)?.getSession().pageId,
+          ) && canMoveDatabaseBlockToPage(sourceDatabaseId, databaseId, databaseIds),
         databaseId: sourceDatabaseId,
         payload,
         pos,
+        anchor: createPositionAnchor(editor!, pos),
       });
+      workspace.drag.transition("awaiting-choice");
       return true;
     },
     onEditorReady,
@@ -183,33 +221,63 @@ export function Editor({
   });
 
   const completeDatabaseBlockDrop = async (mode: "copy" | "move") => {
-    if (!editor || !pendingDatabaseBlockDrop) return;
-
-    const pendingDrop = pendingDatabaseBlockDrop;
-
-    if (mode === "copy" && onEmbedDatabase) {
-      try {
-        await onEmbedDatabase(pendingDrop.databaseId);
-      } catch (error) {
+    if (!editor || !pendingDatabaseBlockDrop || pendingDatabaseCommitRef.current) return;
+    pendingDatabaseCommitRef.current = true;
+    workspace.drag.transition("awaiting-resource");
+    const releasePending = workspace.beginOperation([
+      editor,
+      ...(workspace.drag.active ? [workspace.drag.active.editor] : []),
+    ]);
+    try {
+      const pendingDrop = pendingDatabaseBlockDrop;
+      if (
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        pendingDrop.anchor.resolve() === null ||
+        !workspace.drag.source(pendingDrop.payload)
+      )
+        return;
+      let resource: import("../core/types").EditorResourceReceipt | void = undefined;
+      if (mode === "copy") {
+        if (!onEmbedDatabase) throw new Error("Database linking is unavailable.");
+        resource = await onEmbedDatabase(pendingDrop.databaseId);
+      } else {
+        const sourcePageId = workspace.runtimes
+          .get(workspace.drag.active!.editor)
+          ?.getSession().pageId;
+        if (!sourcePageId || !actions.onMoveDatabase)
+          throw new Error("Database movement is unavailable.");
+        resource = await actions.onMoveDatabase(pendingDrop.databaseId, sourcePageId);
+      }
+      const pos = pendingDrop.anchor.resolve();
+      const completed =
+        !editor.isDestroyed &&
+        pos !== null &&
+        dropCrossEditorBlock(editor.view, pendingDrop.payload, pos, mode);
+      if (!completed) {
+        await resource?.undo();
         toast.error(
-          error instanceof Error ? error.message : "Could not create the linked database view.",
+          mode === "move"
+            ? "Could not move the database."
+            : "Could not create the linked database view.",
         );
         return;
       }
+      if (resource)
+        workspace.history.attachResource(pendingDrop.payload.operationId, resource, (error) =>
+          toast.error(error instanceof Error ? error.message : "Could not update database link."),
+        );
+
+      setPendingDatabaseBlockDrop(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update the database.");
+    } finally {
+      pendingDatabaseCommitRef.current = false;
+      pendingDatabaseBlockDrop.anchor.dispose();
+      workspace.drag.reset();
+      setPendingDatabaseBlockDrop(null);
+      releasePending();
     }
-
-    const completed = dropCrossEditorBlock(editor.view, pendingDrop.payload, pendingDrop.pos, mode);
-
-    if (!completed) {
-      toast.error(
-        mode === "move"
-          ? "Could not move the database."
-          : "Could not create the linked database view.",
-      );
-      return;
-    }
-
-    setPendingDatabaseBlockDrop(null);
   };
 
   useEffect(() => {
@@ -224,12 +292,18 @@ export function Editor({
     setPlusMenuOpen,
   });
 
-  const {
-    dragHandle,
-    clearDesktopDragHandle,
-    resolveDragTargetFromPoint,
-    updateDragTargetFromPointer,
-  } = useEditorDragHandle(editor, dragHandleMenuOpen || blockCommentOpen);
+  const resolveDragTargetFromPoint = useCallback(
+    (clientX: number, clientY: number) =>
+      editor && !editor.isDestroyed
+        ? resolveBlockDragTargetFromPoint({
+            clientX,
+            clientY,
+            currentTarget: null,
+            view: editor.view,
+          })
+        : null,
+    [editor],
+  );
 
   const { mobileNodeTarget, canMoveMobileTarget, moveMobileTarget, handleMobileNodeClick } =
     useMobileNodeActions(editor, resolveDragTargetFromPoint);
@@ -314,7 +388,7 @@ export function Editor({
       type: "doc",
       content: parsed.content,
     });
-    onContentChange?.(editor.getJSON());
+    onContentChange?.(() => editor.getJSON());
     pendingEdit.onAccepted?.();
     pendingPageEditRef.current = null;
     setSelectionAiPreview(null);
@@ -420,7 +494,10 @@ export function Editor({
     editor
       .chain()
       .focus()
-      .insertContentAt({ from: selectionAiPreview.from, to: selectionAiPreview.to }, parsed.content)
+      .replaceBlocksRange(
+        { from: selectionAiPreview.from, to: selectionAiPreview.to },
+        parsed.content,
+      )
       .run();
     clearSelectionAiPreview();
   }, [acceptPageEditPreview, clearSelectionAiPreview, editor, selectionAiPreview]);
@@ -536,15 +613,15 @@ export function Editor({
       <section
         className={cn("relative min-h-0 flex-1", layoutPreview && "flex flex-col overflow-hidden")}
         data-editor-surface
+        data-editor-view-id={editorId}
+        data-editor-pane-id={view.paneId ?? editorId}
         ref={editorSurfaceRef}
         onDragEnd={surfaceDragHandlers.onDragEnd}
         onDragLeave={surfaceDragHandlers.onDragLeave}
         onDragOver={surfaceDragHandlers.onDragOver}
         onDragOverCapture={surfaceDragHandlers.onDragOverCapture}
         onDrop={surfaceDragHandlers.onDrop}
-        onPointerLeave={() => !dragHandleMenuOpen && !blockCommentOpen && clearDesktopDragHandle()}
         onClickCapture={handleMobileNodeClick}
-        onPointerMoveCapture={updateDragTargetFromPointer}
       >
         <EditorChrome
           blockDropLine={blockDropLine}
@@ -554,10 +631,10 @@ export function Editor({
           }
           createEditorDatabase={createEditorDatabase}
           createEditorMeeting={createEditorMeeting}
-          dragHandle={dragHandle}
           editable={contentEditable && structuralEditingEnabled}
           editor={editor}
           editorId={editorId}
+          dragHandleMenuOpen={dragHandleMenuOpen || blockCommentOpen}
           getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
           onClosePasteChoice={handleClosePasteChoice}
           onDeleteStructuralBlock={onDeleteStructuralBlock}
@@ -677,14 +754,19 @@ export function Editor({
   );
 
   return (
-    <UndoHistoryScope resetKey={pageId ?? editorId}>
+    <>
       {editorBody}
       <DatabaseBlockDropDialog
-        onClose={() => setPendingDatabaseBlockDrop(null)}
+        onClose={() => {
+          if (pendingDatabaseCommitRef.current) return;
+          pendingDatabaseBlockDrop?.anchor.dispose();
+          workspace.drag.reset();
+          setPendingDatabaseBlockDrop(null);
+        }}
         onCopy={() => void completeDatabaseBlockDrop("copy")}
         onMove={() => void completeDatabaseBlockDrop("move")}
         pending={pendingDatabaseBlockDrop}
       />
-    </UndoHistoryScope>
+    </>
   );
 }

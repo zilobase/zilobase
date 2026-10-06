@@ -1,4 +1,11 @@
 export function register({ assert, loadModule, test }) {
+  test("shortcuts ignore synthetic key events without a key", async () => {
+    const { matchesAppShortcut } = await loadModule(
+      "/src/shared/shortcuts/shortcut-definitions.ts",
+    );
+    assert.equal(matchesAppShortcut({ ctrlKey: true }, "undo"), false);
+    assert.equal(matchesAppShortcut({ key: null, metaKey: true }, "redo"), false);
+  });
   test("open-in-new-tab accepts an unmodified primary click", async () => {
     const { isOpenInNewTabShortcut } = await loadModule(
       "/src/shared/shortcuts/shortcut-definitions.ts",

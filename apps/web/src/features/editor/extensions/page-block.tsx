@@ -31,7 +31,7 @@ export type CreatedPage = {
 type PageBlockOptions = {
   currentPageId?: string | null;
   onCreatePage?: () => Promise<CreatedPage>;
-  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onEmbedPage?: import("../core/types").EditorResourceLink;
   onOpenPage?: (pageId: string) => void;
   workspaceId?: string | null;
 };

@@ -1,3 +1,4 @@
+import { StructuralCommands } from "../operations/structural-commands";
 import { PendingPageEmbeds } from "../drag-drop/pending-page-embed";
 import CharacterCount from "@tiptap/extension-character-count";
 import { Details, DetailsContent, DetailsSummary } from "@tiptap/extension-details";
@@ -47,8 +48,9 @@ export type BaseExtensionsOptions = {
   databaseEditorRuntime: DatabaseBlockEditorRuntime;
   editable: boolean;
   structuralEditingEnabled: boolean;
+  isStructuralEditingEnabled?: () => boolean;
   onCreatePage?: () => Promise<CreatedPage>;
-  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onEmbedPage?: import("../core/types").EditorResourceLink;
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
   onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
   onTocUpdate: (items: TableOfContentDataItem[]) => void;
@@ -82,6 +84,7 @@ export const createBaseExtensions = ({
   databaseEditorRuntime,
   editable,
   structuralEditingEnabled,
+  isStructuralEditingEnabled,
   onCreatePage,
   onEmbedPage,
   onOpenPage,
@@ -115,6 +118,7 @@ export const createBaseExtensions = ({
       ]
     : []),
   PendingPageEmbeds,
+  StructuralCommands,
   CommentExtension.configure({
     HTMLAttributes: { class: "editor-comment-anchor" },
   }),
@@ -190,6 +194,7 @@ export const createBaseExtensions = ({
   ...(structuralEditingEnabled
     ? [
         SlashCommand.configure({
+          isEnabled: isStructuralEditingEnabled,
           onCreateDatabase: createEditorDatabase,
           onCreateMeeting: createEditorMeeting,
           onCreatePage,
