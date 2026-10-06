@@ -2,27 +2,14 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { RuntimeEnv } from "../../shared/config/config";
 
-export const BACKGROUND_TASK_KINDS = [
-  "automation.event_window",
-  "automation.run",
-  "agent.run",
-  "ai.job",
-  "calendar.sync",
-  "realtime.database",
-  "notification.publish",
-] as const;
-
-export type BackgroundTaskKind = (typeof BACKGROUND_TASK_KINDS)[number];
-
-export type BackgroundTaskV1 = {
-  availableAt: string;
-  cellId: string;
-  kind: BackgroundTaskKind;
-  resourceId: string;
-  traceparent?: string;
-  tracestate?: string;
-  version: 1;
-};
+import {
+  createBackgroundTaskV2,
+  decodeBackgroundTaskV2,
+  getBackgroundCellId,
+  type BackgroundTaskV2,
+} from "./task-v2";
+export { BACKGROUND_TASK_KINDS, getBackgroundCellId, type BackgroundTaskV2 } from "./task-v2";
+export type BackgroundTaskKind = BackgroundTaskV2["kind"];
 
 export type BackgroundLane = "fast" | "automation" | "ai" | "calendar";
 
@@ -30,7 +17,6 @@ export type BackgroundTaskResult =
   | { outcome: "completed" | "noop" | "terminal"; errorCode?: string }
   | { outcome: "retry"; availableAt: string; errorCode?: string };
 
-const TASK_KINDS = new Set<string>(BACKGROUND_TASK_KINDS);
 const TRACEPARENT_V00 = /^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/;
 const traceContextStore = new AsyncLocalStorage<{
   traceparent?: string;
@@ -44,78 +30,25 @@ export function backgroundTaskLane(kind: BackgroundTaskKind): BackgroundLane {
   return "fast";
 }
 
-export function getBackgroundCellId(env: RuntimeEnv): string {
-  const value = env.ZILOBASE_CELL_ID;
-  return typeof value === "string" && value.trim() ? value.trim() : "default";
-}
-
-export function createBackgroundTask(input: {
-  availableAt?: Date;
-  env: RuntimeEnv;
-  kind: BackgroundTaskKind;
-  resourceId: string;
-  traceparent?: string;
-  tracestate?: string;
-}): BackgroundTaskV1 {
-  const activeTrace = traceContextStore.getStore();
-  const traceparent = input.traceparent ?? activeTrace?.traceparent;
-  const tracestate = input.tracestate ?? activeTrace?.tracestate;
-  return {
-    availableAt: (input.availableAt ?? new Date()).toISOString(),
-    cellId: getBackgroundCellId(input.env),
-    kind: input.kind,
-    resourceId: input.resourceId,
-    ...(traceparent ? { traceparent } : {}),
-    ...(tracestate ? { tracestate } : {}),
-    version: 1,
-  };
+export function createBackgroundTask(
+  input: Parameters<typeof createBackgroundTaskV2>[0],
+): BackgroundTaskV2 {
+  return createBackgroundTaskV2({ ...traceContextStore.getStore(), ...input });
 }
 
 export function parseBackgroundTask(
   value: unknown,
   expectedCellId: string,
-): { ok: true; task: BackgroundTaskV1 } | { ok: false; errorCode: string } {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return { errorCode: "BACKGROUND_TASK_INVALID", ok: false };
+): { ok: true; task: BackgroundTaskV2 } | { ok: false; errorCode: string } {
+  try {
+    return { ok: true, task: decodeBackgroundTaskV2(value, expectedCellId) };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "BACKGROUND_TASK_INVALID";
+    return {
+      ok: false,
+      errorCode: message.startsWith("BACKGROUND_") ? message : "BACKGROUND_TASK_INVALID",
+    };
   }
-  const candidate = value as Record<string, unknown>;
-  if (candidate.version !== 1) {
-    return { errorCode: "BACKGROUND_TASK_VERSION_UNSUPPORTED", ok: false };
-  }
-  if (typeof candidate.kind !== "string" || !TASK_KINDS.has(candidate.kind)) {
-    return { errorCode: "BACKGROUND_TASK_KIND_INVALID", ok: false };
-  }
-  if (typeof candidate.cellId !== "string" || candidate.cellId !== expectedCellId) {
-    return { errorCode: "BACKGROUND_TASK_CELL_MISMATCH", ok: false };
-  }
-  if (
-    typeof candidate.resourceId !== "string" ||
-    candidate.resourceId.length === 0 ||
-    candidate.resourceId.length > 256
-  ) {
-    return { errorCode: "BACKGROUND_TASK_RESOURCE_INVALID", ok: false };
-  }
-  if (
-    typeof candidate.availableAt !== "string" ||
-    !Number.isFinite(Date.parse(candidate.availableAt))
-  ) {
-    return { errorCode: "BACKGROUND_TASK_AVAILABLE_AT_INVALID", ok: false };
-  }
-  if (
-    candidate.traceparent !== undefined &&
-    (typeof candidate.traceparent !== "string" || !TRACEPARENT_V00.test(candidate.traceparent))
-  ) {
-    return { errorCode: "BACKGROUND_TASK_TRACE_INVALID", ok: false };
-  }
-  if (
-    candidate.tracestate !== undefined &&
-    (typeof candidate.tracestate !== "string" ||
-      candidate.tracestate.length > 512 ||
-      /[^\x20-\x7e]/.test(candidate.tracestate))
-  ) {
-    return { errorCode: "BACKGROUND_TASK_TRACE_INVALID", ok: false };
-  }
-  return { ok: true, task: candidate as BackgroundTaskV1 };
 }
 
 export function runWithBackgroundTraceContext<T>(

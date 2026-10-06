@@ -1,5 +1,5 @@
 import type { BackgroundTask, Jobs } from "@zilobase/runtime-ports";
-import type { BackgroundTaskV1, RuntimeEnv } from "../contracts";
+import type { BackgroundTaskV2, RuntimeEnv } from "../contracts";
 import {
   publishNodeBackgroundNotification,
   type NodeBackgroundCoordinator,
@@ -11,7 +11,7 @@ export function createNodeJobs(
 ): Jobs {
   return {
     async dispatch(tasks) {
-      const compatibleTasks = tasks as readonly BackgroundTaskV1[];
+      const compatibleTasks = tasks as readonly BackgroundTaskV2[];
       const coordinator = getCoordinator();
       if (coordinator) {
         await coordinator.dispatch([...compatibleTasks]);

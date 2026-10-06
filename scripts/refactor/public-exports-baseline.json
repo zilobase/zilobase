@@ -64,7 +64,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -710,7 +710,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -1356,7 +1356,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -2002,7 +2002,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -2652,7 +2652,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -3322,7 +3322,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },

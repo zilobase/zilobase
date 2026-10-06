@@ -46,3 +46,9 @@ Redis/Valkey bus in every process topology, including the single-process `all`
 role. The managed Cloud runtime schedules a Queue consumer, whose background
 Worker alone publishes through the per-database Durable Object. See the
 [database operations guide](../../docs/databases/operations.md).
+
+## Durable dispatch publication
+
+[Dispatch persistence](../../apps/server/src/infrastructure/background/publication.ts) records V2 envelopes in `background_dispatch`. Feature producers stage intent in the same PostgreSQL transaction as the feature work. The post-commit publisher claims bounded batches with leases and `SKIP LOCKED`; broker failures leave pending records for recovery. Completed, terminal and exhausted deliveries cannot be republished. Business retries complete the old delivery and persist a new occurrence atomically.
+
+[Isolated PostgreSQL verification](../../scripts/background/test-isolated.mjs) exercises migrations, rollback, failed enqueue recovery, competing publishers and duplicate delivery against a disposable database.

@@ -12,6 +12,7 @@ export interface BackgroundDeliveryStore {
   load(task: BackgroundTaskV2): Promise<"ready" | "done">;
   complete(task: BackgroundTaskV2, result: BackgroundTaskResult): Promise<void>;
   reschedule(task: BackgroundTaskV2, availableAt: string): Promise<void>;
+  release?(task: BackgroundTaskV2): Promise<void>;
 }
 
 export async function runBackgroundDelivery(input: {
@@ -26,15 +27,22 @@ export async function runBackgroundDelivery(input: {
   if (backgroundTaskLane(task.kind) !== input.lane)
     throw new Error("BACKGROUND_TASK_LANE_MISMATCH");
   if ((await input.store.load(task)) === "done") return { outcome: "ack" };
-  if (Date.parse(task.availableAt) > (input.now ?? Date.now()))
+  if (Date.parse(task.availableAt) > (input.now ?? Date.now())) {
+    await input.store.release?.(task);
     return { outcome: "defer", availableAt: task.availableAt };
-  const result = await input.execute(task);
-  if (result.outcome === "retry") {
-    if (!Number.isFinite(Date.parse(result.availableAt)))
-      throw new Error("BACKGROUND_RETRY_DATE_INVALID");
-    await input.store.reschedule(task, result.availableAt);
-  } else {
-    await input.store.complete(task, result);
   }
-  return { outcome: "ack" };
+  try {
+    const result = await input.execute(task);
+    if (result.outcome === "retry") {
+      if (!Number.isFinite(Date.parse(result.availableAt)))
+        throw new Error("BACKGROUND_RETRY_DATE_INVALID");
+      await input.store.reschedule(task, result.availableAt);
+    } else {
+      await input.store.complete(task, result);
+    }
+    return { outcome: "ack" };
+  } catch (error) {
+    await input.store.release?.(task);
+    throw error;
+  }
 }

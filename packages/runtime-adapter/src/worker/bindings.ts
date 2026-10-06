@@ -1,5 +1,5 @@
 import type {
-  BackgroundTaskV1,
+  BackgroundTaskV2,
   CalendarNotificationEvent,
   DatabaseMutationEventV2,
   MeetingRecorderRuntimeState,
@@ -9,7 +9,7 @@ import type { WorkerR2Bucket } from "./image-storage";
 
 export type WorkerHyperdriveBinding = { connectionString: string };
 export type BackgroundQueue = {
-  send(message: BackgroundTaskV1, options?: { delaySeconds?: number }): Promise<void>;
+  send(message: BackgroundTaskV2, options?: { delaySeconds?: number }): Promise<void>;
 };
 
 export type WorkerEnvBindings = Record<string, unknown> & {

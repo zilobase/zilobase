@@ -22,7 +22,10 @@ import {
   type DatabaseAutomationMutationFactCandidate,
 } from "../../automations/triggers/event-capture";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  persistBackgroundTasks,
+  publishBackgroundDispatches,
+} from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
 import { mutationSourceIds, withSourceClocks } from "./source-clocks";
 
@@ -215,6 +218,29 @@ export async function commitDatabaseMutationBatch<T>(
           await tx.insert(databaseRealtimeOutbox).values(outboxRows);
         }
 
+        await persistBackgroundTasks(
+          options.env ?? {},
+          [
+            ...commits
+              .map((commit) => commit.eventId)
+              .map((resourceId) =>
+                createBackgroundTask({
+                  env: options.env ?? {},
+                  kind: "realtime.database",
+                  resourceId,
+                }),
+              ),
+            ...automationWindows.map((window) =>
+              createBackgroundTask({
+                env: options.env ?? {},
+                kind: "automation.event_window",
+                resourceId: window.id,
+                availableAt: window.availableAt,
+              }),
+            ),
+          ],
+          tx,
+        );
         return { commits, result: mutationResult.result };
       }),
   );
@@ -223,24 +249,7 @@ export async function commitDatabaseMutationBatch<T>(
     await measureDatabaseOperation(
       "enqueue_duration_ms",
       { operation: "internal", scope: "source" },
-      () =>
-        dispatchBackgroundTasks(options.env!, [
-          ...commits.map((commit) =>
-            createBackgroundTask({
-              env: options.env!,
-              kind: "realtime.database" as const,
-              resourceId: commit.eventId,
-            }),
-          ),
-          ...automationWindows.map((window) =>
-            createBackgroundTask({
-              availableAt: window.availableAt,
-              env: options.env!,
-              kind: "automation.event_window" as const,
-              resourceId: window.id,
-            }),
-          ),
-        ]),
+      () => publishBackgroundDispatches(options.env!),
     );
     if (agentTriggerFacts.length > 0 && commits.length > 0) {
       try {

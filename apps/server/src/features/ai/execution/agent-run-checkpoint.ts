@@ -13,7 +13,10 @@ import {
   type EncryptedMcpSecret,
 } from "../mcp/connections/credential-crypto";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 
 type Run = Pick<typeof aiAgentRun.$inferSelect, "id" | "profileId" | "workspaceId" | "output">;
 export type AgentRunCheckpoint = {
@@ -141,7 +144,7 @@ export function applyCheckpointApprovals(
 
 /** Called after approval persistence; the parent lock serializes multiple approvals. */
 export async function resumeAgentRunAfterApproval(env: RuntimeEnv, runId: string) {
-  const queued = await db.transaction(async (tx) => {
+  const queued = await backgroundTransaction(env, async (tx) => {
     const [run] = await tx.select().from(aiAgentRun).where(eq(aiAgentRun.id, runId)).for("update");
     if (!run || run.status !== "waiting_approval") return false;
     const actions = await tx
@@ -201,11 +204,10 @@ export async function resumeAgentRunAfterApproval(env: RuntimeEnv, runId: string
         updatedAt: new Date(),
       })
       .where(eq(aiAgentRun.id, runId));
-    return true;
-  });
-  if (queued)
     await dispatchBackgroundTasks(env, [
       createBackgroundTask({ env, kind: "agent.run", resourceId: runId }),
     ]);
+    return true;
+  });
   return queued;
 }

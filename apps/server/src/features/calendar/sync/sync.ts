@@ -12,7 +12,10 @@ import { type RuntimeEnv } from "../../../shared/config/config";
 import { CalendarGateway, CalendarProviderError, normalizeEvent } from "../provider/gateway";
 import { createCalendarGateway } from "../provider/oauth";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 export async function refreshCalendarList(
   accountId: string,
   bindingId: string,
@@ -57,22 +60,24 @@ export async function refreshCalendarList(
   return calendars;
 }
 export async function queueCalendarSync(env: RuntimeEnv, accountId: string, calendarId: string) {
-  await db
-    .update(calendarProviderCalendar)
-    .set({ dirtyAt: new Date() })
-    .where(
-      and(
-        eq(calendarProviderCalendar.accountId, accountId),
-        eq(calendarProviderCalendar.calendarId, calendarId),
-      ),
-    );
-  await dispatchBackgroundTasks(env, [
-    createBackgroundTask({
-      env,
-      kind: "calendar.sync",
-      resourceId: JSON.stringify([accountId, calendarId]),
-    }),
-  ]);
+  await backgroundTransaction(env, async () => {
+    await db
+      .update(calendarProviderCalendar)
+      .set({ dirtyAt: new Date() })
+      .where(
+        and(
+          eq(calendarProviderCalendar.accountId, accountId),
+          eq(calendarProviderCalendar.calendarId, calendarId),
+        ),
+      );
+    await dispatchBackgroundTasks(env, [
+      createBackgroundTask({
+        env,
+        kind: "calendar.sync",
+        resourceId: JSON.stringify([accountId, calendarId]),
+      }),
+    ]);
+  });
 }
 export async function advanceCalendarSync(
   env: RuntimeEnv,

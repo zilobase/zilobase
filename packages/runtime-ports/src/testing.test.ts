@@ -21,7 +21,8 @@ test("fake ports expose deterministic state, fanout, and jobs", async () => {
       cellId: "default",
       kind: "test",
       resourceId: "1",
-      version: 1,
+      taskId: "00000000-0000-4000-8000-000000000001",
+      version: 2,
     },
   ]);
   assert.deepEqual(received, [{ ok: true }]);

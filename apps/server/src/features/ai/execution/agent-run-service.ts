@@ -6,7 +6,10 @@ import { and, asc, desc, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { appendRunEvent, serializeRun, serializeRunEvent } from "./agent-run-records";
 
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 import { db } from "../../../infrastructure/database";
 import {
   aiAgentConversationMessage,
@@ -373,50 +376,52 @@ async function handleAgentRunFailure(
     : error instanceof PermanentAgentRunError
       ? error.code
       : "AGENT_RUN_FAILED";
-  const [failed] = await db
-    .update(aiAgentRun)
-    .set({
-      availableAt,
-      completedAt: permanent ? failedAt : null,
-      errorCode: code,
-      errorSummary: (error instanceof Error ? error.message : String(error)).slice(0, 2_000),
-      leaseExpiresAt: null,
-      leaseOwner: null,
-      status: permanent ? "failed" : "queued",
-      updatedAt: failedAt,
-    })
-    .where(
-      and(
-        eq(aiAgentRun.id, run.id),
-        eq(aiAgentRun.leaseOwner, workerId),
-        eq(aiAgentRun.status, "running"),
-      ),
-    )
-    .returning({ id: aiAgentRun.id });
-  if (!failed) return { outcome: "noop" as const };
-  await appendRunEvent(run.id, permanent ? "failed" : "retry_scheduled", "shared", { code });
-  if (permanent) {
-    await db
-      .update(aiAgentConversationMessage)
+  return backgroundTransaction(env, async () => {
+    const [failed] = await db
+      .update(aiAgentRun)
       .set({
-        parts: [{ status: "failed", text: "Run failed.", type: "run" }],
-        status: "failed",
+        availableAt,
+        completedAt: permanent ? failedAt : null,
+        errorCode: code,
+        errorSummary: (error instanceof Error ? error.message : String(error)).slice(0, 2_000),
+        leaseExpiresAt: null,
+        leaseOwner: null,
+        status: permanent ? "failed" : "queued",
         updatedAt: failedAt,
       })
-      .where(eq(aiAgentConversationMessage.runId, run.id));
-  }
-  if (permanent) return { errorCode: code, outcome: "terminal" as const };
-  await dispatchBackgroundTasks(env, [
-    createBackgroundTask({
-      availableAt,
-      env,
-      kind: "agent.run",
-      resourceId: run.id,
-    }),
-  ]);
-  return {
-    availableAt: availableAt.toISOString(),
-    errorCode: code,
-    outcome: "retry" as const,
-  };
+      .where(
+        and(
+          eq(aiAgentRun.id, run.id),
+          eq(aiAgentRun.leaseOwner, workerId),
+          eq(aiAgentRun.status, "running"),
+        ),
+      )
+      .returning({ id: aiAgentRun.id });
+    if (!failed) return { outcome: "noop" as const };
+    await appendRunEvent(run.id, permanent ? "failed" : "retry_scheduled", "shared", { code });
+    if (permanent) {
+      await db
+        .update(aiAgentConversationMessage)
+        .set({
+          parts: [{ status: "failed", text: "Run failed.", type: "run" }],
+          status: "failed",
+          updatedAt: failedAt,
+        })
+        .where(eq(aiAgentConversationMessage.runId, run.id));
+    }
+    if (permanent) return { errorCode: code, outcome: "terminal" as const };
+    await dispatchBackgroundTasks(env, [
+      createBackgroundTask({
+        availableAt,
+        env,
+        kind: "agent.run",
+        resourceId: run.id,
+      }),
+    ]);
+    return {
+      availableAt: availableAt.toISOString(),
+      errorCode: code,
+      outcome: "retry" as const,
+    };
+  });
 }

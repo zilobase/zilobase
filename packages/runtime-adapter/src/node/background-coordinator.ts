@@ -30,7 +30,7 @@ import { runDueBackgroundMaintenance } from "@zilobase/server/node-adapter-api";
 import {
   backgroundTaskLane,
   type BackgroundLane,
-  type BackgroundTaskV1,
+  type BackgroundTaskV2,
 } from "@zilobase/server/node-adapter-api";
 import { boundedErrorCode } from "@zilobase/server/node-adapter-api";
 
@@ -236,7 +236,7 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
   };
 
   return {
-    async dispatch(tasks: BackgroundTaskV1[]) {
+    async dispatch(tasks: BackgroundTaskV2[]) {
       for (const task of tasks)
         scheduleLane(backgroundTaskLane(task.kind), new Date(task.availableAt));
       await publishNodeBackgroundNotification(env, tasks);
@@ -293,7 +293,7 @@ async function settleLaneOperations(
 
 export async function publishNodeBackgroundNotification(
   env: RuntimeEnv,
-  tasks: BackgroundTaskV1[],
+  tasks: BackgroundTaskV2[],
 ) {
   const earliest = new Map<BackgroundLane, Date>();
   for (const task of tasks) {

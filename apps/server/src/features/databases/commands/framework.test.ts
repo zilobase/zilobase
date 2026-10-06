@@ -7,7 +7,8 @@ import type {
 
 const background = vi.hoisted(() => ({ dispatch: vi.fn() }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
-  dispatchBackgroundTasks: background.dispatch,
+  persistBackgroundTasks: background.dispatch,
+  publishBackgroundDispatches: async () => ({ published: 0, claimed: 0 }),
 }));
 
 import {

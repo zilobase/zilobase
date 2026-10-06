@@ -208,9 +208,15 @@ export {
   type BackgroundLane,
   type BackgroundTaskKind,
   type BackgroundTaskResult,
-  type BackgroundTaskV1,
+  type BackgroundTaskV2,
 } from "../infrastructure/background/contracts";
 export { processBackgroundTask } from "../app/background/processor";
+export { runBackgroundDelivery } from "../app/background/delivery";
+export {
+  publishBackgroundDispatches,
+  createBackgroundDeliveryStore,
+} from "../infrastructure/background/publication";
+export { BACKGROUND_LANE_POLICY } from "../infrastructure/background/task-v2";
 export {
   BACKGROUND_MAINTENANCE_TASKS,
   ensureBackgroundMaintenanceTasks,

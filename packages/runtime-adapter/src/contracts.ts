@@ -20,14 +20,15 @@ export type BackgroundTaskKind =
   | "realtime.database"
   | "notification.publish";
 
-export type BackgroundTaskV1 = {
+export type BackgroundTaskV2 = {
+  taskId: string;
   availableAt: string;
   cellId: string;
   kind: BackgroundTaskKind;
   resourceId: string;
   traceparent?: string;
   tracestate?: string;
-  version: 1;
+  version: 2;
 };
 
 export type ImageStorageMode = "s3" | "binding";

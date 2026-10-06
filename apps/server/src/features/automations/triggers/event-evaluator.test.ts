@@ -64,6 +64,10 @@ vi.mock("../../databases/access/data-source-access", () => ({
   },
 }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
+  backgroundTransaction: async (_env: unknown, work: (tx: unknown) => unknown) => {
+    const { db } = await import("../../../infrastructure/database");
+    return db.transaction(work as never);
+  },
   dispatchBackgroundTasks: async (_env: unknown, tasks: unknown[]) => {
     state.dispatched.push(tasks);
   },

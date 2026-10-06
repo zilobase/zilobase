@@ -29,7 +29,8 @@ const task = {
   cellId: "default",
   kind: "realtime.database" as const,
   resourceId: "outbox-1",
-  version: 1 as const,
+  taskId: "00000000-0000-4000-8000-000000000001",
+  version: 2 as const,
 };
 
 const event = {

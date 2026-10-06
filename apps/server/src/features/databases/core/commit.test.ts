@@ -12,7 +12,8 @@ vi.mock("../../../infrastructure/database", () => ({
   db: { transaction: mocks.transaction },
 }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
-  dispatchBackgroundTasks: mocks.dispatch,
+  persistBackgroundTasks: mocks.dispatch,
+  publishBackgroundDispatches: async () => ({ published: 0, claimed: 0 }),
 }));
 vi.mock("../../automations/triggers/event-capture", () => ({
   captureDatabaseAutomationMutationFacts: mocks.capture,

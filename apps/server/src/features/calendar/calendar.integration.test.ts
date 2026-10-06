@@ -463,18 +463,18 @@ test.skipIf(!enabled)(
     expect(dispatched).toEqual([[secondAccount, "primary"]]);
     headers.set("x-goog-message-number", "2");
     expect(
-      await runWithDb(database!, () =>
+      runWithDb(database!, () =>
         acceptCalendarWebhook(headers, async () => {
-          throw new Error("queue unavailable");
+          throw new Error("dispatch persistence unavailable");
         }),
       ),
-    ).toBe(true);
+    ).rejects.toThrow("dispatch persistence unavailable");
     headers.set("x-goog-resource-id", "spoofed");
     expect(await runWithDb(database!, () => acceptCalendarWebhook(headers))).toBe(false);
     const [channel] = (await database!.select().from(schema.calendarWatchChannel)).filter(
       (c) => c.id === id,
     );
-    expect(channel!.messageNumber).toBe("2");
+    expect(channel!.messageNumber).toBe("1");
     expect(channel!.dirtyAt).toBeInstanceOf(Date);
     expect(channel!.resourceId).toBe("resource");
   },

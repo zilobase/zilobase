@@ -1,5 +1,19 @@
 import { Schema } from "effect";
-import { BACKGROUND_TASK_KINDS, getBackgroundCellId, type BackgroundLane } from "./contracts";
+import type { BackgroundLane } from "./contracts";
+export const BACKGROUND_TASK_KINDS = [
+  "automation.event_window",
+  "automation.run",
+  "agent.run",
+  "ai.job",
+  "calendar.sync",
+  "realtime.database",
+  "notification.publish",
+] as const;
+export function getBackgroundCellId(env: Record<string, unknown>): string {
+  return typeof env.ZILOBASE_CELL_ID === "string" && env.ZILOBASE_CELL_ID.trim()
+    ? env.ZILOBASE_CELL_ID.trim()
+    : "default";
+}
 
 const Task = Schema.Struct({
   version: Schema.Literal(2),
@@ -55,7 +69,10 @@ export function decodeBackgroundTaskV2(value: unknown, cellId: string): Backgrou
     throw new Error("BACKGROUND_TASK_ID_INVALID");
   if (!task.resourceId || task.resourceId.length > 256)
     throw new Error("BACKGROUND_TASK_RESOURCE_INVALID");
-  if (!Number.isFinite(Date.parse(task.availableAt)))
+  if (
+    !Number.isFinite(Date.parse(task.availableAt)) ||
+    new Date(task.availableAt).toISOString() !== task.availableAt
+  )
     throw new Error("BACKGROUND_TASK_AVAILABLE_AT_INVALID");
   if (task.traceparent && !/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(task.traceparent))
     throw new Error("BACKGROUND_TASK_TRACE_INVALID");

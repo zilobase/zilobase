@@ -1,5 +1,6 @@
 import { recordCalendarMetric } from "../metrics";
 import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { backgroundTransaction } from "../../../infrastructure/background/dispatch";
 import { db } from "../../../infrastructure/database";
 import {
   calendarAccount,
@@ -32,11 +33,12 @@ function webhookChannelHeaders(headers: Headers) {
 export async function acceptCalendarWebhook(
   headers: Headers,
   dispatch?: (accountId: string, calendarId: string | null) => Promise<void>,
+  env: RuntimeEnv = {},
 ) {
   const channel = webhookChannelHeaders(headers);
   if (!channel) return false;
   const { id, token, resourceId, number } = channel;
-  const accepted = await db.transaction(async (tx) => {
+  const accepted = await backgroundTransaction(env, async (tx) => {
     const [channel] = await tx
       .select()
       .from(calendarWatchChannel)
@@ -64,20 +66,10 @@ export async function acceptCalendarWebhook(
             eq(calendarProviderCalendar.calendarId, channel.calendarId),
           ),
         );
+    if (dispatch) await dispatch(channel.accountId, channel.calendarId);
     return { accountId: channel.accountId, calendarId: channel.calendarId, changed: true };
   });
   if (!accepted) return false;
-  if (accepted.changed && dispatch) {
-    try {
-      await dispatch(accepted.accountId, accepted.calendarId);
-    } catch {
-      recordCalendarMetric(
-        "reconnect",
-        1,
-        "failure",
-      ); /* Dirty markers survive dispatch failure for maintenance recovery. */
-    }
-  }
   return true;
 }
 async function startWatch(

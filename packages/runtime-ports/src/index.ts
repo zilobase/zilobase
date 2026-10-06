@@ -5,6 +5,7 @@ export type Unsubscribe = () => void | Promise<void>;
 export type BackgroundLane = "ai" | "automation" | "calendar" | "fast";
 
 export type BackgroundTask = {
+  taskId: string;
   availableAt: string;
   cellId: string;
   kind: string;

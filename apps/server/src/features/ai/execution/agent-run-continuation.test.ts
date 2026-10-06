@@ -47,6 +47,10 @@ vi.mock("../providers/ai-provider", () => ({
   resolveWorkspaceAiModel: async () => ({ model: "model" }),
 }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
+  backgroundTransaction: async (_env: unknown, work: (tx: unknown) => unknown) => {
+    const { db } = await import("../../../infrastructure/database");
+    return db.transaction(work as never);
+  },
   dispatchBackgroundTasks: state.dispatch,
 }));
 vi.mock("./agent-run-checkpoint", async (original) => ({

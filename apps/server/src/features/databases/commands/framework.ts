@@ -25,7 +25,10 @@ import {
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  persistBackgroundTasks,
+  publishBackgroundDispatches,
+} from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
 import { lockDatabaseRowOrdering } from "../core/position-service";
 import { mutationSourceIds, withSourceClocks } from "../core/source-clocks";
@@ -525,29 +528,32 @@ export async function executeDatabaseCommand<TResult = unknown>(
         requestHash,
       });
 
+      await persistBackgroundTasks(
+        input.env ?? {},
+        [
+          ...events
+            .map((event) => event.eventId)
+            .map((resourceId) =>
+              createBackgroundTask({ env: input.env ?? {}, kind: "realtime.database", resourceId }),
+            ),
+          ...automationWindows.map((window) =>
+            createBackgroundTask({
+              env: input.env ?? {},
+              kind: "automation.event_window",
+              resourceId: window.id,
+              availableAt: window.availableAt,
+            }),
+          ),
+        ],
+        tx,
+      );
       return { acknowledgement, eventIds: events.map(({ eventId }) => eventId) };
     }),
   );
 
   if (input.env && committed.eventIds.length > 0) {
     await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
-      dispatchBackgroundTasks(input.env!, [
-        ...committed.eventIds.map((eventId) =>
-          createBackgroundTask({
-            env: input.env!,
-            kind: "realtime.database",
-            resourceId: eventId,
-          }),
-        ),
-        ...automationWindows.map((window) =>
-          createBackgroundTask({
-            availableAt: window.availableAt,
-            env: input.env!,
-            kind: "automation.event_window",
-            resourceId: window.id,
-          }),
-        ),
-      ]),
+      publishBackgroundDispatches(input.env!),
     ).catch((error) => {
       // The durable outbox remains retryable; delivery cannot reject a committed receipt.
       console.error("Database command delivery deferred", error);

@@ -4,7 +4,10 @@ import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import { aiJob } from "../../../infrastructure/database/schema";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
 
 const DEFAULT_LEASE_MS = 60_000;
@@ -41,6 +44,10 @@ export async function enqueueAiJob(input: {
   userId?: string | null;
   workspaceId: string;
 }) {
+  return backgroundTransaction(input.env ?? {}, () => enqueueAiJobInTransaction(input));
+}
+
+async function enqueueAiJobInTransaction(input: Parameters<typeof enqueueAiJob>[0]) {
   const now = new Date();
   const id = crypto.randomUUID();
   await db
@@ -73,11 +80,11 @@ export async function enqueueAiJob(input: {
     )
     .limit(1);
   if (!job) throw new Error("Unable to reserve AI job.");
-  if (job.status === "queued" && input.env) {
-    await dispatchBackgroundTasks(input.env, [
+  if (job.status === "queued") {
+    await dispatchBackgroundTasks(input.env ?? {}, [
       createBackgroundTask({
         availableAt: job.availableAt,
-        env: input.env,
+        env: input.env ?? {},
         kind: "ai.job",
         resourceId: job.id,
       }),
@@ -261,36 +268,38 @@ async function executeClaimedJob(input: {
     const now = new Date();
     const retryDelayMs = Math.min(60_000, 1_000 * 2 ** Math.max(0, input.job.attempt - 1));
     const availableAt = permanent ? input.job.availableAt : new Date(now.getTime() + retryDelayMs);
-    await db
-      .update(aiJob)
-      .set({
-        availableAt,
-        completedAt: permanent ? now : null,
-        error: (error instanceof Error ? error.message : String(error)).slice(0, 2_000),
-        leaseExpiresAt: null,
-        status: permanent ? "failed" : "queued",
-        updatedAt: now,
-        workerId: null,
-      })
-      .where(
-        and(
-          eq(aiJob.id, input.job.id),
-          eq(aiJob.status, "running"),
-          eq(aiJob.workerId, input.workerId),
-        ),
-      );
-    if (!permanent) {
-      await dispatchBackgroundTasks(input.env, [
-        createBackgroundTask({
+    return await backgroundTransaction(input.env, async () => {
+      await db
+        .update(aiJob)
+        .set({
           availableAt,
-          env: input.env,
-          kind: "ai.job",
-          resourceId: input.job.id,
-        }),
-      ]);
-      return { availableAt: availableAt.toISOString(), outcome: "retry" as const };
-    }
-    return { errorCode: "AI_JOB_TERMINAL", outcome: "terminal" as const };
+          completedAt: permanent ? now : null,
+          error: (error instanceof Error ? error.message : String(error)).slice(0, 2_000),
+          leaseExpiresAt: null,
+          status: permanent ? "failed" : "queued",
+          updatedAt: now,
+          workerId: null,
+        })
+        .where(
+          and(
+            eq(aiJob.id, input.job.id),
+            eq(aiJob.status, "running"),
+            eq(aiJob.workerId, input.workerId),
+          ),
+        );
+      if (!permanent) {
+        await dispatchBackgroundTasks(input.env ?? {}, [
+          createBackgroundTask({
+            availableAt,
+            env: input.env,
+            kind: "ai.job",
+            resourceId: input.job.id,
+          }),
+        ]);
+        return { availableAt: availableAt.toISOString(), outcome: "retry" as const };
+      }
+      return { errorCode: "AI_JOB_TERMINAL", outcome: "terminal" as const };
+    });
   } finally {
     clearInterval(heartbeat);
   }

@@ -1,15 +1,26 @@
 import type { RuntimeEnv } from "../../shared/config/config";
 import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
-import type { BackgroundTaskV1 } from "./contracts";
+import type { BackgroundTaskV2 } from "./contracts";
 import { backgroundTaskLane, getBackgroundCellId } from "./contracts";
 import { recordBackgroundCounter } from "./telemetry";
+import {
+  persistBackgroundTasks,
+  publishBackgroundDispatches,
+  inBackgroundTransaction,
+} from "./publication";
+export {
+  backgroundTransaction,
+  persistBackgroundTasks,
+  publishBackgroundDispatches,
+} from "./publication";
 
-export async function dispatchBackgroundTasks(env: RuntimeEnv, tasks: readonly BackgroundTaskV1[]) {
+export async function dispatchBackgroundTasks(env: RuntimeEnv, tasks: readonly BackgroundTaskV2[]) {
   if (tasks.length === 0) return true;
-  const jobs = requireRuntimePort("jobs");
+  await persistBackgroundTasks(env, tasks);
+  if (inBackgroundTransaction()) return true;
   const telemetry = requireRuntimePort("telemetry");
   try {
-    await jobs.dispatch(tasks);
+    await publishBackgroundDispatches(env);
     for (const task of tasks)
       recordBackgroundCounter("enqueue", {
         cell: getBackgroundCellId(env),
