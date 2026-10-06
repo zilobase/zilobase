@@ -34,6 +34,11 @@ See [tests or test configuration](../../apps/server/src/infrastructure/backgroun
 
 ## Dispatch seam
 
+The [V2 contract](../../apps/server/src/infrastructure/background/task-v2.ts)
+and [shared delivery runner](../../apps/server/src/app/background/delivery.ts)
+provide cell/lane validation, execution-time guards and durable outcome hooks.
+Provider conformance fixtures exercise these independently before broker cutover.
+
 The processor delegates database realtime and notification tasks to each feature's background module. Those modules own the post-drain persistence checks and retry deadlines. [Task result handling](../../apps/server/src/infrastructure/background/task-result.ts) shares the identical completed/retry interpretation of an outbox row; it does not claim work or change leases. [Processor tests](../../apps/server/src/app/background/processor.test.ts) exercise the dispatch interface before and after the move. Node websocket attachment remains separate for each protocol.
 
 A Node background handler publishes locally and through the required
