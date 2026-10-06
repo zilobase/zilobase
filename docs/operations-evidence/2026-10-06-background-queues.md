@@ -1,6 +1,6 @@
 # Background queue adapter candidate verification
 
-Candidate branch: `codex/background-queue-adapters`, created from the current
+Candidate branch: `background-queue-adapters`, created from the current
 `codex/shared-client-cache` tip. The shared-cache implementation remains included.
 Cloudflare changes use the same branch name in the adjacent adapter repository.
 Identity source and schema are unchanged.
