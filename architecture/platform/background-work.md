@@ -26,6 +26,10 @@ worker interruption.
 
 ## Verification
 
+The [queue ownership decision](../decisions/0015-background-queue-adapters.md)
+and [inventory/acceptance contract](../../docs/background-queues.md) define the
+queue-provider cutover and its independent release boundary.
+
 See [tests or test configuration](../../apps/server/src/infrastructure/background) and [testing and quality](../setup/testing-and-quality.md). [Architecture index](../README.md).
 
 ## Dispatch seam
