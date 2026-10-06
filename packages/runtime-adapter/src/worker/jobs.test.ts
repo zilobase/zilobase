@@ -14,7 +14,8 @@ describe("worker Jobs port", () => {
         cellId: "default",
         kind: "ai.job",
         resourceId: "job-1",
-        version: 1,
+        taskId: "00000000-0000-4000-8000-000000000001",
+        version: 2,
       },
     ]);
 

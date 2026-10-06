@@ -13,8 +13,15 @@ afterEach(() => evictAllDurableObjects({ webSockets: "close" }));
 
 const CLAIMS_HEADER = "x-zilobase-database-realtime-claims";
 
-function databaseClaims(databaseId: string, expiresAt: number, sessionId: string, version = 0) {
+function databaseClaims(
+  databaseId: string,
+  expiresAt: number,
+  sessionId: string,
+  version = 0,
+  sourceIds = ["source-1"],
+) {
   return {
+    sourceIds,
     canEdit: true,
     databaseId,
     exp: expiresAt,
@@ -31,13 +38,14 @@ async function connect(
   expiresAt: number,
   sessionId: string,
   version = 0,
+  sourceIds = ["source-1"],
 ) {
   const response = await stub.fetch(
     `https://example.com/database-collaboration?database=${databaseId}`,
     {
       headers: {
         [CLAIMS_HEADER]: encodeURIComponent(
-          JSON.stringify(databaseClaims(databaseId, expiresAt, sessionId, version)),
+          JSON.stringify(databaseClaims(databaseId, expiresAt, sessionId, version, sourceIds)),
         ),
         Upgrade: "websocket",
       },
@@ -95,6 +103,23 @@ function mutationV2(version: number): DatabaseMutationEventV2 {
 }
 
 describe("DatabaseCollaborationRoom in the Workers runtime", () => {
+  it("delivers entities only to sockets with the represented source grant", async () => {
+    const stub = env.DATABASE_COLLABORATION.getByName("database-1");
+    const permitted = await connect(stub, "database-1", Date.now() + 60_000, "permitted");
+    const restricted = await connect(stub, "database-1", Date.now() + 60_000, "restricted", 0, []);
+    const fullMessage = nextMessage(permitted),
+      hintMessage = nextMessage(restricted);
+    await stub.publishMutation(mutationV2(1));
+    expect(JSON.parse(await fullMessage).changes).toEqual({ removedRecordIds: ["row-1"] });
+    expect(JSON.parse(await hintMessage)).toMatchObject({
+      changes: {},
+      dataSourceId: null,
+      requiresReset: true,
+      version: 1,
+    });
+    permitted.close();
+    restricted.close();
+  });
   it("persists the newest mutation version and ignores stale delivery", async () => {
     const stub = env.DATABASE_COLLABORATION.getByName("database-1");
 

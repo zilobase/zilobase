@@ -15,3 +15,5 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Shared database record interactions](0011-shared-record-interactions.md)
 - [Unified database mutation ownership](0012-unified-database-mutations.md)
 - [Bounded online page document cache](0013-bounded-online-page-document-cache.md)
+- [Shared client entity cache](0014-shared-client-entity-cache.md)
+- [Application-wide queue adapters](0015-background-queue-adapters.md)

@@ -13,7 +13,6 @@ export type ZilobaseFeaturesConfig = {
   preferredActiveWorkspaceId?: string | null;
   queryClient: QueryClient;
   databaseRealtimeEnabled?: boolean;
-  navigationRealtimeEnabled?: boolean;
   setPreferredActiveWorkspaceId?: (workspaceId: string | null) => void;
 };
 

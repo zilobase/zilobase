@@ -1,3 +1,6 @@
+import { useZilobaseFeatures } from "@zilobase/features";
+import { useSharedDataRevision } from "@zilobase/features/data/react";
+import { readCachedPage } from "@zilobase/features/pages";
 import { useEffect, useRef, useState } from "react";
 import { DatabaseIcon, SidebarSimpleIcon, SquareIcon, X } from "@/shared/components/icons";
 import { toast } from "sonner";
@@ -24,7 +27,7 @@ export function DatabasePageLink({
   onOpen,
   openMode = "button",
   pageId,
-  pageSummary,
+  pageSummary: fallbackSummary,
   showPageIcon = true,
 }: {
   editable?: boolean;
@@ -35,6 +38,10 @@ export function DatabasePageLink({
   pageSummary?: DatabasePageSummary | null;
   showPageIcon?: boolean;
 }) {
+  const { queryClient } = useZilobaseFeatures();
+  useSharedDataRevision(queryClient);
+  const currentPage = readCachedPage(queryClient, pageId);
+  const pageSummary = currentPage ? { ...fallbackSummary, ...currentPage } : fallbackSummary;
   const sidePane = useOptionalPageSidePane();
   const updatePage = useUpdatePage();
   const changeRow = useChangeDatabaseRow();

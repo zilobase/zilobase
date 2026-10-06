@@ -1,3 +1,6 @@
+import { sharedClient } from "../../data/client";
+import { valueIdentity } from "../schema/cache-entities";
+import { resolveRecordWindow, type DatabaseWindowReference } from "../cache-window";
 import { databaseController } from "../interactions/store";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -34,7 +37,16 @@ const hookRecord: DatabaseRecordEntity = {
   pageId: "page-1",
   parentRowId: null,
   updatedAt: "2026-09-08T00:00:00.000Z",
-  valuesByPropertyId: {},
+  valuesByPropertyId: {
+    "property-status": {
+      id: "value-1",
+      pageId: "page-1",
+      propertyId: "property-status",
+      value: "Done",
+      createdAt: "2026-06-01T00:00:00.000Z",
+      updatedAt: "2026-09-08T00:00:00.001Z",
+    },
+  },
 };
 
 function hookAck(commandId: string) {
@@ -43,7 +55,7 @@ function hookAck(commandId: string) {
     event: {
       actorId: "user-1",
       areas: ["records"],
-      changes: { records: [hookRecord] },
+      changes: { records: [hookRecord], sourceVersions: { "data-source-1": 2 } },
       commandId,
       committedAt: "2026-09-08T00:00:00.000Z",
       databaseId: "database-1",
@@ -60,7 +72,7 @@ function hookAck(commandId: string) {
 
 function cellValueOf(queryClient: QueryClient): unknown {
   const data = queryClient.getQueryData<{
-    pages: DatabaseRecordWindowResponse[];
+    pages: DatabaseWindowReference[];
   }>(
     databaseWindowQueryKey(SESSION, {
       databaseId: HOST,
@@ -68,9 +80,9 @@ function cellValueOf(queryClient: QueryClient): unknown {
       queryHash: databaseViewQueryHash({}),
     }),
   );
-  return data?.pages[0]?.records.find((record) => record.id === "row-1")?.valuesByPropertyId[
-    "property-status"
-  ]?.value;
+  return resolveRecordWindow(queryClient, data?.pages[0])?.records.find(
+    (record) => record.id === "row-1",
+  )?.valuesByPropertyId["property-status"]?.value;
 }
 
 async function flush(times = 10) {
@@ -108,7 +120,13 @@ test("cell mutations project immediately without modifying server snapshots", as
     const store = databaseController(queryClient, SESSION, async () => {
       throw new Error("unused");
     });
-    assert.equal(cellValueOf(queryClient), "Not started");
+    assert.equal(
+      sharedClient(queryClient)
+        .database(HOST)
+        ?.databases.values.collection.base.get(valueIdentity("page-1", "property-status"))?.value,
+      "Not started",
+    );
+    assert.equal(cellValueOf(queryClient), "Done");
     assert.equal(
       store.records("data-source-1").find(({ id }) => id === "row-1")?.valuesByPropertyId[
         "property-status"
@@ -117,8 +135,8 @@ test("cell mutations project immediately without modifying server snapshots", as
     );
     releasePost(undefined);
     await pending;
-    // Inactive stale windows are evicted, never patched with speculative data.
-    assert.equal(cellValueOf(queryClient), undefined);
+    // The ordered reference survives an ordinary edit; all readers resolve confirmation.
+    assert.equal(cellValueOf(queryClient), "Done");
   } finally {
     queryClient.clear();
   }
@@ -143,6 +161,47 @@ test("rejected cell mutation leaves the server snapshot untouched", async () => 
       /network down/,
     );
     assert.equal(cellValueOf(queryClient), "Not started");
+  } finally {
+    queryClient.clear();
+  }
+});
+
+test("validated acknowledgement ends saving even when collection publication fails", async () => {
+  let writes = 0;
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useUpdateDatabasePropertyValue,
+    async <T>(_path: string, init?: RequestInit): Promise<T> => {
+      writes++;
+      return hookAck(JSON.parse(String(init?.body)).commandId) as T;
+    },
+  );
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+  const owner = sharedClient(queryClient).database(HOST)!;
+  owner.databases.ingestEvent = () => {
+    throw new Error("Publication failed");
+  };
+  const store = databaseController(queryClient, SESSION, async () => {
+    throw new Error("unused");
+  });
+  try {
+    await (mutation.mutateAsync as unknown as (input: Record<string, unknown>) => Promise<unknown>)(
+      { databaseId: "data-source-1", rowId: "row-1", propertyId: "property-status", value: "Done" },
+    );
+    assert.equal(writes, 1);
+    assert.equal(
+      store.commandState.get({
+        hostDatabaseId: HOST,
+        dataSourceId: "data-source-1",
+        rowId: "row-1",
+        propertyId: "property-status",
+      }).isPending,
+      false,
+    );
+    assert.match(store.getSynchronizationError()!.message, /saved/);
+    assert.equal(
+      owner.databases.values.get(valueIdentity("page-1", "property-status"))?.value,
+      "Not started",
+    );
   } finally {
     queryClient.clear();
   }

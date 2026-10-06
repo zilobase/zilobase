@@ -7,7 +7,7 @@ import {
   runWithBackgroundTraceContext,
 } from "./contracts";
 
-describe("background task v1", () => {
+describe("background task v2", () => {
   it("routes every kind to an isolated lane", () => {
     expect(backgroundTaskLane("automation.event_window")).toBe("fast");
     expect(backgroundTaskLane("automation.run")).toBe("automation");
@@ -23,8 +23,8 @@ describe("background task v1", () => {
       resourceId: "job-1",
     });
     expect(parseBackgroundTask(task, "cell-a")).toEqual({ ok: true, task });
-    expect(parseBackgroundTask({ ...task, version: 2 }, "cell-a")).toEqual({
-      errorCode: "BACKGROUND_TASK_VERSION_UNSUPPORTED",
+    expect(parseBackgroundTask({ ...task, version: 1 }, "cell-a")).toEqual({
+      errorCode: "BACKGROUND_TASK_INVALID",
       ok: false,
     });
     expect(parseBackgroundTask(task, "cell-b")).toEqual({
@@ -32,7 +32,7 @@ describe("background task v1", () => {
       ok: false,
     });
     expect(parseBackgroundTask({ ...task, kind: "unknown" }, "cell-a")).toEqual({
-      errorCode: "BACKGROUND_TASK_KIND_INVALID",
+      errorCode: "BACKGROUND_TASK_INVALID",
       ok: false,
     });
   });

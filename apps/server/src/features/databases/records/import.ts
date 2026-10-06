@@ -48,7 +48,9 @@ export async function inheritDatabaseRowProperties(
         eq(pageProperty.workspaceId, input.workspaceId),
         isNull(pageProperty.deletedAt),
       ),
-    );
+    )
+    .orderBy(asc(pageProperty.id))
+    .for("update", { of: pageProperty });
   const sourceColumns = await tx
     .select({ column: databaseProperty, property: pageProperty })
     .from(databaseProperty)

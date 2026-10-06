@@ -165,8 +165,10 @@ calendarRoutes.route("/", calendarEventRoutes);
 calendarRoutes.route("/", calendarRealtimeRoutes);
 calendarProviderRoutes.post("/google/webhook", async (c) => {
   const accepted = await runWithDbEnv(c.env, () =>
-    acceptCalendarWebhook(c.req.raw.headers, (accountId, calendarId) =>
-      dispatchCalendarWebhook(c.env, accountId, calendarId),
+    acceptCalendarWebhook(
+      c.req.raw.headers,
+      (accountId, calendarId) => dispatchCalendarWebhook(c.env, accountId, calendarId),
+      c.env,
     ),
   );
   return c.body(null, accepted ? 204 : 403);

@@ -53,6 +53,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - name: MCP_CREDENTIAL_ENCRYPTION_KEYS
   valueFrom: { secretKeyRef: { name: {{ .Values.existingSecret | quote }}, key: {{ .Values.secretKeys.mcpCredentialEncryptionKeys | quote }} } }
 {{- end }}
+{{- if eq .Values.queue.existingSecret .Values.realtime.existingSecret }}
+{{- fail "queue.existingSecret must be separate from realtime.existingSecret" }}
+{{- end }}
+- name: QUEUE_REDIS_URL
+  valueFrom: { secretKeyRef: { name: {{ .Values.queue.existingSecret | quote }}, key: {{ .Values.queue.secretKey | quote }} } }
 - name: REALTIME_REDIS_URL
   valueFrom: { secretKeyRef: { name: {{ .Values.realtime.existingSecret | quote }}, key: {{ .Values.realtime.secretKey | quote }} } }
 {{- if .Values.trustedCa.configMapName }}

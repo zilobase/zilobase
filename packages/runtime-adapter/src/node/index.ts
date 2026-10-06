@@ -6,7 +6,6 @@ export {
   createNodeRealtimeBus,
   getRealtimeRedisUrl,
   databaseRealtimeChannel,
-  navigationRealtimeChannel,
   calendarRealtimeChannel,
   type NodeRealtimeBus,
   type RealtimeSubscription,
@@ -30,10 +29,11 @@ export { createNodeRoomHost, type NodeRoomHost, type NodeRoomPeer } from "./room
 export { createNodeRoomState } from "./room-state";
 export { createNodeFanout } from "./fanout";
 export {
-  createNodeBackgroundCoordinator,
-  publishNodeBackgroundNotification,
-  type NodeBackgroundCoordinator,
-} from "./background-coordinator";
+  createNodeQueueRuntime,
+  getQueueRedisUrl,
+  NODE_BACKGROUND_QUEUE_NAMES,
+  type NodeQueueRuntime,
+} from "./queue-runtime";
 export {
   attachNodeCollaborationRuntime,
   NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
@@ -41,4 +41,5 @@ export {
 export { attachNodeDatabaseRealtimeRuntime } from "./features/database-realtime/database-realtime-runtime";
 export { attachNodeMeetingAudioRuntime } from "./features/meeting-audio/meeting-audio-runtime";
 export { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/calendar-realtime-runtime";
-export { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
+
+export { purgeNodeCellQueues } from "./queue-operations";

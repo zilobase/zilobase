@@ -1,3 +1,11 @@
+import { useMemo } from "react";
+import { useSharedDataRevision } from "../../data/react";
+import {
+  normalizeDatabaseBootstrap,
+  resolveDatabaseBootstrap,
+  type DatabaseBootstrapReference,
+} from "../cache-references";
+import { sharedClient } from "../../data/client";
 import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
@@ -35,18 +43,36 @@ export function databaseBootstrapQueryOptions(
   return queryOptions({
     queryKey,
     staleTime: 30_000,
-    queryFn: async ({ signal }): Promise<DatabaseBootstrapResponse> => {
+    queryFn: async ({ client, signal }): Promise<DatabaseBootstrapReference> => {
+      const owner = sharedClient(client);
+      const read = await owner.captureRead();
       const incoming = databaseBootstrapResponseSchema.parse(
         await apiFetch<DatabaseBootstrapResponse>(databaseBootstrapPath(scope), { signal }),
       );
+      const previous = client.getQueryData<DatabaseBootstrapReference>(queryKey);
+      owner.revalidateScope(
+        read,
+        previous,
+        incoming.viewerType === "guest" || incoming.viewerType === "public"
+          ? incoming.viewerType
+          : "account",
+        Boolean(previous?.accessLevel && previous.accessLevel !== incoming.database.accessLevel),
+      );
+      const reference = normalizeDatabaseBootstrap(
+        client,
+        read,
+        scope.databaseId,
+        incoming,
+        scope.includeDeleted,
+      );
       // Prefer-newest guard: out-of-order GETs must not regress cache.
       if (queryClient) {
-        const cached = queryClient.getQueryData<DatabaseBootstrapResponse>(queryKey);
-        if (cached && incoming.database.version < cached.database.version) {
+        const cached = queryClient.getQueryData<DatabaseBootstrapReference>(queryKey);
+        if (cached && incoming.database.version < cached.databaseVersion) {
           return cached;
         }
       }
-      return incoming;
+      return reference;
     },
   });
 }
@@ -65,7 +91,16 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
     ),
     enabled: Boolean(scope),
   });
-  const projected = useProjectedDatabaseBootstrap(query.data);
+  const revision = useSharedDataRevision(queryClient);
+  const resolved = useMemo(
+    () => resolveDatabaseBootstrap(queryClient, query.data),
+    [queryClient, query.data, revision],
+  );
+  const confirmed = useMemo(
+    () => resolveDatabaseBootstrap(queryClient, query.data, true),
+    [queryClient, query.data, revision],
+  );
+  const projected = useProjectedDatabaseBootstrap(resolved);
 
   if (!scope || !queryKey) {
     return {
@@ -86,7 +121,7 @@ export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBoots
 
   return {
     data: projected,
-    serverData: query.data,
+    serverData: confirmed,
     error,
     refetch: () => queryClient.refetchQueries({ exact: true, queryKey }),
     scope,

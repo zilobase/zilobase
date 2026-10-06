@@ -20,7 +20,6 @@ import { usePageEditorComments } from "@/features/comments/index";
 import { useSession } from "@zilobase/features/auth/react";
 import { type DatabasePresenceCollaborator } from "@zilobase/features/databases";
 import { useChangeDatabaseRow, useDatabaseRealtime } from "@zilobase/features/databases/react";
-import { useZilobaseFeatures } from "@zilobase/features";
 import { usePagePersonAccessTargets, usePageProperties } from "@zilobase/features/pages/react";
 import { usePageCommentsSnapshot } from "@/features/comments/index";
 import type {
@@ -255,7 +254,6 @@ export function PageMetadata({
     enableComments && layoutConfig?.discussionsVisible !== false && pageId && session?.user,
   );
   const commentsSnapshot = usePageCommentsSnapshot(commentsEnabled ? pageId : null);
-  const { queryClient } = useZilobaseFeatures();
   const changeRow = useChangeDatabaseRow();
   const cover = coverProp ?? localCover;
   const description = descriptionProp ?? localDescription;
@@ -364,10 +362,11 @@ export function PageMetadata({
       return;
     }
 
-    setDraftValues((drafts) => ({
-      ...drafts,
-      [propertyId]: value,
-    }));
+    setDraftValues((drafts) => {
+      const next = { ...drafts };
+      delete next[propertyId];
+      return next;
+    });
 
     void (async () => {
       try {
@@ -377,8 +376,6 @@ export function PageMetadata({
           rowId,
           valuesByPropertyId: { [propertyId]: serializePropertyValue(propertyType, value) },
         });
-        // Keep the local editor draft until its page-properties read catches up.
-        await queryClient.invalidateQueries({ queryKey: ["page", pageId] }, { throwOnError: true });
         setDraftValues((drafts) => {
           const nextDrafts = { ...drafts };
 
@@ -387,8 +384,14 @@ export function PageMetadata({
 
           return nextDrafts;
         });
-      } catch {
-        // Draft stays visible until the save succeeds; presence is unaffected.
+      } finally {
+        // Committed values and rollback now come from the shared transaction.
+        setDraftValues((drafts) => {
+          if (JSON.stringify(drafts[propertyId]) !== JSON.stringify(value)) return drafts;
+          const next = { ...drafts };
+          delete next[propertyId];
+          return next;
+        });
       }
     })();
   };

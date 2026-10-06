@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   effectiveDatabaseAccess: vi.fn(),
   publishedDatabase: vi.fn(),
   membership: vi.fn(),
+  principalKind: vi.fn(),
   mutationFeed: vi.fn(),
   deleteDatabase: vi.fn(),
   restoreDatabase: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("../../access", async (original) => ({
   canAccessDatabaseRecord: mocks.canAccessDatabase,
   getEffectiveDatabaseAccessForRecord: mocks.effectiveDatabaseAccess,
   getMembership: mocks.membership,
+  getWorkspacePrincipalKind: mocks.principalKind,
   isDatabasePublishedInWorkspace: mocks.publishedDatabase,
 }));
 
@@ -82,6 +84,7 @@ beforeEach(() => {
   mocks.canAccessDatabase.mockResolvedValue(true);
   mocks.effectiveDatabaseAccess.mockResolvedValue("edit");
   mocks.membership.mockResolvedValue({ id: "membership-1" });
+  mocks.principalKind.mockResolvedValue("member");
   mocks.publishedDatabase.mockResolvedValue(false);
 });
 
@@ -103,7 +106,7 @@ test("v2 bootstrap route returns metadata without invoking the export payload", 
   const response = await appWithUser().request("/databases/database-1/bootstrap?viewId=view-1");
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), bootstrap);
+  assert.deepEqual(await response.json(), { ...bootstrap, viewerType: "member" });
   assert.deepEqual(mocks.bootstrap.mock.calls[0]?.[0], {
     accessLevel: "edit",
     databaseId: "database-1",
@@ -113,6 +116,28 @@ test("v2 bootstrap route returns metadata without invoking the export payload", 
     viewId: "view-1",
   });
   assert.equal(mocks.databasePayload.mock.calls.length, 0);
+});
+
+test("bootstrap declares guest and public scope without borrowing signed-in authorization", async () => {
+  mocks.databaseRecord.mockResolvedValue({
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  mocks.bootstrap.mockResolvedValue({ database: { id: "database-1" } });
+  mocks.principalKind.mockResolvedValue("guest");
+  const guest = await appWithUser().request("/databases/database-1/bootstrap");
+  assert.equal(guest.status, 200);
+  assert.equal((await guest.json()).viewerType, "guest");
+  assert.equal(mocks.bootstrap.mock.calls[0]?.[0].userId, "user-1");
+
+  mocks.canAccessDatabase.mockResolvedValue(false);
+  mocks.publishedDatabase.mockResolvedValue(true);
+  mocks.effectiveDatabaseAccess.mockResolvedValue("none");
+  const published = await appWithUser().request("/databases/database-1/bootstrap");
+  assert.equal(published.status, 200);
+  assert.equal((await published.json()).viewerType, "public");
+  assert.equal(mocks.bootstrap.mock.calls[1]?.[0].userId, undefined);
 });
 
 test("v2 record route forwards exact windows and deleted scope", async () => {

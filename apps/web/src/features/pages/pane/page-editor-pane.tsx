@@ -16,7 +16,6 @@ import {
   isPageLocked,
   resolvePageFullWidth,
   type PageIconPosition,
-  type PageMetadata,
 } from "@zilobase/features/pages";
 import { useDeleteDatabase, useRestoreDatabase } from "@zilobase/features/databases/react";
 import { useDeleteMeeting, useWorkspaceMeetings } from "@zilobase/features/meetings/react";
@@ -48,7 +47,6 @@ import { setPageConnectionIndicator } from "@/features/editor/collaboration/page
 import {
   blockCachedPage,
   exportCachedPageState,
-  rememberPageDetail,
 } from "@/features/editor/collaboration/page-document-cache";
 import { ApiError } from "@/platform/network/api";
 import { isHostedDemoRuntime } from "@/features/demo";
@@ -399,22 +397,6 @@ export function PageEditorPane({
     pageEditable,
   ]);
   useEffect(() => {
-    if (!collaboration.entry || !page || accessDenied || collaboration.status === "blocked") return;
-    void rememberPageDetail(
-      collaboration.entry,
-      { page, accessLevel, databaseIds: pageDatabaseIds, viewerType: "member" },
-      page.workspaceId,
-    );
-  }, [
-    accessDenied,
-    accessLevel,
-    collaboration.entry,
-    collaboration.status,
-    collaboration.synced,
-    page,
-    pageDatabaseIds,
-  ]);
-  useEffect(() => {
     if (!session?.user || (!accessDenied && collaboration.status !== "blocked")) return;
     void blockCachedPage(session.user.id, pageId);
   }, [accessDenied, collaboration.status, pageId, session?.user]);
@@ -527,7 +509,6 @@ export function PageEditorPane({
     updatePage.mutate({
       id: page.id,
       metadata: {
-        ...((page.metadata ?? {}) as PageMetadata),
         cover: nextCover,
       },
     });
@@ -546,7 +527,6 @@ export function PageEditorPane({
     updatePage.mutate({
       id: page.id,
       metadata: {
-        ...((page.metadata ?? {}) as PageMetadata),
         emoji: nextEmoji,
         iconPosition: nextIconPosition,
       },
@@ -563,7 +543,6 @@ export function PageEditorPane({
     updatePage.mutate({
       id: page.id,
       metadata: {
-        ...((page.metadata ?? {}) as PageMetadata),
         iconPosition: nextPosition,
       },
     });

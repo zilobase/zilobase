@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../data/testing";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { ZilobaseFeaturesProvider, type ZilobaseFeaturesConfig } from "./context";

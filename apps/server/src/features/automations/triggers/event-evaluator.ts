@@ -28,7 +28,10 @@ import {
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
 import { requireDataSourceAccess } from "../../databases/access/data-source-access";
 import { promoteClosedDatabaseAutomationEventWindows } from "./event-capture";
@@ -106,45 +109,41 @@ export async function drainDatabaseAutomationEventWindows(
       recordRecoveredBackgroundLease(env, "automation.event_window");
     }
     try {
-      const runIds = await evaluateWindow(window.id, workerId);
+      const runIds = await evaluateWindow(env, window.id, workerId);
       runsCreated += runIds.length;
       completed += 1;
-      await dispatchBackgroundTasks(
-        env,
-        runIds.map((runId) =>
-          createBackgroundTask({ env, kind: "automation.run", resourceId: runId }),
-        ),
-      );
     } catch (error) {
       const attempts = window.attempts + 1;
       const availableAt = new Date(Date.now() + Math.min(60_000, 1_000 * 2 ** attempts));
-      await db
-        .update(databaseAutomationEventWindow)
-        .set({
-          attempts,
-          leaseExpiresAt: null,
-          leaseOwner: null,
-          nextAttemptAt: availableAt,
-          status: "ready",
-          terminalReason:
-            error instanceof Error ? error.message.slice(0, 500) : "Evaluation failed",
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(databaseAutomationEventWindow.id, window.id),
-            eq(databaseAutomationEventWindow.leaseOwner, workerId),
-          ),
-        );
-      retried += 1;
-      await dispatchBackgroundTasks(env, [
-        createBackgroundTask({
-          availableAt,
-          env,
-          kind: "automation.event_window",
-          resourceId: window.id,
-        }),
-      ]);
+      await backgroundTransaction(env, async () => {
+        await db
+          .update(databaseAutomationEventWindow)
+          .set({
+            attempts,
+            leaseExpiresAt: null,
+            leaseOwner: null,
+            nextAttemptAt: availableAt,
+            status: "ready",
+            terminalReason:
+              error instanceof Error ? error.message.slice(0, 500) : "Evaluation failed",
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(databaseAutomationEventWindow.id, window.id),
+              eq(databaseAutomationEventWindow.leaseOwner, workerId),
+            ),
+          );
+        retried += 1;
+        await dispatchBackgroundTasks(env, [
+          createBackgroundTask({
+            availableAt,
+            env,
+            kind: "automation.event_window",
+            resourceId: window.id,
+          }),
+        ]);
+      });
     }
   }
   return { claimed: claimed.length, completed, retried, runsCreated };
@@ -177,8 +176,8 @@ export async function processDatabaseAutomationEventWindow(
   return { availableAt: availableAt.toISOString(), outcome: "retry" as const };
 }
 
-async function evaluateWindow(windowId: string, workerId: string) {
-  return db.transaction(async (tx) => {
+async function evaluateWindow(env: RuntimeEnv, windowId: string, workerId: string) {
+  return backgroundTransaction(env, async (tx) => {
     const [window] = await tx
       .select()
       .from(databaseAutomationEventWindow)
@@ -342,6 +341,12 @@ async function evaluateWindow(windowId: string, workerId: string) {
       if (created && !skipReason) createdRunIds.push(created.id);
     }
 
+    await dispatchBackgroundTasks(
+      env,
+      createdRunIds.map((resourceId) =>
+        createBackgroundTask({ env, kind: "automation.run", resourceId }),
+      ),
+    );
     await completeWindow(tx, window.id, workerId, null);
     return createdRunIds;
   });

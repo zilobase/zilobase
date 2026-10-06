@@ -110,6 +110,7 @@ export const getPagePropertyPayload = async (
   }));
 
   return {
+    workspaceId,
     databaseIds,
     databaseVersions,
     presenceTargets,

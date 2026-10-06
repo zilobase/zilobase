@@ -8,7 +8,7 @@ const withReadiness = <T>(realtime: boolean, operation: () => T) =>
   runWithRuntimePorts(
     {
       readiness: {
-        background: () => ({ coordinatorReady: null, listenerReady: null }),
+        background: () => ({ producerReady: null, consumerReady: null, maintenanceFresh: null }),
         realtime: () => realtime,
       },
     },

@@ -25,9 +25,14 @@ import {
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  backgroundTransaction,
+  persistBackgroundTasks,
+  publishBackgroundDispatches,
+} from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
 import { lockDatabaseRowOrdering } from "../core/position-service";
+import { mutationSourceIds, withSourceClocks } from "../core/source-clocks";
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
@@ -451,7 +456,28 @@ export async function executeDatabaseCommand<TResult = unknown>(
               )[0]?.version;
         if (version === undefined) throw new ServiceMutationError("Database not found", 404);
 
-        const prepared = boundedChanges(mutation);
+        const eventSourceVersions = { ...sourceVersions };
+        for (const id of mutationSourceIds(mutation.changes, mutation.dataSourceId)) {
+          if (eventSourceVersions[id] !== undefined) continue;
+          const entityVersion = mutation.changes.dataSources?.find(
+            (source) => source.id === id,
+          )?.version;
+          if (entityVersion !== undefined) {
+            eventSourceVersions[id] = entityVersion;
+            continue;
+          }
+          const [source] = await tx
+            .select({ version: dataSource.version })
+            .from(dataSource)
+            .where(eq(dataSource.id, id))
+            .limit(1);
+          if (!source) throw new ServiceMutationError("Data source not found", 404);
+          eventSourceVersions[id] = source.version;
+        }
+        const prepared = boundedChanges({
+          ...mutation,
+          changes: withSourceClocks(mutation.changes, mutation.dataSourceId, eventSourceVersions),
+        });
         const changes = prepared.changes.databases
           ? {
               ...prepared.changes,
@@ -503,29 +529,32 @@ export async function executeDatabaseCommand<TResult = unknown>(
         requestHash,
       });
 
+      await persistBackgroundTasks(
+        input.env ?? {},
+        [
+          ...events
+            .map((event) => event.eventId)
+            .map((resourceId) =>
+              createBackgroundTask({ env: input.env ?? {}, kind: "realtime.database", resourceId }),
+            ),
+          ...automationWindows.map((window) =>
+            createBackgroundTask({
+              env: input.env ?? {},
+              kind: "automation.event_window",
+              resourceId: window.id,
+              availableAt: window.availableAt,
+            }),
+          ),
+        ],
+        tx,
+      );
       return { acknowledgement, eventIds: events.map(({ eventId }) => eventId) };
     }),
   );
 
   if (input.env && committed.eventIds.length > 0) {
     await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
-      dispatchBackgroundTasks(input.env!, [
-        ...committed.eventIds.map((eventId) =>
-          createBackgroundTask({
-            env: input.env!,
-            kind: "realtime.database",
-            resourceId: eventId,
-          }),
-        ),
-        ...automationWindows.map((window) =>
-          createBackgroundTask({
-            availableAt: window.availableAt,
-            env: input.env!,
-            kind: "automation.event_window",
-            resourceId: window.id,
-          }),
-        ),
-      ]),
+      publishBackgroundDispatches(input.env!),
     ).catch((error) => {
       // The durable outbox remains retryable; delivery cannot reject a committed receipt.
       console.error("Database command delivery deferred", error);

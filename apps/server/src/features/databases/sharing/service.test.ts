@@ -76,14 +76,6 @@ vi.mock("../../../infrastructure/database", () => ({
     return databaseMock;
   })(),
 }));
-vi.mock("../../workspaces/navigation-realtime/outbox", () => ({
-  enqueueNavigationInvalidation: vi.fn(async () => ({
-    committedAt: new Date(),
-    id: "navigation-event-1",
-    workspaceId: "workspace-1",
-  })),
-  publishCommittedNavigationInvalidation: vi.fn(async () => true),
-}));
 
 import {
   deleteDatabaseAccessRuleService,

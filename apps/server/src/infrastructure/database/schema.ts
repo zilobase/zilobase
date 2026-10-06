@@ -121,7 +121,7 @@ export {
   aiSettingsVersion,
 } from "./schema/ai-settings";
 export { searchDocument, searchChunk } from "./schema/search";
-export { aiJob, backgroundMaintenanceTask } from "./schema/background";
+export { aiJob, backgroundMaintenanceTask, backgroundDispatch } from "./schema/background";
 export {
   calendarAccount,
   calendarBinding,

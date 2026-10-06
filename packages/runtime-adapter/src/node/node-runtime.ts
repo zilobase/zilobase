@@ -13,6 +13,15 @@ import { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/
 import {
   createDbClientForUrl,
   runWithDbEnv,
+  runWithIndependentDbEnv,
+  deliverBackgroundTask,
+  recordBackgroundExhaustion,
+  publishBackgroundDispatches,
+  runDueBackgroundMaintenance,
+  BACKGROUND_LANE_POLICY,
+  backgroundTaskLane,
+  getBackgroundCellId,
+  parseBackgroundTask,
   setCollaborationExtensionsFactory as defaultSetCollaborationExtensionsFactory,
   getBackgroundOperationalSnapshot,
   renderPrometheusBackgroundMetrics,
@@ -20,7 +29,6 @@ import {
   type ZilobaseEditionExtension,
 } from "@zilobase/server/node-adapter-api";
 import { runWithRuntimePorts } from "../capabilities";
-import { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus, type NodeRealtimeBus } from "./realtime-bus";
@@ -29,10 +37,7 @@ import { fetchPinnedNodeWebhook } from "./pinned-webhook";
 import { fetchPinnedNodeMcp } from "./pinned-mcp";
 import { createNodeImageStorage } from "./image-storage";
 import { createNodeMailer } from "./mailer";
-import {
-  createNodeBackgroundCoordinator,
-  type NodeBackgroundCoordinator,
-} from "./background-coordinator";
+import { getQueueRedisUrl, createNodeQueueRuntime, type NodeQueueRuntime } from "./queue-runtime";
 import { createNodeJobs } from "./jobs";
 import { createNodeScheduler } from "./scheduler";
 import { createNodeLimits } from "./limits";
@@ -54,10 +59,10 @@ export type NodeRuntimeOptions = {
     setCollaborationExtensionsFactory?: typeof defaultSetCollaborationExtensionsFactory;
     fetchPinnedWebhook?: Ports["outbound"]["fetchWebhook"];
     fetchPinnedMcp?: Ports["outbound"]["fetchMcp"];
-    createBackgroundCoordinator?: (
+    createBackgroundQueue?: (
       env: Record<string, unknown>,
       ports: Partial<Ports>,
-    ) => NodeBackgroundCoordinator | null;
+    ) => NodeQueueRuntime | null;
   };
 };
 
@@ -74,17 +79,47 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     hooks.createCollaborationExtensions ?? createNodeCollaborationExtensions;
   const fetchPinnedWebhook = hooks.fetchPinnedWebhook ?? fetchPinnedNodeWebhook;
   const fetchPinnedMcp = hooks.fetchPinnedMcp ?? fetchPinnedNodeMcp;
-  const createBackgroundCoordinator =
-    hooks.createBackgroundCoordinator ??
+  const maintenanceWorkerId = `node-maintenance:${crypto.randomUUID()}`;
+  const createBackgroundQueue =
+    hooks.createBackgroundQueue ??
     ((hookEnv, runtimePorts) =>
-      processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv, runtimePorts));
-  let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
+      createNodeQueueRuntime(hookEnv, {
+        policy: BACKGROUND_LANE_POLICY,
+        lane: (task) => backgroundTaskLane(task.kind as never),
+        validate: (body) => {
+          const parsed = parseBackgroundTask(body, getBackgroundCellId(hookEnv));
+          if (!parsed.ok) throw new Error(parsed.errorCode);
+          return parsed.task;
+        },
+        deliver: (body, lane, workerId) =>
+          runWithRuntimePorts(runtimePorts, () =>
+            runWithIndependentDbEnv(hookEnv, () =>
+              deliverBackgroundTask(hookEnv, body, lane, workerId),
+            ),
+          ),
+        exhausted: (body, lane) =>
+          runWithRuntimePorts(runtimePorts, () =>
+            runWithIndependentDbEnv(hookEnv, () => recordBackgroundExhaustion(hookEnv, body, lane)),
+          ),
+        maintain: () =>
+          runWithRuntimePorts(runtimePorts, () =>
+            runWithIndependentDbEnv(hookEnv, async () => {
+              await publishBackgroundDispatches(hookEnv);
+              await runDueBackgroundMaintenance({
+                env: hookEnv,
+                workerId: maintenanceWorkerId,
+              });
+            }),
+          ),
+      }));
+  let backgroundQueueRef: NodeQueueRuntime | null = null;
+  getQueueRedisUrl(env);
   const realtimeBus = createRealtimeBus(env);
   const limits = createNodeLimits(realtimeBus);
   const ports: Partial<Ports> = {
     blobs: createLazyImageStorage(() => createNodeImageStorage(env)),
     env: createRuntimeEnv(env),
-    jobs: createNodeJobs(env, () => backgroundCoordinatorRef),
+    jobs: createNodeJobs(() => backgroundQueueRef),
     limits,
     mailer: createNodeMailer(env),
     outbound: createNodeOutboundFetch({
@@ -93,9 +128,10 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     }),
     readiness: {
       background: () =>
-        backgroundCoordinatorRef?.readiness() ?? {
-          coordinatorReady: null,
-          listenerReady: null,
+        backgroundQueueRef?.readiness() ?? {
+          producerReady: false,
+          consumerReady: processRole === "api" ? null : false,
+          maintenanceFresh: processRole === "api" ? null : false,
         },
       realtime: () => realtimeBus.isReady(),
     },
@@ -135,7 +171,10 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     }
   });
   ports.telemetry = createNodeTelemetry({
-    metrics: () => renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
+    metrics: () =>
+      renderPrometheusBackgroundMetrics() +
+      renderPrometheusDatabaseMetrics() +
+      (backgroundQueueRef?.metrics() ?? ""),
     health: () =>
       runWithRuntimePorts(ports, () =>
         runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
@@ -147,8 +186,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     databaseRealtime: ReturnType<typeof attachNodeDatabaseRealtimeRuntime>;
     meetingAudio: ReturnType<typeof attachNodeMeetingAudioRuntime>;
     calendarRealtime: ReturnType<typeof attachNodeCalendarRealtimeRuntime>;
-    navigationRealtime: ReturnType<typeof attachNodeNavigationRealtimeRuntime>;
-    backgroundCoordinator: NodeBackgroundCoordinator | null;
+    backgroundQueue: NodeQueueRuntime | null;
     backgroundAdminServer: ReturnType<typeof createBackgroundAdminServer> | null;
   };
   let started: StartedRuntime | null = null;
@@ -158,7 +196,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const kind = channel.slice(0, separator);
     if (kind === "db") return state.databaseRealtime.publishMutation(payload as never);
     if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
-    if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
     if (kind === "notification") return;
     if (kind === "page") {
       const command = payload as { content: unknown; pageId: string; userId: string };
@@ -182,12 +219,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     setCollaborationExtensionsFactory(createCollaborationExtensions);
     const collaboration = attachNodeCollaborationRuntime(server, env, {
       editionExtension,
-      passthroughPaths: [
-        "/database-collaboration",
-        "/calendar-realtime",
-        "/meeting-audio",
-        "/navigation-realtime",
-      ],
+      passthroughPaths: ["/database-collaboration", "/calendar-realtime", "/meeting-audio"],
       limits,
     });
     const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, {
@@ -196,23 +228,21 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     });
     const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
-    const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
-    const backgroundCoordinator = createBackgroundCoordinator(env, ports);
-    backgroundCoordinatorRef = backgroundCoordinator;
-    const backgroundAdminServer = backgroundCoordinator
-      ? createBackgroundAdminServer(env, backgroundCoordinator, ports, () => realtimeBus.isReady())
+    const backgroundQueue = createBackgroundQueue(env, ports);
+    backgroundQueueRef = backgroundQueue;
+    const backgroundAdminServer = backgroundQueue
+      ? createBackgroundAdminServer(env, backgroundQueue, ports, () => realtimeBus.isReady())
       : null;
 
     hooks.assertProductionConfig?.(env);
 
     started = {
       backgroundAdminServer,
-      backgroundCoordinator,
+      backgroundQueue,
       calendarRealtime,
       collaboration,
       databaseRealtime,
       meetingAudio,
-      navigationRealtime,
     };
     return started;
   }
@@ -235,7 +265,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     async start() {
       const state = await ensureStarted();
       await realtimeBus.connect();
-      await state.backgroundCoordinator?.start();
+      await state.backgroundQueue?.start();
       await state.backgroundAdminServer?.start();
       if (processRole === "worker") {
         console.log("Zilobase background worker started");
@@ -252,16 +282,15 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       });
     },
     async close() {
-      await started?.backgroundCoordinator?.stop();
+      await started?.backgroundQueue?.stop();
       await started?.backgroundAdminServer?.stop();
       await started?.databaseRealtime.destroy();
       await started?.meetingAudio.destroy();
       await started?.calendarRealtime.destroy();
-      await started?.navigationRealtime.destroy();
       await started?.collaboration.destroy();
       await realtimeBus.close();
       started = null;
-      backgroundCoordinatorRef = null;
+      backgroundQueueRef = null;
       await new Promise<void>((resolve, reject) => {
         if (!server.listening) {
           resolve();
@@ -303,7 +332,7 @@ function readProcessRole(value: string | undefined): ProcessRole {
 
 function createBackgroundAdminServer(
   env: Record<string, unknown>,
-  coordinator: ReturnType<typeof createNodeBackgroundCoordinator>,
+  queue: ReturnType<typeof createNodeQueueRuntime>,
   ports: Partial<Ports>,
   isRealtimeReady: () => boolean,
 ) {
@@ -312,7 +341,9 @@ function createBackgroundAdminServer(
     if (request.url === "/metrics") {
       response.statusCode = 200;
       response.setHeader("content-type", "text/plain; version=0.0.4");
-      response.end(renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics());
+      response.end(
+        renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics() + queue.metrics(),
+      );
       return;
     }
     if (request.url !== "/health" && request.url !== "/ready") {
@@ -324,10 +355,14 @@ function createBackgroundAdminServer(
       const snapshot = await runWithRuntimePorts(ports, () =>
         runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
       );
-      const ready = coordinator.readiness();
+      const ready = queue.readiness();
       response.statusCode =
         request.url === "/ready" &&
-        (!snapshot.healthy || !ready.listenerReady || !isRealtimeReady())
+        (!snapshot.healthy ||
+          !ready.producerReady ||
+          ready.consumerReady === false ||
+          ready.maintenanceFresh === false ||
+          !isRealtimeReady())
           ? 503
           : 200;
       response.setHeader("content-type", "application/json");

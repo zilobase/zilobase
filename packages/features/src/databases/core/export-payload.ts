@@ -65,7 +65,9 @@ export type DatabaseRow = {
   pageId: string;
   parentRowId?: string | null;
   position: number;
+  orderKey?: string;
   page: {
+    hasContent?: boolean;
     createdAt?: string;
     deletedAt?: string | null;
     id: string;
@@ -96,6 +98,7 @@ export type DatabaseRowsPagination = {
 };
 
 export type DatabaseExportPayload = {
+  viewerType?: "member" | "guest" | "public";
   activeDataSource: DataSourceRecord | null;
   dataSources: DataSourceRecord[];
   database: DatabaseRecord;
@@ -120,6 +123,6 @@ export type DataSourceRecord = {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  linkedAt?: string;
+  linkedAt?: string | null;
   position?: number;
 };

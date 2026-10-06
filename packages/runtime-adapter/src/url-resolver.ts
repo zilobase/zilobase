@@ -9,7 +9,6 @@ const endpoints: Record<RealtimeEndpoint, { env?: string; path: string }> = {
     env: "MEETING_COLLABORATION_WEBSOCKET_URL",
     path: "/meeting-collaboration",
   },
-  navigation: { env: "NAVIGATION_REALTIME_WEBSOCKET_URL", path: "/navigation-realtime" },
 };
 
 export function createUrlResolver(env: Env): UrlResolver {

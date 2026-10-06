@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { recordDatabaseGauge } from "../observability";
@@ -28,6 +28,7 @@ export async function drainDatabaseRealtimeOutbox(
       .where(
         and(
           options?.outboxId ? eq(databaseRealtimeOutbox.id, options.outboxId) : undefined,
+          isNull(databaseRealtimeOutbox.failedAt),
           lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
         ),
       )

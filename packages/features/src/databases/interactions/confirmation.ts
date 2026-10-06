@@ -1,6 +1,7 @@
+import { resolveDatabaseBootstrap } from "../cache-references";
 import type { QueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { databaseBootstrapResponseSchema, type DatabaseCommandAck } from "../core/entities";
+import { type DatabaseCommandAck } from "../core/entities";
 import type { DatabaseCommandInput } from "../mutations/execute";
 import { databaseAccessQueryKey } from "../queries/queries";
 import { pageQueryKey } from "../../pages/queries";
@@ -27,9 +28,8 @@ export async function refreshConfirmedDatabaseReads(
     refreshes.push(client.invalidateQueries({ queryKey }, { throwOnError: true }));
   const workspaces = new Set<string>();
   for (const [, value] of client.getQueriesData({ queryKey: ["db", sessionId] })) {
-    const parsed = databaseBootstrapResponseSchema.safeParse(value);
-    if (parsed.success && hosts.has(parsed.data.database.id))
-      workspaces.add(parsed.data.database.workspaceId);
+    const parsed = resolveDatabaseBootstrap(client, value);
+    if (parsed && hosts.has(parsed.database.id)) workspaces.add(parsed.database.workspaceId);
   }
   if (input.command.type === "database.create") workspaces.add(input.command.workspaceId);
   if (input.command.type === "database.archive" || input.command.type === "database.restore") {

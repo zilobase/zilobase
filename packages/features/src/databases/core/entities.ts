@@ -70,6 +70,7 @@ export type DatabaseViewEntity = z.infer<typeof databaseViewEntitySchema>;
 export const pagePropertyEntitySchema = z
   .object({
     config: z.unknown(),
+    deletedAt: timestampSchema.nullable().optional(),
     createdAt: timestampSchema,
     id: entityIdSchema,
     name: z.string(),
@@ -135,6 +136,7 @@ export type DatabaseRecordEntity = z.infer<typeof databaseRecordEntitySchema>;
 
 export const databaseBootstrapResponseSchema = z
   .object({
+    viewerType: z.enum(["member", "guest", "public"]).optional(),
     database: databaseHostEntitySchema,
     dataSources: z.array(dataSourceEntitySchema),
     properties: z.array(databasePropertyEntitySchema),
@@ -480,6 +482,8 @@ export type DatabaseChangedAreaV2 = z.infer<typeof databaseChangedAreaV2Schema>;
 
 export const databaseMutationChangesSchema = z
   .object({
+    /** Revisions of only the source lanes represented in this event. */
+    sourceVersions: z.record(entityIdSchema, versionSchema).optional(),
     dataSources: z.array(dataSourceEntitySchema).optional(),
     databases: z.array(databaseHostEntitySchema).optional(),
     properties: z.array(databasePropertyEntitySchema).optional(),

@@ -1,7 +1,10 @@
+import { normalizeRecordWindow } from "../cache-window";
+import { createTestDatabasePayload, setTestDatabaseClientState } from "../mutations/test-helpers";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { QueryClient } from "@tanstack/react-query";
+import { cacheTestBootstrap, TestQueryClient as QueryClient } from "../../data/testing";
 
+import { sharedClient } from "../../data/client";
 import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "./keys";
 import {
   fetchRecordWindow,
@@ -88,6 +91,39 @@ test("record window uses growing limit with offset 0", async () => {
 test("changed query responses never enter the old cache or retry its obsolete hash", async () => {
   for (const mode of ["response", "conflict", "continuation"] as const) {
     const client = new QueryClient();
+    const owner = sharedClient(client);
+    const stamp = "2026-10-05T00:00:00.000Z";
+    owner.resolve(owner.capture(), "workspace").databases.ingestBootstrap(scope.databaseId, {
+      database: {
+        id: scope.databaseId,
+        workspaceId: "workspace",
+        name: "Host",
+        config: {},
+        accessLevel: "full",
+        pageId: null,
+        deletedAt: null,
+        createdAt: stamp,
+        updatedAt: stamp,
+        version: 5,
+      },
+      dataSources: [
+        {
+          id: scope.dataSourceId,
+          workspaceId: "workspace",
+          parentDatabaseId: scope.databaseId,
+          name: "Source",
+          config: {},
+          configVersion: 0,
+          version: 2,
+          position: 0,
+          linkedAt: stamp,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+      properties: [],
+      views: [],
+    });
     const key = databaseWindowQueryKey("session-1", scope);
     const metadataKey = databaseBootstrapQueryKey("session-1", scope);
     const otherSessionKey = databaseBootstrapQueryKey("other-session", scope);
@@ -144,22 +180,29 @@ test("record scope selects newest confirmed metadata without crossing session or
     views: [],
   };
   const rootKey = databaseBootstrapQueryKey("session-1", { databaseId: scope.databaseId });
-  client.setQueryData(rootKey, snapshot);
-  client.setQueryData(databaseBootstrapQueryKey("other-session", scope), {
+  cacheTestBootstrap(client, rootKey, snapshot);
+  cacheTestBootstrap(client, databaseBootstrapQueryKey("other-session", scope), {
     ...snapshot,
     database: { ...snapshot.database, version: 100 },
   });
-  client.setQueryData(databaseBootstrapQueryKey("session-1", { ...scope, includeDeleted: true }), {
-    ...snapshot,
-    database: { ...snapshot.database, version: 200 },
-  });
+  cacheTestBootstrap(
+    client,
+    databaseBootstrapQueryKey("session-1", { ...scope, includeDeleted: true }),
+    {
+      ...snapshot,
+      database: { ...snapshot.database, version: 200 },
+    },
+  );
   try {
     assert.equal(
       confirmedWindowBootstrap(client, "session-1", scope),
       client.getQueryData(rootKey),
     );
     const viewKey = databaseBootstrapQueryKey("session-1", scope);
-    client.setQueryData(viewKey, { ...snapshot, database: { ...snapshot.database, version: 2 } });
+    cacheTestBootstrap(client, viewKey, {
+      ...snapshot,
+      database: { ...snapshot.database, version: 2 },
+    });
     assert.equal(
       confirmedWindowBootstrap(client, "session-1", scope),
       client.getQueryData(viewKey),
@@ -203,7 +246,19 @@ test("prefer-newest guard ignores stale incoming window", async () => {
   try {
     const key = databaseWindowQueryKey("session-1", scope);
     const cached = windowResponse({ databaseVersion: 10, totalCount: 7 });
-    queryClient.setQueryData(key, { pages: [cached], pageParams: [{ limit: 50 }] });
+    setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+    queryClient.setQueryData(key, {
+      pages: [
+        normalizeRecordWindow(
+          queryClient,
+          scope.databaseId,
+          scope.dataSourceId,
+          scope.queryHash,
+          cached,
+        ),
+      ],
+      pageParams: [{ limit: 50 }],
+    });
     const apiFetch = (async () =>
       windowResponse({
         databaseVersion: 8,
@@ -259,6 +314,39 @@ test("placeholder drops rows from another data source", () => {
 test("prefetch warms an uncached window and skips a cached one", async () => {
   const queryClient = new QueryClient();
   try {
+    const owner = sharedClient(queryClient);
+    const stamp = "2026-10-05T00:00:00.000Z";
+    owner.resolve(owner.capture(), "workspace").databases.ingestBootstrap(scope.databaseId, {
+      database: {
+        id: scope.databaseId,
+        workspaceId: "workspace",
+        name: "Host",
+        config: {},
+        accessLevel: "full",
+        pageId: null,
+        deletedAt: null,
+        createdAt: stamp,
+        updatedAt: stamp,
+        version: 5,
+      },
+      dataSources: [
+        {
+          id: scope.dataSourceId,
+          workspaceId: "workspace",
+          parentDatabaseId: scope.databaseId,
+          name: "Source",
+          config: {},
+          configVersion: 0,
+          version: 2,
+          position: 0,
+          linkedAt: stamp,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+      properties: [],
+      views: [],
+    });
     let calls = 0;
     const apiFetch = (async () => {
       calls += 1;

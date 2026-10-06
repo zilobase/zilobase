@@ -2,6 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import { createWorkerFanout } from "./fanout";
 
 describe("worker FanoutBus", () => {
+  it("rejects retired navigation delivery without touching its declared binding", async () => {
+    const getByName = vi.fn();
+    const fanout = createWorkerFanout({ NAVIGATION_NOTIFICATION_ROOM: { getByName } });
+    await expect(fanout.publish("navigation:workspace", {})).rejects.toThrow(
+      "Unsupported fanout channel",
+    );
+    expect(getByName).not.toHaveBeenCalled();
+  });
+
   it("routes database channels to the named single-writer room", async () => {
     const publishMutation = vi.fn(async () => undefined);
     const getByName = vi.fn(() => ({ publishMutation }));

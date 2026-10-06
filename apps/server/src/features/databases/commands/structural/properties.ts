@@ -96,7 +96,8 @@ export async function propertyUpdate(
         isNull(pageProperty.deletedAt),
       ),
     )
-    .limit(1);
+    .limit(1)
+    .for("update", { of: pageProperty });
   if (!record) throw new ServiceMutationError("Property not found", 404);
   const type =
     command.patch.type === undefined
@@ -214,7 +215,7 @@ export async function propertyState(
     mutations: await sourceMutations(context, ["properties"], async () =>
       restore
         ? { properties: entities }
-        : { properties: entities, removedPropertyIds: [entity.id] },
+        : { properties: [...entities, entity], removedPropertyIds: [entity.id] },
     ),
     result: entity,
   };

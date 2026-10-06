@@ -5,6 +5,7 @@ export type Unsubscribe = () => void | Promise<void>;
 export type BackgroundLane = "ai" | "automation" | "calendar" | "fast";
 
 export type BackgroundTask = {
+  taskId: string;
   availableAt: string;
   cellId: string;
   kind: string;
@@ -75,7 +76,6 @@ export interface Scheduler {
 
 export interface Jobs {
   dispatch(tasks: readonly BackgroundTask[]): Promise<void>;
-  drain(lane: BackgroundLane): Promise<void>;
 }
 
 export interface DbScope<Database = unknown> {
@@ -156,8 +156,7 @@ export type RealtimeEndpoint =
   | "collaboration"
   | "database"
   | "meeting-audio"
-  | "meeting-collaboration"
-  | "navigation";
+  | "meeting-collaboration";
 
 export interface UrlResolver {
   getCollabUrl(endpoint: RealtimeEndpoint, request: Request): string;
@@ -252,8 +251,9 @@ export interface Telemetry {
 }
 
 export type BackgroundReadiness = {
-  coordinatorReady: boolean | null;
-  listenerReady: boolean | null;
+  producerReady: boolean | null;
+  consumerReady: boolean | null;
+  maintenanceFresh: boolean | null;
 };
 
 export interface Readiness {

@@ -108,6 +108,7 @@ export async function getDatabasePropertyEntity(
     position: record.column.position,
     property: {
       config: record.property.config ?? null,
+      deletedAt: record.property.deletedAt ? timestamp(record.property.deletedAt) : null,
       createdAt: timestamp(record.property.createdAt),
       id: record.property.id,
       name: record.property.name,

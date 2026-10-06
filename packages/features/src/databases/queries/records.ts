@@ -1,15 +1,22 @@
 import {
+  normalizeRecordWindow,
+  resolveRecordWindow,
+  type DatabaseWindowReference,
+} from "../cache-window";
+import { resolveDatabaseBootstrap, type DatabaseBootstrapReference } from "../cache-references";
+import { useSharedDataRevision } from "../../data/react";
+import {
   infiniteQueryOptions,
   useInfiniteQuery,
   type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
-import { useCallback, useSyncExternalStore } from "react";
+import { sharedClient } from "../../data/client";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
 import {
   databaseRecordWindowResponseSchema,
-  type DatabaseBootstrapResponse,
   type DatabaseInitialPageSize,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
@@ -116,9 +123,12 @@ export async function fetchRecordWindow(
   if (queryClient && queryKey) {
     const cachedMax = cachedWindowMaxVersion(queryClient, queryKey);
     if (incoming.databaseVersion < cachedMax) {
-      const cached = queryClient.getQueryData<InfiniteData<DatabaseRecordWindowResponse>>(queryKey);
+      const cached = queryClient.getQueryData<InfiniteData<DatabaseWindowReference>>(queryKey);
       const last = cached?.pages.at(-1);
-      if (last) return last;
+      if (last) {
+        const resolved = resolveRecordWindow(queryClient, last);
+        if (resolved) return resolved;
+      }
     }
   }
   return incoming;
@@ -178,7 +188,7 @@ export function databaseWindowQueryOptions(
   sessionId: string,
   scope: DatabaseWindowFetchScope,
   pageSize: DatabaseInitialPageSize,
-  queryClient?: QueryClient,
+  _queryClient?: QueryClient,
 ) {
   const queryKey = databaseWindowQueryKey(sessionId, scope);
   return infiniteQueryOptions({
@@ -186,12 +196,34 @@ export function databaseWindowQueryOptions(
     staleTime: 30_000,
     retry: (failures, error) => !isViewQueryChangedError(error) && failures < 2,
     initialPageParam: { limit: pageSize, snapshot: undefined },
-    queryFn: async ({ pageParam, signal }): Promise<DatabaseRecordWindowResponse> =>
-      fetchRecordWindow(apiFetch, scope, pageParam, queryClient, queryKey, signal),
-    getNextPageParam: (last: DatabaseRecordWindowResponse): RecordWindowPageParam | undefined =>
+    queryFn: async ({ client, pageParam, signal }): Promise<DatabaseWindowReference> => {
+      const owner = sharedClient(client);
+      const entities = owner.database(scope.databaseId, sessionId);
+      if (!entities) throw new Error("Record read requires an authorized database bootstrap");
+      const read = await owner.captureRead(entities.session.id);
+      const incoming = await fetchRecordWindow(
+        apiFetch,
+        scope,
+        pageParam,
+        client,
+        queryKey,
+        signal,
+      );
+      if (!owner.isCurrent(read) || !owner.get(read.scopeId!))
+        throw new Error("Record read belongs to an expired identity");
+      return normalizeRecordWindow(
+        client,
+        scope.databaseId,
+        scope.dataSourceId,
+        scope.queryHash,
+        incoming,
+        read.scopeId,
+      );
+    },
+    getNextPageParam: (last: DatabaseWindowReference): RecordWindowPageParam | undefined =>
       last.hasMore
         ? {
-            limit: last.records.length + pageSize,
+            limit: last.recordIds.length + pageSize,
             snapshot: last.snapshot,
           }
         : undefined,
@@ -221,15 +253,15 @@ export function confirmedWindowBootstrap(
   queryClient: QueryClient,
   sessionId: string,
   scope: Omit<DatabaseViewScope, "queryHash"> | null,
-): DatabaseBootstrapResponse | undefined {
+): DatabaseBootstrapReference | undefined {
   if (!scope) return undefined;
-  let newest: DatabaseBootstrapResponse | undefined;
-  for (const [key, bootstrap] of queryClient.getQueriesData<DatabaseBootstrapResponse>({
+  let newest: DatabaseBootstrapReference | undefined;
+  for (const [key, bootstrap] of queryClient.getQueriesData<DatabaseBootstrapReference>({
     queryKey: ["db", sessionId, scope.databaseId, "bootstrap"],
   })) {
     if (key[5] !== (scope.includeDeleted === true) || !bootstrap) continue;
-    if (bootstrap.database.id !== scope.databaseId) continue;
-    if (!newest || bootstrap.database.version > newest.database.version) newest = bootstrap;
+    if (bootstrap.databaseId !== scope.databaseId) continue;
+    if (!newest || bootstrap.databaseVersion > newest.databaseVersion) newest = bootstrap;
   }
   return newest;
 }
@@ -259,7 +291,12 @@ export function useDatabaseRecords(
     [queryClient, sessionId, hostId],
   );
   const getSnapshot = () => confirmedWindowBootstrap(queryClient, sessionId, requestedScope);
-  const bootstrap = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const bootstrapReference = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const revision = useSharedDataRevision(queryClient);
+  const bootstrap = useMemo(
+    () => resolveDatabaseBootstrap(queryClient, bootstrapReference, true),
+    [queryClient, bootstrapReference, revision],
+  );
   const view = bootstrap?.views.find(
     ({ id, dataSourceId }) =>
       id === requestedScope?.viewId && dataSourceId === requestedScope.dataSourceId,
@@ -328,7 +365,7 @@ export function useDatabaseRecords(
     };
   }
 
-  const latest = query.data?.pages.at(-1);
+  const latest = resolveRecordWindow(queryClient, query.data?.pages.at(-1));
   const error =
     query.error instanceof Error
       ? query.error

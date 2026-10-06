@@ -6,7 +6,8 @@ import { createElement } from "react";
 import { useProjectedDatabaseRecords } from "../../../../../packages/features/src/databases/interactions/react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../../../../packages/features/src/data/testing";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   ZilobaseFeaturesProvider,
   type ZilobaseFeaturesConfig,

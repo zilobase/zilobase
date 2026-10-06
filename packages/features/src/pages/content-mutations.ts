@@ -5,19 +5,15 @@ import {
   invalidateRestoredItems,
   setPageDetailCache,
 } from "../shared/item-action-cache";
-import { useDatabaseSessionId } from "../databases/queries/session";
-import { invalidateDatabaseQueries } from "../databases/mutations/invalidate";
 import { hasPageBodyContent } from "./content-state";
-import {
-  pageQueryKey,
-  zilobaseAiPagesQueryKey,
-  pagesNavRootQueryKey,
-  pagesRootQueryKey,
-} from "./queries";
-import type { PageDetail, AccessLevel, Page, PageNavigationPayload } from "./contracts";
+import { pageQueryKey, zilobaseAiPagesQueryKey } from "./queries";
+import type { PageDetail, AccessLevel, Page } from "./contracts";
 import type { PageMetadata } from "./item-relationships";
-import { applyNavDelta, type NavDelta } from "./nav-delta";
-import { applyNavigationDeltaToCache } from "./navigation-realtime";
+import { refreshTitleMembership } from "../databases/queries/page-membership";
+import { sharedClient } from "../data/client";
+import { cachePageDetail, readCachedPage, type PageDetailReference } from "./cache";
+import { type NavDelta } from "./nav-delta";
+import { applyNavigationDeltaToCache } from "./navigation-cache";
 
 type CreatePageInput = {
   content?: unknown;
@@ -104,16 +100,11 @@ export function useCreatePage() {
         : null;
       const inheritedAccessLevel = parentDetail?.accessLevel ?? ("full" as AccessLevel);
 
-      queryClient.setQueryData<PageDetail | null>(pageQueryKey(pageRecord.id), (current) => ({
-        accessLevel: current?.accessLevel ?? inheritedAccessLevel,
-        databaseIds: current?.databaseIds ?? [],
-        page: {
-          ...(current?.page ?? {}),
-          ...pageRecord,
-          isFavorite: pageRecord.isFavorite ?? current?.page.isFavorite,
-          isShared: pageRecord.isShared ?? current?.page.isShared,
-        },
-      }));
+      cachePageDetail(queryClient, {
+        accessLevel: inheritedAccessLevel,
+        databaseIds: [],
+        page: pageRecord,
+      });
       applyNavigationDeltaToCache(
         queryClient,
         pageRecord.workspaceId,
@@ -131,128 +122,61 @@ export function useCreatePage() {
 
 export function useUpdatePage() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
-  const sessionId = useDatabaseSessionId();
-
   return useMutation({
     mutationFn: async ({ id, ...patch }: UpdatePageInput) => {
-      const isContentOnlyPatch =
-        patch.content !== undefined && patch.name === undefined && patch.metadata === undefined;
-      const current = queryClient.getQueryData<PageDetail | null>(pageQueryKey(id));
-      const result = await apiFetch<UpdatePageResponse>(
-        isContentOnlyPatch ? `/pages/${id}/content` : `/pages/${id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(
-            isContentOnlyPatch
-              ? {
-                  baseUpdatedAt: current?.page.updatedAt,
-                  content: patch.content,
-                }
-              : patch,
-          ),
-        },
-      );
-
-      return result.page;
-    },
-    onMutate: async (variables) => {
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: pageQueryKey(variables.id) }),
-        queryClient.cancelQueries({ queryKey: pagesRootQueryKey() }),
-      ]);
-      const previous = queryClient.getQueryData<PageDetail | null>(pageQueryKey(variables.id));
-      const currentPage = previous?.page;
-      const previousNavQueries = queryClient.getQueriesData<PageNavigationPayload>({
-        queryKey: pagesRootQueryKey(),
-      });
-
-      if (!currentPage) {
-        return { previous, previousNavQueries };
-      }
-
-      const optimisticPage: Page = {
-        ...currentPage,
-        ...(variables.content !== undefined
-          ? {
-              content: variables.content,
-              hasContent: hasPageBodyContent(variables.content),
-            }
-          : {}),
-        ...(variables.metadata !== undefined ? { metadata: variables.metadata } : {}),
-        ...(variables.name !== undefined ? { name: variables.name } : {}),
-        ...(variables.name !== undefined || variables.metadata !== undefined
-          ? { updatedAt: new Date().toISOString() }
-          : {}),
+      const client = sharedClient(queryClient);
+      const read = await client.captureRead();
+      const current = readCachedPage(queryClient, id);
+      const reference = queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(id));
+      const entities = reference
+        ? client.get(reference.page.cacheId)
+        : current
+          ? client.resolve(read, current.workspaceId)
+          : undefined;
+      const confirm = async () => {
+        const contentOnly =
+          patch.content !== undefined && patch.name === undefined && patch.metadata === undefined;
+        const result = await apiFetch<UpdatePageResponse>(
+          contentOnly ? `/pages/${id}/content` : `/pages/${id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(
+              contentOnly ? { baseUpdatedAt: current?.updatedAt, content: patch.content } : patch,
+            ),
+          },
+        );
+        const page = resolveUpdatedPage(result.page, { id, ...patch }, current ?? undefined);
+        if (!page) throw new Error("Page acknowledgement needs an authorized page read");
+        cachePageDetail(
+          queryClient,
+          {
+            ...reference,
+            page,
+            accessLevel: reference?.accessLevel ?? null,
+            databaseIds: reference?.databaseIds ?? [],
+          },
+          read,
+        );
+        return page;
       };
-
-      queryClient.setQueryData<PageDetail | null>(pageQueryKey(variables.id), (): PageDetail => ({
-        accessLevel: previous.accessLevel ?? null,
-        databaseIds: previous.databaseIds ?? [],
-        page: optimisticPage,
-      }));
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(optimisticPage.workspaceId) },
-        (current) => applyNavDelta(current, { upsertPages: [optimisticPage] }),
+      if (!entities || (patch.name === undefined && patch.metadata === undefined)) return confirm();
+      return entities.session.commands.run(
+        entities.pages,
+        id,
+        (draft) => {
+          if (patch.name !== undefined) draft.name = patch.name;
+          if (patch.metadata !== undefined)
+            draft.metadata = { ...draft.metadata, ...patch.metadata };
+        },
+        confirm,
       );
-
-      return { previous, previousNavQueries };
     },
-    onError: (_error, variables, context) => {
-      if (!context?.previous) {
-        return;
-      }
-
-      queryClient.setQueryData(pageQueryKey(variables.id), context.previous);
-
-      for (const [queryKey, data] of context.previousNavQueries) {
-        queryClient.setQueryData(queryKey, data);
-      }
-    },
-    onSuccess: async (pagePatch, variables) => {
-      const current = queryClient.getQueryData<PageDetail | null>(pageQueryKey(pagePatch.id));
-      const page = resolveUpdatedPage(pagePatch, variables, current?.page);
-
-      if (!page) {
-        await queryClient.invalidateQueries({
-          queryKey: pageQueryKey(pagePatch.id),
-        });
-        return;
-      }
-
-      queryClient.setQueryData<PageDetail | null>(pageQueryKey(page.id), (current) => ({
-        accessLevel: current?.accessLevel ?? "full",
-        databaseIds: current?.databaseIds ?? [],
-        page,
-      }));
-      const detail = queryClient.getQueryData<PageDetail | null>(pageQueryKey(page.id));
-      const rowPageDatabaseIds = detail?.databaseIds ?? [];
-      for (const hostId of rowPageDatabaseIds) {
-        invalidateDatabaseQueries(queryClient, sessionId, hostId);
-      }
-
-      const navFieldsChanged =
-        variables.content !== undefined ||
-        variables.name !== undefined ||
-        variables.metadata !== undefined;
-
-      if (!navFieldsChanged) {
-        return;
-      }
-
-      if (rowPageDatabaseIds.length > 0) {
-        return;
-      }
-
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(page.workspaceId) },
-        (current) => applyNavDelta(current, { upsertPages: [page] }),
-      );
-
-      if (variables.metadata?.zilobaseai !== undefined) {
-        await queryClient.invalidateQueries({
-          queryKey: zilobaseAiPagesQueryKey(page.workspaceId),
-        });
-      }
+    onSuccess: (page, variables) => {
+      if (variables.name !== undefined) refreshTitleMembership(queryClient, [page.id]);
+      if (variables.metadata?.zilobaseai !== undefined)
+        void queryClient
+          .invalidateQueries({ queryKey: zilobaseAiPagesQueryKey(page.workspaceId) })
+          .catch(() => undefined);
     },
   });
 }

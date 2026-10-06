@@ -77,15 +77,14 @@ export function register({ assert, loadModule, test }) {
     currentServer.destroy();
   });
 
-  test("revoked page detail is hidden while its Yjs recovery state remains available", async () => {
+  test("revoked pages block editing while their Yjs recovery state remains available", async () => {
     const cache = await loadModule("/src/features/editor/collaboration/page-document-cache.ts");
     const entry = await cache.acquirePageDocument("cache-user-4", "cache-page-4");
     entry.document.getText("body").insert(0, "recover me");
     await entry.flush();
-    await cache.rememberPageDetail(entry, { page: { id: "cache-page-4" } }, "workspace");
-    assert.ok(await cache.readCachedPageDetail("cache-user-4", "cache-page-4"));
+    assert.equal("detail" in entry, false);
     await cache.blockCachedPage("cache-user-4", "cache-page-4");
-    assert.equal(await cache.readCachedPageDetail("cache-user-4", "cache-page-4"), null);
+    assert.equal(entry.blocked, true);
     assert.ok((await cache.exportCachedPageState("cache-user-4", "cache-page-4"))?.byteLength);
     cache.releasePageDocument(entry);
     await cache.clearPageCacheForUser("cache-user-4");

@@ -1,7 +1,10 @@
+import { normalizeAccessReferences, revokeAccessReferences } from "./access-references";
+import { normalizeAiPageReferences } from "./summary-references";
+import { normalizeNavigationReference } from "./navigation-references";
+import { normalizePageProperties } from "./property-cache";
 import type {
   ZilobaseAiMode,
   PageDatabase,
-  PageNavigationPayload,
   PageItemPlacement,
   Page,
   ZilobaseAiPageSummary,
@@ -24,7 +27,8 @@ import {
 } from "../shared/api-errors";
 import type { ApiFetcher } from "../shared/api-fetcher";
 import type { EmbeddedItemsOpenAs } from "./item-relationships";
-import { preferNewestDatabaseNavigation } from "../databases/interactions/navigation";
+import { sharedClient } from "../data/client";
+import { stageAuthorizedPages, type PageDetailReference } from "./cache";
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -127,15 +131,19 @@ export const pagesQueryOptions = (
     queryKey: pagesQueryKey(workspaceId, options?.deleted ?? "active"),
     enabled: Boolean(workspaceId),
     refetchOnReconnect: "always",
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     // Router guards await this same query imperatively. Do not consume the
     // observer-owned signal or a temporary React unsubscribe can cancel the
     // promise that is still required by the router.
-    queryFn: async ({ client, queryKey }) => {
+    queryFn: async ({ client }) => {
       if (!workspaceId) {
         return { databases: [], pages: [], placements: [] };
       }
 
+      const read = await sharedClient(client).captureRead();
+      const retained = client.getQueryData(
+        pagesQueryKey(workspaceId, options?.deleted ?? "active"),
+      );
       try {
         const params = new URLSearchParams({
           fields: "nav",
@@ -152,14 +160,11 @@ export const pagesQueryOptions = (
           pages: Page[];
         }>(`/pages?${params.toString()}`, { method: "GET" });
 
-        return preferNewestDatabaseNavigation(
-          {
-            databases: result.databases ?? [],
-            pages: result.pages,
-            placements: result.placements ?? [],
-          },
-          client.getQueryData<PageNavigationPayload>(queryKey),
-        );
+        return normalizeNavigationReference(client, read, workspaceId, {
+          databases: result.databases ?? [],
+          pages: result.pages,
+          placements: result.placements ?? [],
+        });
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -167,6 +172,7 @@ export const pagesQueryOptions = (
           "status" in error &&
           (error.status === 401 || error.status === 403)
         ) {
+          if (sharedClient(client).isCurrent(read)) sharedClient(client).revokeReferences(retained);
           return { databases: [], pages: [], placements: [] };
         }
 
@@ -182,12 +188,13 @@ export const zilobaseAiPagesQueryOptions = (
   queryOptions({
     queryKey: zilobaseAiPagesQueryKey(workspaceId),
     enabled: Boolean(workspaceId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!workspaceId) {
         return [];
       }
 
       try {
+        const read = await sharedClient(client).captureRead();
         const params = new URLSearchParams({
           fields: "summary",
           zilobaseai: "instruction,skill",
@@ -198,7 +205,7 @@ export const zilobaseAiPagesQueryOptions = (
           { method: "GET", signal },
         );
 
-        return result.pages;
+        return normalizeAiPageReferences(client, read, workspaceId, result.pages);
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -219,13 +226,16 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
     queryKey: pageQueryKey(pageId),
     enabled: Boolean(pageId),
     staleTime: 30_000,
+    refetchOnWindowFocus: "always",
     // Public-share guards and page components can consume this request at the
     // same time, so its lifetime cannot belong to the component observer.
-    queryFn: async (): Promise<PageDetail | null> => {
+    queryFn: async ({ client }): Promise<PageDetailReference | null> => {
       if (!pageId) {
         throw new Error("pageId is required");
       }
 
+      const read = await sharedClient(client).captureRead();
+      const retained = client.getQueryData<PageDetailReference>(pageQueryKey(pageId));
       try {
         const result = await apiFetch<{
           accessLevel?: AccessLevel;
@@ -234,10 +244,26 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
           viewerType?: PageDetail["viewerType"];
         }>(`/pages/${pageId}`, { method: "GET" });
 
+        sharedClient(client).revalidateScope(
+          read,
+          retained,
+          result.viewerType === "guest" || result.viewerType === "public"
+            ? result.viewerType
+            : "account",
+          Boolean(retained?.accessLevel && retained.accessLevel !== result.accessLevel),
+        );
         return {
           accessLevel: result.accessLevel ?? null,
           databaseIds: result.databaseIds ?? [],
-          page: result.page,
+          page: stageAuthorizedPages(
+            client,
+            read,
+            result.page.workspaceId,
+            [result.page],
+            result.viewerType === "guest" || result.viewerType === "public"
+              ? { kind: result.viewerType, id: pageId }
+              : undefined,
+          )[0]!,
           viewerType: result.viewerType ?? null,
         };
       } catch (error) {
@@ -269,6 +295,7 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
           "status" in error &&
           (error.status === 401 || error.status === 403 || error.status === 404)
         ) {
+          if (sharedClient(client).isCurrent(read)) sharedClient(client).revokeReferences(retained);
           return null;
         }
 
@@ -288,17 +315,22 @@ export async function ensurePageDetail(
 export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | undefined) =>
   queryOptions({
     queryKey: pageAccessQueryKey(pageId),
+    refetchOnWindowFocus: "always",
     enabled: Boolean(pageId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!pageId) {
         return { access: [] };
       }
 
+      const detail = client.getQueryData<PageDetailReference>(pageQueryKey(pageId));
+      const read = await sharedClient(client).captureRead(detail?.page.cacheId);
+      const previous = client.getQueryData(pageAccessQueryKey(pageId));
       try {
-        return await apiFetch<PageAccessPayload>(`/pages/${pageId}/access`, {
+        const result = await apiFetch<PageAccessPayload>(`/pages/${pageId}/access`, {
           method: "GET",
           signal,
         });
+        return normalizeAccessReferences(client, read, "page", pageId, result.access);
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -306,6 +338,7 @@ export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | nu
           "status" in error &&
           error.status === 403
         ) {
+          revokeAccessReferences(client, "page", previous, read);
           return { access: [] };
         }
 
@@ -426,15 +459,23 @@ export const pagePropertiesQueryOptions = (
   queryOptions({
     queryKey: pagePropertiesQueryKey(pageId),
     enabled: Boolean(pageId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ client, signal }) => {
       if (!pageId) {
         throw new Error("pageId is required");
       }
 
-      return apiFetch<PagePropertiesPayload>(`/pages/${pageId}/properties`, {
+      const previous = client.getQueryData<PageDetailReference>(pageQueryKey(pageId));
+      const read = await sharedClient(client).captureRead(previous?.page.cacheId);
+      const payload = await apiFetch<PagePropertiesPayload>(`/pages/${pageId}/properties`, {
         method: "GET",
         signal,
       });
+      sharedClient(client).revalidateScope(
+        read,
+        previous,
+        "viewerType" in payload && payload.viewerType === "guest" ? "guest" : "account",
+      );
+      return normalizePageProperties(client, read, pageId, payload);
     },
   });
 

@@ -111,6 +111,10 @@ vi.mock("../../databases/access/data-source-access", () => ({
   requireDataSourceAccess: mocks.access,
 }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
+  backgroundTransaction: async (_env: unknown, work: (tx: unknown) => unknown) => {
+    const { db } = await import("../../../infrastructure/database");
+    return db.transaction(work as never);
+  },
   dispatchBackgroundTasks: mocks.dispatch,
 }));
 vi.mock("../../../infrastructure/background/telemetry", () => ({

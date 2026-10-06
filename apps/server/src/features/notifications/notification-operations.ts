@@ -12,7 +12,10 @@ import {
 import { getMembership } from "../access";
 import type { RuntimeEnv } from "../../shared/config/config";
 import { createBackgroundTask } from "../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../infrastructure/background/dispatch";
 
 export class NotificationError extends Error {
   constructor(
@@ -133,7 +136,7 @@ export async function createAutomationNotifications(input: {
 }) {
   const now = new Date();
   const results: Array<{ notificationId: string; userId: string }> = [];
-  await db.transaction(async (tx) => {
+  await backgroundTransaction(input.env ?? {}, async (tx) => {
     for (const userId of input.recipientIds) {
       const destinationHash = createHash("sha256").update(userId).digest("hex");
       const notificationId = stableId("notification", input.runId, input.actionId, userId);
@@ -186,19 +189,17 @@ export async function createAutomationNotifications(input: {
       }
       results.push({ notificationId, userId });
     }
-  });
-  if (input.env) {
     await dispatchBackgroundTasks(
-      input.env,
+      input.env ?? {},
       results.map(({ notificationId }) =>
         createBackgroundTask({
-          env: input.env!,
+          env: input.env ?? {},
           kind: "notification.publish",
           resourceId: stableId("outbox", notificationId),
         }),
       ),
     );
-  }
+  });
   return results;
 }
 

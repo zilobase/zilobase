@@ -361,7 +361,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
   } | null>(null);
 
   const updateRect = useCallback(() => {
-    if (!editor) {
+    if (!editor || !editor.isInitialized || editor.isDestroyed) {
       setRect(null);
       setHoveredColumnIndex(null);
       return;
@@ -400,7 +400,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
   }, [rect]);
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || !editor.isInitialized || editor.isDestroyed) {
       setRect(null);
       return;
     }

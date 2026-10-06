@@ -1,3 +1,4 @@
+import { sharedClient } from "../../data/client";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createMutationTestRuntime } from "../../shared/mutation-runtime.test";
@@ -6,7 +7,7 @@ import type { DatabaseCommandRequest } from "../core/entities";
 import { useApplyDatabaseTemplate } from "./mutation-hooks";
 import { createTestDatabasePayload, setTestDatabaseClientState } from "./test-helpers";
 
-test("template application uses the idempotent source command and refreshes navigation", async () => {
+test("template application ingests an idempotent source-only confirmation without refreshing navigation", async () => {
   const original = createTestDatabasePayload();
   original.database.accessLevel = "edit";
   const source = {
@@ -34,7 +35,7 @@ test("template application uses the idempotent source command and refreshes navi
         event: {
           actorId: "user-1",
           areas: ["dataSources"],
-          changes: { dataSources: [source] },
+          changes: { dataSources: [source], sourceVersions: { "data-source-1": 1 } },
           commandId: request.commandId,
           committedAt: source.updatedAt,
           databaseId: "database-1",
@@ -61,7 +62,12 @@ test("template application uses the idempotent source command and refreshes navi
       rows: [],
     });
     assert.equal(updated.dataSource.version, 1);
-    assert.equal(queryClient.getQueryState(navKey)?.isInvalidated, true);
+    assert.equal(queryClient.getQueryState(navKey)?.isInvalidated, false);
+    assert.equal(
+      sharedClient(queryClient).database("database-1")!.databases.sources.get("data-source-1")!
+        .version,
+      1,
+    );
   } finally {
     queryClient.clear();
   }

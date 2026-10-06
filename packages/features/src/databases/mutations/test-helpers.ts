@@ -1,3 +1,5 @@
+import { normalizeRecordWindow } from "../cache-window";
+import { cacheTestBootstrap } from "../../data/testing";
 import type { QueryClient } from "@tanstack/react-query";
 
 import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "../queries/keys";
@@ -167,7 +169,8 @@ export function setTestDatabaseClientState(
       config: view.config ?? {},
     })),
   };
-  queryClient.setQueryData(
+  cacheTestBootstrap(
+    queryClient,
     databaseBootstrapQueryKey("test-session", {
       databaseId: payload.database.id,
     }),
@@ -218,7 +221,18 @@ export function setTestDatabaseClientState(
         dataSourceId: source.id,
         queryHash: databaseViewQueryHash(view.config),
       }),
-      { pageParams: [{ limit: 50, snapshot: undefined }], pages: [window] },
+      {
+        pageParams: [{ limit: 50, snapshot: undefined }],
+        pages: [
+          normalizeRecordWindow(
+            queryClient,
+            bootstrap.database.id,
+            source.id,
+            window.queryHash,
+            window,
+          ),
+        ],
+      },
     );
   }
 }

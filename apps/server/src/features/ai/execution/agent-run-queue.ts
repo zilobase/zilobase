@@ -1,6 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 import { db } from "../../../infrastructure/database";
 import { aiAgentProfile, aiAgentRun } from "../../../infrastructure/database/schema";
 import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
@@ -24,6 +27,10 @@ export async function enqueueAgentRun(input: {
   triggerKind: typeof aiAgentRun.$inferInsert.triggerKind;
   workspaceId: string;
 }) {
+  return backgroundTransaction(input.env ?? {}, () => enqueueAgentRunInTransaction(input));
+}
+
+async function enqueueAgentRunInTransaction(input: Parameters<typeof enqueueAgentRun>[0]) {
   const { initiatedByUserId = null, occurrenceKey = null, triggerId = null } = input;
   const profile = await requireRunnableProfile(input);
   const resources = await captureRunnableResources(input, profile);
@@ -76,11 +83,11 @@ export async function enqueueAgentRun(input: {
     await appendRunEvent(run.id, "queued", "shared", {
       triggerKind: run.triggerKind,
     });
-  if (input.env && run.status === "queued") {
-    await dispatchBackgroundTasks(input.env, [
+  if (run.status === "queued") {
+    await dispatchBackgroundTasks(input.env ?? {}, [
       createBackgroundTask({
         availableAt: run.availableAt,
-        env: input.env,
+        env: input.env ?? {},
         kind: "agent.run",
         resourceId: run.id,
       }),

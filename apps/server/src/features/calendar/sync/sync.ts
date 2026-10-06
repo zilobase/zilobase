@@ -12,22 +12,49 @@ import { type RuntimeEnv } from "../../../shared/config/config";
 import { CalendarGateway, CalendarProviderError, normalizeEvent } from "../provider/gateway";
 import { createCalendarGateway } from "../provider/oauth";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 export async function refreshCalendarList(
   accountId: string,
   bindingId: string,
   gateway: CalendarGateway,
+  env: RuntimeEnv = {},
 ) {
   const calendars = await gateway.calendars(bindingId);
-  await db.transaction(async (tx) => {
+  const dirtyAt = new Date();
+  await backgroundTransaction(env, async (tx) => {
     for (const calendar of calendars)
       await tx
         .insert(calendarProviderCalendar)
-        .values({ accountId, calendarId: calendar.id, data: calendar, dirtyAt: new Date() })
+        .values({
+          accountId,
+          calendarId: calendar.id,
+          data: calendar,
+          dirtyAt: calendar.permissions.read && !calendar.permissions.freeBusyOnly ? dirtyAt : null,
+        })
         .onConflictDoUpdate({
           target: [calendarProviderCalendar.accountId, calendarProviderCalendar.calendarId],
-          set: { data: calendar },
+          set: {
+            data: calendar,
+            dirtyAt:
+              calendar.permissions.read && !calendar.permissions.freeBusyOnly ? dirtyAt : null,
+          },
         });
+    await dispatchBackgroundTasks(
+      env,
+      calendars
+        .filter((calendar) => calendar.permissions.read && !calendar.permissions.freeBusyOnly)
+        .map((calendar) =>
+          createBackgroundTask({
+            env,
+            kind: "calendar.sync",
+            availableAt: dirtyAt,
+            resourceId: JSON.stringify([accountId, calendar.id]),
+          }),
+        ),
+    );
     const oldCalendars = await tx
       .select()
       .from(calendarProviderCalendar)
@@ -57,22 +84,26 @@ export async function refreshCalendarList(
   return calendars;
 }
 export async function queueCalendarSync(env: RuntimeEnv, accountId: string, calendarId: string) {
-  await db
-    .update(calendarProviderCalendar)
-    .set({ dirtyAt: new Date() })
-    .where(
-      and(
-        eq(calendarProviderCalendar.accountId, accountId),
-        eq(calendarProviderCalendar.calendarId, calendarId),
-      ),
-    );
-  await dispatchBackgroundTasks(env, [
-    createBackgroundTask({
-      env,
-      kind: "calendar.sync",
-      resourceId: JSON.stringify([accountId, calendarId]),
-    }),
-  ]);
+  const dirtyAt = new Date();
+  await backgroundTransaction(env, async () => {
+    await db
+      .update(calendarProviderCalendar)
+      .set({ dirtyAt })
+      .where(
+        and(
+          eq(calendarProviderCalendar.accountId, accountId),
+          eq(calendarProviderCalendar.calendarId, calendarId),
+        ),
+      );
+    await dispatchBackgroundTasks(env, [
+      createBackgroundTask({
+        env,
+        availableAt: dirtyAt,
+        kind: "calendar.sync",
+        resourceId: JSON.stringify([accountId, calendarId]),
+      }),
+    ]);
+  });
 }
 export async function advanceCalendarSync(
   env: RuntimeEnv,
@@ -191,7 +222,7 @@ export async function advanceCalendarSync(
       .where(and(scope, eq(calendarProviderCalendar.leaseId, leaseId)));
   }
 }
-export async function advancePendingCalendars(env: RuntimeEnv) {
+export async function recoverCalendarDispatches(env: RuntimeEnv) {
   const rows = await db
     .select()
     .from(calendarProviderCalendar)
@@ -202,7 +233,19 @@ export async function advancePendingCalendars(env: RuntimeEnv) {
       ),
     )
     .limit(10);
-  for (const row of rows) await advanceCalendarSync(env, row.accountId, row.calendarId);
+  await dispatchBackgroundTasks(
+    env,
+    rows
+      .filter((row) => row.data.permissions.read && !row.data.permissions.freeBusyOnly)
+      .map((row) =>
+        createBackgroundTask({
+          env,
+          kind: "calendar.sync",
+          resourceId: JSON.stringify([row.accountId, row.calendarId]),
+          availableAt: row.dirtyAt ?? new Date(0),
+        }),
+      ),
+  );
 }
 
 async function syncOwner(accountId: string) {

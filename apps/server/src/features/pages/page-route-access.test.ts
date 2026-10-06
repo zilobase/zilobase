@@ -8,9 +8,11 @@ const state = vi.hoisted(() => ({
   record: null as null | { id: string; workspaceId: string },
   access: "none",
   mismatch: false,
+  principalKind: "member" as "member" | "guest",
 }));
 vi.mock("../access", async (original) => ({
   ...(await original<typeof import("../access")>()),
+  getWorkspacePrincipalKind: async () => state.principalKind,
   getPageRecord: async () => {
     state.calls.push("page");
     return state.record;
@@ -85,8 +87,22 @@ test("page routes preserve identity, existence, permission and workspace-check o
   state.record = { id: "page", workspaceId: "workspace" };
   const response = await app(true).request("/content/page/properties");
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { properties: [] });
+  assert.deepEqual(await response.json(), { properties: [], viewerType: "member" });
   assert.deepEqual(state.calls, ["page", "access", "workspace", "payload"]);
+});
+
+test("authorized page property reads declare their guest capability", async () => {
+  state.record = { id: "page", workspaceId: "workspace" };
+  state.access = "view";
+  state.mismatch = false;
+  state.principalKind = "guest";
+  try {
+    const response = await app(true).request("/content/page/properties");
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { properties: [], viewerType: "guest" });
+  } finally {
+    state.principalKind = "member";
+  }
 });
 
 test("OAuth page routes bind IDs, list queries and creation bodies to the granted workspace", async () => {

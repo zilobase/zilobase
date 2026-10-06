@@ -62,4 +62,10 @@ Each guide follows a capability through its web, shared-package, server and nati
 
 The Node realtime topology is fixed by [ADR 0009](decisions/0009-mandatory-node-realtime-redis.md): every Node role uses the required Redis/Valkey bus, while the Worker/Durable Object topology remains independent. The bundled S3 service is [RustFS](decisions/0010-bundled-s3-is-rustfs.md), still addressed as the `minio` service.
 
-Page navigation uses the bounded browser document cache in [ADR 0013](decisions/0013-bounded-online-page-document-cache.md) with the same bootstrap contract in Node and Cloudflare.
+Page bodies use the bounded browser document cache in [ADR 0013](decisions/0013-bounded-online-page-document-cache.md) with the same bootstrap contract in Node and Cloudflare. Metadata and authorization require current session references or authorized reads.
+
+[ADR 0014](decisions/0014-shared-client-entity-cache.md) accepts session-owned shared
+entities and navigation socket retirement. Pages, properties, values, database
+presentations, navigation, search labels and access facets use shared collections;
+the [inventory and acceptance contract](../docs/data/shared-client-cache.md) records
+the current owners and verification gates.

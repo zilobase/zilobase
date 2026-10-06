@@ -10,6 +10,16 @@
 
 [Property implementations](../../../apps/web/src/features/databases/schema) own editing, configuration, relations, formulas and rollups. `property-catalog.ts` owns browser presentation metadata; [property defaults](../../../apps/web/src/features/databases/schema/model/property-defaults.ts) own pure status/default-configuration and classification rules; `property-values.ts` owns browser value conversion. [Shared database rules](../../../packages/features/src/databases) remain the owner of reusable contracts, canonical types, formula/filter logic and queries. Moving the browser catalog does not move shared domain rules into presentation.
 
+Shared definitions and source bindings live in distinct collections. Authorized
+bootstrap queries retain source/binding/view IDs, access context and read revision; the common bootstrap hook resolves
+current bindings and definitions before deriving headers, form questions and
+option controls. Property-update previews use a supported multi-collection
+transaction, serialized by definition and binding identity. Confirmations update
+all references, including page panels and other host bindings. Known definition
+updates do not refetch bootstrap; dependent filter/sort/formula windows use
+targeted reads. Structural membership and type conversion still use recovery.
+See [reference normalization](../../../packages/features/src/databases/cache-references.ts).
+
 Page and database selection UI is centralized in the [page/database picker](../../../apps/web/src/features/databases/components/page-database-picker.tsx). Relation values, relation configuration, data-source linking and replacement, database setup, and sidebar shortcuts supply typed options to that component rather than implementing their own search lists. Its [search model](../../../apps/web/src/features/databases/components/page-database-picker-model.ts) normalizes case and diacritics, ranks prefix and word-prefix matches before substring matches, and preserves source order for equal matches. Remote page search remains debounced by its owning consumer; the picker owns deferred local filtering, keyboard navigation, selection markers, bounded scrolling, and loading/empty presentation.
 
 ## Flow, access and persistence
@@ -20,7 +30,7 @@ The [sub-item view model](../../../apps/web/src/features/databases/views/model/d
 
 The [view update command](../../../apps/server/src/features/databases/commands/structural/views.ts) calls [sub-item relation setup](../../../apps/server/src/features/databases/commands/structural/sub-items.ts) when an explicit configuration change touches sub-items. Setup creates or reuses the source's Parent item and Sub-item relation properties, reconciles their existing values, saves the generated property IDs in the view config, and publishes property and record changes to linked hosts in one transaction. The controller keeps this server-derived configuration slice confirmed-only; unrelated view edits still preview immediately. The client can create children after setup appears in its bootstrap data. Rendering a view never submits an automatic migration or repair command.
 
-Server [property operations](../../../apps/server/src/features/databases/schema), [row operations](../../../apps/server/src/features/databases/records), and [data sources](../../../apps/server/src/features/databases/data-sources) enforce persistence and access. UI visibility does not grant editability. Local editor drafts feed the shared record-change queue; all mounted views project pending cell edits. Rejected intentions are removed independently, while unconfirmed writes retain their preview for receipt retry. Save failures and refresh failures are distinct, as described in the [database overview](README.md).
+Server [property operations](../../../apps/server/src/features/databases/schema), [row operations](../../../apps/server/src/features/databases/records), and [data sources](../../../apps/server/src/features/databases/data-sources) enforce persistence and access. UI visibility does not grant editability. Local editor drafts feed the shared record-change queue; all seven layouts resolve page/value/record fields from the same collections. Submitted previews use supported transactions. Unconfirmed requests retain receipt IDs for retry while retired previews reveal current confirmed state. Save failures and refresh failures are distinct, as described in the [database overview](README.md).
 
 ## Tests and recovery
 
@@ -77,8 +87,9 @@ serializes conflicting source writes, retains unconfirmed intentions for receipt
 retry, and removes only rejected intentions. It reconciles each mounted window
 against committed source versions, including placeholders and linked hosts;
 stale inactive cache windows are evicted before an intention is retired.
-Projection precedes filtering, sorting, grouping and hierarchy. QueryClient
-contains only server snapshots, never speculative rows or versions.
+Temporary placement and library field previews precede local grouping and
+hierarchy. Query owns server result references, counts, ordering and query hashes;
+speculative fields resolve from collections rather than Query snapshots.
 
 The [manual placement provider](../../../apps/web/src/features/databases/views/state/manual-record-placement.tsx)
 owns one clear-sort policy and [confirmation dialog](../../../apps/web/src/features/databases/views/components/database-manual-placement-dialog.tsx)
@@ -106,3 +117,18 @@ Dropping on the new-group column retains the dragged page in the Kanban controll
 The [group actions](../../../apps/web/src/features/databases/views/kanban/components/database-kanban-group-actions.tsx) provide a per-column menu and add-page shortcut. Edit groups selects the grouping property and restores hidden columns; the board retains an Edit groups entry when columns are hidden. [Group settings](../../../apps/web/src/features/databases/views/kanban/model/database-kanban-group-settings.ts) persist hidden column and count IDs in the view config under `kanbanGroups`, scoped by grouping property ID, through the shared view mutation. Other view settings are preserved.
 
 Group trash requires confirmation and selects distinct page IDs from all loaded source rows, including rows excluded by view filters. It uses the existing recoverable page deletion mutation, retaining server authorization, Trash recovery and cache invalidation. It leaves the option itself in place, reports partial failures for retry, prevents repeat submission while running and disables the action if more rows remain to be loaded. Changing view or grouping invalidates an outstanding confirmation.
+
+Bootstrap [references](../../../packages/features/src/databases/cache-references.ts)
+resolve hosts, sources, host-specific links and saved views. Known presentation
+acknowledgements/socket frames update these fields without bootstrap reads.
+Admitted view/binding membership changes reconcile references only in the same
+cache scope. Record membership, order, counts and growing windows remain server
+results; structural row edits recover affected results. Confirmed view/host
+configuration selects query hashes while settings previews remain visible.
+
+[Dependency closure](../../../packages/features/src/databases/queries/dependencies.ts)
+follows property names, title aliases and transitive formula references. Only
+filters/sorts are membership dependencies. Dynamic formulas, definition renames,
+edited-time fields and rollups recover dependent computed results conservatively.
+Title changes restrict reads to sources containing the affected pages. Grouping
+and presentation-only configuration do not force record-window reads.

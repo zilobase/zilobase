@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../data/testing";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -12,7 +12,25 @@ test("database context exports use an isolated complete-read query", async () =>
   const calls: Array<{ path: string; method?: string }> = [];
   const apiFetch: ApiFetcher = async (path, options) => {
     calls.push({ path, method: options?.method });
-    return { database: { id: "database-1" }, rows: [] } as never;
+    return {
+      database: {
+        id: "database/1",
+        workspaceId: "workspace",
+        name: "Host",
+        pageId: null,
+        config: {},
+        deletedAt: null,
+        version: 1,
+        createdAt: "2026-10-05T00:00:00.001Z",
+        updatedAt: "2026-10-05T00:00:00.001Z",
+      },
+      activeDataSource: null,
+      dataSources: [],
+      properties: [],
+      views: [],
+      rows: [],
+      values: [],
+    } as never;
   };
   const queryClient = new QueryClient();
 
@@ -30,4 +48,5 @@ test("database context exports use an isolated complete-read query", async () =>
     "database-context-export",
     "database/1",
   ]);
+  queryClient.clear();
 });

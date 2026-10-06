@@ -134,6 +134,7 @@ export const databaseRealtimeOutbox = pgTable(
       .notNull()
       .references(() => databaseMutationEvent.id, { onDelete: "restrict" }),
     attempts: integer("attempts").notNull().default(0),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
   },

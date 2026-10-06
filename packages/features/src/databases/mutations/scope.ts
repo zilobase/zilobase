@@ -1,5 +1,6 @@
+import { resolveDatabaseBootstrap } from "../cache-references";
 import type { QueryClient } from "@tanstack/react-query";
-import { databaseBootstrapResponseSchema, type DatabaseBootstrapResponse } from "../core/entities";
+import { type DatabaseBootstrapResponse } from "../core/entities";
 
 export type DataSourceCommandScope = { dataSourceId: string; hostDatabaseId: string };
 
@@ -26,10 +27,8 @@ export function findDataSourceBootstrap(
     queryClient
       .getQueriesData({ queryKey: ["db", sessionId] })
       .flatMap(([, value]) => {
-        const parsed = databaseBootstrapResponseSchema.safeParse(value);
-        return parsed.success && parsed.data.dataSources.some(({ id }) => id === dataSourceId)
-          ? [parsed.data]
-          : [];
+        const parsed = resolveDatabaseBootstrap(queryClient, value);
+        return parsed && parsed.dataSources.some(({ id }) => id === dataSourceId) ? [parsed] : [];
       })
       .sort(
         (a, b) =>

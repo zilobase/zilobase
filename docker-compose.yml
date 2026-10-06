@@ -37,6 +37,8 @@ services:
         condition: service_completed_successfully
       valkey:
         condition: service_healthy
+      queue-valkey:
+        condition: service_healthy
     environment:
       HOST: 0.0.0.0
       PORT: 3000
@@ -48,9 +50,11 @@ services:
       BACKGROUND_HEALTH_PORT: ${BACKGROUND_HEALTH_PORT:-3001}
       ZILOBASE_BACKGROUND_FAST_CONCURRENCY: ${ZILOBASE_BACKGROUND_FAST_CONCURRENCY:-8}
       ZILOBASE_BACKGROUND_AUTOMATION_CONCURRENCY: ${ZILOBASE_BACKGROUND_AUTOMATION_CONCURRENCY:-4}
+      ZILOBASE_BACKGROUND_CALENDAR_CONCURRENCY: ${ZILOBASE_BACKGROUND_CALENDAR_CONCURRENCY:-2}
       ZILOBASE_BACKGROUND_AI_CONCURRENCY: ${ZILOBASE_BACKGROUND_AI_CONCURRENCY:-2}
       DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB}
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://valkey:6379}
+      QUEUE_REDIS_URL: ${QUEUE_REDIS_URL:-redis://queue-valkey:6379}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET to at least 32 random characters}
       ZILOBASE_BOOTSTRAP_TOKEN: ${ZILOBASE_BOOTSTRAP_TOKEN:?Set ZILOBASE_BOOTSTRAP_TOKEN to at least 32 random characters}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL to the public application origin}
@@ -186,8 +190,30 @@ services:
       timeout: 3s
       retries: 10
 
+  queue-valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command:
+      [
+        "valkey-server",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes:
+      - queue_valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
 volumes:
   caddy_data:
   caddy_config:
   postgres_data:
   minio_data:
+  queue_valkey_data:

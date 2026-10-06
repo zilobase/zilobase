@@ -16,7 +16,10 @@ import { type ExecutionContext } from "./execution-context";
 import { restoreStepOutput, toJson } from "../actions/action-values";
 import { executeAction } from "./action-executor";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 
 export async function executeClaimedStep(
   context: ExecutionContext,
@@ -50,7 +53,7 @@ export async function executeClaimedStep(
     if (isAutomationLeaseLost(error)) return "retry" as const;
     const failure = actionFailure(error, action.id);
     if (failure instanceof RetryableAutomationActionError) {
-      await db.transaction(async (tx) => {
+      await backgroundTransaction(env, async (tx) => {
         await tx
           .update(databaseAutomationStepRun)
           .set({
@@ -78,15 +81,15 @@ export async function executeClaimedStep(
               eq(databaseAutomationRun.leaseOwner, workerId),
             ),
           );
+        await dispatchBackgroundTasks(env, [
+          createBackgroundTask({
+            availableAt: failure.availableAt,
+            env,
+            kind: "automation.run",
+            resourceId: runId,
+          }),
+        ]);
       });
-      await dispatchBackgroundTasks(env, [
-        createBackgroundTask({
-          availableAt: failure.availableAt,
-          env,
-          kind: "automation.run",
-          resourceId: runId,
-        }),
-      ]);
       return "retry" as const;
     }
     await db

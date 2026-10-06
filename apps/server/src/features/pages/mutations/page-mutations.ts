@@ -16,10 +16,7 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../../workspaces/navigation-realtime/outbox";
+
 import { upsertPageItemPlacement } from "../placements/page-item-placements";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
@@ -55,7 +52,7 @@ export async function createPageService(input: {
   const pageId = crypto.randomUUID();
   const parentPlacementId = input.parentPageId ? crypto.randomUUID() : null;
 
-  const { record, navigationEvent } = await db.transaction(async (tx) => {
+  const { record } = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(page)
       .values({
@@ -89,10 +86,8 @@ export async function createPageService(input: {
       updatedAt: new Date(),
     });
 
-    const navigationEvent = await enqueueNavigationInvalidation(tx, input.workspaceId);
-    return { record: created, navigationEvent };
+    return { record: created };
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return {
     page: record,
@@ -169,7 +164,7 @@ export async function linkDatabaseInPageService(input: {
     };
   }
 
-  const navigationEvent = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await upsertPageItemPlacement(tx, {
       workspaceId: host.workspaceId,
       parentKind: "page",
@@ -178,9 +173,7 @@ export async function linkDatabaseInPageService(input: {
       itemId: databaseRecord.id,
       placementKind: "linked",
     });
-    return enqueueNavigationInvalidation(tx, host.workspaceId);
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return {
     action: "addLink" as const,

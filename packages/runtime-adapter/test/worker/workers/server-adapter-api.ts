@@ -230,3 +230,59 @@ export {
 };
 
 const MEETING_RECORDER_LEASE_HEARTBEAT_MS = 60_000;
+
+export { runWithRuntimePorts } from "../../../src/context";
+export {
+  getBackgroundCellId,
+  backgroundTaskLane,
+  parseBackgroundTask,
+  runWithBackgroundTraceContext,
+} from "../../../../../apps/server/src/infrastructure/background/contracts";
+import {
+  getBackgroundCellId,
+  type BackgroundLane,
+} from "../../../../../apps/server/src/infrastructure/background/contracts";
+import { runBackgroundDelivery } from "../../../../../apps/server/src/app/background/delivery";
+export const backgroundFixture = {
+  completed: new Set<string>(),
+  rescheduled: [] as string[],
+  exhausted: [] as string[],
+  executed: [] as string[],
+};
+export async function deliverBackgroundTask(
+  env: Record<string, unknown>,
+  body: unknown,
+  lane: BackgroundLane,
+) {
+  return runBackgroundDelivery({
+    body,
+    lane,
+    cellId: getBackgroundCellId(env),
+    store: {
+      load: async (task) => (backgroundFixture.completed.has(task.taskId) ? "done" : "ready"),
+      complete: async (task) => {
+        backgroundFixture.completed.add(task.taskId);
+      },
+      reschedule: async (task, availableAt) => {
+        backgroundFixture.rescheduled.push(availableAt);
+        backgroundFixture.completed.add(task.taskId);
+      },
+    },
+    execute: async (task) => {
+      backgroundFixture.executed.push(task.resourceId);
+      if (task.resourceId === "throw") throw new Error("fixture unexpected failure");
+      if (task.resourceId === "business-retry")
+        return { outcome: "retry", availableAt: new Date(Date.now() + 1000).toISOString() };
+      return { outcome: "completed" };
+    },
+  });
+}
+export async function recordBackgroundExhaustion(_env: unknown, body: unknown) {
+  backgroundFixture.exhausted.push((body as { taskId: string }).taskId);
+}
+export async function publishBackgroundDispatches() {}
+export async function runDueBackgroundMaintenance() {
+  return { claimed: 0 };
+}
+
+export { BACKGROUND_LANE_POLICY } from "../../../../../apps/server/src/infrastructure/background/task-v2";

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents";
 import type { PageCommentController } from "@/features/comments/index";
@@ -74,6 +75,26 @@ export function EditorChrome({
   setPlusMenuOpen,
   tocItems,
 }: EditorChromeProps) {
+  const [mountedEditor, setMountedEditor] = useState<TiptapEditor | null>(null);
+  useEffect(() => {
+    if (!editor) return;
+    const mounted = () => setMountedEditor(editor);
+    const unmounted = () => setMountedEditor(null);
+    editor.on("mount", mounted);
+    editor.on("create", mounted);
+    editor.on("unmount", unmounted);
+    editor.on("destroy", unmounted);
+    if (editor.isInitialized && !editor.isDestroyed) mounted();
+    return () => {
+      editor.off("mount", mounted);
+      editor.off("create", mounted);
+      editor.off("unmount", unmounted);
+      editor.off("destroy", unmounted);
+    };
+  }, [editor]);
+  if (!editor || mountedEditor !== editor || !editor.isInitialized || editor.isDestroyed)
+    return null;
+
   const blockCommentPosition =
     editor && dragHandle ? getBlockCommentHandleRect(editor.view, dragHandle.target) : null;
 

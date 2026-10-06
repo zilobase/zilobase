@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { QueryClient } from "@tanstack/react-query";
 
 export function register({ assert, loadModule, test }) {
-  test("visited page queries hydrate before fetch and remain account scoped", async () => {
+  test("unmigrated page reads stay account scoped and covered navigation never hydrates", async () => {
     const storage = await loadModule("/src/features/editor/collaboration/page-document-cache.ts");
     const cache = await loadModule("/src/features/pages/cache/page-read-cache.ts");
     const navigation = { databases: [], pages: [], placements: [] };
@@ -29,11 +29,8 @@ export function register({ assert, loadModule, test }) {
       workspaceId: "workspace-1",
       databaseIds: [],
     });
-    assert.deepEqual(client.getQueryData(["pages", "workspace-1", "nav", "active"]), navigation);
-    assert.deepEqual(client.getQueryData(["page", "page-1", "properties"]), {
-      properties: [],
-      values: [],
-    });
+    assert.equal(client.getQueryData(["pages", "workspace-1", "nav", "active"]), undefined);
+    assert.equal(client.getQueryData(["page", "page-1", "properties"]), undefined);
     const other = new QueryClient();
     await cache.hydratePageReadCache({
       queryClient: other,

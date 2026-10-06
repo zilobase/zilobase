@@ -7,14 +7,15 @@
 - [packages/features/src/databases](../../../packages/features/src/databases)
 
 Shared database code is grouped by boundary inside `packages/features/src/databases`:
-`interactions/` owns the session store, sparse record-intention projection,
-source sequencing, receipt recovery and identity remapping; see [ADR 0011](../../decisions/0011-shared-record-interactions.md).
+`interactions/` owns source sequencing, temporary record placement, receipt recovery
+and identity remapping. Shared canonical entities and library transactions belong
+to [`data/`](../../../packages/features/src/data); see [ADR 0014](../../decisions/0014-shared-client-entity-cache.md).
 `core/` (entities, ordering, telemetry), `schema/` (filter, property types,
 formula), `views/` (appearance, view evaluation), `records/` (snapshots,
 row-page host resolution), `access/` (sharing writes), `queries/` (session
 provider, read query options and hooks), `mutations/` (command execution, invalidation,
-session command-state utilities, one module per write domain), `realtime/` (poke
-socket plus presence). Automations were promoted out of the
+session command-state utilities, one module per write domain), `realtime/` (authorized
+entity delivery, recovery hints and presence). Automations were promoted out of the
 database section to [packages/features/src/automations](../../../packages/features/src/automations),
 [apps/server/src/features/automations](../../../apps/server/src/features/automations),
 and [apps/web/src/features/automations](../../../apps/web/src/features/automations).
@@ -33,9 +34,11 @@ split per domain under `databases/commands/` (`records.ts`, `structural/`,
 ## Main flow
 
 Database routes compose bounded reads and idempotent host/source commands. The
-web database surface keeps one QueryClient photocopy of the notebook:
-`GET /bootstrap` plus `GET /records` under `["db", sessionId, hostId, …]`.
-Visited page views hydrate their last confirmed bootstrap and first record window from the [page read cache](../../../apps/web/src/features/pages/cache/page-read-cache.ts) before these queries refresh. Persisted windows retain their validated query hash and are rebound to the current authenticated session; continuation pages are fetched online.
+web database surface normalizes authorized `GET /bootstrap` and `GET /records`
+responses into session-owned collections. Query results under
+`["db", sessionId, hostId, …]` retain ordered IDs, counts, query hashes and
+pagination. Covered bootstrap/windows are not restored from browser snapshots;
+reload performs authorized reads.
 Record windows are keyed by view query hash (`dataSourceId` plus normalized
 filters/sorts), so sibling views that differ only in presentation share one
 cached window; `viewId` selects the server-side evaluation, never the cache
@@ -47,12 +50,14 @@ and never retries the obsolete hash or caches mismatched rows.
 Switching views within one data source keeps the previous rows visible
 while the new hash loads, and tabs prefetch on hover/focus with idle
 prefetch for same-source siblings.
-Postgres remains the only truth and the host `database.version` is the clock.
-Writes go `UI -> useMutation -> POST …/commands -> ack -> invalidate -> GET`;
-the realtime socket is a doorbell that only says `{ databaseId, version }`.
-Record gestures and cell edits read shared pending intentions projected over
-server windows before view evaluation. React-local state is limited to active
-editor input and pointer geometry.
+Postgres remains authoritative. Host/source/actor revisions order their respective
+lanes; strictly increasing existing entity timestamps protect fields shared
+across lanes. Writes go through the command coordinator and supported library
+transactions, then merge validated acknowledgements. Database sockets admit
+authorized entity facets into the same collections. Membership, order and
+computed dependencies use targeted server reads; ordinary metadata/value edits
+do not invalidate whole snapshots. Temporary placement composes with server
+window IDs. React-local state owns editor input and pointer geometry.
 
 Database JSON routes use shared authenticated input parsing, retaining each operation’s payload validation and permission decisions. [Transport tests](../../../apps/server/src/features/databases/http/route-input.test.ts) cover malformed input and authentication ordering.
 
@@ -87,7 +92,11 @@ them. Creating a sub-item saves both relation directions atomically. Record titl
 editors and page-metadata cell writes use the same record-change queue; ordinary
 page links outside a record surface remain page actions.
 
-The accepted [poke-and-refetch database client decision](../../decisions/0005-poke-and-refetch-database-client.md) defines the QueryClient-backed client used here. It supersedes the collection-backed responsive client: the server protocol is unchanged, but the client no longer keeps TanStack DB collections or a journal. [ADR 0011](../../decisions/0011-shared-record-interactions.md) replaces row-local drafts and row cache patches with shared sparse intentions.
+The accepted [shared cache decision](../../decisions/0014-shared-client-entity-cache.md)
+supersedes the earlier poke-and-refetch ownership. Partial custom collection sync
+uses public APIs without a second confirmed map or client journal. Existing
+command identities, source sequencing and uncertain-delivery recovery remain
+application responsibilities.
 
 The [v2 read service](../../../apps/server/src/features/databases/read/service.ts) separates metadata bootstrap from bounded record windows. Bootstrap aggregates properties for every accessible linked source without rows and always includes the host database's nullable `deletedAt` lifecycle state. Record reads materialize one complete entity per row, evaluate the selected view before slicing, default to 50 records (or a persisted 10/25/50/100 view choice), and bind continuation reads to host/source/view revisions. A changed revision raises the typed `WINDOW_STALE` conflict. The [database read routes](../../../apps/server/src/features/databases/http/read-routes.ts) expose those services as `GET /:id/bootstrap` and `GET /:id/data-sources/:dataSourceId/records`, retaining authenticated and published-database access while validating source/view scope and exact window sizes. The `GET /:id/mutations` catch-up feed remains on the server but the client never calls it. The [shared view evaluator](../../../packages/features/src/databases/views/view-evaluation.ts) is server-safe and reuses the tested filter and formula domains. The [view query hash](../../../packages/features/src/databases/views/query-hash.ts) reduces each view config to its data-affecting slice (normalized filters/sorts plus the deleted-rows flag, excluding type, grouping, visibility, and layout) so the client cache in [record windows](../../../packages/features/src/databases/queries/records.ts) is per query, not per view; see the [query-hashed windows decision](../../decisions/0006-query-hashed-database-windows.md).
 
@@ -95,18 +104,17 @@ The [v2 read service](../../../apps/server/src/features/databases/read/service.t
 
 Database creation also has a workspace-scoped `POST /databases/commands`
 boundary. Lifecycle, access, publication and favorite operations are recognized
-commands. Their domain services execute inside the receipt transaction; navigation
-delivery is deferred until commit. Favorites advance `database_actor_state` and
+commands. Their domain services execute inside the receipt transaction. Navigation
+event production is retired. Favorites advance `database_actor_state` and
 produce a private confirmation instead of a mutation journal/realtime event.
 Favorite commands reserve an actor/host lane before writing the value and incrementing
 its revision. The private receipt carries the actor identity. Authenticated navigation
 reads select favorite value and actor revision in one SQL statement, and return an
 `actorState` envelope that never belongs to workspace navigation deltas.
-Favorite intentions project through the same session controller over navigation
-snapshots. They survive receipt recovery and remain until each mounted consumer observes
-the actor revision; stale inactive snapshots are evicted. Navigation reads preserve a
-newer cached revision only for the same actor. There is no favorite success-callback
-cache patch or separate rollback state.
+Favorites use actor-scoped collection transactions through the same session
+controller. Validated private receipts publish only in their captured owner;
+navigation reads preserve newer actor revisions. There is no favorite snapshot
+patch or separate rollback state.
 All lifecycle/access client hooks submit through the session controller. Navigation,
 lifecycle descendant cleanup and access read invalidation belong to the controller's
 [confirmation path](../../../packages/features/src/databases/interactions/confirmation.ts),
@@ -128,7 +136,7 @@ A database is page-backed; data sources, rows, views and property values are sep
 
 ## Side effects, failures and recovery
 
-Row/property changes can update realtime outboxes, automations and page navigation. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
+Row/property changes can update database realtime outboxes and automations. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
 
 Database deletion is a reversible lifecycle transition. The database, its rows,
 and nested descendants are soft-deleted as one batch. If a page Yjs document
@@ -161,8 +169,9 @@ The [command executor](../../../packages/features/src/databases/mutations/execut
 posts one command with `protocolVersion: 2`, validates receipt and event
 identity, and retries a lost network response once with the identical command
 ID and serialized body. A confirmed server commit remains successful even when
-the following refresh fails; the controller-owned [command state](../../../packages/features/src/databases/mutations/pending.ts)
-exposes that refresh failure separately from a rejected write.
+the following refresh fails; the controller exposes synchronization errors independently of its
+[command state](../../../packages/features/src/databases/mutations/pending.ts). Saving ends
+at validated acknowledgement, including when ingestion or recovery fails.
 
 Editing is online-only. The [save indicator](../../../apps/web/src/features/databases/views/components/database-save-status.tsx)
 shows pending, failed, unconfirmed, and saved-but-refresh-failed states. Failed
@@ -180,16 +189,21 @@ is newer than the incoming payload is kept instead of regressing.
 Shared mutations are grouped into database lifecycle, data sources, views,
 properties/templates, access and rows. Record changes and cells share the
 [interaction store](../../../packages/features/src/databases/interactions/store.ts),
-scoped by QueryClient and auth session. The store publishes synchronously, queues
-writes per affected source, and replays sparse intentions over untouched GET
-windows. Unconfirmed deliveries keep their preview and block dependent writes;
-the save indicator offers receipt-safe retry. Confirmed intentions remain until
-all mounted windows catch up; stale inactive windows are evicted before retirement.
-Refresh errors never reject committed writes. Schema and view metadata now submit
-through the same session controller. Bootstrap hooks project metadata intentions
-over server snapshots, and source schema writes share record ordering lanes.
-Navigation uses those same metadata intentions, with independent host/source/actor
-revision checks for every mounted consumer. All schema, source and template hooks
+scoped by QueryClient and auth session. The store queues writes per affected source and coalesces consecutive queued cell
+edits before their first delivery. Hosts, sources, views, titles, definitions, bindings and stored values
+use supported TanStack transactions, serialized by canonical entity identity.
+Authoritative conflicts retire the preview while HTTP receipt tracking continues.
+Unconfirmed delivery blocks dependent commands and retains the same request ID
+for retry. Structural membership/placement intentions reconcile ordered references per
+window. Temporary page/record/value insertions and parent edits use library
+transactions; confirmed row fields resolve from collections. Query windows hold ordered record IDs,
+counts, hashes and pagination through [window references](../../../packages/features/src/databases/cache-window.ts);
+records resolve current page/value fields from collections. Refresh errors never
+reject committed writes. Schema and view metadata submit through the same session
+controller. Sparse presentation edits and neighbor moves use library previews;
+query hashes derive only from confirmed view/host configuration. Bootstrap queries
+retain authorized source/binding/view IDs, access context and read revision.
+Navigation resolves the same canonical collections, with independent host/source/actor clocks. All schema, source and template hooks
 delegate refresh ownership to controller confirmation; no success/settled callback
 duplicates invalidation or awaits navigation after an acknowledged save.
 Host-wide mutations form barriers across the source writes visible through that host.
@@ -203,8 +217,11 @@ Neighbor-based property/view placement projects immediately without mutating sna
 Metadata update commands accept `patch.configuration`, a bounded list of explicit
 path assignments/removals, not a replacement `config`. Editors compute changes against
 the configuration they displayed. The server applies those same operations to the
-locked current entity, and bootstrap projections apply them to untouched snapshots.
+locked current entity, and supported collection transactions apply sparse previews to shared entities.
 Full configuration objects are accepted only for creation and template application.
+Property updates lock the shared definition row before reading configuration, so
+different-field changes through different source bindings compose. Existing
+strictly increasing entity stamps order those confirmations across source lanes.
 The view controller reads its latest pending configuration from the session controller;
 there is no separate latest-view configuration cache. Record fetches and prefetches use
 the confirmed bootstrap configuration while loaded rows use the projected configuration.
@@ -229,10 +246,10 @@ presentation never creates another mutation owner.
 
 The interactive client consumes bootstrap plus record windows directly through [`DatabaseViewData`](../../../apps/web/src/features/databases/views/model/database-controller-state.ts) (canonical host bootstrap, active source, filtered records); the monolithic composed payload is gone. The position-based row/value export shape remains only as the [`DatabaseExportPayload`](../../../packages/features/src/databases/core/export-payload.ts) wire contract behind `GET /:id/export` and derived AI/task context, never as client state. Realtime-only state (presence, version watermarks) stays out of QueryClient entirely.
 
-TanStack Query owns database bootstrap/windows, authentication, access/sharing,
-navigation, automation management, AI, uploads, and other non-database-view
-workflows; Yjs owns page documents; React-local state owns presence, drafts,
-and transient interaction state.
+TanStack Query owns HTTP orchestration and database/navigation/property/search/
+access result references, plus unrelated authentication, automation, AI and upload
+workflows. Session collections own shared fields and scoped access facets. Yjs
+owns page documents; React-local state owns transient drafts and interaction geometry.
 
 ## Verification and change points
 
@@ -250,3 +267,5 @@ The table [model](../../../apps/web/src/features/databases/views/table/model/dat
 Table and toolbar composition keep named local render sections for property cells, grouped rows and view source/actions. Kanban separates board derivation, column rendering, drag geometry and shared record intentions as described in [views and properties](views-and-properties.md#kanban-board-and-moves). All views read shared record intentions; placeholder windows cannot confirm a change. Form title previews select the existing input or textarea with one shared set of props; question settings and mutations remain unchanged.
 
 [Row mutations](../../../packages/features/src/databases/mutations/rows.ts) complete after row confirmation. Adding a favorited page refreshes navigation in the background, so navigation latency or failure cannot delay the editor’s success callback or reject an already committed row. [Row mutation tests](../../../packages/features/src/databases/mutations/rows.test.ts) cover atomic initial values and neighbor-anchor construction.
+
+Complete task and AI context reads use [export references](../../../packages/features/src/databases/export-references.ts). HTTP exports normalize authorized host/source/link/property/record/value entities and retain ordered row references plus contextual pagination and creator information. Every resolver captures one synchronous session publication revision. Downloaded bodies and durable AI action receipts retain their historical semantics. Opaque AI tool receipts still request existing authorized reads because they lack entity clocks; those reads enter the same normalizers. Sidebar-only metadata and actor favorites now have collection owners, including their library previews and acknowledgement ingestion.

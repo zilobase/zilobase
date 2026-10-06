@@ -1,7 +1,7 @@
 import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
 
 import type { BackgroundLane, BackgroundTaskKind } from "./contracts";
-import { backgroundTaskLane, getBackgroundCellId, type BackgroundTaskV1 } from "./contracts";
+import { backgroundTaskLane, getBackgroundCellId, type BackgroundTaskV2 } from "./contracts";
 import type { RuntimeEnv } from "../../shared/config/config";
 
 export type BackgroundTelemetryAttributes = {
@@ -46,7 +46,7 @@ export async function measureBackgroundProvider<T>(
 }
 
 export function runBackgroundTaskSpan<T>(
-  task: BackgroundTaskV1,
+  task: BackgroundTaskV2,
   attributes: BackgroundTelemetryAttributes,
   callback: () => Promise<T>,
 ) {

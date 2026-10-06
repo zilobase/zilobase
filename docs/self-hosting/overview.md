@@ -87,7 +87,10 @@ The existing Secret defaults to `zilobase` and must contain `DATABASE_URL`,
 `REALTIME_REDIS_URL`, `BETTER_AUTH_SECRET`, `ZILOBASE_BOOTSTRAP_TOKEN`,
 `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`; `SMTP_PASSWORD` is optional.
 `realtime.existingSecret` may select a different Secret and
-`realtime.secretKey` may select a different key. Keep secret values out of Helm
+`realtime.secretKey` may select a different key. A separate `zilobase-queue`
+Secret must contain `QUEUE_REDIS_URL`; configure `queue.existingSecret` and
+`queue.key` for an external queue broker. It must differ from the realtime
+Secret and point to dedicated persistent, non-evicting Redis. Keep secret values out of Helm
 values and shell history. If PostgreSQL, S3, or Redis uses a private CA, place
 only the public CA in a ConfigMap and set `trustedCa.configMapName`.
 
@@ -103,6 +106,10 @@ Valkey, and kubelet-probe CIDRs to the narrow addresses used by your cluster.
 The base Compose stack starts Valkey automatically and defaults
 `REALTIME_REDIS_URL` to `redis://valkey:6379`. Override the URL when using an
 external broker; no optional profile or manual broker step is required.
+
+The queue adapter release requires the stopped-deployment
+[full cutover procedure](../background-queues.md#operator-commands-and-release-order).
+Its initial cutover cannot use rolling upgrades.
 
 Back up PostgreSQL and the object bucket as a pair before every upgrade. A Helm
 rollback does not reverse database migrations; use an older binary only when

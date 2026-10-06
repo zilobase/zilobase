@@ -64,7 +64,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -177,26 +177,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -541,14 +521,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -714,7 +686,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -827,26 +799,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -1191,14 +1143,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -1364,7 +1308,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -1477,26 +1421,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -1841,14 +1765,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -2014,7 +1930,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -2127,26 +2043,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -2491,14 +2387,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -2668,7 +2556,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -2789,26 +2677,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -3161,14 +3029,6 @@
       "type": false
     },
     "runAiChatTurn": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
       "value": true,
       "type": false
     },
@@ -3342,7 +3202,7 @@
       "value": false,
       "type": true
     },
-    "BackgroundTaskV1": {
+    "BackgroundTaskV2": {
       "value": false,
       "type": true
     },
@@ -3463,26 +3323,6 @@
       "type": false
     },
     "documentNameForPage": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationEventWindows": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseAutomationRuns": {
-      "value": true,
-      "type": false
-    },
-    "drainDatabaseRealtimeOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainInProductNotificationOutbox": {
-      "value": true,
-      "type": false
-    },
-    "drainNavigationRealtimeOutbox": {
       "value": true,
       "type": false
     },
@@ -3838,14 +3678,6 @@
       "value": true,
       "type": false
     },
-    "runAiJobBatch": {
-      "value": true,
-      "type": false
-    },
-    "runAiJobById": {
-      "value": true,
-      "type": false
-    },
     "runDueBackgroundMaintenance": {
       "value": true,
       "type": false
@@ -3956,10 +3788,6 @@
       "value": true,
       "type": false
     },
-    "createNavigationRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX": {
       "value": true,
       "type": false
@@ -4016,31 +3844,11 @@
       "value": true,
       "type": false
     },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicketClaims": {
-      "value": false,
-      "type": true
-    },
     "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
     "verifyMeetingAudioTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyNavigationRealtimeTicket": {
       "value": true,
       "type": false
     }
@@ -4054,10 +3862,6 @@
       "value": true,
       "type": false
     },
-    "createNavigationRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX": {
       "value": true,
       "type": false
@@ -4114,31 +3918,11 @@
       "value": true,
       "type": false
     },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicketClaims": {
-      "value": false,
-      "type": true
-    },
     "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
     "verifyMeetingAudioTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyNavigationRealtimeTicket": {
       "value": true,
       "type": false
     }
@@ -8504,10 +8288,6 @@
       "value": true,
       "type": false
     },
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
     "isPageBodyEmpty": {
       "value": true,
       "type": false
@@ -8529,30 +8309,6 @@
       "type": false
     },
     "NavDelta": {
-      "value": false,
-      "type": true
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
       "value": false,
       "type": true
     },
@@ -8926,10 +8682,6 @@
       "value": true,
       "type": false
     },
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
     "isPageBodyEmpty": {
       "value": true,
       "type": false
@@ -8951,30 +8703,6 @@
       "type": false
     },
     "NavDelta": {
-      "value": false,
-      "type": true
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
       "value": false,
       "type": true
     },
@@ -9459,66 +9187,6 @@
       "type": false
     },
     "NavDelta": {
-      "value": false,
-      "type": true
-    }
-  },
-  "@zilobase/features:./pages/navigation-realtime:types": {
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
-      "value": false,
-      "type": true
-    }
-  },
-  "@zilobase/features:./pages/navigation-realtime:default": {
-    "isNavigationRealtimeEvent": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PING": {
-      "value": true,
-      "type": false
-    },
-    "NAVIGATION_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
-    "NavigationRealtimeInvalidateEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeReadyEvent": {
-      "value": false,
-      "type": true
-    },
-    "NavigationRealtimeTicket": {
       "value": false,
       "type": true
     }

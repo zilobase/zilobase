@@ -1,6 +1,5 @@
 import type { DatabaseRecordEntity } from "../core/entities";
 import type { MetadataIntention } from "./metadata";
-import type { FavoriteIntention } from "./favorites";
 import type { DatabaseOperationStatus } from "../core/lifecycle-commands";
 
 export type RowPlacement = { afterRowId: string | null; beforeRowId: string | null };
@@ -18,7 +17,6 @@ export type RecordEffect = {
 };
 
 export type DatabaseIntention = MetadataIntention & {
-  favorite?: FavoriteIntention;
   id: string;
   effects: readonly RecordEffect[];
   status: DatabaseOperationStatus;
@@ -44,14 +42,21 @@ export function needsProjection(
 export function projectRecordInteractions(
   records: DatabaseRecordEntity[],
   interactions: readonly DatabaseIntention[],
-  scope: { dataSourceId: string; sourceVersion: number | null },
+  scope: {
+    dataSourceId: string;
+    sourceVersion: number | null;
+    resolveRecord?: (id: string) => DatabaseRecordEntity | undefined;
+  },
 ): DatabaseRecordEntity[] {
   let result = records;
   for (const interaction of interactions) {
     if (!needsProjection(interaction, scope.dataSourceId, scope.sourceVersion)) continue;
     for (const effect of interaction.effects) {
       if (effect.dataSourceId !== scope.dataSourceId) continue;
-      const current = result.find(({ id }) => id === effect.rowId) ?? effect.record;
+      const current =
+        result.find(({ id }) => id === effect.rowId) ??
+        scope.resolveRecord?.(effect.rowId) ??
+        effect.record;
       if (effect.remove) {
         result = result.filter(({ id }) => id !== effect.rowId);
         continue;

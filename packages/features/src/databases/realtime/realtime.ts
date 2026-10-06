@@ -1,3 +1,7 @@
+import { refreshRecordResults } from "../queries/result-refresh";
+import { publishDatabaseEvent } from "../cache-publication";
+import { sharedClient } from "../../data/client";
+import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
 import type { QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
@@ -121,6 +125,8 @@ export class DatabaseRealtimeManager {
   private readonly listeners = new Set<Listener>();
   private readonly presenceByOwner = new Map<string, DatabasePresence>();
   private socket: WebSocket | null = null;
+  private authorization: ReturnType<ReturnType<typeof sharedClient>["capture"]> | undefined;
+  private scopeId: string | undefined;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -175,7 +181,7 @@ export class DatabaseRealtimeManager {
     this.sendPresence();
   }
 
-  /** Poke-only: version bump invalidates host, never applies frame payload. */
+  /** Reconnect version checks use existing authorized reads. */
   pokeDatabaseVersion(version: number) {
     if (version > cachedVersion(this.queryClient, this.sessionId, this.databaseId)) {
       invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
@@ -200,7 +206,14 @@ export class DatabaseRealtimeManager {
     this.setState({ ...this.state, status: "connecting" });
 
     try {
+      const cache = sharedClient(this.queryClient);
+      const scope = cache.database(this.databaseId, this.sessionId);
+      const authorization = await cache.captureRead(scope?.session.id);
+      this.scopeId = scope?.session.id;
       const ticket = await this.fetchTicket();
+      if (!cache.isCurrent(authorization)) return;
+      this.authorization = authorization;
+      this.scopeId = scope?.session.id;
       if (this.stopped || generation !== this.connectionGeneration) return;
 
       const socket = new WebSocket(ticket.websocketUrl, ticket.websocketProtocols);
@@ -225,6 +238,8 @@ export class DatabaseRealtimeManager {
       // Ticket version is ignored for resync. Never suppress poke because of ticket.
     } catch (error) {
       if (ticketFailureAction(error) === "stop") {
+        if (this.scopeId)
+          sharedClient(this.queryClient).revokeReferences({ cacheId: this.scopeId });
         this.markUnavailable();
       } else if (!this.stopped && generation === this.connectionGeneration) {
         this.scheduleReconnect();
@@ -247,9 +262,14 @@ export class DatabaseRealtimeManager {
   }
 
   private handleMessage(data: unknown, socket: WebSocket) {
+    if (this.authorization && !sharedClient(this.queryClient).isCurrent(this.authorization)) {
+      this.markUnavailable();
+      return;
+    }
     const parsed = parseDatabaseRealtimeServerMessage(data);
 
     if (!parsed.ok) {
+      invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
       if (parsed.reason === "protocol_mismatch") {
         console.warn(
           JSON.stringify({
@@ -267,7 +287,59 @@ export class DatabaseRealtimeManager {
     if (message.databaseId !== this.databaseId) return;
 
     if (message.type === "database.mutation") {
-      // Poke only. Ignore changes, areas, requiresReset payload.
+      const entities = this.scopeId
+        ? sharedClient(this.queryClient).get(this.scopeId)
+        : sharedClient(this.queryClient).database(this.databaseId, this.sessionId);
+      if (
+        message.requiresReset ||
+        !entities?.databases.observeDelivery(message.databaseId, message.version)
+      ) {
+        invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
+        return;
+      }
+      const pageMetadata = entities?.databases.isPageMetadataEvent(message);
+      const definitions = entities?.databases.isDefinitionEvent(message);
+      const content = entities?.databases.isRecordContentEvent(message);
+      const presentation = entities?.databases.isPresentationEvent(message);
+      const results = entities?.databases.isRecordResultEvent(message);
+      const changes = entities?.databases.contentChanges(message);
+      const definitionFields = entities?.databases.definitionChanges(message);
+      let admitted;
+      try {
+        admitted = publishDatabaseEvent(this.queryClient, entities, message);
+      } catch {
+        invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
+        return;
+      }
+      if (admitted !== "published") {
+        invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
+        return;
+      }
+      if (pageMetadata && admitted === "published") {
+        refreshTitleMembership(this.queryClient, changes?.pageIds ?? []);
+        return;
+      }
+      if (definitions && admitted === "published") {
+        refreshPropertyMembership(this.queryClient, definitionFields ?? [], {
+          definitionsChanged: true,
+        });
+        return;
+      }
+      if (content && admitted === "published") {
+        refreshTitleMembership(this.queryClient, changes?.pageIds ?? []);
+        refreshPropertyMembership(this.queryClient, changes?.propertyIds ?? []);
+        return;
+      }
+      if (presentation && admitted === "published") return;
+      if (results && admitted === "published" && entities) {
+        refreshRecordResults(
+          this.queryClient,
+          entities.session.id,
+          message.changes.sourceVersions ?? {},
+        );
+        return;
+      }
+      // Structural facets recover their result references through authorized reads.
       this.pokeDatabaseVersion(message.version);
       return;
     }
@@ -330,8 +402,12 @@ export class DatabaseRealtimeManager {
       );
       socketToken.set(socket, ticket.token);
       this.scheduleTicketRefresh(ticket, socket, generation);
-    } catch {
-      if (this.socket === socket) socket.close();
+    } catch (error) {
+      if (ticketFailureAction(error) === "stop") {
+        if (this.scopeId)
+          sharedClient(this.queryClient).revokeReferences({ cacheId: this.scopeId });
+        this.markUnavailable();
+      } else if (this.socket === socket) socket.close();
     }
   }
 

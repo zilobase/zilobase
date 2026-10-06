@@ -1,7 +1,11 @@
+import { resolveDatabaseBootstrap } from "../../../../../packages/features/src/databases/cache-references";
+import { normalizeDatabaseBootstrap } from "../../../../../packages/features/src/databases/cache-references";
 import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TestQueryClient as QueryClient } from "../../../../../packages/features/src/data/testing";
+import { sharedClient } from "../../../../../packages/features/src/data/client";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   ZilobaseFeaturesProvider,
   type ZilobaseFeaturesConfig,
@@ -64,7 +68,14 @@ export function mountQueryReconciliation(container: HTMLElement) {
     })),
   };
   const key = databaseBootstrapQueryKey("query-test", { databaseId: "host" });
-  queryClient.setQueryData(key, server);
+  const owner = sharedClient(queryClient);
+  owner
+    .resolve(owner.capture(), server.database.workspaceId)
+    .databases.ingestBootstrap("host", server);
+  queryClient.setQueryData(
+    key,
+    normalizeDatabaseBootstrap(queryClient, owner.capture(), "host", server),
+  );
   const requests: string[] = [];
   let confirm: (() => void) | undefined;
   const sorts = [{ column: "name", direction: "descending" }];
@@ -87,7 +98,7 @@ export function mountQueryReconciliation(container: HTMLElement) {
             event: {
               actorId: "actor",
               areas: ["views"],
-              changes: {},
+              changes: { views: [server.views[0]!] },
               commandId,
               committedAt: now,
               databaseId: "host",
@@ -166,7 +177,8 @@ export function mountQueryReconciliation(container: HTMLElement) {
         .catch(() => undefined);
     },
     confirm: () => confirm!(),
-    rawConfig: () => queryClient.getQueryData<DatabaseBootstrapResponse>(key)?.views[0]?.config,
+    rawConfig: () =>
+      resolveDatabaseBootstrap(queryClient, queryClient.getQueryData(key), true)?.views[0]?.config,
     close() {
       flushSync(() => root.unmount());
       disposeDatabaseController(queryClient, "query-test");

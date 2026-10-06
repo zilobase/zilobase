@@ -1,3 +1,4 @@
+import { sharedClient } from "@zilobase/features/data";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 
@@ -7,15 +8,17 @@ import { useZilobaseFeatures } from "@zilobase/features";
 import {
   databaseContextExportQueryKey,
   databaseContextExportQueryOptions,
-  type DatabaseExportPayload,
+  type DatabaseExportReference,
+  resolveDatabaseExportReference,
 } from "@zilobase/features/databases";
 import {
   ensurePageDetail,
-  getPageFromDetail,
+  resolvePageDetailReference,
+  resolveNavigationReference,
   pageQueryKey,
   pagesQueryKey,
-  type PageDetail,
-  type PageNavigationPayload,
+  type PageDetailReference,
+  type PageNavigationReference,
 } from "@zilobase/features/pages";
 import {
   buildContextMarkdown,
@@ -44,15 +47,19 @@ async function resolvePageForContext(
   apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
   getEditorContent: (pageId: string) => unknown | null,
 ) {
-  const cached = getPageFromDetail(
-    queryClient.getQueryData<PageDetail | null>(pageQueryKey(pageId)),
+  const cached = resolvePageDetailReference(
+    queryClient,
+    queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(pageId)),
   );
 
   if (cached || getEditorContent(pageId) != null) {
-    return cached;
+    return cached?.page ?? null;
   }
 
-  return getPageFromDetail(await ensurePageDetail(queryClient, apiFetch, pageId));
+  return (
+    resolvePageDetailReference(queryClient, await ensurePageDetail(queryClient, apiFetch, pageId))
+      ?.page ?? null
+  );
 }
 
 async function resolveDatabaseContext(
@@ -68,8 +75,11 @@ async function resolveDatabaseContext(
     return contextCache.get(cacheKey) ?? null;
   }
 
-  const exportedCached = queryClient.getQueryData<DatabaseExportPayload | null>(
-    databaseContextExportQueryKey(databaseId, dataSourceId),
+  const exportedCached = resolveDatabaseExportReference(
+    queryClient,
+    queryClient.getQueryData<DatabaseExportReference | null>(
+      databaseContextExportQueryKey(databaseId, dataSourceId),
+    ),
   );
 
   if (
@@ -83,8 +93,11 @@ async function resolveDatabaseContext(
   }
 
   try {
-    const payload = await queryClient.fetchQuery(
-      databaseContextExportQueryOptions(apiFetch, databaseId, dataSourceId),
+    const payload = resolveDatabaseExportReference(
+      queryClient,
+      await queryClient.fetchQuery(
+        databaseContextExportQueryOptions(apiFetch, databaseId, dataSourceId),
+      ),
     );
 
     if (!payload) {
@@ -188,10 +201,11 @@ export function usePageAiContext({
     }
 
     if (primarySource?.type === "page") {
-      const page = getPageFromDetail(
-        queryClient.getQueryData<PageDetail | null>(pageQueryKey(primarySource.id)),
+      const page = resolvePageDetailReference(
+        queryClient,
+        queryClient.getQueryData<PageDetailReference | null>(pageQueryKey(primarySource.id)),
       );
-      const content = getEditorContent(primarySource.id) ?? page?.content ?? null;
+      const content = getEditorContent(primarySource.id) ?? page?.page.content ?? null;
 
       for (const databaseId of extractDatabaseIds(content)) {
         ids.add(databaseId);
@@ -223,9 +237,12 @@ export function usePageAiContext({
     const startedAt = performance.now();
 
     try {
-      const navigation = queryClient.getQueryData<PageNavigationPayload>(
+      const navigationReference = queryClient.getQueryData<PageNavigationReference>(
         pagesQueryKey(workspaceId),
       );
+      const navigation = navigationReference
+        ? resolveNavigationReference(queryClient, navigationReference)
+        : undefined;
       const pages = navigation?.pages ?? [];
       const pagesById = new Map(pages.map((page) => [page.id, page]));
       const contextCache = new Map<string, DatabaseContextPayload>();
@@ -378,7 +395,10 @@ export function usePageAiContext({
 
   useEffect(() => {
     void buildContext();
-  }, [buildContext]);
+    return sharedClient(queryClient).publication.subscribe(() => {
+      void buildContext();
+    });
+  }, [buildContext, queryClient]);
 
   useEffect(() => {
     if (!enabled || trackedDatabaseIds.length === 0) {

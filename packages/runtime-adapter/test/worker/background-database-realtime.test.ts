@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   processTask: vi.fn(),
+  complete: vi.fn(),
+  reschedule: vi.fn(),
+  exhausted: vi.fn(),
 }));
 
 vi.mock("@zilobase/server/adapter-api", async (importOriginal) => {
@@ -10,7 +13,19 @@ vi.mock("@zilobase/server/adapter-api", async (importOriginal) => {
     ...actual,
     getBackgroundCellId: vi.fn(() => "default"),
     parseBackgroundTask: vi.fn((task: unknown) => ({ ok: true, task })),
-    processBackgroundTask: mocks.processTask,
+    deliverBackgroundTask: async (_env: unknown, body: unknown, lane: string) =>
+      actual.runBackgroundDelivery({
+        body,
+        cellId: "default",
+        lane: lane as never,
+        store: {
+          load: async () => "ready",
+          complete: mocks.complete,
+          reschedule: mocks.reschedule,
+        },
+        execute: mocks.processTask,
+      }),
+    recordBackgroundExhaustion: mocks.exhausted,
     runWithBackgroundTraceContext: vi.fn(
       async (_task: unknown, operation: () => Promise<unknown>) => operation(),
     ),
@@ -29,7 +44,8 @@ const task = {
   cellId: "default",
   kind: "realtime.database" as const,
   resourceId: "outbox-1",
-  version: 1 as const,
+  taskId: "00000000-0000-4000-8000-000000000001",
+  version: 2 as const,
 };
 
 const event = {
@@ -48,6 +64,9 @@ const event = {
 
 beforeEach(() => {
   mocks.processTask.mockReset();
+  mocks.complete.mockReset();
+  mocks.reschedule.mockReset();
+  mocks.exhausted.mockReset();
 });
 
 describe("database realtime queue delivery", () => {
@@ -83,7 +102,7 @@ describe("database realtime queue delivery", () => {
     expect(message.retry).not.toHaveBeenCalled();
   });
 
-  it("retries recoverable database delivery without acknowledging the message", async () => {
+  it("persists business rescheduling and acknowledges the current delivery", async () => {
     mocks.processTask.mockResolvedValueOnce({
       availableAt: new Date(Date.now() + 5_000).toISOString(),
       outcome: "retry",
@@ -95,10 +114,29 @@ describe("database realtime queue delivery", () => {
       {} as never,
     );
 
-    expect(message.retry).toHaveBeenCalledWith({
-      delaySeconds: expect.any(Number),
-    });
+    expect(mocks.reschedule).toHaveBeenCalledOnce();
+    expect(message.retry).not.toHaveBeenCalled();
+    expect(message.ack).toHaveBeenCalledOnce();
+  });
+  it("records exhaustion before acknowledging a DLQ message", async () => {
+    const message = queueMessage(task);
+    await backgroundWorker.queue(
+      { messages: [message], queue: "zilobase-background-fast-dlq" } as never,
+      {} as never,
+    );
+    expect(mocks.exhausted).toHaveBeenCalledWith({}, task, "fast");
+    expect(message.ack).toHaveBeenCalledOnce();
+    expect(mocks.processTask).not.toHaveBeenCalled();
+  });
+  it("retains the DLQ message when durable failure recording fails", async () => {
+    mocks.exhausted.mockRejectedValueOnce(new Error("database offline"));
+    const message = queueMessage(task);
+    await backgroundWorker.queue(
+      { messages: [message], queue: "zilobase-background-fast-dlq" } as never,
+      {} as never,
+    );
     expect(message.ack).not.toHaveBeenCalled();
+    expect(message.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
   });
 });
 

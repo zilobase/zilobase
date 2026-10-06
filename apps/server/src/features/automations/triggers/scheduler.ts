@@ -17,7 +17,10 @@ import {
   databaseAutomationRun,
 } from "../../../infrastructure/database/schema";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  dispatchBackgroundTasks,
+  backgroundTransaction,
+} from "../../../infrastructure/background/dispatch";
 
 export type DatabaseAutomationScheduleClaimPlan = {
   nextRunAt: Date | null;
@@ -46,7 +49,7 @@ export async function scanDueDatabaseAutomationSchedules(
   if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, runIds: [] as string[] };
   const now = options.now ?? new Date();
   const limit = Math.max(1, Math.min(options.limit ?? 50, 100));
-  const result = await db.transaction(async (tx) => {
+  const result = await backgroundTransaction(env, async (tx) => {
     const due = await tx
       .select({ id: databaseAutomation.id })
       .from(databaseAutomation)
@@ -117,14 +120,14 @@ export async function scanDueDatabaseAutomationSchedules(
         .set({ nextRunAt: plan.nextRunAt, updatedAt: now })
         .where(eq(databaseAutomation.id, record.automation.id));
     }
+    await dispatchBackgroundTasks(
+      env,
+      createdRunIds.map((resourceId) =>
+        createBackgroundTask({ env, kind: "automation.run", resourceId }),
+      ),
+    );
     return { claimed: due.length, runIds: createdRunIds };
   });
 
-  await dispatchBackgroundTasks(
-    env,
-    result.runIds.map((runId) =>
-      createBackgroundTask({ env, kind: "automation.run", resourceId: runId }),
-    ),
-  );
   return result;
 }

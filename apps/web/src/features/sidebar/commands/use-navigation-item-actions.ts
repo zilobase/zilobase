@@ -28,7 +28,7 @@ import { useLayoutEditor } from "@/features/pages/layout";
 import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata";
 
 import { getPrimaryPageParentId, resolvePageFullWidth } from "@zilobase/features/pages/queries";
-import type { ZilobaseAiMode, PageMetadata } from "@zilobase/features/pages";
+import type { ZilobaseAiMode } from "@zilobase/features/pages";
 import { buildPageDuplicateInput } from "../model/page-duplication";
 
 export function useNavigationItemActions({
@@ -69,7 +69,6 @@ export function useNavigationItemActions({
   const isMeetingPage = Boolean(meetingId);
   const hasPageActions = Boolean(actionPageId || databaseId);
 
-  const pageMetadata = (page?.metadata ?? {}) as PageMetadata;
   const { data: pageAccessLevel } = usePageAccessLevel(actionPageId, {
     refetchOnMount: false,
   });
@@ -141,7 +140,6 @@ export function useNavigationItemActions({
       {
         id: page.id,
         metadata: {
-          ...pageMetadata,
           ...(isMeetingPage ? { meetingLocked: !locked } : { locked: !locked }),
         },
       },
@@ -296,7 +294,6 @@ export function useNavigationItemActions({
       {
         id: page.id,
         metadata: {
-          ...pageMetadata,
           zilobaseai: zilobaseAiMode === mode ? null : mode,
         },
       },

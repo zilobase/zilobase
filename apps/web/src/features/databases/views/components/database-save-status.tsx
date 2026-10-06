@@ -24,7 +24,7 @@ export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
   );
   const message = !online
     ? "Offline — reconnect to save"
-    : state.error?.name === "DatabaseReconciliationError"
+    : recovery.synchronizationError && !state.isPending
       ? "Saved — reload to refresh"
       : state.error?.name === "DatabaseCommandUnconfirmedError"
         ? "Save unconfirmed"
@@ -38,8 +38,8 @@ export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
   return (
     <span
       className="mx-2 max-w-64 truncate text-xs text-content-secondary"
-      role={state.error ? "alert" : "status"}
-      title={state.error?.message ?? message}
+      role={state.error || recovery.synchronizationError ? "alert" : "status"}
+      title={state.error?.message ?? recovery.synchronizationError?.message ?? message}
     >
       {message}
       {online && recovery.hasUnconfirmed ? (

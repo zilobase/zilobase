@@ -15,7 +15,7 @@ import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes";
 import { ThemeFamilyProvider, useThemeFamily } from "@/shared/providers/theme-family-provider";
 import { AppIconProvider } from "@/shared/components/app-icon-provider";
 import { DemoExperience, installDemoCache } from "@/features/demo";
-import { useNavigationRealtime } from "@zilobase/features/pages/react";
+import { resolvePageDetailReference, type PageDetailReference } from "@zilobase/features/pages";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useSession } from "@zilobase/features/auth/react";
 import { DbProvider } from "@zilobase/features/databases/react";
@@ -24,7 +24,17 @@ import { subscribePageReadCache } from "@/features/pages/cache/page-read-cache";
 
 import posthog from "@/shared/lib/posthog";
 
-installDemoCache(queryClient);
+installDemoCache({
+  getQueriesData: (filters) => queryClient.getQueriesData(filters),
+  getQueryData: <T,>(key: readonly unknown[]) => {
+    if (key[0] === "page")
+      return resolvePageDetailReference(
+        queryClient,
+        queryClient.getQueryData<PageDetailReference | null>(key),
+      ) as T | undefined;
+    return queryClient.getQueryData<T>(key);
+  },
+});
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
@@ -33,7 +43,6 @@ export function AppProviders({ children }: React.PropsWithChildren) {
         <WebFeaturesProvider>
           <SessionDatabaseProvider>
             <PostHogIdentitySync />
-            <NavigationRealtimeSync />
             <ShortcutProvider>
               <ThemeProvider
                 attribute="class"
@@ -134,11 +143,6 @@ function syncSignedInPostHogIdentity(
 function syncPostHogWorkspace(client: ConfiguredPostHog, workspaceId: string | null | undefined) {
   if (workspaceId) client.group("workspace", workspaceId);
   else client.resetGroups();
-}
-
-function NavigationRealtimeSync() {
-  useNavigationRealtime(useActiveWorkspaceId());
-  return null;
 }
 
 function ThemeDocumentSync() {

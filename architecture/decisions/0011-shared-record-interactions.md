@@ -2,6 +2,12 @@
 
 Status: accepted. Supersedes the row-edit ownership in ADR 0005.
 
+Entity preview/confirmation ownership is superseded by
+[ADR 0014](0014-shared-client-entity-cache.md). The installed controller retains
+source scheduling, coalescing, temporary placement, identity remapping and receipt
+recovery; canonical fields and their optimistic transactions live in collections.
+The decision below records the earlier projection model.
+
 ## Decision
 
 All views submit sparse record intentions to a session-owned interaction store.

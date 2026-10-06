@@ -1,5 +1,34 @@
 export const MAX_DATABASE_REALTIME_MESSAGE_BYTES = 16 * 1024;
 
+/** Unknown-source mutations are authorized read hints, never entity disclosure. */
+export function scopeDatabaseRealtimeMessage(
+  message: unknown,
+  sourceIds: readonly string[],
+): unknown {
+  if (
+    !message ||
+    typeof message !== "object" ||
+    !("type" in message) ||
+    message.type !== "database.mutation"
+  )
+    return message;
+  const event = databaseMutationEventV2Schema.parse(message);
+  const { changes } = event;
+  const represented = [
+    ...(event.dataSourceId ? [event.dataSourceId] : []),
+    ...Object.keys(changes.sourceVersions ?? {}),
+    ...(changes.dataSources ?? []).map((source) => source.id),
+    ...(changes.records ?? []).map((record) => record.dataSourceId),
+    ...(changes.properties ?? []).map((binding) => binding.dataSourceId),
+    ...(changes.views ?? []).map((view) => view.dataSourceId),
+    ...(changes.removedDataSourceIds ?? []),
+  ];
+  return represented.some((id) => !sourceIds.includes(id)) ||
+    (changes.databases ?? []).some((host) => host.id !== event.databaseId)
+    ? { ...event, dataSourceId: null, changes: {}, requiresReset: true }
+    : event;
+}
+
 export type DatabasePresence = {
   columnKey: string;
   rowId: string;
@@ -67,3 +96,4 @@ export function consumeDatabaseMessageAllowance<Peer extends object>(
   current.count += 1;
   return current.count <= 30;
 }
+import { databaseMutationEventV2Schema } from "../core/entities";

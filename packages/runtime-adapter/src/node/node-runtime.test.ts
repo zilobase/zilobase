@@ -6,8 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const coordinator = {
+    metrics: () => "",
     dispatch: vi.fn(async () => undefined),
-    readiness: vi.fn(() => ({ coordinatorReady: true, listenerReady: true })),
+    readiness: vi.fn(() => ({ producerReady: true, consumerReady: true, maintenanceFresh: true })),
     start: vi.fn(async () => undefined),
     stop: vi.fn(async () => undefined),
   };
@@ -49,10 +50,6 @@ const mocks = vi.hoisted(() => {
     },
     meetingAudio: { destroy: vi.fn(async () => undefined) },
     migrate: vi.fn(async () => undefined),
-    navigationRealtime: {
-      destroy: vi.fn(async () => undefined),
-      publish: vi.fn(async () => undefined),
-    },
     publishBackground: vi.fn(async () => undefined),
     realtimeBus,
     runWithDbEnv: vi.fn(async (_env: unknown, operation: () => unknown) => operation()),
@@ -72,15 +69,13 @@ vi.mock("./features/meeting-audio/meeting-audio-runtime", () => ({
 vi.mock("./features/calendar-realtime/calendar-realtime-runtime", () => ({
   attachNodeCalendarRealtimeRuntime: vi.fn(() => mocks.calendarRealtime),
 }));
-vi.mock("./features/navigation-realtime/navigation-realtime-runtime", () => ({
-  attachNodeNavigationRealtimeRuntime: vi.fn(() => mocks.navigationRealtime),
-}));
-vi.mock("./background-coordinator", () => ({
-  createNodeBackgroundCoordinator: vi.fn(() => mocks.coordinator),
-  publishNodeBackgroundNotification: mocks.publishBackground,
+vi.mock("./queue-runtime", async (original) => ({
+  ...(await original<typeof import("./queue-runtime")>()),
+  createNodeQueueRuntime: vi.fn(() => mocks.coordinator),
 }));
 vi.mock("./pinned-webhook", () => ({ fetchPinnedNodeWebhook: vi.fn() }));
 vi.mock("@zilobase/server/node-adapter-api", () => ({
+  BACKGROUND_LANE_POLICY: {},
   assertSelfHostedProductionConfiguration: mocks.assertProduction,
   createDbClientForUrl: mocks.createDatabaseClient,
   getAppEditionExtension: mocks.appEdition,
@@ -111,9 +106,15 @@ beforeEach(() => {
   process.env = { ...originalEnvironment };
   process.env.ZILOBASE_PROCESS_ROLE = "api";
   process.env.REALTIME_REDIS_URL = "redis://127.0.0.1:6379";
+  process.env.QUEUE_REDIS_URL = "redis://127.0.0.1:6380";
+  process.env.BACKGROUND_HEALTH_PORT = "0";
   delete process.env.PORT;
-  delete process.env.BACKGROUND_HEALTH_PORT;
-  mocks.coordinator.readiness.mockReturnValue({ coordinatorReady: true, listenerReady: true });
+
+  mocks.coordinator.readiness.mockReturnValue({
+    producerReady: true,
+    consumerReady: true,
+    maintenanceFresh: true,
+  });
   mocks.backgroundSnapshot.mockResolvedValue({ healthy: true });
   mocks.createRealtimeBus.mockImplementation((env?: Record<string, unknown>) => {
     if (!env?.REALTIME_REDIS_URL) {
@@ -242,11 +243,12 @@ describe("Node runtime lifecycle", () => {
 
     await runtime.start();
     await ports!.fanout.publish("db:database", { id: "db" });
-    await ports!.fanout.publish("navigation:workspace", { id: "nav" });
+    await expect(ports!.fanout.publish("navigation:workspace", { id: "nav" })).rejects.toThrow(
+      "Unsupported fanout channel",
+    );
     await ports!.jobs.dispatch([]);
     expect(mocks.databaseRealtime.publishMutation).toHaveBeenCalled();
-    expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
-    expect(mocks.publishBackground).toHaveBeenCalled();
+    expect(mocks.coordinator.dispatch).toHaveBeenCalled();
 
     expect(await (await fetch(`http://127.0.0.1:${port}/api/test`)).text()).toBe("api");
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
@@ -304,9 +306,17 @@ describe("Node runtime lifecycle", () => {
     expect(await (await fetch(`${origin}/metrics`)).text()).toBe("zilobase_background_healthy 1\n");
     expect((await fetch(`${origin}/missing`)).status).toBe(404);
     expect((await fetch(`${origin}/health`)).status).toBe(200);
-    mocks.coordinator.readiness.mockReturnValue({ coordinatorReady: true, listenerReady: false });
+    mocks.coordinator.readiness.mockReturnValue({
+      producerReady: true,
+      consumerReady: false,
+      maintenanceFresh: true,
+    });
     expect((await fetch(`${origin}/ready`)).status).toBe(503);
-    mocks.coordinator.readiness.mockReturnValue({ coordinatorReady: true, listenerReady: true });
+    mocks.coordinator.readiness.mockReturnValue({
+      producerReady: true,
+      consumerReady: true,
+      maintenanceFresh: true,
+    });
     mocks.realtimeBus.isReady.mockReturnValue(false);
     expect((await fetch(`${origin}/ready`)).status).toBe(503);
     mocks.backgroundSnapshot.mockRejectedValueOnce(new Error("database unavailable"));

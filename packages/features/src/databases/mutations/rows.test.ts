@@ -35,7 +35,7 @@ function commandApi(inspect: (request: DatabaseCommandRequest, path: string) => 
       event: {
         actorId: "user-1",
         areas: ["records"],
-        changes: { records: [record] },
+        changes: { records: [record], sourceVersions: { "data-source-1": 2 } },
         commandId: request.commandId,
         committedAt: "2026-09-08T00:00:00.000Z",
         databaseId: "database-1",

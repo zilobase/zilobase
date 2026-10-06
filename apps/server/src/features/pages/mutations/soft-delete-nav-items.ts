@@ -1,17 +1,10 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "../../../infrastructure/database";
-import {
-  deliverAfterCommit,
-  type AfterCommit,
-} from "../../../infrastructure/database/after-commit";
+import { type AfterCommit } from "../../../infrastructure/database/after-commit";
 import { dataSource, database, databaseRow, page } from "../../../infrastructure/database/schema";
 import { loadWorkspacePageGraph } from "../graph/loader";
 import type { RuntimeEnv } from "../../../shared/config/config";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../../workspaces/navigation-realtime/outbox";
 
 type SoftDeleteResult = {
   deletedAt: Date;
@@ -69,7 +62,7 @@ async function softDeleteRecords({
 }) {
   const now = new Date();
 
-  const navigationEvent = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     if (pageIds.length > 0) {
       await tx
         .update(page)
@@ -111,13 +104,7 @@ async function softDeleteRecords({
           ),
         );
     }
-    return enqueueNavigationInvalidation(tx, workspaceId, { committedAt: now });
   });
-
-  await deliverAfterCommit(
-    () => publishCommittedNavigationInvalidation(navigationEvent, env),
-    afterCommit,
-  );
 
   return now;
 }

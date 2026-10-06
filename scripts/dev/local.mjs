@@ -83,7 +83,16 @@ async function startRuntime({ spawnWeb: spawnWebFn, printSummary, processLabel }
 
   const { environments, profiles } = await resolveRuntimeProfiles(names);
   await assertPortsAvailable(collectProfilePorts(names, profiles));
-  await dependencies(["up", "-d", "postgres", "minio", "mailpit", "valkey", "--wait"]);
+  await dependencies([
+    "up",
+    "-d",
+    "postgres",
+    "minio",
+    "mailpit",
+    "valkey",
+    "queue-valkey",
+    "--wait",
+  ]);
   await dependencies(["run", "--rm", "-T", "minio-init"]);
 
   const logDir = path.join(stateDir, "logs");
@@ -400,7 +409,16 @@ export async function resetLocal(target, confirmed) {
   }
 
   if (target === "node") {
-    await dependencies(["up", "-d", "postgres", "minio", "mailpit", "valkey", "--wait"]);
+    await dependencies([
+      "up",
+      "-d",
+      "postgres",
+      "minio",
+      "mailpit",
+      "valkey",
+      "queue-valkey",
+      "--wait",
+    ]);
     await dependencies(["run", "--rm", "-T", "minio-init"]);
     await recreateDatabase(localProfiles[target].database);
     if (target === "node") await resetNodeBucket();

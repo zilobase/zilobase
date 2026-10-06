@@ -31,9 +31,7 @@ vi.mock("../../features/automations/execution/run-engine", () => ({
 vi.mock("../../features/databases/realtime/outbox", () => ({
   drainDatabaseRealtimeOutbox: fake.database,
 }));
-vi.mock("../../features/workspaces/navigation-realtime/outbox", () => ({
-  drainNavigationRealtimeOutbox: fake.navigation,
-}));
+
 vi.mock("../../features/notifications/outbox", () => ({
   drainInProductNotificationOutbox: fake.notification,
 }));
@@ -50,7 +48,8 @@ const run = (kind: BackgroundTaskKind) =>
       cellId: "cell",
       kind,
       resourceId: "resource",
-      version: 1,
+      taskId: "00000000-0000-4000-8000-000000000001",
+      version: 2,
     },
   });
 
@@ -60,7 +59,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test.each(["realtime.database", "realtime.navigation", "notification.publish"] as const)(
+test.each(["realtime.database", "notification.publish"] as const)(
   "%s retries at the persisted deadline and completes after its outbox row disappears",
   async (kind) => {
     fake.rows = [[{ nextAttemptAt: new Date("2026-01-01T00:01:00.000Z"), status: "pending" }]];

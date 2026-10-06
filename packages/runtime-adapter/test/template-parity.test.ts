@@ -80,7 +80,9 @@ describe("template parity with the hosted composition", () => {
       prod.queues.producers.filter((producer: { queue: string }) => queueNames.has(producer.queue)),
     );
     expect(template.queues.consumers).toEqual(
-      prod.queues.consumers.filter((consumer: { queue: string }) => queueNames.has(consumer.queue)),
+      prod.queues.consumers.filter((consumer: { queue: string }) =>
+        queueNames.has(consumer.queue.replace(/-dlq$/, "")),
+      ),
     );
     const bindingNames = new Set(
       template.durable_objects.bindings.map((binding: { name: string }) => binding.name),

@@ -25,3 +25,5 @@ Publication retries update attempts and nextAttemptAt. An absent optional runtim
 Start with [the existing tests or model](../../../apps/server/src/features/notifications/notifications-architecture.test.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
 
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
+
+[Notification delivery failure](../../../apps/server/src/features/notifications/background.ts) marks pending publication failed while retaining the notification record. Shared dispatch recovery cannot automatically restart exhausted publication.

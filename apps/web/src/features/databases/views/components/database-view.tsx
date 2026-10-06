@@ -68,6 +68,7 @@ export function DatabaseView(props: DatabaseViewProps) {
     <DatabaseViewProvider value={context}>
       <div
         className={className}
+        data-database-layout={viewData && !isLoading && !isError ? viewType : undefined}
         contentEditable={false}
         onDragOver={handleDatabaseBlockDragOver}
         onDrop={handleDatabaseBlockDrop}

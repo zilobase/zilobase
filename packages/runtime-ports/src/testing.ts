@@ -1,5 +1,4 @@
 import type {
-  BackgroundLane,
   BackgroundTask,
   DbScope,
   FanoutBus,
@@ -145,7 +144,6 @@ export function createFakePorts<Database = unknown>(
 ): Ports<Database> &
   RoomPorts<unknown, Database> & {
     dispatched: BackgroundTask[];
-    drained: BackgroundLane[];
     fanout: FakeFanoutBus;
     host: FakeRoomHost;
     scheduler: FakeScheduler;
@@ -154,7 +152,6 @@ export function createFakePorts<Database = unknown>(
   const env = options.env ?? {};
   const database = options.database as Database;
   const dispatched: BackgroundTask[] = [];
-  const drained: BackgroundLane[] = [];
   const fanout = new FakeFanoutBus();
   const host = new FakeRoomHost();
   const state = new FakeRoomState();
@@ -191,7 +188,6 @@ export function createFakePorts<Database = unknown>(
     db,
     documents: { appendPageComment: unavailable("documents.appendPageComment") },
     dispatched,
-    drained,
     env: {
       get: (key) => (typeof env[key] === "string" ? (env[key] as string) : undefined),
       require(key) {
@@ -212,9 +208,6 @@ export function createFakePorts<Database = unknown>(
       dispatch: async (tasks) => {
         dispatched.push(...tasks);
       },
-      drain: async (lane) => {
-        drained.push(lane);
-      },
     },
     lifecycle: {
       migrate: async () => undefined,
@@ -229,7 +222,7 @@ export function createFakePorts<Database = unknown>(
       fetchMcp: unavailable("outbound.fetchMcp"),
     },
     readiness: {
-      background: () => ({ coordinatorReady: null, listenerReady: null }),
+      background: () => ({ producerReady: null, consumerReady: null, maintenanceFresh: null }),
       realtime: () => true,
     },
     scheduler,

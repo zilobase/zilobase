@@ -147,6 +147,9 @@ async function deployKubernetesProfile(options = {}) {
     SMTP_PASSWORD: "",
     REALTIME_REDIS_URL: `redis://valkey.${profile.namespace}.svc.cluster.local:6379`,
   });
+  await applySecret(profile.namespace, "zilobase-queue", {
+    QUEUE_REDIS_URL: `redis://queue-valkey.${profile.namespace}.svc.cluster.local:6379`,
+  });
   await helmDeploy(image);
 }
 
@@ -372,7 +375,7 @@ async function applySecret(namespace, name, values) {
 }
 
 async function waitForDependencies(namespace) {
-  for (const deployment of ["postgres", "minio", "mailpit", "valkey"]) {
+  for (const deployment of ["postgres", "minio", "mailpit", "valkey", "queue-valkey"]) {
     await run("kubectl", [
       "-n",
       namespace,

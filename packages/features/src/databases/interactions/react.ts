@@ -1,3 +1,5 @@
+import { useSharedDataRevision } from "../../data/react";
+import { sharedClient } from "../../data/client";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { useZilobaseFeatures } from "../../shared/context";
 import type {
@@ -8,8 +10,6 @@ import type {
 import { projectDatabaseMetadata } from "./metadata";
 import { useDatabaseSessionId } from "../queries/session";
 import { databaseController } from "./store";
-import type { PageNavigationPayload } from "../../pages/contracts";
-import { projectDatabaseNavigation } from "./navigation";
 import { projectRecordInteractions, type RecordEffect } from "./model";
 import { changeRecordHierarchy } from "./hierarchy";
 import type { DatabaseCommandTarget } from "../mutations/pending";
@@ -36,49 +36,34 @@ export function useProjectedDatabaseBootstrap(snapshot: DatabaseBootstrapRespons
     controller.getSnapshot,
     controller.getSnapshot,
   );
-  const key = useRef({});
-  useEffect(() => {
-    if (snapshot) controller.observeBootstrap(key.current, snapshot);
-    else controller.unobserve(key.current);
-  }, [controller, snapshot]);
-  useEffect(() => {
-    const token = key.current;
-    return () => controller.unobserve(token);
-  }, [controller]);
   return useMemo(
-    () => (snapshot ? projectDatabaseMetadata(snapshot, intentions) : undefined),
-    [snapshot, intentions],
-  );
-}
-
-export function useProjectedDatabaseNavigation(snapshot: PageNavigationPayload | undefined) {
-  const controller = useDatabaseController();
-  const intentions = useSyncExternalStore(
-    controller.subscribe,
-    controller.getSnapshot,
-    controller.getSnapshot,
-  );
-  const key = useRef({});
-  useEffect(() => {
-    if (snapshot) controller.observeNavigation(key.current, snapshot);
-    else controller.unobserve(key.current);
-  }, [controller, snapshot]);
-  useEffect(() => {
-    const token = key.current;
-    return () => controller.unobserve(token);
-  }, [controller]);
-  return useMemo(
-    () => (snapshot ? projectDatabaseNavigation(snapshot, intentions) : undefined),
+    () =>
+      snapshot
+        ? projectDatabaseMetadata(
+            snapshot,
+            intentions.map((item) => ({
+              ...item,
+              metadataEffects: item.metadataEffects?.filter((effect) => effect.insert),
+            })),
+          )
+        : undefined,
     [snapshot, intentions],
   );
 }
 
 export function useProjectedDatabaseRecords(input: {
+  databaseId?: string | null;
   dataSourceId: string | null;
   sourceVersion: number | null;
   records: DatabaseRecordEntity[];
 }) {
   const store = useDatabaseController();
+  const sessionId = useDatabaseSessionId();
+  const { queryClient } = useZilobaseFeatures();
+  const revision = useSharedDataRevision(queryClient);
+  const owner = input.databaseId
+    ? sharedClient(queryClient).database(input.databaseId, sessionId)
+    : undefined;
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const key = useRef({});
   useEffect(() => {
@@ -98,9 +83,18 @@ export function useProjectedDatabaseRecords(input: {
         ? projectRecordInteractions(input.records, interactions, {
             dataSourceId: input.dataSourceId,
             sourceVersion: input.sourceVersion,
+            resolveRecord: (id) => owner?.databases.resolveRecord(id),
           })
         : input.records,
-    [input.records, input.dataSourceId, input.sourceVersion, interactions],
+    [
+      input.records,
+      input.dataSourceId,
+      input.sourceVersion,
+      interactions,
+      queryClient,
+      revision,
+      owner,
+    ],
   );
 }
 
@@ -197,6 +191,11 @@ export function useDatabaseInteractionRecovery() {
   const store = useDatabaseController();
   const interactions = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   return {
+    synchronizationError: useSyncExternalStore(
+      store.subscribe,
+      store.getSynchronizationError,
+      store.getSynchronizationError,
+    ),
     retry: () => store.retryUnconfirmed(),
     hasUnconfirmed: interactions.some(({ status }) => status === "unconfirmed"),
   };

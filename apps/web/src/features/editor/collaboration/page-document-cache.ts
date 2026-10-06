@@ -11,7 +11,6 @@ type CachedPage = {
   userId: string;
   pageId: string;
   workspaceId: string | null;
-  detail: unknown | null;
   updatedAt: number;
   bytes: number;
   locallyChanged: boolean;
@@ -51,6 +50,33 @@ class PageCacheDatabase extends Dexie {
       sessions: "key",
       snapshots: "key,scopeKey,userId,updatedAt",
     });
+    this.version(4)
+      .stores({
+        pages: "key,userId,updatedAt",
+        updates: "++id,key",
+        sessions: "key",
+        snapshots: "key,scopeKey,userId,updatedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("pages")
+          .toCollection()
+          .modify((page) => {
+            Reflect.deleteProperty(page, "detail");
+          });
+        await transaction
+          .table("snapshots")
+          .filter((snapshot) => {
+            const key = snapshot.queryKey;
+            return (
+              Array.isArray(key) &&
+              (["pages", "db", "database", "database-context-export", "search"].includes(key[0]) ||
+                (key[0] === "page" &&
+                  (key.length === 2 || ["properties", "access"].includes(key[2]))))
+            );
+          })
+          .delete();
+      });
   }
 }
 
@@ -59,7 +85,6 @@ export type PageDocumentEntry = {
   pageId: string;
   userId: string;
   key: string;
-  detail: unknown | null;
   hasPersistedState: boolean;
   locallyChanged: boolean;
   pendingWrites: number;
@@ -127,7 +152,6 @@ async function createEntry(userId: string, pageId: string, key: string) {
     pageId,
     userId,
     key,
-    detail: saved?.detail ?? null,
     hasPersistedState: saved?.initialized ?? updates.length > 0,
     locallyChanged: saved?.locallyChanged ?? false,
     pendingWrites: 0,
@@ -168,7 +192,6 @@ async function createEntry(userId: string, pageId: string, key: string) {
           userId,
           pageId,
           workspaceId: previous?.workspaceId ?? null,
-          detail: previous?.detail ?? null,
           updatedAt: Date.now(),
           bytes: updateBytes,
           locallyChanged: entry.locallyChanged,
@@ -237,30 +260,6 @@ export async function verifyPageDocumentSaved(entry: PageDocumentEntry, serverSt
   return !entry.locallyChanged;
 }
 
-export async function rememberPageDetail(
-  entry: PageDocumentEntry,
-  detail: unknown,
-  workspaceId: string | null,
-) {
-  if (entry.blocked) return;
-  entry.detail = detail;
-  await queueWrite(entry, async () => {
-    const previous = await db.pages.get(entry.key);
-    await db.pages.put({
-      key: entry.key,
-      userId: entry.userId,
-      pageId: entry.pageId,
-      workspaceId,
-      detail,
-      updatedAt: Date.now(),
-      bytes: previous?.bytes ?? 0,
-      locallyChanged: entry.locallyChanged,
-      initialized: entry.hasPersistedState,
-      blocked: false,
-    });
-  });
-}
-
 export async function markPageDocumentInitialized(entry: PageDocumentEntry) {
   entry.hasPersistedState = true;
   await queueWrite(entry, async () => {
@@ -270,7 +269,6 @@ export async function markPageDocumentInitialized(entry: PageDocumentEntry) {
       userId: entry.userId,
       pageId: entry.pageId,
       workspaceId: previous?.workspaceId ?? null,
-      detail: previous?.detail ?? null,
       updatedAt: Date.now(),
       bytes: previous?.bytes ?? 0,
       locallyChanged: entry.locallyChanged,
@@ -280,22 +278,13 @@ export async function markPageDocumentInitialized(entry: PageDocumentEntry) {
   });
 }
 
-export async function readCachedPageDetail(userId: string, pageId: string) {
-  const entry = entries.get(cacheKey(userId, pageId));
-  if (entry?.blocked) return null;
-  if (entry?.detail) return entry.detail;
-  const saved = await db.pages.get(cacheKey(userId, pageId));
-  return saved?.blocked ? null : (saved?.detail ?? null);
-}
-
 export async function blockCachedPage(userId: string, pageId: string) {
   const key = cacheKey(userId, pageId);
   const entry = entries.get(key);
   if (entry) {
-    entry.detail = null;
     entry.blocked = true;
   }
-  await db.pages.where("key").equals(key).modify({ detail: null, blocked: true });
+  await db.pages.where("key").equals(key).modify({ blocked: true });
   await deletePageSnapshots(userId, [`page:${pageId}`]);
 }
 

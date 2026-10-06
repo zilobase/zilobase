@@ -1,0 +1,51 @@
+import {
+  backgroundTaskLane,
+  type BackgroundLane,
+  type BackgroundTaskResult,
+} from "../../infrastructure/background/contracts";
+import {
+  decodeBackgroundTaskV2,
+  type BackgroundTaskV2,
+} from "../../infrastructure/background/task-v2";
+
+export interface BackgroundDeliveryStore {
+  load(task: BackgroundTaskV2): Promise<"ready" | "done" | { availableAt: string }>;
+  complete(task: BackgroundTaskV2, result: BackgroundTaskResult): Promise<void>;
+  reschedule(task: BackgroundTaskV2, availableAt: string): Promise<void>;
+  release?(task: BackgroundTaskV2): Promise<void>;
+}
+
+export async function runBackgroundDelivery(input: {
+  body: unknown;
+  cellId: string;
+  lane: BackgroundLane;
+  now?: number;
+  store: BackgroundDeliveryStore;
+  execute(task: BackgroundTaskV2): Promise<BackgroundTaskResult>;
+}): Promise<{ outcome: "ack" } | { outcome: "defer"; availableAt: string }> {
+  const task = decodeBackgroundTaskV2(input.body, input.cellId);
+  if (backgroundTaskLane(task.kind) !== input.lane)
+    throw new Error("BACKGROUND_TASK_LANE_MISMATCH");
+  const admission = await input.store.load(task);
+  if (admission === "done") return { outcome: "ack" };
+  if (typeof admission === "object")
+    return { outcome: "defer", availableAt: admission.availableAt };
+  if (Date.parse(task.availableAt) > (input.now ?? Date.now())) {
+    await input.store.release?.(task);
+    return { outcome: "defer", availableAt: task.availableAt };
+  }
+  try {
+    const result = await input.execute(task);
+    if (result.outcome === "retry") {
+      if (!Number.isFinite(Date.parse(result.availableAt)))
+        throw new Error("BACKGROUND_RETRY_DATE_INVALID");
+      await input.store.reschedule(task, result.availableAt);
+    } else {
+      await input.store.complete(task, result);
+    }
+    return { outcome: "ack" };
+  } catch (error) {
+    await input.store.release?.(task);
+    throw error;
+  }
+}

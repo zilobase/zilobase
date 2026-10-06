@@ -34,19 +34,18 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 ```
 
 `node/features/` mirrors `worker/features/` by feature name
-(`calendar-realtime`, `collaboration`, `database-realtime`, `meeting-audio`,
-`navigation-realtime`). Shared mechanism stays flat on both
+(`calendar-realtime`, `collaboration`, `database-realtime`, `meeting-audio`). Shared mechanism stays flat on both
 sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
 `jobs`, `scheduler`, `fanout`, `limits`, `telemetry`, `mailer`,
 `outbound-fetch`, `image-storage`); only the factory entrypoints
-(`node-runtime`, `server`, `background-coordinator` vs `worker`,
+(`node-runtime`, `server`, `queue-runtime` vs `worker`,
 `background-worker`, `handler`) differ, as the targets require.
 
 `node/*` never imports `worker/*` and vice versa; the root entrypoint imports neither side. `dispatcher.ts` loads one side through dynamic `import()` only. The adapter consumes `@zilobase/server` surfaces (`adapter-api`, `node-adapter-api`) and never reaches into server source relatively; `community-boundary` tests enforce the split. `resolveRuntimeKind` selects `"worker"` only for explicit `ZILOBASE_RUNTIME_KIND=worker` and otherwise defaults to `"node"`; bindings are never used as runtime detection.
 
 `createNodeRuntime` takes `loadApp` plus hook overrides (edition extension,
 production-config assert, a non-nullable realtime bus, collaboration extensions,
-pinned webhook/MCP transports, background coordinator) with community defaults;
+pinned webhook/MCP transports, queue lifecycle) with community defaults;
 `apps/server` passes Zilobase wiring through hooks in
 [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). The default bus
 factory validates `REALTIME_REDIS_URL` for every Node role before startup and
@@ -78,8 +77,9 @@ network transports; the Worker side owns R2, Email bindings, and Worker fetch
 options. Server features no longer select S3 versus R2 or SMTP versus Email.
 
 Background dispatch is the first request-scoped port cutover. Feature services
-call `Ports.jobs.dispatch`; Node provides a PostgreSQL wake-up/coordinator and
-Workers provide Queue bindings. `dispatchBackgroundTasks` is no longer an
+persist dispatch intent atomically with feature work; the publisher calls
+`Ports.jobs.dispatch`. Node supplies dedicated Redis/BullMQ queues and Workers
+provide Queue bindings. `dispatchBackgroundTasks` is no longer an
 optional `ServerRuntimeAdapter` capability. Node and Worker scheduler providers
 likewise contain `setTimeout().unref()` and `waitUntil`/alarm mechanics, while
 the runtime factories expose lifecycle through `Ports.lifecycle`. The app's
@@ -99,7 +99,7 @@ against `RoomPorts`. Runtime adapters provide Node and Worker `RoomHost` and
 controller in unit tests. Feature-room migrations must reuse this kernel
 instead of adding another crossws or Durable Object implementation.
 
-Calendar and navigation notification sockets share one expiring
+Calendar notification sockets use the expiring
 notification controller. Node's crossws runtime and Worker Durable Objects both
 adapt peers into the same controller for ping/pong, expiry pruning, validation,
 recipient selection, and broadcast; authentication and wire-specific payload
@@ -138,7 +138,7 @@ SMTP, pinned network transports, and resident Hocuspocus; Workers map
 Hyperdrive, R2, Email, Worker fetch options, and named Durable Objects. The
 hosted repository composes `createWorker` directly and no longer constructs a
 `createWorkerAdapter`. URL and storage helpers are thin port lookups, and
-Calendar, navigation and in-product notification publication uses `FanoutBus` channels.
+Calendar and in-product notification publication uses `FanoutBus` channels.
 
 Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenticates before parsing required JSON objects, including the existing array acceptance. JSON schema routes can use [hono/validator](../../apps/server/src/shared/http/json.ts) so a missing `Content-Type: application/json` is 400 rather than an empty object. Migrated JSON POST routes decode with [parseJsonBody](../../apps/server/src/shared/http/schema-json.ts). Feature routes retain operation-specific validation and authorization.
 
@@ -167,3 +167,7 @@ imports feature implementations or feature-owned wire declarations.
 The [app binding declaration](../../apps/server/src/shared/types.ts) intentionally infers session types from the authentication feature and exposes the canonical Drizzle database type for edition hooks. These are type-only contracts, with a focused `server-bindings` dependency exception; concrete runtime modules do not import authentication implementation code.
 
 Effect adoption is incremental. See [the Effect runtime decision](../decisions/0003-effect-runtime.md) and [the unified adapter decision](../decisions/0007-unified-runtime-adapter.md).
+
+Node background transport uses pinned BullMQ through the public ioredis adapter. Every process role requires a dedicated `QUEUE_REDIS_URL`; realtime Redis remains a separate service. Composition roots inject the shared task runner and maintenance into the broker adapter. The jobs port publishes only; consumers perform execution. See [background ownership](background-work.md) and [ADR 0015](../decisions/0015-background-queue-adapters.md).
+
+`createNodeQueueRuntime` owns broker lifecycle. Node composition injects product execution and recovery callbacks. `Jobs` exposes dispatch alone, and readiness/metrics report queue state instead of PostgreSQL listener/coordinator state.

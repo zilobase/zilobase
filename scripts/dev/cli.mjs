@@ -123,6 +123,7 @@ async function ensureDependencies() {
         "minio",
         "mailpit",
         "valkey",
+        "queue-valkey",
       ],
       {
         cwd: coreDir,

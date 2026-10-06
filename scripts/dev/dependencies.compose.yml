@@ -80,6 +80,30 @@ services:
       timeout: 3s
       retries: 30
 
+  queue-valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command:
+      [
+        "valkey-server",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec",
+        "--maxmemory-policy",
+        "noeviction",
+      ]
+    volumes:
+      - queue_valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    ports:
+      - "127.0.0.1:${QUEUE_VALKEY_HOST_PORT:-16380}:6379"
+
 volumes:
   postgres_data:
   minio_data:
+  queue_valkey_data:

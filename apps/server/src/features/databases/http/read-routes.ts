@@ -5,6 +5,7 @@ import {
   canAccessDatabaseRecord,
   getEffectiveDatabaseAccessForRecord,
   getMembership,
+  getWorkspacePrincipalKind,
   getWorkspaceRealtimeAccessExpiration,
   isDatabasePublishedInWorkspace,
 } from "../../access";
@@ -23,6 +24,7 @@ import {
   DatabaseViewQueryChangedError,
   MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
+  getAuthorizedDatabaseSourceIds,
   getDatabaseExportService,
   getDatabaseRecordWindowService,
 } from "../read/service";
@@ -74,7 +76,11 @@ async function readableDatabase(
           : null
         : accessLevel,
     record,
-    user,
+    viewerType:
+      canView && user
+        ? ((await getWorkspacePrincipalKind(record.workspaceId, user.id)) ?? "guest")
+        : "public",
+    user: canView ? user : null,
   };
 }
 
@@ -96,7 +102,7 @@ databaseReadRoutes.get("/:id/bootstrap", resourceWorkspace, async (c) => {
     userId: readable.user?.id,
     viewId: c.req.query("viewId") || undefined,
   });
-  return c.json(bootstrap);
+  return c.json({ ...bootstrap, viewerType: readable.viewerType });
 });
 
 databaseReadRoutes.get("/:id/export", resourceWorkspace, async (c) => {
@@ -112,7 +118,7 @@ databaseReadRoutes.get("/:id/export", resourceWorkspace, async (c) => {
     existingRecord: readable.record,
     userId: readable.user?.id,
   });
-  return c.json(payload);
+  return c.json({ ...payload, viewerType: readable.viewerType });
 });
 
 databaseReadRoutes.get("/:id/data-sources/:dataSourceId/records", resourceWorkspace, async (c) => {
@@ -241,6 +247,7 @@ databaseReadRoutes.post("/:id/realtime-ticket", resourceWorkspace, async (c) => 
     {
       canEdit: accessLevel === "edit" || accessLevel === "full",
       databaseId: record.id,
+      sourceIds: await getAuthorizedDatabaseSourceIds(record, user.id),
       sessionId,
       user: {
         email: user.email,

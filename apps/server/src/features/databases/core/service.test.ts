@@ -46,14 +46,7 @@ vi.mock("../../automations/service", () => ({
 vi.mock("./payload", () => ({
   getDatabaseExportPayload: mocks.payload,
 }));
-vi.mock("../../workspaces/navigation-realtime/outbox", () => ({
-  enqueueNavigationInvalidation: vi.fn(async (_tx, workspaceId: string) => ({
-    committedAt: new Date(),
-    id: "navigation-event-1",
-    workspaceId,
-  })),
-  publishCommittedNavigationInvalidation: vi.fn(async () => true),
-}));
+
 vi.mock("../../../infrastructure/database", () => ({
   db: {
     select() {

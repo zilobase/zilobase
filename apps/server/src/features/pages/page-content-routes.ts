@@ -1,11 +1,12 @@
 import { authorizePageRoute } from "./page-route-access";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 
 import {
   canAccessDatabaseInWorkspace,
   getWorkspaceRealtimeAccessExpiration,
   hasAccess,
+  getWorkspacePrincipalKind,
 } from "../access";
 import { db } from "../../infrastructure/database";
 import {
@@ -26,10 +27,7 @@ import {
   replacePageContent,
 } from "../collaboration/service";
 import { getCollaborationWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../workspaces/navigation-realtime/outbox";
+
 import { commitDatabaseMutationBatch } from "../databases/core";
 import { lockDatabaseAutomationFactRows } from "../automations/triggers/event-capture";
 import { getDatabaseRecordEntity } from "../databases/commands/record-entity";
@@ -42,7 +40,10 @@ pageContentRoutes.get("/:id/properties", async (c) => {
   if (!authorization.ok) return authorization.response;
   const { user, record } = authorization;
 
-  return c.json(await getPagePropertyPayload(record.id, record.workspaceId, user.id));
+  return c.json({
+    ...(await getPagePropertyPayload(record.id, record.workspaceId, user.id)),
+    viewerType: (await getWorkspacePrincipalKind(record.workspaceId, user.id)) ?? "guest",
+  });
 });
 
 pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
@@ -285,10 +286,11 @@ pageContentRoutes.patch("/:id/content", async (c) => {
     userId: user.id,
   });
 
-  const record = {
-    id: existing.id,
-    updatedAt: new Date(),
-  };
+  const [record] = await db
+    .select({ id: page.id, updatedAt: page.updatedAt })
+    .from(page)
+    .where(eq(page.id, existing.id));
+  if (!record) return c.json({ error: "Page not found" }, 404);
 
   return c.json({ page: record });
 });
@@ -340,12 +342,18 @@ pageContentRoutes.patch("/:id", async (c) => {
   }
 
   if (patch.metadata !== undefined) {
-    values.metadata = patch.metadata;
+    if (
+      patch.metadata !== null &&
+      (typeof patch.metadata !== "object" || Array.isArray(patch.metadata))
+    )
+      return c.json({ error: "metadata must be an object or null" }, 400);
+    values.metadata =
+      patch.metadata === null
+        ? null
+        : sql`COALESCE(${page.metadata}, '{}'::jsonb) || ${JSON.stringify(patch.metadata)}::jsonb`;
   }
 
   const updatesDatabaseRow = patch.name !== undefined || patch.metadata !== undefined;
-  const changesNavigation =
-    patch.name !== undefined || patch.metadata !== undefined || patch.type !== undefined;
   const mutationResult = updatesDatabaseRow
     ? (
         await commitDatabaseMutationBatch({ actorId: user.id, env: c.env }, async (tx) => {
@@ -404,9 +412,6 @@ pageContentRoutes.patch("/:id", async (c) => {
               })),
             ),
             result: {
-              navigationEvent: changesNavigation
-                ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
-                : null,
               page: updatedPage,
             },
           };
@@ -419,9 +424,6 @@ pageContentRoutes.patch("/:id", async (c) => {
           .where(eq(page.id, existing.id))
           .returning();
         return {
-          navigationEvent: changesNavigation
-            ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
-            : null,
           page: updatedPage,
         };
       });
@@ -429,10 +431,6 @@ pageContentRoutes.patch("/:id", async (c) => {
 
   if (!record) {
     return c.json({ error: "Page not found" }, 404);
-  }
-
-  if (mutationResult.navigationEvent) {
-    await publishCommittedNavigationInvalidation(mutationResult.navigationEvent, c.env);
   }
 
   if (patch.content !== undefined) {

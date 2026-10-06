@@ -28,10 +28,6 @@ import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import { activeMembershipCondition } from "../memberships";
 import { getPageTeamspaceSecurityPolicy } from "../teamspaces";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../workspaces/navigation-realtime/outbox";
 
 import { getAgentProfileRole } from "../ai/agents/agent-profile-service";
 
@@ -318,7 +314,7 @@ pageSharingRoutes.put("/:id/access", async (c) => {
     return c.json({ error: "Target not found" }, 404);
   }
 
-  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+  const { rule } = await db.transaction(async (tx) => {
     const [rule] = await tx
       .insert(pageAccess)
       .values({
@@ -338,11 +334,9 @@ pageSharingRoutes.put("/:id/access", async (c) => {
       })
       .returning();
     return {
-      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
       rule,
     };
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ access: rule });
 });
@@ -356,7 +350,7 @@ pageSharingRoutes.delete("/:id/access/public", async (c) => {
   if (!authorization.ok) return authorization.response;
   const { user: requestUser, record, accessLevel } = authorization;
 
-  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+  const { rule } = await db.transaction(async (tx) => {
     const [rule] = await tx
       .delete(pageAccess)
       .where(
@@ -368,11 +362,9 @@ pageSharingRoutes.delete("/:id/access/public", async (c) => {
       )
       .returning();
     return {
-      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
       rule,
     };
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ access: rule ?? null });
 });
@@ -382,13 +374,12 @@ pageSharingRoutes.delete("/:id/access/:ruleId", async (c) => {
   if (!authorization.ok) return authorization.response;
   const { user: requestUser, record, accessLevel } = authorization;
 
-  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+  const { rule } = await db.transaction(async (tx) => {
     const [rule] = await tx
       .delete(pageAccess)
       .where(and(eq(pageAccess.id, c.req.param("ruleId")), eq(pageAccess.pageId, record.id)))
       .returning();
     return {
-      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
       rule,
     };
   });
@@ -396,8 +387,6 @@ pageSharingRoutes.delete("/:id/access/:ruleId", async (c) => {
   if (!rule) {
     return c.json({ error: "Access rule not found" }, 404);
   }
-
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ access: rule });
 });

@@ -18,7 +18,7 @@ Teamspaces, principals and team membership live in Postgres. Security policy con
 
 ## Server management interface
 
-[Management](../../../apps/server/src/features/teamspaces/management.ts) shares its visibility loader between reads and management checks. Settings, archive and restore use one private transaction operation that updates the teamspace and enqueues navigation invalidation together, publishes after commit, then leaves operation-specific auditing to the caller. Restore retains its unique-name conflict mapping; join retains its own policy.
+[Management](../../../apps/server/src/features/teamspaces/management.ts) shares its visibility loader between reads and management checks. Settings, archive and restore use one private transaction operation that updates the teamspace in a transaction, then leaves operation-specific auditing to the caller. Restore retains its unique-name conflict mapping; join retains its own policy.
 
 ## Side effects, failures and recovery
 

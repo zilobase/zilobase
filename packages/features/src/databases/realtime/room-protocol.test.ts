@@ -3,9 +3,33 @@ import test from "node:test";
 import {
   consumeDatabaseMessageAllowance,
   isDatabasePresence,
+  scopeDatabaseRealtimeMessage,
   toDatabaseCollaborator,
   validateDatabaseRealtimeMessage,
 } from "./room-protocol";
+import { databaseMutationEventV2Fixture } from "../core/fixtures";
+
+test("mutation delivery requires proof for every represented source lane", () => {
+  const event = {
+    ...databaseMutationEventV2Fixture,
+    changes: { ...databaseMutationEventV2Fixture.changes, sourceVersions: { "fixture-source": 7 } },
+  };
+  assert.deepEqual(scopeDatabaseRealtimeMessage(event, ["fixture-source"]), event);
+  const restricted = scopeDatabaseRealtimeMessage(event, []);
+  assert.deepEqual(restricted, { ...event, dataSourceId: null, changes: {}, requiresReset: true });
+  assert(!JSON.stringify(restricted).includes("fixture-source"));
+  assert(!JSON.stringify(restricted).includes("fixture-row"));
+  const hiddenLane = { ...event, changes: { sourceVersions: { secret: 99 } } };
+  assert.deepEqual(scopeDatabaseRealtimeMessage(hiddenLane, ["fixture-source"]), {
+    ...hiddenLane,
+    dataSourceId: null,
+    changes: {},
+    requiresReset: true,
+  });
+  assert.deepEqual(scopeDatabaseRealtimeMessage({ type: "presence.clear" }, []), {
+    type: "presence.clear",
+  });
+});
 
 test("database realtime protocol is runtime-neutral", () => {
   assert.equal(validateDatabaseRealtimeMessage(JSON.stringify({ type: "realtime.ping" })).ok, true);

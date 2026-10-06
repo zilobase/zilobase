@@ -5,14 +5,13 @@ import { processAgentRun } from "../../features/ai/execution/agent-run-service";
 import { processDatabaseAutomationEventWindow } from "../../features/automations/triggers/event-evaluator";
 import { processDatabaseAutomationRun } from "../../features/automations/execution/run-engine";
 import { processDatabaseRealtimeTask } from "../../features/databases/realtime/background";
-import { processNavigationRealtimeTask } from "../../features/workspaces/navigation-realtime/background";
 import { processNotificationTask } from "../../features/notifications/background";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
   backgroundTaskLane,
   getBackgroundCellId,
   type BackgroundTaskResult,
-  type BackgroundTaskV1,
+  type BackgroundTaskV2,
 } from "../../infrastructure/background/contracts";
 import { boundedErrorCode } from "../../infrastructure/background/dispatch";
 import {
@@ -22,7 +21,7 @@ import {
 } from "../../infrastructure/background/telemetry";
 export async function processBackgroundTask(input: {
   env: RuntimeEnv;
-  task: BackgroundTaskV1;
+  task: BackgroundTaskV2;
   workerId: string;
 }): Promise<BackgroundTaskResult> {
   const startedAt = Date.now();
@@ -71,11 +70,11 @@ export async function processBackgroundTask(input: {
 
 async function processBackgroundTaskInner(input: {
   env: RuntimeEnv;
-  task: BackgroundTaskV1;
+  task: BackgroundTaskV2;
   workerId: string;
 }): Promise<BackgroundTaskResult> {
   const { env, task, workerId } = input;
-  const handlers: Record<BackgroundTaskV1["kind"], () => Promise<BackgroundTaskResult>> = {
+  const handlers: Record<BackgroundTaskV2["kind"], () => Promise<BackgroundTaskResult>> = {
     "automation.event_window": () =>
       processDatabaseAutomationEventWindow(env, {
         windowId: task.resourceId,
@@ -92,7 +91,6 @@ async function processBackgroundTaskInner(input: {
       }),
     "calendar.sync": () => processCalendarSyncTask(env, task.resourceId),
     "realtime.database": () => processDatabaseRealtimeTask(env, task.resourceId),
-    "realtime.navigation": () => processNavigationRealtimeTask(env, task.resourceId),
     "notification.publish": () => processNotificationTask(env, task.resourceId),
   };
   return handlers[task.kind]();

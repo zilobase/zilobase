@@ -12,6 +12,47 @@ import {
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
 import { timestampColumns } from "./columns";
+import type { BackgroundTaskV2 } from "../../background/task-v2";
+
+export const backgroundDispatch = pgTable(
+  "background_dispatch",
+  {
+    id: text("id").primaryKey(),
+    cellId: text("cell_id").notNull(),
+    logicalKey: text("logical_key").notNull(),
+    kind: text("kind").notNull(),
+    resourceId: text("resource_id").notNull(),
+    task: jsonb("task").$type<BackgroundTaskV2>().notNull(),
+    status: text("status").notNull().default("pending"),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull(),
+    nextPublicationAt: timestamp("next_publication_at", { withTimezone: true }).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    errorCode: text("error_code"),
+    failureHandledAt: timestamp("failure_handled_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("background_dispatch_logical_unique").on(table.cellId, table.logicalKey),
+    index("background_dispatch_publication_idx").on(
+      table.cellId,
+      table.status,
+      table.nextPublicationAt,
+    ),
+    index("background_dispatch_failure_pending_idx")
+      .on(table.cellId, table.completedAt)
+      .where(sql`${table.status} = 'exhausted' and ${table.failureHandledAt} is null`),
+    index("background_dispatch_expired_owner_idx")
+      .on(table.cellId, table.leaseExpiresAt)
+      .where(sql`${table.status} = 'running'`),
+    check(
+      "background_dispatch_status_check",
+      sql`${table.status} in ('pending','published','running','completed','terminal','exhausted','cancelled')`,
+    ),
+  ],
+);
 
 export const aiJob = pgTable(
   "ai_job",

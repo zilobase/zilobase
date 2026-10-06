@@ -1,10 +1,21 @@
+import { type PageNavigationReference } from "../../pages/cache";
+import { refreshRecordResults } from "../queries/result-refresh";
+import { publishDatabaseEvent } from "../cache-publication";
+import { insertionPreviews } from "./shared-records";
+import { sharedMetadataCommand, sharedMetadataPreviews } from "./shared-metadata";
+import { resolveRecordWindow, type DatabaseWindowReference } from "../cache-window";
+import { entityPreview, entityUpsertPreview } from "../../data/commands";
+import { applyConfigurationChanges } from "./configuration";
+import { resolveDatabaseBootstrap } from "../cache-references";
+import { refreshTitleMembership, refreshPropertyMembership } from "../queries/page-membership";
+import { valueIdentity } from "../schema/cache-entities";
+import { sharedClient } from "../../data/client";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ApiFetcher } from "../../shared/api-fetcher";
-import { databaseRecordEntitySchema, databaseBootstrapResponseSchema } from "../core/entities";
+import { databaseRecordEntitySchema } from "../core/entities";
 import { databasePropertyEntitySchema } from "../core/entities";
 import { metadataEffectsForCommand } from "./metadata-command";
 import { databaseCommandPolicies } from "./command-policy";
-import type { DatabaseBootstrapResponse } from "../core/entities";
 import { metadataNeedsProjection, projectDatabaseMetadata, type MetadataEffect } from "./metadata";
 import type {
   DatabaseCommandAck,
@@ -21,9 +32,7 @@ import {
 import { DatabaseCommandState, targetsForCommand } from "../mutations/pending";
 import { invalidateDatabaseQueries } from "../mutations/invalidate";
 import { refreshConfirmedDatabaseReads } from "./confirmation";
-import type { PageNavigationPayload } from "../../pages/contracts";
-import { favoriteNeedsProjection, isNavigationSnapshot } from "./favorites";
-import { navigationMetadataNeedsProjection } from "./navigation";
+
 import {
   projectRecordInteractions,
   remapRecordIdentity,
@@ -33,6 +42,8 @@ import {
 
 type Job = {
   input: DatabaseCommandInput;
+  previewEffects: RecordEffect[];
+  promise: Promise<DatabaseCommandAck>;
   interaction: DatabaseIntention;
   sources: string[];
   resources: string[];
@@ -40,18 +51,30 @@ type Job = {
   reject: (error: unknown) => void;
   release: (error: Error | null) => void;
   temporaryId?: string;
+  sharedDefinitionConfirmed?: boolean;
+  definitionFields?: string[];
+  sharedContentConfirmed?: boolean;
+  sharedPresentationConfirmed?: boolean;
+  sharedResultsConfirmed?: boolean;
+  contentChanges?: { pageIds: string[]; propertyIds: string[] };
+  synchronizationFailed?: boolean;
+  scopeExpired?: boolean;
 };
 type Window = { dataSourceId: string; sourceVersion: number | null };
 
 /** Session-owned intentions. QueryClient remains an unmodified server snapshot. */
 export class DatabaseController {
   readonly commandState = new DatabaseCommandState();
+  private synchronizationError: Error | null = null;
+  getSynchronizationError = () => this.synchronizationError;
+  private reportSynchronization(cause: unknown) {
+    this.synchronizationError = new DatabaseReconciliationError(cause);
+    this.publish(this.snapshot);
+  }
   private snapshot: readonly DatabaseIntention[] = [];
   private listeners = new Set<() => void>();
   private jobs = new Map<string, Job>();
   private windows = new Map<object, Window>();
-  private bootstrapWindows = new Map<object, DatabaseBootstrapResponse>();
-  private navigationWindows = new Map<object, PageNavigationPayload>();
   private identities = new Map<string, string>();
   private pageIdentities = new Map<string, string>();
   private disposed = false;
@@ -85,18 +108,6 @@ export class DatabaseController {
   }
   unobserve(key: object) {
     this.windows.delete(key);
-    this.bootstrapWindows.delete(key);
-    this.navigationWindows.delete(key);
-    this.collect();
-  }
-
-  observeBootstrap(key: object, snapshot: DatabaseBootstrapResponse) {
-    this.bootstrapWindows.set(key, snapshot);
-    this.collect();
-  }
-
-  observeNavigation(key: object, snapshot: PageNavigationPayload) {
-    this.navigationWindows.set(key, snapshot);
     this.collect();
   }
 
@@ -104,11 +115,37 @@ export class DatabaseController {
     const snapshots = this.queryClient
       .getQueriesData({ queryKey: ["db", this.sessionId, hostId] })
       .flatMap(([, data]) => {
-        const result = databaseBootstrapResponseSchema.safeParse(data);
-        return result.success ? [result.data] : [];
+        const result = resolveDatabaseBootstrap(this.queryClient, data);
+        return result ? [result] : [];
       })
       .sort((left, right) => right.database.version - left.database.version);
-    return snapshots[0] ? projectDatabaseMetadata(snapshots[0], this.snapshot) : undefined;
+    if (snapshots[0])
+      return projectDatabaseMetadata(
+        snapshots[0],
+        this.snapshot.map((item) => ({
+          ...item,
+          metadataEffects: item.metadataEffects?.filter((effect) => effect.insert),
+        })),
+      );
+    for (const [, data] of this.queryClient.getQueriesData<PageNavigationReference>({
+      queryKey: ["pages"],
+    })) {
+      const ref = data?.databases?.find((item) => item.id === hostId && "cacheId" in item);
+      const owner = ref && sharedClient(this.queryClient).get(ref.cacheId);
+      const host = owner?.databases.hosts.get(hostId);
+      if (ref && owner && host)
+        return resolveDatabaseBootstrap(this.queryClient, {
+          cacheId: owner.session.id,
+          databaseId: hostId,
+          databaseVersion: host.version,
+          accessLevel: null,
+          sourceIds: ref.sourceIds,
+          bindingIds: [],
+          viewIds: ref.viewIds,
+          includeDeleted: false,
+        });
+    }
+    return undefined;
   }
 
   execute(input: DatabaseCommandInput) {
@@ -116,7 +153,12 @@ export class DatabaseController {
       input,
       [],
       undefined,
-      databaseCommandPolicies[input.command.type].preview === "metadata"
+      databaseCommandPolicies[input.command.type].preview === "metadata" &&
+        input.command.type !== "property.update" &&
+        (!sharedMetadataCommand(input) ||
+          !sharedClient(this.queryClient)
+            .database(input.databaseId, this.sessionId)
+            ?.databases.hosts.get(input.databaseId))
         ? metadataEffectsForCommand(input, this.bootstrap(input.databaseId))
         : [],
     );
@@ -124,11 +166,11 @@ export class DatabaseController {
 
   records(dataSourceId: string) {
     const windows = this.queryClient
-      .getQueriesData<{ pages: DatabaseRecordWindowResponse[] }>({
+      .getQueriesData<{ pages: DatabaseWindowReference[] }>({
         queryKey: ["db", this.sessionId],
       })
       .filter(([key]) => key[3] === "window" && key[4] === dataSourceId)
-      .map(([, data]) => data?.pages.at(-1))
+      .map(([, data]) => resolveRecordWindow(this.queryClient, data?.pages.at(-1)))
       .filter((window) => !!window)
       .sort((a, b) => a.dataSourceVersion - b.dataSourceVersion);
     const records = new Map<string, DatabaseRecordEntity>();
@@ -136,6 +178,11 @@ export class DatabaseController {
       for (const record of projectRecordInteractions(window.records, this.snapshot, {
         dataSourceId,
         sourceVersion: window.dataSourceVersion,
+        resolveRecord: (id) =>
+          sharedClient(this.queryClient)
+            .all()
+            .find((owner) => owner.databases.records.collection.has(id))
+            ?.databases.resolveRecord(id),
       }))
         records.set(record.id, record);
     // Include insertions even before a destination window has loaded.
@@ -156,6 +203,39 @@ export class DatabaseController {
       return Promise.reject(new Error("Database command scope does not match its policy"));
     if (typeof navigator !== "undefined" && navigator.onLine === false)
       return Promise.reject(new OfflineError());
+    const queued = [...this.jobs.values()].at(-1);
+    if (
+      queued?.interaction.status === "queued" &&
+      cellOnly(input) &&
+      cellOnly(queued.input) &&
+      input.databaseId === queued.input.databaseId &&
+      input.dataSourceId === queued.input.dataSourceId &&
+      input.command.rowId === queued.input.command.rowId
+    ) {
+      queued.input = {
+        ...queued.input,
+        command: {
+          ...queued.input.command,
+          valuesByPropertyId: {
+            ...queued.input.command.valuesByPropertyId,
+            ...input.command.valuesByPropertyId,
+          },
+        },
+      };
+      for (const effect of effects) {
+        const previous = queued.previewEffects.find((item) => item.rowId === effect.rowId);
+        if (previous) previous.values = { ...previous.values, ...effect.values };
+        else queued.previewEffects.push(effect);
+      }
+      const targets = targetsForCommand(input);
+      this.commandState.begin(targets);
+      const release = queued.release;
+      queued.release = (error) => {
+        release(error);
+        this.commandState.end(targets, error);
+      };
+      return queued.promise;
+    }
     const id = crypto.randomUUID();
     if (
       (input.command.type === "row.change" || input.command.type === "row.place") &&
@@ -173,12 +253,20 @@ export class DatabaseController {
     if (input.command.type === "database.create") input = { ...input, databaseId: id };
     const interaction: DatabaseIntention = {
       id,
-      effects,
+      effects: effects.map((effect) => {
+        const owner = sharedClient(this.queryClient).database(input.databaseId, this.sessionId);
+        if (!owner?.databases.pageForRecord(input.databaseId, effect.rowId)) return effect;
+        const {
+          values: _values,
+          title: _title,
+          parentRowId: _parent,
+          record: _record,
+          ...placement
+        } = effect;
+        return placement;
+      }),
       metadataEffects,
       status: "queued",
-      ...(input.command.type === "database.favorite"
-        ? { favorite: { hostId: input.databaseId, value: input.command.favorite } }
-        : {}),
     };
     const sources = [
       ...new Set([
@@ -198,17 +286,29 @@ export class DatabaseController {
       resources.add(`host:${input.command.source.databaseId}`);
     const targets = targetsForCommand(input);
     this.commandState.begin(targets);
+    const releaseCache = sharedClient(this.queryClient)
+      .database(input.databaseId, this.sessionId)
+      ?.session.retain();
+    let accept!: (ack: DatabaseCommandAck) => void;
+    let fail!: (error: unknown) => void;
     const promise = new Promise<DatabaseCommandAck>((resolve, reject) => {
-      this.jobs.set(id, {
-        input,
-        interaction,
-        sources,
-        resources: [...resources].sort(),
-        resolve,
-        reject,
-        temporaryId,
-        release: (error) => this.commandState.end(targets, error),
-      });
+      accept = resolve;
+      fail = reject;
+    });
+    this.jobs.set(id, {
+      input,
+      previewEffects: effects,
+      promise,
+      interaction,
+      sources,
+      resources: [...resources].sort(),
+      resolve: accept,
+      reject: fail,
+      temporaryId,
+      release: (error) => {
+        releaseCache?.();
+        this.commandState.end(targets, error);
+      },
     });
     this.publish([...this.snapshot, interaction]);
     this.pump();
@@ -261,10 +361,157 @@ export class DatabaseController {
   private async save(job: Job) {
     // Freeze the remapped request before first delivery; retries use exactly this ID/body.
     job.input = this.remapReferences(job.input);
+    job.previewEffects = this.remapReferences(job.previewEffects);
     try {
-      const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
-        commandId: job.interaction.id,
-      });
+      const owner = sharedClient(this.queryClient);
+      const entities = owner.database(job.input.databaseId, this.sessionId);
+      const authorization = owner.capture();
+      const send = async () => {
+        const ack = await executeDatabaseCommand(this.apiFetch, job.input, {
+          commandId: job.interaction.id,
+        });
+        job.scopeExpired = !owner.isCurrent(authorization);
+        if (ack.event && entities && !job.scopeExpired) {
+          try {
+            const definition = entities.databases.isDefinitionEvent(ack.event);
+            const content = entities.databases.isRecordContentEvent(ack.event);
+            const presentation = entities.databases.isPresentationEvent(ack.event);
+            const results = entities.databases.isRecordResultEvent(ack.event);
+            job.contentChanges = entities.databases.contentChanges(ack.event);
+            job.definitionFields = entities.databases.definitionChanges(ack.event);
+            const contiguous = entities.databases.observeDelivery(
+              ack.event.databaseId,
+              ack.event.version,
+            );
+            const admitted = publishDatabaseEvent(this.queryClient, entities, ack.event);
+            job.sharedDefinitionConfirmed = contiguous && definition && admitted === "published";
+            job.sharedContentConfirmed = contiguous && content && admitted === "published";
+            job.sharedPresentationConfirmed =
+              contiguous && presentation && admitted === "published";
+            job.sharedResultsConfirmed = contiguous && results && admitted === "published";
+          } catch (error) {
+            job.synchronizationFailed = true;
+            this.reportSynchronization(error);
+          }
+        }
+        if (
+          ack.privateConfirmation &&
+          entities &&
+          !job.scopeExpired &&
+          job.input.command.type === "database.favorite"
+        ) {
+          const viewer = entities.session.scope.viewer;
+          if (viewer.kind === "public" || viewer.actorId !== ack.privateConfirmation.actorId)
+            throw new DatabaseCommandUnconfirmedError(
+              new Error("Preference confirmation actor mismatch"),
+            );
+          try {
+            entities.session.ingest([
+              entities.navigation.databasePreferences.stage([
+                {
+                  id: job.input.databaseId,
+                  actorId: ack.privateConfirmation.actorId,
+                  revision: ack.privateConfirmation.revision,
+                  isFavorite: job.input.command.favorite,
+                },
+              ]),
+            ]);
+            job.sharedPresentationConfirmed = true;
+          } catch (error) {
+            job.synchronizationFailed = true;
+            this.reportSynchronization(error);
+          }
+        }
+        return ack;
+      };
+      const title = job.input.command.type === "row.change" ? job.input.command.title : undefined;
+      const record =
+        job.input.command.type === "row.change" && entities
+          ? entities.databases.records.get(job.input.command.rowId)
+          : undefined;
+      const previews =
+        entities && sharedMetadataCommand(job.input)
+          ? sharedMetadataPreviews(entities, job.input, this.bootstrap(job.input.databaseId))
+          : [];
+      if (entities) previews.push(...insertionPreviews(entities, job.previewEffects));
+      if (
+        entities &&
+        job.input.command.type === "database.favorite" &&
+        entities.navigation.databasePreferences.get(job.input.databaseId)
+      ) {
+        const favorite = job.input.command.favorite;
+        previews.push(
+          entityPreview(entities.navigation.databasePreferences, job.input.databaseId, (draft) => {
+            draft.isFavorite = favorite;
+          }),
+        );
+      }
+      if (entities && record && title !== undefined)
+        previews.push(
+          entityPreview(entities.pages, record.pageId, (draft) => {
+            draft.name = title;
+          }),
+        );
+      if (entities && job.input.command.type === "row.change") {
+        for (const effect of job.previewEffects) {
+          const row = entities.databases.records.get(effect.rowId);
+          const pageId = entities.databases.pageForRecord(job.input.databaseId, effect.rowId);
+          if (!pageId) continue;
+          if (row && effect.parentRowId !== undefined)
+            previews.push(
+              entityPreview(entities.databases.records, row.id, (draft) => {
+                draft.parentRowId = effect.parentRowId!;
+              }),
+            );
+          for (const [propertyId, value] of Object.entries(effect.values ?? {})) {
+            const id = valueIdentity(pageId, propertyId);
+            const existing = entities.databases.values.get(id);
+            previews.push(
+              entityUpsertPreview(
+                entities.databases.values,
+                {
+                  ...existing,
+                  id,
+                  pageId,
+                  propertyId,
+                  value,
+                  valueId: existing?.valueId ?? `draft:${id}`,
+                  createdAt: existing?.createdAt ?? row?.updatedAt ?? new Date().toISOString(),
+                  updatedAt: existing?.updatedAt ?? row?.updatedAt ?? new Date().toISOString(),
+                },
+                (draft) => {
+                  draft.value = value;
+                },
+              ),
+            );
+          }
+        }
+      }
+      const command = job.input.command;
+      if (entities && command.type === "property.update") {
+        const binding = entities.databases.bindings.get(command.propertyId);
+        const definition = binding && entities.databases.definitions.get(binding.propertyId);
+        if (binding && definition) {
+          previews.push(
+            entityPreview(entities.databases.definitions, definition.id, (draft) => {
+              if (command.patch.name !== undefined) draft.name = command.patch.name;
+              // Type conversion can transform values; publish that at confirmation.
+              if (command.patch.configuration)
+                draft.config = applyConfigurationChanges(draft.config, command.patch.configuration);
+            }),
+          );
+          previews.push(
+            entityPreview(entities.databases.bindings, binding.id, (draft) => {
+              if (command.patch.visible !== undefined) draft.visible = command.patch.visible;
+              if (command.patch.width !== undefined) draft.width = command.patch.width;
+            }),
+          );
+        }
+      }
+      const ack =
+        entities && previews.length
+          ? await entities.session.commands.runMany(previews, send)
+          : await send();
       if (this.disposed) return;
       for (const source of job.sources)
         if (ack.sourceVersions[source] === undefined)
@@ -300,26 +547,37 @@ export class DatabaseController {
         this.identities.set(job.temporaryId, record.id);
         this.publish(
           this.snapshot.map((item) =>
-            remapRecordIdentity(item, job.temporaryId!, record, temporaryPageId),
+            retireConfirmedRecord(
+              remapRecordIdentity(item, job.temporaryId!, record, temporaryPageId),
+              record.id,
+              Boolean(entities?.databases.records.collection.base.has(record.id)),
+            ),
           ),
         );
         for (const queued of this.jobs.values())
-          queued.interaction = remapRecordIdentity(
-            queued.interaction,
-            job.temporaryId,
-            record,
-            temporaryPageId,
+          queued.interaction = retireConfirmedRecord(
+            remapRecordIdentity(queued.interaction, job.temporaryId, record, temporaryPageId),
+            record.id,
+            Boolean(entities?.databases.records.collection.base.has(record.id)),
           );
       }
       job.interaction = {
         ...job.interaction,
         status: "committed",
-        ...(job.interaction.favorite && ack.privateConfirmation
-          ? {
-              favorite: { ...job.interaction.favorite, confirmation: ack.privateConfirmation },
-            }
+        ...(job.scopeExpired ? { effects: [], metadataEffects: [] } : {}),
+        sourceVersions:
+          (titleOnly(job.input) && entities) ||
+          job.sharedDefinitionConfirmed ||
+          job.sharedPresentationConfirmed ||
+          job.sharedContentConfirmed ||
+          job.synchronizationFailed
+            ? {}
+            : ack.sourceVersions,
+        ...((titleOnly(job.input) && entities) ||
+        job.sharedContentConfirmed ||
+        job.synchronizationFailed
+          ? { effects: [] }
           : {}),
-        sourceVersions: ack.sourceVersions,
         hostVersions: ack.event ? { [ack.event.databaseId]: ack.event.version } : {},
       };
       this.update(job.interaction);
@@ -376,6 +634,32 @@ export class DatabaseController {
     }
   }
   private refresh(job: Job, ack?: DatabaseCommandAck) {
+    if (job.scopeExpired) return;
+    if (ack && job.sharedContentConfirmed) {
+      refreshTitleMembership(this.queryClient, job.contentChanges?.pageIds ?? []);
+      refreshPropertyMembership(this.queryClient, job.contentChanges?.propertyIds ?? []);
+      return;
+    }
+    if (ack && job.sharedResultsConfirmed) {
+      const owner = sharedClient(this.queryClient).database(job.input.databaseId, this.sessionId);
+      if (owner) refreshRecordResults(this.queryClient, owner.session.id, ack.sourceVersions);
+      return;
+    }
+    if (ack && job.sharedDefinitionConfirmed) {
+      refreshPropertyMembership(this.queryClient, job.definitionFields ?? [], {
+        definitionsChanged: true,
+      });
+      return;
+    }
+    if (ack && job.sharedPresentationConfirmed) return;
+    if (ack && titleOnly(job.input)) {
+      refreshTitleMembership(
+        this.queryClient,
+        ack.event?.changes.records?.map((record) => record.pageId) ?? [],
+      );
+      return;
+    }
+
     const hosts = new Set([job.input.databaseId]);
     const sources = new Set([...job.sources, ...Object.keys(ack?.sourceVersions ?? {})]);
     if (job.input.command.type === "row.place" && job.input.command.source)
@@ -385,9 +669,9 @@ export class DatabaseController {
       .findAll({ queryKey: ["db", this.sessionId] })) {
       if (query.queryKey[3] === "window" && sources.has(String(query.queryKey[4])))
         hosts.add(String(query.queryKey[2]));
-      const bootstrap = databaseBootstrapResponseSchema.safeParse(query.state.data);
-      if (bootstrap.success && bootstrap.data.dataSources.some(({ id }) => sources.has(id)))
-        hosts.add(bootstrap.data.database.id);
+      const bootstrap = resolveDatabaseBootstrap(this.queryClient, query.state.data);
+      if (bootstrap && bootstrap.dataSources.some(({ id }) => sources.has(id)))
+        hosts.add(bootstrap.database.id);
     }
     if (ack)
       void refreshConfirmedDatabaseReads(
@@ -397,13 +681,14 @@ export class DatabaseController {
         ack,
         hosts,
       ).catch((cause) => {
-        if (!this.disposed)
-          this.commandState.report(
-            targetsForCommand(job.input),
-            new DatabaseReconciliationError(cause),
-          );
+        if (!this.disposed) this.reportSynchronization(cause);
       });
     for (const host of hosts) {
+      const recoveryReads = this.queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["db", this.sessionId, host] })
+        .filter((query) => query.isActive())
+        .map((query) => ({ query, before: query.state.dataUpdatedAt }));
       invalidateDatabaseQueries(this.queryClient, this.sessionId, host);
       // React Query normally swallows refetch failures. Explicitly surface them,
       // without rejecting the already acknowledged write or dropping its preview.
@@ -412,12 +697,22 @@ export class DatabaseController {
           { queryKey: ["db", this.sessionId, host], type: "active" },
           { throwOnError: true, cancelRefetch: false },
         )
+        .then(() => {
+          if (
+            !this.disposed &&
+            this.synchronizationError &&
+            recoveryReads.length > 0 &&
+            recoveryReads.every(
+              ({ query, before }) =>
+                query.state.status === "success" && query.state.dataUpdatedAt > before,
+            )
+          ) {
+            this.synchronizationError = null;
+            this.publish(this.snapshot);
+          }
+        })
         .catch((cause) => {
-          if (!this.disposed)
-            this.commandState.report(
-              [{ hostDatabaseId: host }],
-              new DatabaseReconciliationError(cause),
-            );
+          if (!this.disposed) this.reportSynchronization(cause);
         });
     }
   }
@@ -436,44 +731,10 @@ export class DatabaseController {
       const keep = this.snapshot.filter((interaction) => {
         if (interaction.status !== "committed") return true;
         let stale = false;
-        if (interaction.favorite) {
-          for (const snapshot of this.navigationWindows.values())
-            if (favoriteNeedsProjection(interaction.favorite, snapshot)) stale = true;
-          for (const query of this.queryClient.getQueryCache().findAll({ queryKey: ["pages"] })) {
-            if (
-              query.queryKey[2] !== "nav" ||
-              !isNavigationSnapshot(query.state.data) ||
-              !favoriteNeedsProjection(interaction.favorite, query.state.data)
-            )
-              continue;
-            if (!query.isActive() && query.state.fetchStatus === "idle")
-              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
-            else stale = true;
-          }
-        }
         for (const effect of interaction.metadataEffects ?? []) {
-          for (const snapshot of this.navigationWindows.values())
-            if (navigationMetadataNeedsProjection(effect, interaction, snapshot)) stale = true;
-          for (const query of this.queryClient.getQueryCache().findAll({ queryKey: ["pages"] })) {
-            if (
-              query.queryKey[2] !== "nav" ||
-              !isNavigationSnapshot(query.state.data) ||
-              !navigationMetadataNeedsProjection(effect, interaction, query.state.data)
-            )
-              continue;
-            if (!query.isActive() && query.state.fetchStatus === "idle")
-              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
-            else stale = true;
-          }
-          for (const snapshot of this.bootstrapWindows.values())
-            if (metadataNeedsProjection(effect, interaction, snapshot)) stale = true;
           for (const query of queries) {
-            const parsed = databaseBootstrapResponseSchema.safeParse(query.state.data);
-            if (!parsed.success || !metadataNeedsProjection(effect, interaction, parsed.data))
-              continue;
-            if (!query.isActive() && query.state.fetchStatus === "idle")
-              this.queryClient.removeQueries({ queryKey: query.queryKey, exact: true });
-            else stale = true;
+            const parsed = resolveDatabaseBootstrap(this.queryClient, query.state.data);
+            if (parsed && metadataNeedsProjection(effect, interaction, parsed)) stale = true;
           }
         }
         for (const [source, version] of Object.entries(interaction.sourceVersions ?? {})) {
@@ -508,8 +769,6 @@ export class DatabaseController {
     }
     this.jobs.clear();
     this.windows.clear();
-    this.bootstrapWindows.clear();
-    this.navigationWindows.clear();
     this.identities.clear();
     this.pageIdentities.clear();
     this.commandState.clear();
@@ -562,4 +821,45 @@ export function databaseController(
 export function disposeDatabaseController(queryClient: QueryClient, sessionId: string) {
   sessions.get(queryClient)?.get(sessionId)?.dispose();
   sessions.get(queryClient)?.delete(sessionId);
+}
+
+function titleOnly(input: DatabaseCommandInput) {
+  return (
+    input.command.type === "row.change" &&
+    input.command.title !== undefined &&
+    input.command.valuesByPropertyId === undefined &&
+    input.command.placement === undefined &&
+    input.command.hierarchy === undefined &&
+    !input.command.clearSortViewId
+  );
+}
+
+function cellOnly(input: DatabaseCommandInput): input is DatabaseCommandInput & {
+  command: Extract<import("../core/entities").DatabaseCommand, { type: "row.change" }>;
+} {
+  const command = input.command;
+  return (
+    command.type === "row.change" &&
+    command.valuesByPropertyId !== undefined &&
+    command.title === undefined &&
+    command.placement === undefined &&
+    command.hierarchy === undefined &&
+    !command.clearSortViewId
+  );
+}
+
+function retireConfirmedRecord(
+  interaction: DatabaseIntention,
+  id: string,
+  admitted: boolean,
+): DatabaseIntention {
+  if (!admitted) return interaction;
+  return {
+    ...interaction,
+    effects: interaction.effects.map((effect) => {
+      if (effect.rowId !== id) return effect;
+      const { record: _record, ...placement } = effect;
+      return placement;
+    }),
+  };
 }

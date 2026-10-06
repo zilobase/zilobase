@@ -16,17 +16,19 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../../workspaces/navigation-realtime/outbox";
+
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
 } from "../../automations/triggers/event-capture";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import {
+  backgroundTransaction,
+  persistBackgroundTasks,
+  publishBackgroundDispatches,
+} from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
+import { mutationSourceIds, withSourceClocks } from "./source-clocks";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -49,7 +51,6 @@ type CommitOptions = {
   areas: DatabaseChangedAreaV2[];
   databaseId: string;
   env?: RuntimeEnv;
-  navigationWorkspaceId?: string;
 };
 
 type BatchMutation = {
@@ -70,7 +71,6 @@ type DataSourceBatchMutation = {
 type BatchCommitOptions = {
   actorId: string;
   env?: RuntimeEnv;
-  navigationWorkspaceId?: string;
 };
 
 export type DatabaseMutationCommitResult = DatabaseMutationEventV2;
@@ -99,11 +99,11 @@ export async function commitDatabaseMutationBatch<T>(
   const committedAt = new Date().toISOString();
   const automationWindows: Array<{ availableAt: Date; id: string }> = [];
   let agentTriggerFacts: DatabaseAutomationMutationFactCandidate[] = [];
-  const { commits, navigationEvent, result } = await measureDatabaseOperation(
+  const { commits, result } = await measureDatabaseOperation(
     "commit_duration_ms",
     { operation: "internal", scope: "source" },
     () =>
-      db.transaction(async (tx) => {
+      backgroundTransaction(options.env ?? {}, async (tx) => {
         const mutationResult = await mutate(tx);
         agentTriggerFacts = mutationResult.automationFacts ?? [];
         if (mutationResult.automationFacts?.length) {
@@ -161,7 +161,21 @@ export async function commitDatabaseMutationBatch<T>(
             typeof mutation.changes === "function"
               ? await mutation.changes(mutation.databaseId)
               : mutation.changes;
-          const prepared = boundedChanges(resolvedChanges, mutation.requiresReset);
+          const ids = mutationSourceIds(resolvedChanges, mutation.dataSourceId);
+          const sourceVersions: Record<string, number> = {};
+          for (const id of ids) {
+            const [source] = await tx
+              .select({ version: dataSource.version })
+              .from(dataSource)
+              .where(eq(dataSource.id, id))
+              .limit(1);
+            if (!source) throw new DatabaseMutationError("Data source not found", 404);
+            sourceVersions[id] = source.version;
+          }
+          const prepared = boundedChanges(
+            withSourceClocks(resolvedChanges, mutation.dataSourceId, sourceVersions),
+            mutation.requiresReset,
+          );
           const event: DatabaseMutationEventV2 = {
             actorId: options.actorId,
             areas: mutation.areas,
@@ -205,13 +219,30 @@ export async function commitDatabaseMutationBatch<T>(
           await tx.insert(databaseRealtimeOutbox).values(outboxRows);
         }
 
-        const navigationEvent = options.navigationWorkspaceId
-          ? await enqueueNavigationInvalidation(tx, options.navigationWorkspaceId, {
-              committedAt: new Date(committedAt),
-            })
-          : null;
-
-        return { commits, navigationEvent, result: mutationResult.result };
+        await persistBackgroundTasks(
+          options.env ?? {},
+          [
+            ...commits
+              .map((commit) => commit.eventId)
+              .map((resourceId) =>
+                createBackgroundTask({
+                  env: options.env ?? {},
+                  kind: "realtime.database",
+                  resourceId,
+                }),
+              ),
+            ...automationWindows.map((window) =>
+              createBackgroundTask({
+                env: options.env ?? {},
+                kind: "automation.event_window",
+                resourceId: window.id,
+                availableAt: window.availableAt,
+              }),
+            ),
+          ],
+          tx,
+        );
+        return { commits, result: mutationResult.result };
       }),
   );
 
@@ -219,24 +250,7 @@ export async function commitDatabaseMutationBatch<T>(
     await measureDatabaseOperation(
       "enqueue_duration_ms",
       { operation: "internal", scope: "source" },
-      () =>
-        dispatchBackgroundTasks(options.env!, [
-          ...commits.map((commit) =>
-            createBackgroundTask({
-              env: options.env!,
-              kind: "realtime.database" as const,
-              resourceId: commit.eventId,
-            }),
-          ),
-          ...automationWindows.map((window) =>
-            createBackgroundTask({
-              availableAt: window.availableAt,
-              env: options.env!,
-              kind: "automation.event_window" as const,
-              resourceId: window.id,
-            }),
-          ),
-        ]),
+      () => publishBackgroundDispatches(options.env!),
     );
     if (agentTriggerFacts.length > 0 && commits.length > 0) {
       try {
@@ -257,10 +271,6 @@ export async function commitDatabaseMutationBatch<T>(
     }
   }
 
-  if (navigationEvent) {
-    await publishCommittedNavigationInvalidation(navigationEvent, options.env);
-  }
-
   return { commits, result };
 }
 
@@ -276,7 +286,6 @@ export async function commitDatabaseMutation(
     {
       actorId: options.actorId,
       env: options.env,
-      navigationWorkspaceId: options.navigationWorkspaceId,
     },
     async (tx) => {
       const result = await mutate(tx);

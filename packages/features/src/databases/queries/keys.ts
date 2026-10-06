@@ -1,9 +1,7 @@
+import { databaseBootstrapReferenceSchema } from "../cache-references";
 import type { QueryClient } from "@tanstack/react-query";
 
-import {
-  databaseBootstrapResponseSchema,
-  databaseRecordWindowResponseSchema,
-} from "../core/entities";
+import { databaseWindowReferenceSchema } from "../cache-window";
 
 export const databaseQueryRoot = "db" as const;
 
@@ -45,20 +43,20 @@ export const sessionIdForQueries = (authSessionId: string | null | undefined) =>
   authSessionId ?? "public";
 
 function bootstrapVersionOf(value: unknown): number | null {
-  const parsed = databaseBootstrapResponseSchema.safeParse(value);
-  if (parsed.success) return parsed.data.database.version;
+  const parsed = databaseBootstrapReferenceSchema.safeParse(value);
+  if (parsed.success) return parsed.data.databaseVersion;
   return null;
 }
 
 function windowVersionOf(value: unknown): number | null {
-  const direct = databaseRecordWindowResponseSchema.safeParse(value);
+  const direct = databaseWindowReferenceSchema.safeParse(value);
   if (direct.success) return direct.data.databaseVersion;
   if (!value || typeof value !== "object" || !("pages" in value)) return null;
   const pages = (value as { pages?: unknown }).pages;
   if (!Array.isArray(pages)) return null;
   let max: number | null = null;
   for (const page of pages) {
-    const parsed = databaseRecordWindowResponseSchema.safeParse(page);
+    const parsed = databaseWindowReferenceSchema.safeParse(page);
     if (parsed.success) {
       max = max === null ? parsed.data.databaseVersion : Math.max(max, parsed.data.databaseVersion);
     }
@@ -78,7 +76,7 @@ function versionsInValue(value: unknown): number[] {
       if (Array.isArray(pages)) {
         const versions: number[] = [];
         for (const page of pages) {
-          const parsed = databaseRecordWindowResponseSchema.safeParse(page);
+          const parsed = databaseWindowReferenceSchema.safeParse(page);
           if (parsed.success) versions.push(parsed.data.databaseVersion);
         }
         if (versions.length > 0) return versions;
@@ -120,12 +118,12 @@ export function cachedWindowMaxVersion(
     const pages = (cached as { pages: unknown[] }).pages;
     let max = -1;
     for (const page of pages) {
-      const parsed = databaseRecordWindowResponseSchema.safeParse(page);
+      const parsed = databaseWindowReferenceSchema.safeParse(page);
       if (parsed.success) max = Math.max(max, parsed.data.databaseVersion);
     }
     return max;
   }
-  const direct = databaseRecordWindowResponseSchema.safeParse(cached);
+  const direct = databaseWindowReferenceSchema.safeParse(cached);
   if (direct.success) return direct.data.databaseVersion;
   return -1;
 }

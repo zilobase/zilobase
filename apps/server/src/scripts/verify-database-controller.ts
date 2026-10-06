@@ -6,6 +6,7 @@ import { databaseViewQueryHash } from "@zilobase/features/databases/query-hash";
 import type {
   DatabaseCommand,
   DatabaseCommandRequest,
+  DatabasePropertyEntity,
 } from "@zilobase/features/databases/contracts";
 import { createDbClientForUrl, runWithDb } from "../infrastructure/database";
 import {
@@ -17,6 +18,8 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
   databaseRow,
+  databaseProperty,
+  pageProperty,
   databaseView,
   dataSource,
   member,
@@ -291,6 +294,107 @@ try {
   );
   console.info(
     "Passed archive/restore source revisions, linked-host resets and restored record ordering.",
+  );
+  const sharedDefinition = (
+    await send(
+      {
+        type: "property.create",
+        name: "Shared definition",
+        propertyType: "text",
+        config: { left: 0, right: 0 },
+        afterPropertyId: null,
+        beforePropertyId: null,
+      },
+      { dataSourceId: "source" },
+    )
+  ).result as DatabasePropertyEntity;
+  await first.db.insert(dataSource).values({
+    id: "second-source",
+    workspaceId: "workspace",
+    parentDatabaseId: "linked-host",
+    createdById: "actor",
+    name: "Second source",
+    config: {},
+  });
+  await first.db
+    .insert(databaseDataSource)
+    .values({ databaseId: "linked-host", dataSourceId: "second-source" });
+  await first.db.insert(databaseProperty).values({
+    id: "second-binding",
+    dataSourceId: "second-source",
+    propertyId: sharedDefinition.propertyId,
+    position: 0,
+  });
+  const confirmations = await Promise.all([
+    send(
+      {
+        type: "property.update",
+        propertyId: sharedDefinition.id,
+        patch: { configuration: [{ operation: "set", path: ["left"], value: 1 }] },
+      },
+      { dataSourceId: "source" },
+    ),
+    send(
+      {
+        type: "property.update",
+        propertyId: "second-binding",
+        patch: { configuration: [{ operation: "set", path: ["right"], value: 2 }] },
+      },
+      { databaseId: "linked-host", dataSourceId: "second-source", client: second },
+    ),
+  ]);
+  const [definition] = await first.db
+    .select()
+    .from(pageProperty)
+    .where(eq(pageProperty.id, sharedDefinition.propertyId));
+  assert.deepEqual(definition!.config, { left: 1, right: 2 });
+  const stamps = confirmations
+    .map((ack) => Date.parse((ack.result as DatabasePropertyEntity).property.updatedAt))
+    .sort((a, b) => a - b);
+  assert(
+    stamps[1]! > stamps[0]!,
+    "Shared definition confirmations must advance across different source lanes",
+  );
+  console.info(
+    "Passed different-field definition edits through two bindings, hosts and PostgreSQL clients.",
+  );
+  await first.client
+    .query(`insert into page_property_value (id, page_id, property_id, value, created_at, updated_at)
+    select 'stamp-value', p.id, d.id, 'null'::jsonb, now(), now() from page p cross join page_property d limit 1`);
+  // All five existing entity stamps must order writers after row-lock acquisition,
+  // even when callers supplied timestamps before waiting for another transaction.
+  for (const table of [
+    "page",
+    "page_property",
+    "page_property_value",
+    "database_row",
+    "database_property",
+  ]) {
+    const initial = await first.client.query(`select id, updated_at from "${table}" limit 1`);
+    assert(initial.rows.length, `Fixture must include ${table}`);
+    const { id, updated_at: original } = initial.rows[0];
+    await first.client.query("begin");
+    const committed = await first.client.query(
+      `update "${table}" set updated_at = '1900-01-01' where id = $1 returning updated_at`,
+      [id],
+    );
+    const competing = second.client.query(
+      `update "${table}" set updated_at = '1900-01-01' where id = $1 returning updated_at`,
+      [id],
+    );
+    await first.client.query("commit");
+    const later = await competing;
+    assert(
+      committed.rows[0].updated_at.getTime() > original.getTime(),
+      `${table}: first stamp must advance at millisecond precision`,
+    );
+    assert(
+      later.rows[0].updated_at.getTime() > committed.rows[0].updated_at.getTime(),
+      `${table}: competing stamp must advance after acquiring its row lock`,
+    );
+  }
+  console.info(
+    "Passed millisecond-safe entity confirmation stamps across two independent PostgreSQL clients.",
   );
 } finally {
   await Promise.all([first.client.end(), second.client.end()]);

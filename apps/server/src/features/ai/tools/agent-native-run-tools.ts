@@ -33,10 +33,7 @@ import { commitDataSourceMutation } from "../../databases/core/commit";
 import { validateCellValue } from "../../databases/schema/config";
 import { getDatabaseRecordEntity } from "../../databases/commands/record-entity";
 import { upsertPageItemPlacement } from "../../pages/placements";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../../workspaces/navigation-realtime/outbox";
+
 import { markdownToPageContent } from "../conversion/markdown-to-page-content";
 import {
   hashPageContentMarkdown,
@@ -515,7 +512,7 @@ export function buildAgentNativeRunTools(context: AgentNativeToolContext): ToolS
         const pageId = crypto.randomUUID();
         const content = markdownToPageContent(input.markdown);
         try {
-          const navigationEvent = await db.transaction(async (tx) => {
+          await db.transaction(async (tx) => {
             await tx.insert(page).values({
               content,
               createdById: null,
@@ -540,9 +537,7 @@ export function buildAgentNativeRunTools(context: AgentNativeToolContext): ToolS
               placementKind: "primary",
               workspaceId: context.workspaceId,
             });
-            return enqueueNavigationInvalidation(tx, context.workspaceId);
           });
-          await publishCommittedNavigationInvalidation(navigationEvent, context.env);
         } catch (error) {
           throw new AgentNativeWriteOutcomeUnknownError(
             error instanceof Error

@@ -7,7 +7,12 @@ import type {
 
 const background = vi.hoisted(() => ({ dispatch: vi.fn() }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
-  dispatchBackgroundTasks: background.dispatch,
+  backgroundTransaction: async (_env: unknown, work: (tx: unknown) => unknown) => {
+    const { db } = await import("../../../infrastructure/database");
+    return db.transaction(work as never);
+  },
+  persistBackgroundTasks: background.dispatch,
+  publishBackgroundDispatches: async () => ({ published: 0, claimed: 0 }),
 }));
 
 import {

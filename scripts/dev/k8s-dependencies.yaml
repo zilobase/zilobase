@@ -159,3 +159,49 @@ metadata: { name: valkey, namespace: __NAMESPACE__ }
 spec:
   selector: { app: valkey }
   ports: [{ name: redis, port: 6379, targetPort: redis }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: queue-valkey, namespace: __NAMESPACE__ }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: queue-valkey } }
+  template:
+    metadata: { labels: { app: queue-valkey } }
+    spec:
+      containers:
+        - name: queue-valkey
+          image: valkey/valkey:8-alpine
+          args:
+            [
+              "valkey-server",
+              "--appendonly",
+              "yes",
+              "--appendfsync",
+              "everysec",
+              "--maxmemory-policy",
+              "noeviction",
+            ]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          ports: [{ name: redis, containerPort: 6379 }]
+          readinessProbe:
+            exec: { command: ["valkey-cli", "ping"] }
+            periodSeconds: 3
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: queue-valkey-data }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: queue-valkey, namespace: __NAMESPACE__ }
+spec:
+  selector: { app: queue-valkey }
+  ports: [{ name: redis, port: 6379, targetPort: redis }]
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: queue-valkey-data, namespace: __NAMESPACE__ }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }

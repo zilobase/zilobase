@@ -16,6 +16,7 @@ export type PageDatabaseView = {
 
 export type PageDatabase = {
   id: string;
+  dataSources?: import("../databases/core/entities").DataSourceEntity[];
   /** Atomic navigation GET state; workspace deltas are invalidation hints only. */
   metadataState?: { version: number; primarySource: { id: string; version: number } | null };
   /** Authenticated navigation reads only; never part of a public navigation delta. */
@@ -123,6 +124,8 @@ export type PagePropertyValue = {
 };
 
 export type PagePropertiesPayload = {
+  viewerType?: "member" | "guest";
+  workspaceId: string;
   databaseIds?: string[];
   databaseVersions?: Record<string, number>;
   presenceTargets?: PagePropertyPresenceTarget[];

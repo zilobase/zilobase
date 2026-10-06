@@ -10,7 +10,7 @@ validated main-process IPC channels.
 
 ### Database view
 
-A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout and pointer geometry. One session-level database controller owns pending commands across records, schema, configuration, lifecycle and access. Reliable record and metadata intentions are projected over server snapshots before filtering, sorting, grouping and hierarchy; server-derived and access changes remain pending until confirmed.
+A Database view is a presentation of a Database (table, Kanban, list, gallery, timeline, chart or form). It owns layout and pointer geometry. One session-level database controller owns pending commands across records, schema, configuration, lifecycle and access. Canonical entities and supported optimistic transactions live in the session-owned TanStack DB cache. Query retains authorized result references, server ordering and counts. Temporary record placement intentions remain in command scheduling; server-derived and access changes require confirmed authorization.
 
 ### Database
 
@@ -22,11 +22,15 @@ The page-backed Database that owns views and may display one or more linked data
 
 ### Database record
 
-The client-side rendering aggregate for one database row. It embeds the row page metadata and values keyed by property ID while PostgreSQL remains normalized.
+The rendering aggregate for one database row. HTTP responses carry page metadata and values; normalization retains canonical row/page/value identities and Query-owned ordered IDs. Mounted aggregates resolve current shared fields at one coherent publication revision while PostgreSQL remains normalized.
+
+### Shared client cache
+
+The deployment, account/session, workspace and capability owner of canonical TanStack DB collections. Authorized reads and database confirmations validate and ingest partial entity facets; Query owns result membership, counts, ordering and HTTP orchestration. Library transactions own previews. Yjs bodies and historical action receipts retain separate ownership.
 
 ### Database mutation journal
 
-The authoritative, version-ordered history of committed database mutation events used for command replay and realtime delivery. Reconnect catch-up through the journal feed is server-only for now; the client converges through poke plus refetch instead. It is separate from the realtime outbox, which tracks delivery work.
+The authoritative, version-ordered history of committed database mutation events used for command replay and realtime delivery. Reconnect catch-up through the journal feed is server-only for now; the client ingests authorized acknowledgement/socket facets and recovers gaps through existing reads. It is separate from the realtime outbox, which tracks delivery work.
 
 ### Database command acknowledgement
 
@@ -37,9 +41,7 @@ confirmation is a synchronization failure, not a rejected database write.
 ### Database projection watermark
 
 The committed version below which a client query must not accept a
-replacement payload. Client-side collection watermarks are deleted; the
-remaining guards are prefer-newest checks on QueryClient bootstrap and window
-data plus poke comparison against the minimum cached version. Different loaded
+replacement payload. The shared cache protects per-field storage/source/host clocks and tracks contiguous delivery; Query bootstrap/window references retain their read revisions. Different loaded
 views can have different versions; one newer view does not prove that the
 other views are fresh.
 
@@ -58,7 +60,7 @@ A Page is the page item represented by a Database row and opened from the editor
 
 ### Page document cache
 
-The deployment- and account-scoped browser store of Yjs page updates, last authorized page detail and bounded read-only page data snapshots. A cached document renders immediately during collaboration startup and retains page-body edits made during a bounded online connection window; a disconnected page is read only.
+The deployment- and account-scoped browser store of Yjs page updates and unrelated bounded read snapshots. Page metadata, properties and database entities are session-owned TanStack DB collections and require authorized reads after reload. A cached document renders immediately during collaboration startup and retains page-body edits made during a bounded online connection window; a disconnected page is read only.
 
 ### Clip
 

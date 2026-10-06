@@ -29,10 +29,7 @@ import {
 } from "./placements/page-item-placements";
 import { loadWorkspacePageGraph } from "./graph/loader";
 import { encodePageContentAsYjs } from "../collaboration/service";
-import {
-  enqueueNavigationInvalidation,
-  publishCommittedNavigationInvalidation,
-} from "../workspaces/navigation-realtime/outbox";
+
 import { TeamspaceManagementService } from "../teamspaces/management";
 import { enforceActiveWorkspace, getPage } from "./page-route-support";
 
@@ -159,7 +156,7 @@ pageHierarchyRoutes.post("/", async (c) => {
         position: 0,
       }
     : null;
-  const { record, navigationEvent } = await db.transaction(async (tx) => {
+  const { record } = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(page)
       .values({
@@ -207,11 +204,8 @@ pageHierarchyRoutes.post("/", async (c) => {
         });
     }
 
-    const navigationEvent = await enqueueNavigationInvalidation(tx, workspaceId);
-    return { record: created, navigationEvent };
+    return { record: created };
   });
-
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   const pagePayload = { ...record, isFavorite: shouldInheritFavorite };
 
@@ -259,7 +253,7 @@ pageHierarchyRoutes.post("/:id/move-teamspace", async (c) => {
   const graph = await loadWorkspacePageGraph(record.workspaceId);
   const pageIds = graph.getPrimaryNestedPageIds(record.id);
   const now = new Date();
-  const navigationEvent = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await tx
       .update(page)
       .set({ teamspaceId: destinationId, updatedAt: now })
@@ -280,9 +274,7 @@ pageHierarchyRoutes.post("/:id/move-teamspace", async (c) => {
           isNull(pageItemPlacement.deletedAt),
         ),
       );
-    return enqueueNavigationInvalidation(tx, record.workspaceId, { committedAt: now });
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ movedPageIds: pageIds, teamspaceId: destinationId });
 });
@@ -323,7 +315,7 @@ pageHierarchyRoutes.post("/:id/convert-to-teamspace", async (c) => {
     });
     const graph = await loadWorkspacePageGraph(record.workspaceId);
     const pageIds = graph.getPrimaryNestedPageIds(record.id);
-    const navigationEvent = await db.transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       await tx
         .update(page)
         .set({ teamspaceId: created.id, updatedAt: new Date() })
@@ -344,9 +336,8 @@ pageHierarchyRoutes.post("/:id/convert-to-teamspace", async (c) => {
             isNull(pageItemPlacement.deletedAt),
           ),
         );
-      return enqueueNavigationInvalidation(tx, record.workspaceId);
     });
-    await publishCommittedNavigationInvalidation(navigationEvent, c.env);
+
     return c.json({ movedPageIds: pageIds, teamspace: created }, 201);
   } catch (error) {
     if (error instanceof Error && "status" in error) {
@@ -458,7 +449,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
           : "addLink";
 
     if (primaryPlacement[0]?.parentId !== host.id) {
-      const navigationEvent = await db.transaction(async (tx) => {
+      await db.transaction(async (tx) => {
         await upsertPageItemPlacement(tx, {
           workspaceId: host.workspaceId,
           parentKind: "page",
@@ -467,9 +458,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
           itemId: child.id,
           placementKind: action === "setParent" ? "primary" : "linked",
         });
-        return enqueueNavigationInvalidation(tx, host.workspaceId);
       });
-      await publishCommittedNavigationInvalidation(navigationEvent, c.env);
     }
 
     return c.json({
@@ -509,7 +498,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
     return c.json({ action: "setParent", host });
   }
 
-  const navigationEvent = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await upsertPageItemPlacement(tx, {
       workspaceId: host.workspaceId,
       parentKind: "page",
@@ -518,9 +507,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
       itemId: databaseRecord.id,
       placementKind: "linked",
     });
-    return enqueueNavigationInvalidation(tx, host.workspaceId);
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ action: "addLink", host });
 });
@@ -588,16 +575,14 @@ pageHierarchyRoutes.delete("/:id/embed-item", async (c) => {
     )
     .limit(1);
 
-  const navigationEvent = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await softDeletePageItemPlacement(tx, {
       workspaceId: host.workspaceId,
       parentKind: "page",
       parentId: host.id,
       item: ref,
     });
-    return enqueueNavigationInvalidation(tx, host.workspaceId);
   });
-  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({
     action: placement?.placementKind === "primary" ? "clearParent" : "removeLink",
