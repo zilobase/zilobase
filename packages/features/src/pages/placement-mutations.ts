@@ -54,6 +54,7 @@ type EmbedPageItemInput = {
   hostPageId: string;
   itemId: string;
   kind: NavItemKind;
+  placementId?: string;
 };
 
 export function useEmbedPageItem() {
@@ -61,10 +62,13 @@ export function useEmbedPageItem() {
 
   return useMutation({
     mutationFn: async ({ hostPageId, itemId, kind }: EmbedPageItemInput) =>
-      apiFetch<{ action: string; host: Page }>(`/pages/${hostPageId}/embed-item`, {
-        method: "POST",
-        body: JSON.stringify({ itemId, kind }),
-      }),
+      apiFetch<{ action: string; host: Page; placementId: string | null }>(
+        `/pages/${hostPageId}/embed-item`,
+        {
+          method: "POST",
+          body: JSON.stringify({ itemId, kind }),
+        },
+      ),
     onSuccess: (result) => {
       // The embed is saved. Refresh navigation without delaying editor updates.
       void queryClient
@@ -82,10 +86,10 @@ export function useRemovePageEmbed() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({ hostPageId, itemId, kind }: EmbedPageItemInput) =>
+    mutationFn: async ({ hostPageId, itemId, kind, placementId }: EmbedPageItemInput) =>
       apiFetch<{ action: string }>(`/pages/${hostPageId}/embed-item`, {
         method: "DELETE",
-        body: JSON.stringify({ itemId, kind }),
+        body: JSON.stringify({ itemId, kind, placementId }),
       }),
     onSuccess: async (_result, variables) => {
       const host = readCachedPage(queryClient, variables.hostPageId);

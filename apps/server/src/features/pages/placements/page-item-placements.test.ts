@@ -1,3 +1,4 @@
+import { PgDialect } from "drizzle-orm/pg-core";
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import {
@@ -229,8 +230,9 @@ test("upsertPageItemPlacement writes stable defaults and conflict handling", asy
         values(input: Record<string, unknown>) {
           values = input;
           return {
-            async onConflictDoNothing() {
+            onConflictDoNothing() {
               conflictHandled = true;
+              return { returning: async () => [{ id: input.id }] };
             },
           };
         },
@@ -239,7 +241,7 @@ test("upsertPageItemPlacement writes stable defaults and conflict handling", asy
     update() {},
   };
 
-  await upsertPageItemPlacement(tx as never, {
+  const createdId = await upsertPageItemPlacement(tx as never, {
     itemId: "item",
     itemKind: "page",
     parentId: "parent",
@@ -249,6 +251,7 @@ test("upsertPageItemPlacement writes stable defaults and conflict handling", asy
   });
 
   assert.equal(values?.id, "00000000-0000-4000-8000-000000000001");
+  assert.equal(createdId, values?.id);
   assert.equal(values?.position, 0);
   assert.equal(values?.sourceRowId, null);
   assert.equal(values?.createdAt, values?.updatedAt);
@@ -263,7 +266,7 @@ test("upsertPageItemPlacement preserves supplied optional values", async () => {
       return {
         values(input: Record<string, unknown>) {
           values = input;
-          return { async onConflictDoNothing() {} };
+          return { onConflictDoNothing: () => ({ returning: async () => [{ id: input.id }] }) };
         },
       };
     },
@@ -316,4 +319,45 @@ test("softDeletePageItemPlacement uses one timestamp for the targeted placement"
   assert.equal(updateValues?.deletedAt, updateValues?.updatedAt);
   assert.ok(updateValues?.deletedAt instanceof Date);
   assert.equal(whereCalled, true);
+});
+
+test("conflicting embedding returns no relationship receipt", async () => {
+  const tx = {
+    insert: () => ({
+      values: () => ({ onConflictDoNothing: () => ({ returning: async () => [] }) }),
+    }),
+  };
+  const result = await upsertPageItemPlacement(tx as never, {
+    itemId: "item",
+    itemKind: "page",
+    parentId: "host",
+    parentKind: "page",
+    placementKind: "linked",
+    workspaceId: "workspace",
+  });
+  assert.equal(result, null);
+});
+
+test("operation compensation limits deletion to its own placement ID", async () => {
+  let query: { sql: string; params: unknown[] } | undefined;
+  const tx = {
+    update: () => ({
+      set: () => ({
+        where: async (predicate: never) => {
+          query = new PgDialect().sqlToQuery(predicate);
+        },
+      }),
+    }),
+  };
+  await softDeletePageItemPlacement(tx as never, {
+    item: { id: "item", kind: "database" },
+    parentId: "host",
+    parentKind: "page",
+    workspaceId: "workspace",
+    placementId: "operation-placement",
+  });
+  assert.ok(query?.sql.includes('"page_item_placement"."id"'));
+  assert.ok(query?.params.includes("operation-placement"));
+  assert.ok(query?.params.includes("host"));
+  assert.ok(query?.params.includes("workspace"));
 });

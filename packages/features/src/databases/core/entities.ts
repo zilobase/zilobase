@@ -170,6 +170,8 @@ const databaseUpdateCommandSchema = z
       .object({
         configuration: configurationChangesSchema.optional(),
         name: z.string().optional(),
+        pageId: nullableEntityIdSchema.optional(),
+        expectedPageId: nullableEntityIdSchema.optional(),
       })
       .strict()
       .refine((patch) => Object.keys(patch).length > 0, "Patch is empty"),
