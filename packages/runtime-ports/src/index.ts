@@ -76,7 +76,6 @@ export interface Scheduler {
 
 export interface Jobs {
   dispatch(tasks: readonly BackgroundTask[]): Promise<void>;
-  drain(lane: BackgroundLane): Promise<void>;
 }
 
 export interface DbScope<Database = unknown> {
@@ -252,8 +251,9 @@ export interface Telemetry {
 }
 
 export type BackgroundReadiness = {
-  coordinatorReady: boolean | null;
-  listenerReady: boolean | null;
+  producerReady: boolean | null;
+  consumerReady: boolean | null;
+  maintenanceFresh: boolean | null;
 };
 
 export interface Readiness {

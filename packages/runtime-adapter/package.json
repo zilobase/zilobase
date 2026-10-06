@@ -126,7 +126,8 @@
     "@aws-sdk/s3-request-presigner": "*",
     "@zilobase/features": "*",
     "@zilobase/server": "*",
-    "react": "^19.1.0"
+    "react": "^19.1.0",
+    "bullmq": "6.3.11"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-s3": {
@@ -164,14 +165,17 @@
     },
     "ws": {
       "optional": true
+    },
+    "bullmq": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1070.0",
     "@aws-sdk/s3-request-presigner": "^3.1070.0",
     "@cloudflare/ai-chat": "^0.11.0",
-    "@cloudflare/workers-types": "^4.20250929.0",
     "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^4.20250929.0",
     "@hocuspocus/extension-redis": "^4.6.0",
     "@hocuspocus/server": "^4.3.0",
     "@types/node": "^25.9.1",
@@ -179,6 +183,7 @@
     "@zilobase/features": "file:../features",
     "@zilobase/server": "file:../../apps/server",
     "agents": "^0.22.0",
+    "bullmq": "6.3.11",
     "crossws": "^0.4.9",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.11.1",

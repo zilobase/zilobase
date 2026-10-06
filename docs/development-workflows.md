@@ -39,7 +39,8 @@ The Node profile uses these defaults:
 | PostgreSQL      | `127.0.0.1:15432`         |
 | Object storage  | `http://127.0.0.1:19100`  |
 | Mailpit         | `http://127.0.0.1:18025`  |
-| Valkey          | `redis://127.0.0.1:16379` |
+| Realtime Valkey | `redis://127.0.0.1:16379` |
+| Queue Valkey    | `redis://127.0.0.1:16380` |
 | Development hub | `http://127.0.0.1:1418`   |
 
 The supervisor prefixes child-process output and shuts down the remaining
@@ -128,3 +129,5 @@ The main entry points are:
 Generic extension contracts must remain implementation-neutral. Tests for
 those contracts should use synthetic fixtures and must not name or configure
 non-public products, infrastructure, packages, or repositories.
+
+Background queues use a separate `queue-valkey` service and persistent volume with AOF and `noeviction`. Set `QUEUE_REDIS_URL` in every Node role. Existing generated environment files are preserved: add this setting when upgrading an existing checkout. `npm run test:background:isolated` creates disposable PostgreSQL and queue brokers and leaves development data untouched.

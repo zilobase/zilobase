@@ -79,7 +79,7 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
     Number(lease?.stale_count ?? 0) === 0 &&
     maintenance.every((task) => task.consecutiveFailures < 2) &&
     heartbeatFresh &&
-    readiness.coordinatorReady !== false;
+    readiness.producerReady !== false;
   return {
     capturedAt: now.toISOString(),
     cellId: getBackgroundCellId(env),

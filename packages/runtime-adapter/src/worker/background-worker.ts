@@ -70,7 +70,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
       meetings: createWorkerMeetings(env),
       outbound: createWorkerOutboundFetch(),
       readiness: {
-        background: () => ({ coordinatorReady: null, listenerReady: null }),
+        background: () => ({ producerReady: null, consumerReady: null, maintenanceFresh: null }),
         realtime: () => true,
       },
       telemetry: telemetryFor(env),

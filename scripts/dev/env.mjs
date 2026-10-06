@@ -44,6 +44,7 @@ export async function ensureDevelopmentEnvironment(options = {}) {
     MAILPIT_SMTP_PORT: "11025",
     MAILPIT_UI_PORT: "18025",
     VALKEY_HOST_PORT: "16379",
+    QUEUE_VALKEY_HOST_PORT: "16380",
   }));
 
   const nodeEnvironment = await ensureGeneratedFile(generatedEnvironmentFiles.node, () =>
@@ -113,6 +114,7 @@ export async function checkEnvironment() {
       "CLIENT_URL",
       "COLLABORATION_SECRET",
       "REALTIME_REDIS_URL",
+      "QUEUE_REDIS_URL",
     ];
     const missing = required.filter((key) => !env[key]?.trim());
     results.push({ name, missing });
@@ -137,6 +139,7 @@ export function profileEnvironment(profile, dependencies) {
   const common = {
     DATABASE_URL: databaseUrl,
     REALTIME_REDIS_URL: `redis://127.0.0.1:${dependencies.VALKEY_HOST_PORT}`,
+    QUEUE_REDIS_URL: `redis://127.0.0.1:${dependencies.QUEUE_VALKEY_HOST_PORT ?? "16380"}`,
     BETTER_AUTH_SECRET: secret(48),
     ZILOBASE_BOOTSTRAP_TOKEN: secret(48),
     COLLABORATION_SECRET: secret(48),

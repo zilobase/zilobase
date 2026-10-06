@@ -74,7 +74,7 @@ export const evaluateReadiness = Effect.fn("evaluateReadiness")(function* (env: 
     objectStorage,
     realtime: readiness.realtime() ? "ok" : "unavailable",
   };
-  if (readiness.background().coordinatorReady === false) {
+  if (readiness.background().producerReady === false) {
     checks.background = "unavailable";
   }
 

@@ -9,7 +9,7 @@ import {
 } from "../../infrastructure/background/task-v2";
 
 export interface BackgroundDeliveryStore {
-  load(task: BackgroundTaskV2): Promise<"ready" | "done">;
+  load(task: BackgroundTaskV2): Promise<"ready" | "done" | { availableAt: string }>;
   complete(task: BackgroundTaskV2, result: BackgroundTaskResult): Promise<void>;
   reschedule(task: BackgroundTaskV2, availableAt: string): Promise<void>;
   release?(task: BackgroundTaskV2): Promise<void>;
@@ -26,7 +26,10 @@ export async function runBackgroundDelivery(input: {
   const task = decodeBackgroundTaskV2(input.body, input.cellId);
   if (backgroundTaskLane(task.kind) !== input.lane)
     throw new Error("BACKGROUND_TASK_LANE_MISMATCH");
-  if ((await input.store.load(task)) === "done") return { outcome: "ack" };
+  const admission = await input.store.load(task);
+  if (admission === "done") return { outcome: "ack" };
+  if (typeof admission === "object")
+    return { outcome: "defer", availableAt: admission.availableAt };
   if (Date.parse(task.availableAt) > (input.now ?? Date.now())) {
     await input.store.release?.(task);
     return { outcome: "defer", availableAt: task.availableAt };

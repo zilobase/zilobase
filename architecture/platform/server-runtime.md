@@ -45,7 +45,7 @@ sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
 
 `createNodeRuntime` takes `loadApp` plus hook overrides (edition extension,
 production-config assert, a non-nullable realtime bus, collaboration extensions,
-pinned webhook/MCP transports, background coordinator) with community defaults;
+pinned webhook/MCP transports, queue lifecycle) with community defaults;
 `apps/server` passes Zilobase wiring through hooks in
 [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). The default bus
 factory validates `REALTIME_REDIS_URL` for every Node role before startup and
@@ -166,3 +166,5 @@ imports feature implementations or feature-owned wire declarations.
 The [app binding declaration](../../apps/server/src/shared/types.ts) intentionally infers session types from the authentication feature and exposes the canonical Drizzle database type for edition hooks. These are type-only contracts, with a focused `server-bindings` dependency exception; concrete runtime modules do not import authentication implementation code.
 
 Effect adoption is incremental. See [the Effect runtime decision](../decisions/0003-effect-runtime.md) and [the unified adapter decision](../decisions/0007-unified-runtime-adapter.md).
+
+Node background transport uses pinned BullMQ through the public ioredis adapter. Every process role requires a dedicated `QUEUE_REDIS_URL`; realtime Redis remains a separate service. Composition roots inject the shared task runner and maintenance into the broker adapter. The jobs port publishes only; consumers perform execution. See [background ownership](background-work.md) and [ADR 0015](../decisions/0015-background-queue-adapters.md).

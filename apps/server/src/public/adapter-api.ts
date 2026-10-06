@@ -234,3 +234,8 @@ export { advancePendingCalendars } from "../features/calendar/sync/sync";
 
 export { maintainCalendarWatches } from "../features/calendar/realtime/watches";
 export { drainCalendarOutbox } from "../features/calendar/realtime/outbox";
+
+export {
+  deliverBackgroundTask,
+  recordBackgroundExhaustion,
+} from "../app/background/runtime-delivery";

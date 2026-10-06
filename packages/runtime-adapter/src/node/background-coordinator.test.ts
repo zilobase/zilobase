@@ -1,22 +1,37 @@
-import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { getQueueRedisUrl, NODE_BACKGROUND_QUEUE_NAMES } from "./background-coordinator";
+import { createNodeJobs } from "./jobs";
 
-describe("Node background coordinator architecture", () => {
-  it("uses LISTEN/NOTIFY, exact lane timers, and a jittered recovery sweep", async () => {
-    const source = await readFile(new URL("./background-coordinator.ts", import.meta.url), "utf8");
-    expect(source).toContain("zilobase_background_v1");
-    expect(source).toContain("listen ${CHANNEL}");
-    expect(source).toContain("timerDueAt");
-    expect(source).toContain("30_000 + jitter");
-    expect(source).not.toContain("setInterval");
+describe("dedicated Node queues", () => {
+  it("requires dedicated queue Redis even when realtime Redis is configured", () => {
+    expect(() => getQueueRedisUrl({ REALTIME_REDIS_URL: "redis://localhost:6379" })).toThrow(
+      "QUEUE_REDIS_URL",
+    );
+    expect(() => getQueueRedisUrl({ QUEUE_REDIS_URL: "https://localhost" })).toThrow();
+    expect(() =>
+      getQueueRedisUrl({
+        QUEUE_REDIS_URL: "redis://localhost:6379/1",
+        REALTIME_REDIS_URL: "redis://localhost:6379/0",
+      }),
+    ).toThrow();
+    expect(
+      getQueueRedisUrl({
+        QUEUE_REDIS_URL: "redis://localhost:6380",
+        REALTIME_REDIS_URL: "redis://localhost:6379",
+      }),
+    ).toBe("redis://localhost:6380");
   });
-
-  it("supports all, api, and worker roles with all as default", async () => {
-    const source = await readFile(new URL("./node-runtime.ts", import.meta.url), "utf8");
-    expect(source).toContain('type ProcessRole = "all" | "api" | "worker"');
-    expect(source).toContain('if (!value || value === "all") return "all"');
-    expect(source).toContain("await realtimeBus.connect()");
-    expect(source).not.toContain("assertNodeRealtimeTopology");
-    expect(source).toContain("BACKGROUND_HEALTH_PORT");
+  it("defines four independent lane queues", () => {
+    expect(NODE_BACKGROUND_QUEUE_NAMES).toEqual({
+      fast: "background-fast",
+      automation: "automation-runs",
+      ai: "ai-jobs",
+      calendar: "calendar-jobs",
+    });
+  });
+  it("rejects dispatch after the queue runtime is detached", async () => {
+    await expect(createNodeJobs(() => null).dispatch([])).rejects.toThrow(
+      "BACKGROUND_QUEUE_NOT_STARTED",
+    );
   });
 });

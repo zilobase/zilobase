@@ -31,7 +31,6 @@ const ports = {
       if (brokerDown) throw new Error("broker unavailable");
       sent.push(...tasks.map((task) => task.taskId));
     },
-    async drain() {},
   },
 };
 try {
@@ -125,3 +124,5 @@ try {
   await first.client.end();
   await second.client.end();
 }
+
+await import("./verify-node-queues");

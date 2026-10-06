@@ -45,7 +45,7 @@ export function createWorkerRuntimePorts<Env extends WorkerEnvBindings>(
     meetings: createWorkerMeetings(env),
     outbound: createWorkerOutboundFetch(),
     readiness: {
-      background: () => ({ coordinatorReady: null, listenerReady: null }),
+      background: () => ({ producerReady: null, consumerReady: null, maintenanceFresh: null }),
       realtime: () => true,
     },
     scheduler: createWorkerScheduler(options.execution, options.storage),

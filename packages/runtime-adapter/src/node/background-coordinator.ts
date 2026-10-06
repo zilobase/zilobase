@@ -1,56 +1,98 @@
-import { advancePendingCalendars } from "@zilobase/server/node-adapter-api";
-import { eq, inArray, isNotNull, min, or, sql } from "drizzle-orm";
-import type { Ports } from "@zilobase/runtime-ports";
+import { Queue, Worker, DelayedError, createIORedisClient } from "bullmq";
+import Redis from "ioredis";
+import type {
+  BackgroundLane,
+  BackgroundTask,
+  Jobs,
+  BackgroundReadiness,
+} from "@zilobase/runtime-ports";
 
-import { AI_JOB_HANDLERS } from "@zilobase/server/node-adapter-api";
-import { runAiJobBatch } from "@zilobase/server/node-adapter-api";
-import { drainAgentRuns } from "@zilobase/server/node-adapter-api";
-import { drainDatabaseAutomationEventWindows } from "@zilobase/server/node-adapter-api";
-import { drainDatabaseAutomationRuns } from "@zilobase/server/node-adapter-api";
-import { drainDatabaseRealtimeOutbox } from "@zilobase/server/node-adapter-api";
-import { drainInProductNotificationOutbox } from "@zilobase/server/node-adapter-api";
-import { type RuntimeEnv } from "@zilobase/server/node-adapter-api";
-import {
-  db,
-  createDbClientForUrl,
-  runWithDbEnv,
-  runWithIndependentDbEnv,
-} from "@zilobase/server/node-adapter-api";
-import {
-  aiJob,
-  aiAgentRun,
-  databaseAutomationEventWindow,
-  databaseAutomationRun,
-  calendarProviderCalendar,
-  databaseRealtimeOutbox,
-  inProductNotificationOutbox,
-} from "@zilobase/server/node-adapter-api";
-import { runWithRuntimePorts } from "../capabilities";
-import { runDueBackgroundMaintenance } from "@zilobase/server/node-adapter-api";
-import {
-  backgroundTaskLane,
-  type BackgroundLane,
-  type BackgroundTaskV2,
-} from "@zilobase/server/node-adapter-api";
-import { boundedErrorCode } from "@zilobase/server/node-adapter-api";
-
-const CHANNEL = "zilobase_background_v1";
-const LANES: BackgroundLane[] = ["fast", "automation", "ai", "calendar"];
-
+export const NODE_BACKGROUND_QUEUE_NAMES: Record<BackgroundLane, string> = {
+  fast: "background-fast",
+  automation: "automation-runs",
+  ai: "ai-jobs",
+  calendar: "calendar-jobs",
+};
+const LANES = Object.keys(NODE_BACKGROUND_QUEUE_NAMES) as BackgroundLane[];
 export type NodeBackgroundCoordinator = ReturnType<typeof createNodeBackgroundCoordinator>;
+export type NodeQueueCallbacks = {
+  lane(task: BackgroundTask): BackgroundLane;
+  validate(body: unknown): BackgroundTask;
+  policy: Record<BackgroundLane, { concurrency: number; redeliveries: number }>;
+  deliver(
+    body: unknown,
+    lane: BackgroundLane,
+    workerId: string,
+  ): Promise<{ outcome: "ack" } | { outcome: "defer"; availableAt: string }>;
+  exhausted(body: unknown, lane: BackgroundLane): Promise<void>;
+  maintain(): Promise<unknown>;
+};
 
-export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<Ports>) {
-  const workerId = `node-background:${process.pid}:${crypto.randomUUID()}`;
-  const timers = new Map<BackgroundLane, ReturnType<typeof setTimeout>>();
-  const timerDueAt = new Map<BackgroundLane, number>();
+export function getQueueRedisUrl(env: Record<string, unknown>) {
+  const value = env.QUEUE_REDIS_URL;
+  try {
+    if (typeof value !== "string" || !["redis:", "rediss:"].includes(new URL(value).protocol))
+      throw new Error();
+    if (
+      typeof env.REALTIME_REDIS_URL === "string" &&
+      new URL(value).hostname === new URL(env.REALTIME_REDIS_URL).hostname &&
+      (new URL(value).port || "6379") === (new URL(env.REALTIME_REDIS_URL).port || "6379")
+    )
+      throw new Error();
+    return value;
+  } catch {
+    throw new Error(
+      "QUEUE_REDIS_URL is required for every Node role and must identify dedicated queue Redis using redis:// or rediss://",
+    );
+  }
+}
+
+export function createNodeBackgroundCoordinator(
+  env: Record<string, unknown>,
+  callbacks: NodeQueueCallbacks,
+) {
+  const url = getQueueRedisUrl(env);
+  const cell =
+    typeof env.ZILOBASE_CELL_ID === "string" && env.ZILOBASE_CELL_ID.trim()
+      ? env.ZILOBASE_CELL_ID.trim()
+      : "default";
+  const prefix = `zilobase:${encodeURIComponent(cell)}`;
+  const role = env.ZILOBASE_PROCESS_ROLE ?? "all";
+  const producer = new Redis(url, {
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
+    connectTimeout: 2000,
+    commandTimeout: 2000,
+  });
+  const connection = createIORedisClient(producer);
+  const queues = new Map(
+    LANES.map((lane) => [
+      lane,
+      new Queue(NODE_BACKGROUND_QUEUE_NAMES[lane], { connection, prefix }),
+    ]),
+  );
+  const consumers: Worker[] = [];
+  const consumerClients: Redis[] = [];
   const inFlight = new Set<Promise<unknown>>();
-  let listener: ReturnType<typeof createDbClientForUrl>["client"] | null = null;
-  let listenerReady = false;
   let running = false;
-  let stopping = false;
-  let reconnectAttempt = 0;
-  let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
-
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let lastMaintenanceAt: number | null = null;
+  let maintenanceBusy = false;
+  const log = (error: unknown) =>
+    console.warn(
+      JSON.stringify({
+        event: "background.queue_failure",
+        cell,
+        error: error instanceof Error ? error.name : "UNKNOWN",
+        detail:
+          error instanceof Error
+            ? error.message.replace(/rediss?:\/\/\S+/g, "[redacted]").slice(0, 200)
+            : "",
+      }),
+    );
+  producer.on("error", log);
+  for (const queue of queues.values()) queue.on("error", log);
   const track = <T>(promise: Promise<T>) => {
     inFlight.add(promise);
     void promise.then(
@@ -59,339 +101,127 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
     );
     return promise;
   };
-
-  const scheduleLane = (lane: BackgroundLane, availableAt = new Date()) => {
-    if (stopping) return;
-    const current = timers.get(lane);
-    const requestedAt = availableAt.getTime();
-    if (current && (timerDueAt.get(lane) ?? Number.POSITIVE_INFINITY) <= requestedAt) return;
-    if (current) clearTimeout(current);
-    const delay = Math.max(0, Math.min(2_147_000_000, requestedAt - Date.now()));
-    const timer = setTimeout(() => {
-      timers.delete(lane);
-      timerDueAt.delete(lane);
-      track(drainLane(lane));
-    }, delay);
-    timer.unref();
-    timers.set(lane, timer);
-    timerDueAt.set(lane, requestedAt);
-  };
-
-  const drainLane = async (lane: BackgroundLane) => {
-    if (stopping) return;
-    return runWithRuntimePorts(ports, async () => {
-      try {
-        await runWithIndependentDbEnv(env, async () => {
-          const concurrency = laneConcurrency(env, lane);
-          if (lane === "fast") {
-            await settleLaneOperations(lane, [
-              {
-                name: "database_automation_events",
-                run: () =>
-                  drainDatabaseAutomationEventWindows(env, {
-                    limit: concurrency * 4,
-                    workerId: `${workerId}:events`,
-                  }),
-              },
-              {
-                name: "database_realtime",
-                run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }),
-              },
-              {
-                name: "in_product_notifications",
-                run: () => drainInProductNotificationOutbox(env, { limit: concurrency * 8 }),
-              },
-            ]);
-          } else if (lane === "automation") {
-            await settleLaneOperations(lane, [
-              {
-                name: "database_automations",
-                run: () =>
-                  drainDatabaseAutomationRuns(env, {
-                    limit: concurrency,
-                    workerId: `${workerId}:automation`,
-                  }),
-              },
-              {
-                name: "agent_runs",
-                run: () =>
-                  drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }),
-              },
-            ]);
-          } else if (lane === "ai") {
-            await runAiJobBatch({
-              env,
-              handlers: AI_JOB_HANDLERS,
-              limit: concurrency,
-              workerId: `${workerId}:ai`,
-            });
-          } else if (lane === "calendar") {
-            await settleLaneOperations(lane, [
-              { name: "calendar_sync", run: () => advancePendingCalendars(env) },
-            ]);
-          }
-          const next = await nextLaneDueAt(lane);
-          if (next) scheduleLane(lane, new Date(Math.max(next.getTime(), Date.now() + 250)));
-        });
-      } catch (error) {
-        console.warn(
-          JSON.stringify({
-            code: boundedErrorCode(error),
-            event: "background.node_lane",
-            lane,
-            outcome: "failed",
-          }),
-        );
-        scheduleLane(lane, new Date(Date.now() + 5_000));
+  async function maintenance() {
+    if (!running || maintenanceBusy) return;
+    maintenanceBusy = true;
+    try {
+      // Failed-job events are best effort; scanning retained failures repairs an interrupted failure hook.
+      for (const lane of LANES) {
+        const failures = await queues.get(lane)!.getFailed(0, 49);
+        for (const job of failures) await callbacks.exhausted(job.data, lane);
       }
-    });
-  };
-
-  const reconcile = async () => {
-    if (stopping) return;
-    return runWithRuntimePorts(ports, async () => {
-      try {
-        await Promise.allSettled(LANES.map((lane) => drainLane(lane)));
-        await runWithIndependentDbEnv(env, () => runDueBackgroundMaintenance({ env, workerId }));
-        await recalculateLaneTimers();
-      } catch (error) {
-        // A database outage must not terminate startup or a timer callback.
-        // The recovery sweep retries maintenance and recalculates lane timers.
-        console.warn(
-          JSON.stringify({
-            code: boundedErrorCode(error),
-            event: "background.node_reconcile",
-            outcome: "failed",
-          }),
-        );
+      await callbacks.maintain();
+      lastMaintenanceAt = Date.now();
+    } catch (error) {
+      log(error);
+    } finally {
+      maintenanceBusy = false;
+      if (running) {
+        timer = setTimeout(() => {
+          void track(maintenance());
+        }, 5000);
+        timer.unref();
       }
-    });
-  };
-
-  const recalculateLaneTimers = () =>
-    runWithIndependentDbEnv(env, async () => {
+    }
+  }
+  const jobs: Jobs = {
+    async dispatch(tasks) {
+      if (!running) throw new Error("BACKGROUND_QUEUE_STOPPED");
+      if (producer.status !== "ready") throw new Error("BACKGROUND_QUEUE_UNAVAILABLE");
       await Promise.all(
-        LANES.map(async (lane) => {
-          const next = await nextLaneDueAt(lane);
-          if (next) scheduleLane(lane, next);
+        tasks.map(async (raw) => {
+          const task = callbacks.validate(raw);
+          const lane = callbacks.lane(task);
+          await queues.get(lane)!.add(task.kind, task, {
+            jobId: task.taskId,
+            delay: Math.max(0, Date.parse(task.availableAt) - Date.now()),
+            attempts: callbacks.policy[lane].redeliveries + 1,
+            backoff: { type: "exponential", delay: 1000 },
+            removeOnComplete: { age: 86_400 },
+            removeOnFail: { age: 604_800 },
+          });
         }),
       );
-    });
-
-  const scheduleRecovery = () => {
-    if (stopping) return;
-    const jitter = Math.floor(Math.random() * 10_001) - 5_000;
-    recoveryTimer = setTimeout(() => {
-      track(reconcile().finally(scheduleRecovery));
-    }, 30_000 + jitter);
-    recoveryTimer.unref();
-  };
-
-  const connectListener = async () => {
-    if (stopping) return;
-    if (!ports.env) throw new Error("Runtime env port is required");
-    const databaseUrl = ports.env.require("DATABASE_URL");
-    const next = createDbClientForUrl(databaseUrl);
-    try {
-      await next.client.connect();
-      await next.client.query(`listen ${CHANNEL}`);
-      listener = next.client;
-      listenerReady = true;
-      reconnectAttempt = 0;
-      next.client.on("notification", (message) => {
-        const signal = parseSignal(message.payload);
-        if (signal) scheduleLane(signal.lane, signal.availableAt);
-      });
-      const reconnect = () => {
-        if (listener !== next.client) return;
-        listener = null;
-        listenerReady = false;
-        void reconnectListener();
-      };
-      next.client.once("error", reconnect);
-      next.client.once("end", reconnect);
-      await recalculateLaneTimers();
-    } catch (error) {
-      await next.client.end().catch(() => undefined);
-      throw error;
-    }
-  };
-
-  const reconnectListener = async () => {
-    if (stopping) return;
-    const delay = Math.min(30_000, 1_000 * 2 ** reconnectAttempt++);
-    setTimeout(() => {
-      if (stopping) return;
-      void connectListener().catch((error) => {
-        console.warn(
-          JSON.stringify({
-            code: boundedErrorCode(error),
-            event: "background.node_listener",
-            outcome: "reconnecting",
-          }),
-        );
-        void reconnectListener();
-      });
-    }, delay).unref();
-  };
-
-  return {
-    async dispatch(tasks: BackgroundTaskV2[]) {
-      for (const task of tasks)
-        scheduleLane(backgroundTaskLane(task.kind), new Date(task.availableAt));
-      await publishNodeBackgroundNotification(env, tasks);
     },
-    drain: drainLane,
-    readiness() {
-      return { coordinatorReady: running && !stopping, listenerReady };
+  };
+  return {
+    ...jobs,
+    queues,
+    readiness(): BackgroundReadiness {
+      return {
+        producerReady: running && producer.status === "ready",
+        consumerReady:
+          role === "api"
+            ? null
+            : running &&
+              consumers.length === 4 &&
+              consumerClients.every((client) => client.status === "ready"),
+        maintenanceFresh:
+          role === "api"
+            ? null
+            : lastMaintenanceAt !== null && Date.now() - lastMaintenanceAt < 120_000,
+      };
     },
     async start() {
       if (running) return;
       running = true;
-      await connectListener().catch(() => reconnectListener());
-      await reconcile();
-      scheduleRecovery();
+      // Startup is bounded; unavailable Redis leaves readiness false while connections reconnect.
+      await Promise.race([
+        Promise.all([...queues.values()].map((queue) => queue.waitUntilReady())),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]).catch(log);
+      if (role === "api") return;
+      for (const lane of LANES) {
+        const client = new Redis(url, { maxRetriesPerRequest: null, connectTimeout: 2000 });
+        consumerClients.push(client);
+        client.on("error", log);
+        const workerId = `node:${process.pid}:${crypto.randomUUID()}:${lane}`;
+        const override = Number(env[`ZILOBASE_BACKGROUND_${lane.toUpperCase()}_CONCURRENCY`]);
+        const concurrency =
+          Number.isInteger(override) && override > 0
+            ? Math.min(override, 50)
+            : callbacks.policy[lane].concurrency;
+        const worker = new Worker(
+          NODE_BACKGROUND_QUEUE_NAMES[lane],
+          async (job, token) => {
+            const result = await callbacks.deliver(job.data, lane, `${workerId}:${job.id}`);
+            if (result.outcome === "defer") {
+              await job.moveToDelayed(
+                Math.max(Date.now() + 1000, Date.parse(result.availableAt)),
+                token,
+              );
+              throw new DelayedError();
+            }
+          },
+          { prefix, connection: createIORedisClient(client), concurrency },
+        );
+        worker.on("error", log);
+        worker.on("failed", (job) => {
+          if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
+            void track(callbacks.exhausted(job.data, lane)).catch(log);
+        });
+        consumers.push(worker);
+      }
+      void track(maintenance());
     },
     async stop() {
-      stopping = true;
-      for (const timer of timers.values()) clearTimeout(timer);
-      timers.clear();
-      timerDueAt.clear();
-      if (recoveryTimer) clearTimeout(recoveryTimer);
-      await listener?.end().catch(() => undefined);
-      listener = null;
-      listenerReady = false;
-      await Promise.race([
-        Promise.allSettled([...inFlight]),
-        new Promise((resolve) => setTimeout(resolve, 30_000)),
-      ]);
       running = false;
+      if (timer) clearTimeout(timer);
+      let deadline: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          Promise.all(consumers.map((worker) => worker.close())),
+          new Promise<void>((resolve) => {
+            deadline = setTimeout(resolve, 30_000);
+          }),
+        ]);
+        await Promise.allSettled(consumers.map((worker) => worker.disconnect()));
+        await Promise.allSettled([...queues.values()].map((queue) => queue.close()));
+      } finally {
+        if (deadline) clearTimeout(deadline);
+        producer.disconnect();
+        for (const client of consumerClients) client.disconnect();
+      }
     },
   };
-}
-
-async function settleLaneOperations(
-  lane: BackgroundLane,
-  operations: Array<{ name: string; run: () => Promise<unknown> }>,
-) {
-  const results = await Promise.allSettled(
-    operations.map((operation) => Promise.resolve().then(operation.run)),
-  );
-  results.forEach((result, index) => {
-    if (result.status === "fulfilled") return;
-    console.warn(
-      JSON.stringify({
-        code: boundedErrorCode(result.reason),
-        event: "background.node_lane_operation",
-        lane,
-        operation: operations[index]?.name ?? "unknown",
-        outcome: "failed",
-      }),
-    );
-  });
-}
-
-export async function publishNodeBackgroundNotification(
-  env: RuntimeEnv,
-  tasks: BackgroundTaskV2[],
-) {
-  const earliest = new Map<BackgroundLane, Date>();
-  for (const task of tasks) {
-    const lane = backgroundTaskLane(task.kind);
-    const availableAt = new Date(task.availableAt);
-    if (!earliest.has(lane) || availableAt < earliest.get(lane)!) earliest.set(lane, availableAt);
-  }
-  await runWithDbEnv(env, async () => {
-    for (const [lane, availableAt] of earliest) {
-      // Identifiers stay in PostgreSQL; NOTIFY only wakes a lane.
-      await db.execute(
-        sql`select pg_notify(${CHANNEL}, ${JSON.stringify({
-          availableAt: availableAt.toISOString(),
-          lane,
-        })})`,
-      );
-    }
-  });
-}
-
-function parseSignal(payload: string | undefined) {
-  try {
-    const value = JSON.parse(payload ?? "") as { availableAt?: unknown; lane?: unknown };
-    if (!LANES.includes(value.lane as BackgroundLane) || typeof value.availableAt !== "string")
-      return null;
-    const availableAt = new Date(value.availableAt);
-    return Number.isNaN(availableAt.getTime())
-      ? null
-      : { availableAt, lane: value.lane as BackgroundLane };
-  } catch {
-    return null;
-  }
-}
-
-function laneConcurrency(env: RuntimeEnv, lane: BackgroundLane) {
-  const defaults = { ai: 2, automation: 4, calendar: 2, fast: 8 };
-  const key = `ZILOBASE_BACKGROUND_${lane.toUpperCase()}_CONCURRENCY`;
-  const value = Number(env[key]);
-  return Number.isInteger(value) ? Math.max(1, Math.min(value, 50)) : defaults[lane];
-}
-
-async function nextLaneDueAt(lane: BackgroundLane) {
-  if (lane === "automation") {
-    const [automation, agent] = await Promise.all([
-      db
-        .select({ value: min(databaseAutomationRun.availableAt) })
-        .from(databaseAutomationRun)
-        .where(eq(databaseAutomationRun.status, "queued")),
-      db
-        .select({ value: min(aiAgentRun.availableAt) })
-        .from(aiAgentRun)
-        .where(eq(aiAgentRun.status, "queued")),
-    ]);
-    return earliestDate(automation[0]?.value, agent[0]?.value);
-  }
-  if (lane === "ai") {
-    return (
-      (
-        await db
-          .select({ value: min(aiJob.availableAt) })
-          .from(aiJob)
-          .where(eq(aiJob.status, "queued"))
-      )[0]?.value ?? null
-    );
-  }
-  if (lane === "calendar") {
-    const [row] = await db
-      .select({ dirtyAt: calendarProviderCalendar.dirtyAt })
-      .from(calendarProviderCalendar)
-      .where(
-        or(
-          isNotNull(calendarProviderCalendar.dirtyAt),
-          isNotNull(calendarProviderCalendar.pageToken),
-        ),
-      )
-      .limit(1);
-    return row ? (row.dirtyAt ?? new Date()) : null;
-  }
-  const values = await Promise.all([
-    db
-      .select({ value: min(databaseAutomationEventWindow.nextAttemptAt) })
-      .from(databaseAutomationEventWindow)
-      .where(inArray(databaseAutomationEventWindow.status, ["accumulating", "ready"])),
-    db.select({ value: min(databaseRealtimeOutbox.nextAttemptAt) }).from(databaseRealtimeOutbox),
-    db
-      .select({ value: min(inProductNotificationOutbox.nextAttemptAt) })
-      .from(inProductNotificationOutbox)
-      .where(eq(inProductNotificationOutbox.status, "pending")),
-  ]);
-  return (
-    values
-      .flatMap((rows) => rows.map((row) => row.value))
-      .filter((value): value is Date => Boolean(value))
-      .sort((left, right) => left.getTime() - right.getTime())[0] ?? null
-  );
-}
-
-function earliestDate(...values: Array<Date | null | undefined>) {
-  const present = values.filter((value): value is Date => value instanceof Date);
-  return present.length ? new Date(Math.min(...present.map((value) => value.getTime()))) : null;
 }

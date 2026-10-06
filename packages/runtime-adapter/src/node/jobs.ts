@@ -1,28 +1,13 @@
-import type { BackgroundTask, Jobs } from "@zilobase/runtime-ports";
-import type { BackgroundTaskV2, RuntimeEnv } from "../contracts";
-import {
-  publishNodeBackgroundNotification,
-  type NodeBackgroundCoordinator,
-} from "./background-coordinator";
+import type { Jobs } from "@zilobase/runtime-ports";
+import type { NodeBackgroundCoordinator } from "./background-coordinator";
 
-export function createNodeJobs(
-  env: RuntimeEnv,
-  getCoordinator: () => NodeBackgroundCoordinator | null,
-): Jobs {
+export function createNodeJobs(getQueue: () => NodeBackgroundCoordinator | null): Jobs {
   return {
     async dispatch(tasks) {
-      const compatibleTasks = tasks as readonly BackgroundTaskV2[];
-      const coordinator = getCoordinator();
-      if (coordinator) {
-        await coordinator.dispatch([...compatibleTasks]);
-        return;
-      }
-      await publishNodeBackgroundNotification(env, [...compatibleTasks]);
+      const queue = getQueue();
+      if (!queue) throw new Error("BACKGROUND_QUEUE_NOT_STARTED");
+      await queue.dispatch(tasks);
     },
-    async drain(lane) {
-      await getCoordinator()?.drain(lane);
-    },
-  } satisfies Jobs;
+  };
 }
-
-export type { BackgroundTask };
+export type { BackgroundTask } from "@zilobase/runtime-ports";

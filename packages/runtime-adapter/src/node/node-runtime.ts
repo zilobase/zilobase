@@ -13,6 +13,15 @@ import { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/
 import {
   createDbClientForUrl,
   runWithDbEnv,
+  runWithIndependentDbEnv,
+  deliverBackgroundTask,
+  recordBackgroundExhaustion,
+  publishBackgroundDispatches,
+  runDueBackgroundMaintenance,
+  BACKGROUND_LANE_POLICY,
+  backgroundTaskLane,
+  getBackgroundCellId,
+  parseBackgroundTask,
   setCollaborationExtensionsFactory as defaultSetCollaborationExtensionsFactory,
   getBackgroundOperationalSnapshot,
   renderPrometheusBackgroundMetrics,
@@ -29,6 +38,7 @@ import { fetchPinnedNodeMcp } from "./pinned-mcp";
 import { createNodeImageStorage } from "./image-storage";
 import { createNodeMailer } from "./mailer";
 import {
+  getQueueRedisUrl,
   createNodeBackgroundCoordinator,
   type NodeBackgroundCoordinator,
 } from "./background-coordinator";
@@ -76,14 +86,43 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   const createBackgroundCoordinator =
     hooks.createBackgroundCoordinator ??
     ((hookEnv, runtimePorts) =>
-      processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv, runtimePorts));
+      createNodeBackgroundCoordinator(hookEnv, {
+        policy: BACKGROUND_LANE_POLICY,
+        lane: (task) => backgroundTaskLane(task.kind as never),
+        validate: (body) => {
+          const parsed = parseBackgroundTask(body, getBackgroundCellId(hookEnv));
+          if (!parsed.ok) throw new Error(parsed.errorCode);
+          return parsed.task;
+        },
+        deliver: (body, lane, workerId) =>
+          runWithRuntimePorts(runtimePorts, () =>
+            runWithIndependentDbEnv(hookEnv, () =>
+              deliverBackgroundTask(hookEnv, body, lane, workerId),
+            ),
+          ),
+        exhausted: (body, lane) =>
+          runWithRuntimePorts(runtimePorts, () =>
+            runWithIndependentDbEnv(hookEnv, () => recordBackgroundExhaustion(hookEnv, body, lane)),
+          ),
+        maintain: () =>
+          runWithRuntimePorts(runtimePorts, () =>
+            runWithIndependentDbEnv(hookEnv, async () => {
+              await publishBackgroundDispatches(hookEnv);
+              await runDueBackgroundMaintenance({
+                env: hookEnv,
+                workerId: `node-maintenance:${process.pid}`,
+              });
+            }),
+          ),
+      }));
   let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
+  getQueueRedisUrl(env);
   const realtimeBus = createRealtimeBus(env);
   const limits = createNodeLimits(realtimeBus);
   const ports: Partial<Ports> = {
     blobs: createLazyImageStorage(() => createNodeImageStorage(env)),
     env: createRuntimeEnv(env),
-    jobs: createNodeJobs(env, () => backgroundCoordinatorRef),
+    jobs: createNodeJobs(() => backgroundCoordinatorRef),
     limits,
     mailer: createNodeMailer(env),
     outbound: createNodeOutboundFetch({
@@ -93,8 +132,9 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     readiness: {
       background: () =>
         backgroundCoordinatorRef?.readiness() ?? {
-          coordinatorReady: null,
-          listenerReady: null,
+          producerReady: false,
+          consumerReady: processRole === "api" ? null : false,
+          maintenanceFresh: processRole === "api" ? null : false,
         },
       realtime: () => realtimeBus.isReady(),
     },
@@ -316,7 +356,11 @@ function createBackgroundAdminServer(
       const ready = coordinator.readiness();
       response.statusCode =
         request.url === "/ready" &&
-        (!snapshot.healthy || !ready.listenerReady || !isRealtimeReady())
+        (!snapshot.healthy ||
+          !ready.producerReady ||
+          ready.consumerReady === false ||
+          ready.maintenanceFresh === false ||
+          !isRealtimeReady())
           ? 503
           : 200;
       response.setHeader("content-type", "application/json");

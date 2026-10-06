@@ -2,21 +2,15 @@
 
 ## Interface and flow
 
-The processor maps task kinds to automation, agent, AI-job, Calendar, realtime and notification operations. The [Calendar handler](../../apps/server/src/features/calendar/background.ts) accepts event and calendar-list work through the existing `calendar.sync` task kind and drains completed revision notifications before returning. Durable dirty markers retain recovery when webhook dispatch fails. It records queue/execution telemetry and converts pending outbox state into completed or retry outcomes. Node coordination supplies dispatch and maintenance.
+The processor maps task kinds to automation, agent, AI-job, Calendar, realtime and notification operations. The [Calendar handler](../../apps/server/src/features/calendar/background.ts) accepts event and calendar-list work through the existing `calendar.sync` task kind and drains completed revision notifications before returning. Durable dirty markers retain recovery when webhook dispatch fails. It records queue/execution telemetry and converts pending outbox state into completed or retry outcomes. Node BullMQ supplies transport and invokes shared maintenance.
 
 Start at the [entrypoint](../../apps/server/src/app/background/processor.ts); follow the [implementation](../../apps/server/src/infrastructure/background/contracts.ts) and the [Node coordinator](../../packages/runtime-adapter/src/node/background-coordinator.ts).
 
 ## Invariants and failure handling
 
-The Node coordinator catches maintenance and lane-timer recalculation failures during startup and periodic reconciliation, logs `background.node_reconcile`, and retries on the existing jittered recovery sweep. Tracking in-flight work handles both promise outcomes without creating an unhandled rejection during cleanup.
+The Node queue adapter owns BullMQ connections, four lane queues and role-specific consumption. Composition roots inject the shared delivery runner, failure recording and maintenance. Producers fail within two seconds when Redis is unavailable; persisted dispatch records retain recovery. Consumers reconnect automatically and delayed deliveries cannot invoke a feature before `availableAt`.
 
-Feature implementations own leases, receipts, authorization and durable status. Dispatch success is not equivalent to feature completion. Retries preserve task identity and availableAt semantics; terminal outcomes differ from thrown execution errors.
-
-Node lane drains, maintenance and timer queries use independent database scopes.
-A timer or PostgreSQL notification may inherit the async context of a request;
-reusing that request's database scope would invalidate background work when the
-request completes. The Node adapter API exposes the independent-scope runner for
-this boundary. Notification writes themselves remain in their caller's scope.
+Feature implementations own leases, receipts, authorization and durable status. Dispatch success is not equivalent to feature completion. Delivery handlers and maintenance use independent database scopes, and renew dispatch ownership while feature execution is active.
 
 For `realtime.database`, the committed journal event is canonical and the
 outbox contains only delivery state. HTTP acknowledgement does not wait for

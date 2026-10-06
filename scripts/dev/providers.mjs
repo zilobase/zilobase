@@ -60,6 +60,7 @@ export function withSharedRealtimeRedis(environment, nodeEnvironment) {
   return {
     ...environment,
     REALTIME_REDIS_URL: nodeEnvironment.REALTIME_REDIS_URL,
+    QUEUE_REDIS_URL: nodeEnvironment.QUEUE_REDIS_URL,
   };
 }
 

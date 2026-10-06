@@ -1,4 +1,5 @@
 import { execFile, spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
 import { setTimeout } from "node:timers/promises";
@@ -6,6 +7,8 @@ import { setTimeout } from "node:timers/promises";
 const exec = promisify(execFile);
 const name = `zilobase-background-test-${randomUUID()}`;
 let created = false;
+let brokerCreated = false;
+const broker = `${name}-queue`;
 try {
   await exec("docker", [
     "run",
@@ -37,6 +40,42 @@ try {
   const { stdout } = await exec("docker", ["port", name, "5432/tcp"]);
   const endpoint = stdout.trim();
   if (!/^127\.0\.0\.1:\d+$/.test(endpoint)) throw new Error("Unexpected fixture binding");
+  const reservation = createServer();
+  await new Promise((resolve) => reservation.listen(0, "127.0.0.1", resolve));
+  const brokerPort = reservation.address().port;
+  await new Promise((resolve, reject) =>
+    reservation.close((error) => (error ? reject(error) : resolve())),
+  );
+  await exec("docker", [
+    "run",
+    "--pull=never",
+    "--rm",
+    "--name",
+    broker,
+    "-p",
+    `127.0.0.1:${brokerPort}:6379`,
+    "-d",
+    "valkey/valkey:8-alpine",
+    "valkey-server",
+    "--appendonly",
+    "yes",
+    "--maxmemory-policy",
+    "noeviction",
+  ]);
+  brokerCreated = true;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await exec("docker", ["exec", broker, "valkey-cli", "ping"]);
+      break;
+    } catch (error) {
+      if (attempt >= 100) throw error;
+      await setTimeout(200);
+    }
+  }
+  const redisPort = await exec("docker", ["port", broker, "6379/tcp"]);
+  const redisEndpoint = redisPort.stdout.trim();
+  if (!/^127\.0\.0\.1:\d+$/.test(redisEndpoint))
+    throw new Error("Unexpected Redis fixture binding");
   await new Promise((resolve, reject) => {
     const child = spawn(
       "npm",
@@ -54,6 +93,8 @@ try {
         timeout: 120_000,
         env: {
           ...process.env,
+          ZILOBASE_QUEUE_VERIFY_URL: `redis://${redisEndpoint}`,
+          ZILOBASE_QUEUE_VERIFY_CONTAINER: broker,
           ZILOBASE_BACKGROUND_VERIFY_URL: `postgres://postgres:background-test-only@${endpoint}/zilobase_background_verify`,
         },
       },
@@ -64,5 +105,6 @@ try {
     );
   });
 } finally {
+  if (brokerCreated) await exec("docker", ["stop", "--time", "1", broker]);
   if (created) await exec("docker", ["stop", "--time", "1", name]);
 }

@@ -13,10 +13,7 @@ export type WorkerJobsEnv = WorkerEnvBindings & {
   CALENDAR_JOBS?: BackgroundQueue;
 };
 
-export function createWorkerJobs(
-  env: WorkerJobsEnv,
-  drainLane?: (lane: BackgroundLane) => void | Promise<void>,
-): Jobs {
+export function createWorkerJobs(env: WorkerJobsEnv): Jobs {
   return {
     async dispatch(tasks) {
       await Promise.all(
@@ -32,9 +29,6 @@ export function createWorkerJobs(
           else await queue.send(task);
         }),
       );
-    },
-    async drain(lane) {
-      await drainLane?.(lane);
     },
   };
 }

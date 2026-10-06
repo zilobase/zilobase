@@ -149,7 +149,7 @@ export function createBackgroundDeliveryStore(env: Record<string, unknown>, work
       eq(backgroundDispatch.status, "running"),
     );
   return {
-    async load(task: BackgroundTaskV2): Promise<"ready" | "done"> {
+    async load(task: BackgroundTaskV2): Promise<"ready" | "done" | { availableAt: string }> {
       const [persisted] = await db.select().from(backgroundDispatch).where(scope(task)).limit(1);
       if (!persisted) throw new Error("BACKGROUND_TASK_NOT_ADMITTED");
       if (
@@ -182,7 +182,11 @@ export function createBackgroundDeliveryStore(env: Record<string, unknown>, work
           ),
         )
         .returning();
-      if (!row) return "done";
+      if (!row) {
+        if (persisted.status === "running" && persisted.leaseExpiresAt)
+          return { availableAt: persisted.leaseExpiresAt.toISOString() };
+        return "done";
+      }
       return "ready";
     },
     async renew(task: BackgroundTaskV2) {

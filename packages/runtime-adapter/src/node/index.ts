@@ -30,7 +30,8 @@ export { createNodeRoomState } from "./room-state";
 export { createNodeFanout } from "./fanout";
 export {
   createNodeBackgroundCoordinator,
-  publishNodeBackgroundNotification,
+  getQueueRedisUrl,
+  NODE_BACKGROUND_QUEUE_NAMES,
   type NodeBackgroundCoordinator,
 } from "./background-coordinator";
 export {
