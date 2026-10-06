@@ -129,3 +129,7 @@ fixtures in a temporary database. Helm lint/template and a negative shared-Secre
 render check verify deployment configuration; Compose config validates both
 persistent broker services. Detailed candidate evidence is recorded alongside
 the release handoff.
+
+[Candidate verification and release handoff](operations-evidence/2026-10-06-background-queues.md)
+records real acceptance, browser observations and the stopped-deployment release
+order. Deployment and production cutover were not executed.

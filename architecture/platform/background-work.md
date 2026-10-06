@@ -86,3 +86,8 @@ update. Partial broker success leaves the batch recoverable under stable IDs;
 parallel SQL writes never share a standalone Worker connection. Cloudflare
 operator APIs have their own `operations/cloudflare-queues` entrypoint and are
 not imported by the Node application runtime.
+
+[Candidate verification and release handoff](../../docs/operations-evidence/2026-10-06-background-queues.md)
+records the executed real-broker/application gates, final repository checks and
+full-cutover deployment ordering. Deployment and production reset remain operator
+work after review of that handoff.
