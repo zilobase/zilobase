@@ -105,3 +105,12 @@ removes Postgres, object storage, and Caddy state and must be used only for an i
 fresh installation. In the local workflow, this distinction is encoded as
 `npm run selfhost:down` versus the explicitly confirmed
 `npm run selfhost:reset`.
+
+## Background queue cutover
+
+Upgrading from the PostgreSQL coordinator requires a stopped-deployment full
+cutover, dedicated queue Redis and the [queue operator runbook](../background-queues.md).
+Helm queue credentials must use a Secret distinct from realtime credentials.
+Preview with a fixed cutoff before explicit apply. Preserve completed history
+and committed domain writes; do not flush a Redis instance or replay uncertain
+writes. The new release rejects legacy envelopes and has no coordinator fallback.

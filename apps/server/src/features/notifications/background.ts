@@ -37,3 +37,16 @@ export async function failNotificationDelivery(resourceId: string) {
     );
   return true;
 }
+
+export async function prepareNotificationReplay(resourceId: string) {
+  const [row] = await db
+    .select()
+    .from(inProductNotificationOutbox)
+    .where(eq(inProductNotificationOutbox.id, resourceId))
+    .for("update");
+  if (!row || row.status !== "failed") throw new Error("REPLAY_NOTIFICATION_INELIGIBLE");
+  await db
+    .update(inProductNotificationOutbox)
+    .set({ status: "pending", nextAttemptAt: new Date(), updatedAt: new Date() })
+    .where(eq(inProductNotificationOutbox.id, resourceId));
+}

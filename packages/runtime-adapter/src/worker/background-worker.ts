@@ -1,4 +1,5 @@
 import {
+  BACKGROUND_LANE_POLICY,
   backgroundTaskLane,
   getBackgroundCellId,
   parseBackgroundTask,
@@ -129,6 +130,19 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                     message.retry({ delaySeconds: retryDelaySeconds(result.availableAt) });
                   else message.ack();
                 } catch (error) {
+                  if (
+                    !deadLetter &&
+                    message.attempts >= BACKGROUND_LANE_POLICY[expectedLane].redeliveries + 1
+                  ) {
+                    try {
+                      await recordBackgroundExhaustion(env, parsed.task, expectedLane);
+                    } catch (recordingError) {
+                      await telemetryFor(env).error(recordingError, {
+                        code: "BACKGROUND_EXHAUSTION_RECORDING_FAILED",
+                        kind: parsed.task.kind,
+                      });
+                    }
+                  }
                   await telemetryFor(env).error(error, {
                     code: boundedErrorCode(error),
                     kind: parsed.task.kind,

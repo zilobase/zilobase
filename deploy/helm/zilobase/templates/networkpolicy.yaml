@@ -36,6 +36,8 @@ spec:
     - to: [{ ipBlock: { cidr: {{ .Values.networkPolicy.smtpCIDR | quote }} } }]
       ports:
         - { protocol: TCP, port: {{ .Values.config.smtpPort }} }
+    - to: [{ ipBlock: { cidr: {{ .Values.queue.networkCIDR | quote }} } }]
+      ports: [{ protocol: TCP, port: {{ .Values.queue.port }} }]
     - to: [{ ipBlock: { cidr: {{ .Values.realtime.networkCIDR | quote }} } }]
       ports: [{ protocol: TCP, port: {{ .Values.realtime.port }} }]
 {{- end }}

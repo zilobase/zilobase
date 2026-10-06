@@ -15,9 +15,9 @@ const queues = {
 };
 const worker = createBackgroundWorker();
 const env = { ZILOBASE_CELL_ID: "fixture" };
-async function deliver(body: unknown, queue = "zilobase-ai-jobs") {
+async function deliver(body: unknown, queue = "zilobase-ai-jobs", attempts = 1) {
   const batch = createMessageBatch(queue, [
-    { id: "message", timestamp: new Date(), attempts: 1, body },
+    { id: "message", timestamp: new Date(), attempts, body },
   ]);
   await worker.queue(batch, env);
   return getQueueResult(batch, createExecutionContext());
@@ -47,6 +47,12 @@ describe("Miniflare shared queue consumption", () => {
       createBackgroundTaskV2({ env, kind: "ai.job", resourceId: "throw" }),
     );
     expect(result.retryMessages).toHaveLength(1);
+    expect(backgroundFixture.completed.size).toBe(0);
+  });
+  it("records exhaustion on the final unexpected attempt", async () => {
+    const task = createBackgroundTaskV2({ env, kind: "ai.job", resourceId: "throw" });
+    await deliver(task, "zilobase-ai-jobs", 6);
+    expect(backgroundFixture.exhausted).toEqual([task.taskId]);
     expect(backgroundFixture.completed.size).toBe(0);
   });
   it("records DLQ exhaustion without invoking the feature", async () => {

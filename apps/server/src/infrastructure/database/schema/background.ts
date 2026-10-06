@@ -41,6 +41,12 @@ export const backgroundDispatch = pgTable(
       table.status,
       table.nextPublicationAt,
     ),
+    index("background_dispatch_failure_pending_idx")
+      .on(table.cellId, table.completedAt)
+      .where(sql`${table.status} = 'exhausted' and ${table.failureHandledAt} is null`),
+    index("background_dispatch_expired_owner_idx")
+      .on(table.cellId, table.leaseExpiresAt)
+      .where(sql`${table.status} = 'running'`),
     check(
       "background_dispatch_status_check",
       sql`${table.status} in ('pending','published','running','completed','terminal','exhausted','cancelled')`,

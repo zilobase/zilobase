@@ -16,13 +16,15 @@ export const inBackgroundTransaction = () => transactionStore.getStore() === tru
 export async function backgroundTransaction<T>(
   env: Record<string, unknown>,
   work: (tx: Parameters<Parameters<Database["transaction"]>[0]>[0]) => Promise<T>,
+  options: { publishAfterCommit?: boolean } = {},
 ): Promise<T> {
   if (inBackgroundTransaction())
     return work(db as Parameters<Parameters<Database["transaction"]>[0]>[0]);
   const result = await db.transaction((tx) =>
     runWithDb(tx as unknown as Database, () => transactionStore.run(true, () => work(tx))),
   );
-  await publishBackgroundDispatches(env).catch(() => undefined);
+  if (options.publishAfterCommit !== false)
+    await publishBackgroundDispatches(env).catch(() => undefined);
   return result;
 }
 
@@ -114,7 +116,9 @@ export async function publishBackgroundDispatches(env: Record<string, unknown>, 
           .set({
             status: "published",
             publishedAt: new Date(),
-            nextPublicationAt: new Date(Date.now() + 300_000),
+            nextPublicationAt: new Date(
+              Math.max(Date.now(), Date.parse(row.task.availableAt)) + 300_000,
+            ),
             leaseOwner: null,
             leaseExpiresAt: null,
             errorCode: null,

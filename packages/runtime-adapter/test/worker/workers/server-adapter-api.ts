@@ -284,3 +284,5 @@ export async function publishBackgroundDispatches() {}
 export async function runDueBackgroundMaintenance() {
   return { claimed: 0 };
 }
+
+export { BACKGROUND_LANE_POLICY } from "../../../../../apps/server/src/infrastructure/background/task-v2";

@@ -40,3 +40,16 @@ export async function failDatabaseRealtimeDelivery(resourceId: string) {
     );
   return true;
 }
+
+export async function prepareDatabaseRealtimeReplay(resourceId: string) {
+  const [row] = await db
+    .select()
+    .from(databaseRealtimeOutbox)
+    .where(eq(databaseRealtimeOutbox.id, resourceId))
+    .for("update");
+  if (!row || !row.failedAt) throw new Error("REPLAY_DATABASE_DELIVERY_INELIGIBLE");
+  await db
+    .update(databaseRealtimeOutbox)
+    .set({ failedAt: null, nextAttemptAt: new Date() })
+    .where(eq(databaseRealtimeOutbox.id, resourceId));
+}

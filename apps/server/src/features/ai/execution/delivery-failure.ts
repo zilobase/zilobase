@@ -54,3 +54,69 @@ export async function failAgentDelivery(resourceId: string) {
     .where(eq(aiAgentConversationMessage.runId, resourceId));
   return true;
 }
+
+export async function prepareAgentReplay(resourceId: string) {
+  const [run] = await db
+    .select()
+    .from(aiAgentRun)
+    .where(eq(aiAgentRun.id, resourceId))
+    .for("update");
+  if (
+    !run ||
+    run.status !== "failed" ||
+    run.errorCode !== "TRANSPORT_RETRIES_EXHAUSTED" ||
+    run.attempts >= run.maxAttempts
+  )
+    throw new Error("REPLAY_AGENT_INELIGIBLE");
+  const [uncertain] = await db
+    .select()
+    .from(aiAgentToolExecution)
+    .where(
+      and(
+        eq(aiAgentToolExecution.agentRunId, resourceId),
+        or(
+          eq(aiAgentToolExecution.outcomeUnknown, true),
+          eq(aiAgentToolExecution.status, "running"),
+        ),
+      ),
+    )
+    .limit(1);
+  if (uncertain) throw new Error("REPLAY_UNCERTAIN_WRITE_REQUIRES_REVIEW");
+  const { aiAgentProfile, aiAgentPendingAction } =
+    await import("../../../infrastructure/database/schema");
+  const [profile] = await db
+    .select()
+    .from(aiAgentProfile)
+    .where(
+      and(
+        eq(aiAgentProfile.id, run.profileId),
+        eq(aiAgentProfile.workspaceId, run.workspaceId),
+        eq(aiAgentProfile.status, "active"),
+      ),
+    )
+    .limit(1);
+  const [approval] = await db
+    .select()
+    .from(aiAgentPendingAction)
+    .where(
+      and(
+        eq(aiAgentPendingAction.agentRunId, resourceId),
+        inArray(aiAgentPendingAction.status, ["pending", "executing"]),
+      ),
+    )
+    .limit(1);
+  if (!profile || approval) throw new Error("REPLAY_AGENT_AUTHORIZATION_OR_APPROVAL_REQUIRED");
+  await db
+    .update(aiAgentRun)
+    .set({
+      status: "queued",
+      availableAt: new Date(),
+      completedAt: null,
+      errorCode: null,
+      errorSummary: null,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(aiAgentRun.id, resourceId));
+}

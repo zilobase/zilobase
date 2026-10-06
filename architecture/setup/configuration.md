@@ -9,6 +9,11 @@ accepts only `redis://` or `rediss://` URLs. It is not a Worker binding: the
 Cloudflare runtime continues to use Queues, Durable Objects, and its Rate Limit
 binding. Source-development setup generates the local Node URL automatically.
 
+`QUEUE_REDIS_URL` is separately required for every Node role. It cannot use
+the realtime endpoint; queue Redis owns BullMQ persistence and has AOF with
+`noeviction`. Helm uses a distinct queue Secret and network-policy egress.
+See the [queue runbook](../../docs/background-queues.md).
+
 ## Ownership
 
 External AI connectors use the [MCP connection configuration](../features/ai/execution-and-mcp.md) and provider-specific OAuth credentials. Development templates and runtime secret allowlists follow the credentials consumed by those implementations.

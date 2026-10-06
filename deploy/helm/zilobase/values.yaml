@@ -13,6 +13,12 @@ realtime:
   networkCIDR: 10.0.0.0/8
   port: 6379
 
+queue:
+  existingSecret: zilobase-queue
+  secretKey: QUEUE_REDIS_URL
+  networkCIDR: 10.0.0.0/8
+  port: 6379
+
 mcp:
   enabled: false
   customServersEnabled: false

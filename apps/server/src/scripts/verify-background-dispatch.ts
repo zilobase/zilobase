@@ -1,4 +1,9 @@
 import {
+  previewBackgroundCutover,
+  applyBackgroundCutover,
+} from "../app/background/operations/cutover";
+import { replayBackgroundFailure } from "../app/background/operations/replay";
+import {
   ensureBackgroundMaintenanceTasks,
   runDueBackgroundMaintenance,
 } from "../app/background/maintenance";
@@ -13,6 +18,9 @@ import {
   workspace,
   aiJob,
   backgroundMaintenanceTask,
+  user,
+  aiChatThread,
+  aiChatMessage,
 } from "../infrastructure/database/schema";
 import { createBackgroundTask } from "../infrastructure/background/contracts";
 import {
@@ -231,6 +239,84 @@ try {
             .where(eq(backgroundMaintenanceTask.taskKey, "background.reconcile"))
         )[0].lastSucceededAt,
       );
+      await first.db
+        .insert(user)
+        .values({ id: "operator-owner", name: "Fixture", email: "owner@background.invalid" });
+      await first.db
+        .insert(aiChatThread)
+        .values({ id: "operator-thread", workspaceId: "workspace", userId: "operator-owner" });
+      await first.db.insert(aiChatMessage).values({
+        id: "history",
+        threadId: "operator-thread",
+        role: "user",
+        parts: [{ type: "text", text: "Retained conversation history" }],
+        sequence: 0,
+      });
+      const replayable = await enqueueAiJob({
+        env,
+        workspaceId: "workspace",
+        userId: "operator-owner",
+        type: "thread-compaction",
+        input: { threadId: "operator-thread" },
+        dedupeKey: "operator-replay",
+      });
+      const [replayTicket] = await first.db
+        .select()
+        .from(backgroundDispatch)
+        .where(eq(backgroundDispatch.resourceId, replayable.id));
+      await recordBackgroundExhaustion(env, replayTicket.task, "ai");
+      const replay = await replayBackgroundFailure(env, replayTicket.id);
+      assert.notEqual(replay.taskId, replayTicket.id);
+      assert.equal(
+        (await first.db.select().from(aiJob).where(eq(aiJob.id, replayable.id)))[0].status,
+        "queued",
+      );
+      await assert.rejects(replayBackgroundFailure(env, replayTicket.id), /INELIGIBLE/);
+      await first.db
+        .update(aiJob)
+        .set({ status: "succeeded", output: { retained: true }, completedAt: new Date() })
+        .where(eq(aiJob.id, replayable.id));
+      const completed = (await first.db.select().from(aiJob).where(eq(aiJob.id, replayable.id)))[0];
+      await assert.rejects(replayBackgroundFailure(env, replayTicket.id), /INELIGIBLE/);
+      const options = {
+        cellId: env.ZILOBASE_CELL_ID,
+        cutoff: new Date(Date.now() + 100),
+        isolatedDatabase: true,
+        runtimesStopped: true,
+      };
+      const beforeCutover = await first.db.select().from(aiJob);
+      const preview = await previewBackgroundCutover(env, options);
+      assert.ok(preview.counts.ai_jobs > 0);
+      assert.deepEqual(await first.db.select().from(aiJob), beforeCutover, "Preview is read only");
+      let purges = 0;
+      await assert.rejects(
+        applyBackgroundCutover(env, { ...options, isolatedDatabase: false }, async () => {
+          purges++;
+        }),
+        /ISOLATED/,
+      );
+      await applyBackgroundCutover(env, options, async () => {
+        purges++;
+      });
+      await applyBackgroundCutover(env, options, async () => {
+        purges++;
+      });
+      assert.equal(purges, 2, "Fixed-cutoff apply is safely repeatable");
+      assert.equal(
+        (await first.db.select().from(aiJob).where(eq(aiJob.id, queued.id)))[0].status,
+        "cancelled",
+      );
+      assert.deepEqual(
+        (await first.db.select().from(aiJob).where(eq(aiJob.id, completed.id)))[0],
+        completed,
+        "Completed execution is unchanged",
+      );
+      assert.equal(
+        (await first.db.select().from(aiChatMessage).where(eq(aiChatMessage.id, "history")))[0]
+          .status,
+        "completed",
+      );
+      assert.equal((await first.db.select().from(workspace)).length, 1);
     }),
   );
   console.info(

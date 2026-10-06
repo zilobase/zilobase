@@ -52,3 +52,21 @@ Cloudflare queue and DLQ consumers share the [durable delivery entrypoint](../..
 Shared maintenance publishes recoverable dispatches and finalizes exhausted failures. Calendar recovery enqueues dirty references; synchronization runs only in the calendar lane. Maintenance runs claimed callbacks sequentially so Worker transactions do not share a connection concurrently. Public feature-drain entrypoints are removed; runtime execution enters through the shared delivery runner. Queue readiness reports producer connectivity, role-specific consumer readiness and maintenance freshness through health and metrics.
 
 Source command and mutation transactions carry the dispatch transaction marker through nested writes. Publication is suppressed until the outer transaction commits. Node records final-attempt exhaustion before retiring a failed job; if failure bookkeeping is unavailable, it delays that final attempt until the durable outcome can be saved. Invalid or unadmitted envelopes do not reach a feature.
+
+## Operator boundary
+
+[Cutover](../../apps/server/src/app/background/operations/cutover.ts) cancels
+unfinished legacy work in an explicitly isolated cell database/schema, purges
+only that cell's broker queues and advances schedules without backfill.
+[Replay](../../apps/server/src/app/background/operations/replay.ts) requires
+finalized exhaustion and feature-owned eligibility checks. Uncertain writes and
+completed/cancelled work cannot be replayed. Both operations suppress immediate
+publication; normal maintenance publishes newly eligible occurrences.
+The [operator CLI](../../apps/server/src/scripts/background-ops.ts) requires
+explicit credentials, cell identity and apply flags. See the
+[release runbook](../../docs/background-queues.md#operator-commands-and-release-order).
+
+Node queue purge and Cloudflare purge are separate runtime operations. The
+Cloudflare operator verifies all eight queue IDs/names before issuing any purge
+and waits for completion. Legacy feature tables have no cell discriminator;
+shared-database cells require an ownership migration before cutover is safe.

@@ -146,6 +146,8 @@ async function deployKubernetesProfile(options = {}) {
     S3_SECRET_ACCESS_KEY: secrets.COMMUNITY_MINIO_PASSWORD,
     SMTP_PASSWORD: "",
     REALTIME_REDIS_URL: `redis://valkey.${profile.namespace}.svc.cluster.local:6379`,
+  });
+  await applySecret(profile.namespace, "zilobase-queue", {
     QUEUE_REDIS_URL: `redis://queue-valkey.${profile.namespace}.svc.cluster.local:6379`,
   });
   await helmDeploy(image);
