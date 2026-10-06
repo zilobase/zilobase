@@ -28,6 +28,9 @@ export type NodeQueueCallbacks = {
   maintain(): Promise<unknown>;
 };
 
+const brokerHost = (url: URL) =>
+  ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) ? "loopback" : url.hostname;
+
 export function getQueueRedisUrl(env: Record<string, unknown>) {
   const value = env.QUEUE_REDIS_URL;
   try {
@@ -35,7 +38,7 @@ export function getQueueRedisUrl(env: Record<string, unknown>) {
       throw new Error();
     if (
       typeof env.REALTIME_REDIS_URL === "string" &&
-      new URL(value).hostname === new URL(env.REALTIME_REDIS_URL).hostname &&
+      brokerHost(new URL(value)) === brokerHost(new URL(env.REALTIME_REDIS_URL)) &&
       (new URL(value).port || "6379") === (new URL(env.REALTIME_REDIS_URL).port || "6379")
     )
       throw new Error();
@@ -256,7 +259,7 @@ export function createNodeQueueRuntime(
       let deadline: ReturnType<typeof setTimeout> | undefined;
       try {
         await Promise.race([
-          Promise.all(consumers.map((worker) => worker.close())),
+          Promise.allSettled([...consumers.map((worker) => worker.close()), ...inFlight]),
           new Promise<void>((resolve) => {
             deadline = setTimeout(resolve, 30_000);
           }),

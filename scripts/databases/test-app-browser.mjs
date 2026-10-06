@@ -62,6 +62,12 @@ try {
     "POSTGRES_DB=zilobase_browser_verify",
   ]);
   const redis = await container("valkey/valkey:8-alpine", 6379);
+  const queueRedis = await container(
+    "valkey/valkey:8-alpine",
+    6379,
+    [],
+    ["valkey-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"],
+  );
   const storage = await container(
     "rustfs/rustfs:1.0.0",
     9000,
@@ -104,6 +110,8 @@ try {
     BACKGROUND_HEALTH_PORT: "1495",
     DATABASE_URL: `postgres://postgres:browser-test-only@${postgres}/zilobase_browser_verify`,
     REALTIME_REDIS_URL: `redis://${redis}`,
+    QUEUE_REDIS_URL: `redis://${queueRedis}`,
+    ZILOBASE_CELL_ID: `browser-${runId}`,
     BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
     BETTER_AUTH_URL: webOrigin,
     CLIENT_URL: webOrigin,
@@ -800,7 +808,7 @@ try {
   }
   assert.deepEqual(errors, []);
   assert.ok(
-    !serverLog.includes('"event":"background.node_lane_operation"'),
+    !serverLog.includes('"event":"background.queue_failure"'),
     "Background lane operations must not fail",
   );
   if (devtools) {

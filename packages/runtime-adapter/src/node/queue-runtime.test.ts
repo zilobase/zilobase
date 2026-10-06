@@ -14,6 +14,12 @@ describe("dedicated Node queues", () => {
         REALTIME_REDIS_URL: "redis://localhost:6379/0",
       }),
     ).toThrow();
+    expect(() =>
+      getQueueRedisUrl({
+        QUEUE_REDIS_URL: "redis://localhost:6379",
+        REALTIME_REDIS_URL: "redis://127.0.0.1:6379",
+      }),
+    ).toThrow();
     expect(
       getQueueRedisUrl({
         QUEUE_REDIS_URL: "redis://localhost:6380",

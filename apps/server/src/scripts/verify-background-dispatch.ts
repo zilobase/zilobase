@@ -1,3 +1,4 @@
+import { seedCutoverAcceptance, assertCutoverAcceptance } from "./verify-background-cutover";
 import {
   previewBackgroundCutover,
   applyBackgroundCutover,
@@ -133,6 +134,16 @@ try {
       await first.db.update(backgroundDispatch).set({ nextPublicationAt: new Date(0) });
       await publishBackgroundDispatches(env);
       assert.equal(sent.length, 1, "Completed work never republishes");
+      const future = createBackgroundTask({
+        env,
+        kind: "ai.job",
+        resourceId: "beyond-horizon",
+        availableAt: new Date(Date.now() + 13 * 3600_000),
+      });
+      await persistBackgroundTasks(env, [future]);
+      await publishBackgroundDispatches(env);
+      assert.ok(!sent.includes(future.taskId), "Work beyond twelve hours stays in PostgreSQL");
+
       const task = createBackgroundTask({ env, kind: "notification.publish", resourceId: "retry" });
       await persistBackgroundTasks(env, [task]);
       await runBackgroundDelivery({
@@ -278,6 +289,7 @@ try {
         .where(eq(aiJob.id, replayable.id));
       const completed = (await first.db.select().from(aiJob).where(eq(aiJob.id, replayable.id)))[0];
       await assert.rejects(replayBackgroundFailure(env, replayTicket.id), /INELIGIBLE/);
+      await seedCutoverAcceptance(env);
       const options = {
         cellId: env.ZILOBASE_CELL_ID,
         cutoff: new Date(Date.now() + 100),
@@ -301,6 +313,38 @@ try {
       await applyBackgroundCutover(env, options, async () => {
         purges++;
       });
+      await assertCutoverAcceptance(options.cutoff);
+      const foreignEnv = { ...env, ZILOBASE_CELL_ID: "another-cell" };
+      const foreign = createBackgroundTask({
+        env: foreignEnv,
+        kind: "ai.job",
+        resourceId: "foreign",
+      });
+      await persistBackgroundTasks(foreignEnv, [foreign]);
+      await assert.rejects(
+        applyBackgroundCutover(env, options, async () => {
+          purges++;
+        }),
+        /FOREIGN_CELL/,
+      );
+      await first.db.delete(backgroundDispatch).where(eq(backgroundDispatch.id, foreign.taskId));
+      const newer = createBackgroundTask({ env, kind: "ai.job", resourceId: "post-cutover" });
+      await persistBackgroundTasks(env, [newer]);
+      await first.db
+        .update(backgroundDispatch)
+        .set({ createdAt: new Date(options.cutoff.getTime() + 1) })
+        .where(eq(backgroundDispatch.id, newer.taskId));
+      await assert.rejects(
+        applyBackgroundCutover(env, options, async () => {
+          purges++;
+        }),
+        /CUTOFF_PRECEDES/,
+      );
+      await first.db
+        .update(backgroundDispatch)
+        .set({ status: "cancelled" })
+        .where(eq(backgroundDispatch.id, newer.taskId));
+
       assert.equal(purges, 2, "Fixed-cutoff apply is safely repeatable");
       assert.equal(
         (await first.db.select().from(aiJob).where(eq(aiJob.id, queued.id)))[0].status,
@@ -327,5 +371,8 @@ try {
   await second.client.end();
 }
 
-if (process.env.ZILOBASE_BACKGROUND_VERIFY_SQL_ONLY !== "true")
-  await import("./verify-node-queues");
+if (process.env.ZILOBASE_BACKGROUND_VERIFY_SQL_ONLY !== "true") {
+  if (process.env.ZILOBASE_BACKGROUND_VERIFY_PROCESSOR_ONLY !== "true")
+    await import("./verify-node-queues");
+  await import("./verify-background-processor");
+}

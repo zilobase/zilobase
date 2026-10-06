@@ -92,3 +92,40 @@ contains `QUEUE_REDIS_URL`; configure it for API and worker roles alike.
 Cloudflare Durable Object declarations and migration history are unchanged.
 Reconcile any deployment migration history separately during release preparation;
 do not remove declarations as part of this queue cutover.
+
+## Reproducible verification
+
+`npm run test:background:isolated` provisions only uniquely named disposable
+PostgreSQL and persistent queue Redis containers. It tests real migrations,
+transaction rollback, failed/partial enqueue recovery, publication claims,
+future horizon, duplicate delivery, terminal outcomes, retry rescheduling,
+exhaustion/replay, full-cutover preservation and scope guards. BullMQ checks cover
+all seven envelopes, split roles, competing consumers, delayed work, business
+deferral beyond transport budgets, broker restart during active work, retained
+jobs, graceful shutdown, cell-only purge and bounded unavailable startup.
+
+The production processor fixture runs all seven kinds against real SQL/BullMQ.
+It asserts automation-generated notifications, AI compaction, encrypted agent
+checkpoints, paginated calendar continuation and committed journal fanout. Only
+provider HTTP is controlled: no paid model or Google account is contacted.
+A child process is killed during notification fanout; expired SQL ownership and
+BullMQ stalled-job recovery finish publication while retaining one domain record.
+A paused real broker proves SQL commit survives enqueue timeout and stable IDs
+prevent duplicate execution after republication.
+
+The Worker fixture bundles the production adapter with Wrangler's dry-run
+compiler and executes it through Miniflare queue producers/consumers against the
+same disposable PostgreSQL server. It asserts persisted admission, duplicate AI
+execution, business rescheduling and DLQ finalization. The bundle is supplied as
+source because this Miniflare prerelease's file-loading path fails at startup.
+The independent Miniflare conformance suite also covers every task kind and
+invalid envelopes/lanes/cells. Neither path uploads or deploys a Worker.
+
+`npm run test:databases:app-browser` mounts two independent real browser clients
+using separate queue and realtime brokers. It checks committed socket delivery,
+HTTP acknowledgement, reconnect, shared cache surfaces and Yjs collaboration.
+`npm run test:calendar:integration` runs its PostgreSQL continuation and webhook
+fixtures in a temporary database. Helm lint/template and a negative shared-Secret
+render check verify deployment configuration; Compose config validates both
+persistent broker services. Detailed candidate evidence is recorded alongside
+the release handoff.

@@ -22,9 +22,9 @@ Roll out in this order: dark capture, internal actions, schedules, webhooks, Sla
 
 ## Metrics and alerts
 
-Both runtimes emit one bounded `background.heartbeat` per minute. The protected snapshot reports per-lane ready counts and oldest-due age, active/stale leases, leased-maintenance status, cell/runtime identity, and coordinator/listener readiness. A targeted hosted queue delivery that receives `AUTOMATION_WORKSPACE_CAPACITY` is delayed instead of acknowledged; the workspace advisory lock prevents the retry from exceeding the ten-run cap. Alert when any lane is more than two minutes late, an event window is five seconds late at p99, a workspace remains at ten automation leases for five minutes, any DLQ receives a message, or two heartbeats are missed.
+Both runtimes emit one bounded `background.heartbeat` per minute. The protected snapshot reports per-lane ready counts and oldest-due age, active/stale leases, leased-maintenance status, cell/runtime identity, and queue producer/consumer readiness and maintenance freshness. A targeted hosted queue delivery that receives `AUTOMATION_WORKSPACE_CAPACITY` is delayed instead of acknowledged; the workspace advisory lock prevents the retry from exceeding the ten-run cap. Alert when any lane is more than two minutes late, an event window is five seconds late at p99, a workspace remains at ten automation leases for five minutes, any DLQ receives a message, or two heartbeats are missed.
 
-The protected health endpoint returns 503 with `Retry-After: 30` when durable backlog age exceeds two minutes, stale leases exist, maintenance repeatedly fails, or the coordinator is unavailable. Metrics and logs may contain runtime, cell, lane, task kind, outcome, bounded error codes, and opaque IDs only—never definitions, property values, messages, email addresses, headers, OAuth tokens, or provider response bodies.
+The protected health endpoint returns 503 with `Retry-After: 30` when durable backlog age exceeds two minutes, stale leases exist, maintenance repeatedly fails, or applicable queue readiness fails. Metrics and logs may contain runtime, cell, lane, task kind, outcome, bounded error codes, and opaque IDs only—never definitions, property values, messages, email addresses, headers, OAuth tokens, or provider response bodies.
 
 ## Incident response
 

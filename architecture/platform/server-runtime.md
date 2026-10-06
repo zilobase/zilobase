@@ -77,8 +77,9 @@ network transports; the Worker side owns R2, Email bindings, and Worker fetch
 options. Server features no longer select S3 versus R2 or SMTP versus Email.
 
 Background dispatch is the first request-scoped port cutover. Feature services
-call `Ports.jobs.dispatch`; Node provides a PostgreSQL wake-up/coordinator and
-Workers provide Queue bindings. `dispatchBackgroundTasks` is no longer an
+persist dispatch intent atomically with feature work; the publisher calls
+`Ports.jobs.dispatch`. Node supplies dedicated Redis/BullMQ queues and Workers
+provide Queue bindings. `dispatchBackgroundTasks` is no longer an
 optional `ServerRuntimeAdapter` capability. Node and Worker scheduler providers
 likewise contain `setTimeout().unref()` and `waitUntil`/alarm mechanics, while
 the runtime factories expose lifecycle through `Ports.lifecycle`. The app's

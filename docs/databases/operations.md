@@ -10,11 +10,11 @@ can be rebuilt from bounded reads.
 Node and Cloudflare are alternative deployments. They do not serve the same
 environment and there is no Node-to-Cloudflare event bridge.
 
-| Deployment                                                    | Database delivery path                                                                                    | Broker requirement                                                                                  |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| One Node process in the `all` role                            | PostgreSQL outbox -> in-process background coordinator -> local WebSocket room + Redis/Valkey publication | `REALTIME_REDIS_URL` is required; self-published Redis envelopes are ignored by instance ID         |
-| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL outbox -> background worker -> Redis/Valkey -> API WebSocket rooms                             | The same `REALTIME_REDIS_URL` is required in every process; readiness fails while it is unavailable |
-| Managed Cloudflare                                            | API Worker -> fast Queue -> background Worker -> per-database Durable Object -> WebSocket clients         | The Queue and Durable Object bindings are required                                                  |
+| Deployment                                                    | Database delivery path                                                                                         | Broker requirement                                                                                      |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| One Node process in the `all` role                            | PostgreSQL dispatch intent -> BullMQ fast queue -> shared processor -> local room + realtime Redis publication | Separate `QUEUE_REDIS_URL` and `REALTIME_REDIS_URL` are required; own realtime envelopes are ignored    |
+| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL dispatch intent -> BullMQ fast queue -> shared processor -> realtime Redis -> API rooms             | Both dedicated queue and realtime endpoints are required in every process; readiness checks queue state |
+| Managed Cloudflare                                            | API Worker -> fast Queue -> background Worker -> per-database Durable Object -> WebSocket clients              | The Queue and Durable Object bindings are required                                                      |
 
 The HTTP request path never publishes to Redis, calls a Durable Object, or
 broadcasts to sockets. It commits the command and schedules a fast background

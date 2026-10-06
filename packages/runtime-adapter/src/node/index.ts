@@ -43,7 +43,3 @@ export { attachNodeMeetingAudioRuntime } from "./features/meeting-audio/meeting-
 export { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/calendar-realtime-runtime";
 
 export { purgeNodeCellQueues } from "./queue-operations";
-export {
-  purgeCloudflareCellQueues,
-  CLOUDFLARE_CELL_QUEUE_NAMES,
-} from "./cloudflare-queue-operations";

@@ -26,7 +26,12 @@ export async function purgeNodeCellQueues(env: Record<string, unknown>, cellId: 
   );
   for (const queue of queues) queue.on("error", () => {});
   try {
-    await redis.connect();
+    await Promise.race([
+      Promise.all(queues.map((queue) => queue.waitUntilReady())),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("QUEUE_PURGE_BROKER_UNAVAILABLE")), 2500),
+      ),
+    ]);
     for (const queue of queues) await queue.obliterate({ force: true });
     return { cellId, purged: queues.map((queue) => queue.name) };
   } finally {

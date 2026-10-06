@@ -10,7 +10,8 @@ import {
   inspectBackgroundFailures,
   replayBackgroundFailure,
 } from "../app/background/operations/replay";
-import { purgeNodeCellQueues, purgeCloudflareCellQueues } from "@zilobase/runtime-adapter/node";
+import { purgeNodeCellQueues } from "@zilobase/runtime-adapter/node";
+import { purgeCloudflareCellQueues } from "@zilobase/runtime-adapter/operations/cloudflare-queues";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,

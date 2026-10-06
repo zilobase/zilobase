@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { createNodeQueueRuntime } from "@zilobase/runtime-adapter/node";
+import Redis from "ioredis";
+import { createNodeQueueRuntime, purgeNodeCellQueues } from "@zilobase/runtime-adapter/node";
 import {
   BACKGROUND_LANE_POLICY,
   createBackgroundTaskV2,
@@ -34,6 +35,8 @@ const callbacks = {
       await new Promise<void>((resolve) => {
         hold = resolve;
       });
+    if (task.resourceId === "business" && attempts.get(task.resourceId)! <= 7)
+      return { outcome: "defer" as const, availableAt: new Date().toISOString() };
     if (task.resourceId === "unexpected") throw new Error("fixture transport failure");
     if (Date.parse(task.availableAt) > Date.now())
       return { outcome: "defer" as const, availableAt: task.availableAt };
@@ -81,6 +84,11 @@ try {
     job!.opts.removeOnComplete && (job!.opts.removeOnComplete as { age: number }).age,
     86400,
   );
+  const business = createBackgroundTaskV2({ env, kind: "ai.job", resourceId: "business" });
+  await producer.dispatch([business]);
+  await until(() => effects.includes("business"));
+  assert.equal(attempts.get("business"), 8, "Business deferral exceeds the transport retry budget");
+  assert.equal((await producer.queues.get("ai")!.getJob(business.taskId))!.attemptsMade, 1);
   console.info("BullMQ fixture: transport retries");
   await producer.dispatch([
     createBackgroundTaskV2({ env, kind: "realtime.database", resourceId: "unexpected" }),
@@ -89,6 +97,14 @@ try {
   assert.equal(attempts.get("unexpected"), 6, "Initial attempt plus five transport redeliveries");
   await producer.dispatch([createBackgroundTaskV2({ env, kind: "ai.job", resourceId: "held" })]);
   await until(() => !!hold);
+  const activeBroker = process.env.ZILOBASE_QUEUE_VERIFY_CONTAINER!;
+  assert.ok(
+    activeBroker.startsWith("zilobase-background-test-") && activeBroker.endsWith("-queue"),
+  );
+  await promisify(execFile)("docker", ["restart", "--time", "3", activeBroker]);
+  await until(
+    () => producer.readiness().producerReady === true && worker.readiness().consumerReady === true,
+  );
   let stopped = false;
   console.info("BullMQ fixture: shutdown");
   const stop = worker.stop().then(() => {
@@ -117,6 +133,42 @@ try {
   } finally {
     await restarted.stop();
   }
+  const otherEnv = { ...env, ZILOBASE_CELL_ID: `${cell}-other`, ZILOBASE_PROCESS_ROLE: "api" };
+  const other = createNodeQueueRuntime(otherEnv, {
+    ...callbacks,
+    validate: (body: unknown) => decodeBackgroundTaskV2(body, otherEnv.ZILOBASE_CELL_ID),
+  });
+  const redis = new Redis(url);
+  try {
+    await other.start();
+    const untouched = createBackgroundTaskV2({
+      env: otherEnv,
+      kind: "ai.job",
+      resourceId: "isolated",
+    });
+    await other.dispatch([untouched]);
+    await redis.set(`unrelated:${cell}`, "retained");
+    await purgeNodeCellQueues(env, cell);
+    assert.ok(await other.queues.get("ai")!.getJob(untouched.taskId));
+    assert.equal(await redis.get(`unrelated:${cell}`), "retained");
+    assert.equal(await producer.queues.get("ai")!.getJob(retained.taskId), undefined);
+  } finally {
+    await other.stop();
+    redis.disconnect();
+  }
+  const unavailable = createNodeQueueRuntime(
+    { ...env, QUEUE_REDIS_URL: "redis://127.0.0.1:1", ZILOBASE_PROCESS_ROLE: "api" },
+    callbacks,
+  );
+  const start = Date.now();
+  try {
+    await unavailable.start();
+    assert.equal(unavailable.readiness().producerReady, false);
+    await assert.rejects(unavailable.dispatch([retained]), /UNAVAILABLE/);
+  } finally {
+    await unavailable.stop();
+  }
+  assert.ok(Date.now() - start < 8000, "Startup and shutdown stay bounded during an outage");
   console.info(
     "BullMQ verification passed: all seven envelopes, split roles, deduplication, delay, retry exhaustion, graceful shutdown and persistent broker restart.",
   );

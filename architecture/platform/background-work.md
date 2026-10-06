@@ -70,3 +70,19 @@ Node queue purge and Cloudflare purge are separate runtime operations. The
 Cloudflare operator verifies all eight queue IDs/names before issuing any purge
 and waits for completion. Legacy feature tables have no cell discriminator;
 shared-database cells require an ownership migration before cutover is safe.
+
+The isolated fixture now executes all seven task kinds through the production
+processor with real PostgreSQL and BullMQ, including two competing consumers,
+provider-boundary HTTP fixtures, calendar pagination, agent checkpoints and
+notification fanout. A killed child process exercises durable ownership and
+stalled-job recovery. The real PostgreSQL Miniflare fixture uses production
+admission, delivery, AI processing, business rescheduling and DLQ finalization.
+Mounted application acceptance uses distinct queue and realtime brokers and two
+independent browsers. External provider HTTP is controlled; broker and database
+operations are real.
+
+Publication dispatches a bounded batch before one ownership-fenced bookkeeping
+update. Partial broker success leaves the batch recoverable under stable IDs;
+parallel SQL writes never share a standalone Worker connection. Cloudflare
+operator APIs have their own `operations/cloudflare-queues` entrypoint and are
+not imported by the Node application runtime.

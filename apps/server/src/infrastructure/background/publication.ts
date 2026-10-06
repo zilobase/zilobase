@@ -101,50 +101,48 @@ export async function publishBackgroundDispatches(env: Record<string, unknown>, 
         .where(eq(backgroundDispatch.id, row.id));
     return rows;
   });
-  let published = 0;
-  await Promise.all(
-    rows.map(async (row) => {
-      const claim = and(
-        eq(backgroundDispatch.id, row.id),
-        eq(backgroundDispatch.cellId, cellId),
-        eq(backgroundDispatch.leaseOwner, owner),
-      );
-      try {
-        await requireRuntimePort("jobs").dispatch([row.task]);
-        await db
-          .update(backgroundDispatch)
-          .set({
-            status: "published",
-            publishedAt: new Date(),
-            nextPublicationAt: new Date(
-              Math.max(Date.now(), Date.parse(row.task.availableAt)) + 300_000,
-            ),
-            leaseOwner: null,
-            leaseExpiresAt: null,
-            errorCode: null,
-            updatedAt: new Date(),
-          })
-          .where(claim);
-        published++;
-      } catch (error) {
-        await db
-          .update(backgroundDispatch)
-          .set({
-            status: "pending",
-            nextPublicationAt: new Date(Date.now() + 5_000),
-            leaseOwner: null,
-            leaseExpiresAt: null,
-            errorCode: error instanceof Error ? error.name.slice(0, 100) : "DISPATCH_FAILED",
-            updatedAt: new Date(),
-          })
-          .where(claim);
-        console.warn(
-          JSON.stringify({ event: "background.dispatch_deferred", taskId: row.id, kind: row.kind }),
-        );
-      }
-    }),
+  if (!rows.length) return { published: 0, claimed: 0 };
+  const claim = and(
+    inArray(
+      backgroundDispatch.id,
+      rows.map((row) => row.id),
+    ),
+    eq(backgroundDispatch.cellId, cellId),
+    eq(backgroundDispatch.leaseOwner, owner),
   );
-  return { published, claimed: rows.length };
+  try {
+    await requireRuntimePort("jobs").dispatch(rows.map((row) => row.task));
+  } catch (error) {
+    // Partial enqueue is safe: all envelopes retain their stable IDs on recovery.
+    await db
+      .update(backgroundDispatch)
+      .set({
+        status: "pending",
+        nextPublicationAt: new Date(Date.now() + 5000),
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        errorCode: error instanceof Error ? error.name.slice(0, 100) : "DISPATCH_FAILED",
+        updatedAt: new Date(),
+      })
+      .where(claim);
+    console.warn(
+      JSON.stringify({ event: "background.dispatch_deferred", cell: cellId, count: rows.length }),
+    );
+    return { published: 0, claimed: rows.length };
+  }
+  await db
+    .update(backgroundDispatch)
+    .set({
+      status: "published",
+      publishedAt: new Date(),
+      nextPublicationAt: sql`greatest(current_timestamp, ${backgroundDispatch.availableAt}) + interval '5 minutes'`,
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      errorCode: null,
+      updatedAt: new Date(),
+    })
+    .where(claim);
+  return { published: rows.length, claimed: rows.length };
 }
 
 export function createBackgroundDeliveryStore(env: Record<string, unknown>, workerId: string) {

@@ -110,6 +110,10 @@
     "./worker/web/use-agent-conversation": {
       "types": "./src/worker/web/use-agent-conversation.ts",
       "default": "./src/worker/web/use-agent-conversation.ts"
+    },
+    "./operations/cloudflare-queues": {
+      "types": "./src/operations/cloudflare-queues.ts",
+      "default": "./src/operations/cloudflare-queues.ts"
     }
   },
   "scripts": {

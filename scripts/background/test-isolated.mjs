@@ -93,7 +93,13 @@ try {
         detached: true,
         env: {
           ...process.env,
-          ZILOBASE_BACKGROUND_VERIFY_SQL_ONLY: process.argv.includes("--sql-only") ? "true" : "",
+          ZILOBASE_BACKGROUND_VERIFY_PROCESSOR_ONLY: process.argv.includes("--processor-only")
+            ? "true"
+            : "",
+          ZILOBASE_BACKGROUND_VERIFY_SQL_ONLY:
+            process.argv.includes("--sql-only") || process.argv.includes("--worker-sql-only")
+              ? "true"
+              : "",
           ZILOBASE_QUEUE_VERIFY_URL: `redis://${redisEndpoint}`,
           ZILOBASE_QUEUE_VERIFY_CONTAINER: broker,
           ZILOBASE_BACKGROUND_VERIFY_URL: `postgres://postgres:background-test-only@${endpoint}/zilobase_background_verify`,
@@ -102,7 +108,7 @@ try {
     );
     const watchdog = setTimeout(() => {
       process.kill(-child.pid, "SIGKILL");
-    }, 180_000);
+    }, 360_000);
     child.once("error", (error) => {
       clearTimeout(watchdog);
       reject(error);
@@ -113,6 +119,34 @@ try {
       else reject(new Error(`Dispatch verification exited ${code}`));
     });
   });
+  if (!process.argv.includes("--sql-only")) {
+    await new Promise((resolve, reject) => {
+      const child = spawn(
+        "npm",
+        [
+          "exec",
+          "--workspace",
+          "@zilobase/server",
+          "--",
+          "tsx",
+          "src/scripts/verify-worker-queues.ts",
+        ],
+        {
+          cwd: new URL("../../", import.meta.url),
+          stdio: "inherit",
+          timeout: 90_000,
+          env: {
+            ...process.env,
+            ZILOBASE_BACKGROUND_VERIFY_URL: `postgres://postgres:background-test-only@${endpoint}/zilobase_background_verify`,
+          },
+        },
+      );
+      child.once("error", reject);
+      child.once("exit", (code) =>
+        code === 0 ? resolve() : reject(new Error(`Worker SQL verification exited ${code}`)),
+      );
+    });
+  }
 } finally {
   if (brokerCreated) await exec("docker", ["stop", "--time", "1", broker]);
   if (created) await exec("docker", ["stop", "--time", "1", name]);

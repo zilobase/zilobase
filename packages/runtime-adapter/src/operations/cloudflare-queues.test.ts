@@ -1,8 +1,5 @@
 import { expect, it, vi } from "vitest";
-import {
-  purgeCloudflareCellQueues,
-  CLOUDFLARE_CELL_QUEUE_NAMES,
-} from "./cloudflare-queue-operations";
+import { purgeCloudflareCellQueues, CLOUDFLARE_CELL_QUEUE_NAMES } from "./cloudflare-queues";
 const ids = Object.fromEntries(
   CLOUDFLARE_CELL_QUEUE_NAMES.map((name, index) => [
     name,
