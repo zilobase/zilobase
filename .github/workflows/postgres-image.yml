@@ -1,0 +1,131 @@
+name: PostgreSQL vector image
+
+on:
+  push:
+    branches: [main, "build/postgres-vector-*"]
+    paths:
+      - deploy/postgres/Dockerfile
+      - .github/workflows/postgres-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: postgres-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  platform:
+    name: Test and publish (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build native test image
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/postgres
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: postgres-vector:test
+          cache-from: type=gha,scope=postgres-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=postgres-${{ matrix.arch }}
+      - name: Verify PostgreSQL, extension, vector dimensions and HNSW
+        shell: bash
+        run: |
+          docker run -d --name vector-test -e POSTGRES_PASSWORD=fixture-only postgres-vector:test
+          trap 'docker rm -fv vector-test' EXIT
+          for attempt in {1..60}; do
+            docker exec vector-test pg_isready -U postgres && break
+            sleep 1
+          done
+          docker exec -i vector-test psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+          create extension vector;
+          do $$ begin
+            if current_setting('server_version_num')::int / 10000 <> 17 then raise exception 'Expected PostgreSQL 17'; end if;
+            if (select extversion from pg_extension where extname='vector') <> '0.8.7' then raise exception 'Expected pgvector 0.8.7'; end if;
+          end $$;
+          create table vector_test(id int primary key, embedding vector(1536));
+          insert into vector_test values(1, array_fill(1::real,array[1536])::vector);
+          create index on vector_test using hnsw(embedding vector_cosine_ops);
+          do $$ begin
+            if (select vector_dims(embedding) from vector_test) <> 1536 then raise exception 'Incorrect dimensions'; end if;
+          end $$;
+          SQL
+      - name: Publish tested platform by digest
+        id: publish
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/postgres
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=ghcr.io/zilobase/postgres,push-by-digest=true,name-canonical=true,push=true
+          labels: |
+            org.opencontainers.image.source=https://github.com/zilobase/zilobase
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=PostgreSQL 17.10 with pgvector 0.8.7
+          cache-from: type=gha,scope=postgres-${{ matrix.arch }}
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: postgres-digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 30
+  manifest:
+    needs: platform
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: postgres-digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - name: Publish tested multi-platform manifest
+        shell: bash
+        run: |
+          image=ghcr.io/zilobase/postgres
+          sources=()
+          for file in "$RUNNER_TEMP"/digests/*; do
+            sources+=("$image@sha256:$(basename "$file")")
+          done
+          test "${#sources[@]}" -eq 2
+          tag="17.10-vector0.8.7-${GITHUB_SHA::12}"
+          docker buildx imagetools create --tag "$image:$tag" "${sources[@]}"
+          docker buildx imagetools inspect "$image:$tag" | tee "$RUNNER_TEMP/postgres-image.txt"
+          cat "$RUNNER_TEMP/postgres-image.txt" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: postgres-release-image
+          path: ${{ runner.temp }}/postgres-image.txt
+          if-no-files-found: error
+          retention-days: 90
