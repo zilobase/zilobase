@@ -393,7 +393,10 @@ export const BlockSelection = Extension.create({
                 );
             },
           });
-          const syncNativeSelectionVisibility = () => {
+          // ProseMirror renders native selection through Selection.visible.
+          // Publishing block mode must not override that rendering on blur or
+          // expose a different invisible selection, such as a database node.
+          const notifyBlockSelectionChange = () => {
             const useBlockHighlight = isBlockSelectionActive(view.state);
 
             if (useBlockHighlight !== blockSelectionActive) {
@@ -404,23 +407,17 @@ export const BlockSelection = Extension.create({
                 }),
               );
             }
-
-            view.dom.classList.toggle(
-              "ProseMirror-hideselection",
-              view.hasFocus() && view.editable && useBlockHighlight,
-            );
           };
 
-          syncNativeSelectionVisibility();
+          notifyBlockSelectionChange();
 
           return {
             update() {
               marquee.update();
-              syncNativeSelectionVisibility();
+              notifyBlockSelectionChange();
             },
             destroy() {
               marquee.destroy();
-              view.dom.classList.remove("ProseMirror-hideselection");
             },
           };
         },
