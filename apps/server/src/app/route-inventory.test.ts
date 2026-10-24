@@ -41,6 +41,9 @@ describe("feature route composition", () => {
       "PATCH /:id",
       "POST /:id/restore",
       "DELETE /:id",
+      "GET /:id/verification",
+      "PUT /:id/verification",
+      "DELETE /:id/verification",
     ]);
   });
 
@@ -74,6 +77,9 @@ describe("feature route composition", () => {
       "GET /:databaseId/automation-slack/connections/:connectionId/channels",
       "DELETE /:databaseId/automation-slack/connections/:connectionId",
       "GET /:id/access",
+      "GET /:id/verification",
+      "PUT /:id/verification",
+      "DELETE /:id/verification",
     ]);
   });
 });

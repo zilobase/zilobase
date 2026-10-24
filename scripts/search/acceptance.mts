@@ -1,3 +1,4 @@
+import { checkControlsHttp } from "./controls-http.mts";
 import { execFile, spawnSync } from "node:child_process";
 import { promisify } from "node:util";
 import assert from "node:assert/strict";
@@ -151,6 +152,9 @@ try {
     await api.signIn({ email, password, jar });
     workspace = (await query("select id from workspace limit 1")).rows[0].id;
   });
+  await check("structured search controls and verification across HTTP", async () =>
+    checkControlsHttp({ request, query, workspace }),
+  );
   await check("workspace opt-in backfills existing pages and semantic discovery", async () => {
     space = await createPage(
       "Flight notes",

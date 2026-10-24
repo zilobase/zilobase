@@ -93,6 +93,7 @@
     "test:automations:node": "node scripts/automations/test-isolated.mjs node",
     "test:automations:worker": "node scripts/automations/test-isolated.mjs worker",
     "test:automations": "npm run test:automations:unit && npm run test:automations:node && npm run test:automations:worker",
+    "test:search:controls": "node scripts/search/test-controls.mjs",
     "test:search:node": "node scripts/search/test-isolated.mjs node",
     "test:search:worker": "node scripts/search/test-isolated.mjs worker",
     "test:search:browser": "node scripts/search/test-browser.mjs",

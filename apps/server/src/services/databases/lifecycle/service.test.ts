@@ -101,6 +101,7 @@ function transactionRecorder() {
   const inserts: unknown[] = [];
   const updates: unknown[] = [];
   const tx = {
+    execute: vi.fn(async () => ({ rows: [] })),
     insert() {
       return {
         values(value: unknown) {

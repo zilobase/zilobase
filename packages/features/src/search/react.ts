@@ -80,7 +80,14 @@ export function useWorkspaceSearch(
   const result = useQuery(workspaceSearchQueryOptions(apiFetch, workspaceId, input, enabled));
   useSharedDataRevision(queryClient);
   return {
-    ...result,
+    error: result.error,
+    isLoading: result.isLoading,
+    isPending: result.isPending,
+    isFetching: result.isFetching,
+    isError: result.isError,
+    isSuccess: result.isSuccess,
+    status: result.status,
+    refetch: result.refetch,
     data:
       result.data?.type === "workspace_search"
         ? { ...result.data, results: resolveSearchReferences(queryClient, result.data.results) }

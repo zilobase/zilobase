@@ -32,6 +32,10 @@ created/edited timestamps, place or verification serialization is included.
 Multiple views of a row do not duplicate its page/property chunks. Independently
 authorized properties remain separate chunks.
 
+Structured keyword controls, user lookup and verification are documented in
+[workspace search controls](search-controls.md). These use live metadata rather
+than additional embedding inputs.
+
 ## Freshness, access and recovery
 
 A page change records a monotonic indexing revision in the same transaction.

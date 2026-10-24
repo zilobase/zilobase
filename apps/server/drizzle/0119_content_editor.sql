@@ -1,5 +1,18 @@
 ALTER TABLE page ADD COLUMN last_edited_at timestamptz, ADD COLUMN last_edited_by_id text REFERENCES "user"(id) ON DELETE SET NULL;
 ALTER TABLE database ADD COLUMN last_edited_at timestamptz, ADD COLUMN last_edited_by_id text REFERENCES "user"(id) ON DELETE SET NULL;
+-- Editorial and verification clocks are not document-body confirmations.
+CREATE OR REPLACE FUNCTION zilobase_stamp_entity_update() RETURNS trigger AS $$
+BEGIN
+ IF TG_TABLE_NAME='page' AND
+  (to_jsonb(NEW)-ARRAY['last_edited_at','last_edited_by_id','verified_at','verified_by_id','verification_expires_at','verification_updated_at']) IS NOT DISTINCT FROM
+  (to_jsonb(OLD)-ARRAY['last_edited_at','last_edited_by_id','verified_at','verified_by_id','verification_expires_at','verification_updated_at']) THEN
+  NEW.updated_at=OLD.updated_at; RETURN NEW;
+ END IF;
+ NEW.updated_at=GREATEST(date_trunc('milliseconds',clock_timestamp()),date_trunc('milliseconds',OLD.updated_at)+interval '1 millisecond');
+ RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+--> statement-breakpoint
 UPDATE page SET last_edited_at=updated_at;
 UPDATE database SET last_edited_at=updated_at;
 ALTER TABLE page ALTER COLUMN last_edited_at SET DEFAULT now(), ALTER COLUMN last_edited_at SET NOT NULL;

@@ -18,10 +18,10 @@ function teamspaceAllowed(workspaceId: string, teamspace: SQL, userId: string) {
 }
 
 function standaloneAllowed(workspaceId: string, database: SQL, userId: string) {
-  return sql`exists(select 1 from database d where d.id=${database} and d.workspace_id=${workspaceId} and d.page_id is null and d.deleted_at is null and (select is_member from search_principal) and (
-    d.teamspace_id is null and d.created_by_id=${userId} or
-    exists(select 1 from database_access a where a.database_id=d.id and a.workspace_id=${workspaceId} and ${principal(sql`a.target_type`, sql`a.target_id`, userId)} and ${validLevel(sql`a.access_level`)}) or
-    d.teamspace_id is not null and ${teamspaceAllowed(workspaceId, sql`d.teamspace_id`, userId)}))`;
+  return sql`exists(select 1 from database standalone_database where standalone_database.id=${database} and standalone_database.workspace_id=${workspaceId} and standalone_database.page_id is null and standalone_database.deleted_at is null and (select is_member from search_principal) and (
+    standalone_database.teamspace_id is null and standalone_database.created_by_id=${userId} or
+    exists(select 1 from database_access a where a.database_id=standalone_database.id and a.workspace_id=${workspaceId} and ${principal(sql`a.target_type`, sql`a.target_id`, userId)} and ${validLevel(sql`a.access_level`)}) or
+    standalone_database.teamspace_id is not null and ${teamspaceAllowed(workspaceId, sql`standalone_database.teamspace_id`, userId)}))`;
 }
 
 /** Candidate-scoped traversal: no application-side workspace graph, and indexed parent lookups. */

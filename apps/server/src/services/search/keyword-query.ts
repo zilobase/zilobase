@@ -59,9 +59,9 @@ export function keywordCandidateQuery(input: WorkspaceSearchInput) {
     ? sql`, location_edges as materialized(
     select pl.parent_id,pl.item_id as child_id from page_item_placement pl join page p on p.id=pl.item_id and p.workspace_id=${w} and p.deleted_at is null where pl.workspace_id=${w} and pl.parent_kind='page' and pl.item_kind='page' and pl.placement_kind='primary' and pl.deleted_at is null
     union select d.page_id,r.page_id from database_row r join data_source ds on ds.id=r.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null join database d on d.id=ds.parent_database_id and d.workspace_id=${w} and d.deleted_at is null where r.deleted_at is null and d.page_id is not null
-  ), search_location(id,trail) as (
-    select p.id,array[p.id] from page p where p.workspace_id=${w} and p.deleted_at is null and p.id in (${set(f.pageIds)}) and p.id in(select id from search_allowed_pages)
-    union all select e.child_id,l.trail||e.child_id from search_location l join location_edges e on e.parent_id=l.id where not e.child_id=any(l.trail) and cardinality(l.trail)<64
+  ), search_location(id) as (
+    select p.id from page p where p.workspace_id=${w} and p.deleted_at is null and p.id in (${set(f.pageIds)}) and (p.id in(select id from search_allowed_pages)) is true
+    union select e.child_id from search_location l join location_edges e on e.parent_id=l.id
   )`
     : sql``;
   const locationPage = f?.pageIds?.length
@@ -71,12 +71,12 @@ export function keywordCandidateQuery(input: WorkspaceSearchInput) {
     ? sql`d.page_id in(select id from search_location)`
     : sql`true`;
   const sourceFilter = f?.dataSourceIds?.length
-    ? sql`exists(select 1 from database_row r join data_source ds on ds.id=r.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where r.page_id=p.id and r.deleted_at is null and ds.id in (${set(f.dataSourceIds)}) and ds.parent_database_id in(select id from search_allowed_databases))`
+    ? sql`exists(select 1 from database_row r join data_source ds on ds.id=r.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where r.page_id=p.id and r.deleted_at is null and ds.id in (${set(f.dataSourceIds)}) and (ds.parent_database_id in(select id from search_allowed_databases)) is true)`
     : sql`true`;
   const dbMatch = query
     ? f?.titleOnly
       ? sql`to_tsvector('simple',coalesce(heading.name,d.name)) @@ ${q}`
-      : sql`(s.search_vector @@ ${q} or to_tsvector('simple',coalesce(heading.name,d.name)) @@ ${q} or exists(select 1 from database_view v where v.database_id=d.id and to_tsvector('simple',v.name) @@ ${q}) or exists(select 1 from database_data_source link join data_source ds on ds.id=link.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where link.database_id=d.id and ds.parent_database_id in(select id from search_allowed_databases) and to_tsvector('simple',ds.name) @@ ${q}))`
+      : sql`(s.search_vector @@ ${q} or to_tsvector('simple',coalesce(heading.name,d.name)) @@ ${q} or exists(select 1 from database_view v join data_source vds on vds.id=v.data_source_id and vds.workspace_id=${w} and vds.deleted_at is null where v.database_id=d.id and (vds.parent_database_id in(select id from search_allowed_databases)) is true and to_tsvector('simple',v.name) @@ ${q}) or exists(select 1 from database_data_source link join data_source ds on ds.id=link.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where link.database_id=d.id and (ds.parent_database_id in(select id from search_allowed_databases)) is true and to_tsvector('simple',ds.name) @@ ${q}))`
     : sql`true`;
   const sort = input.sort ?? (query ? "relevance" : "title_asc");
   const ordering: Record<string, SQL> = {
@@ -91,16 +91,16 @@ export function keywordCandidateQuery(input: WorkspaceSearchInput) {
   return sql`${searchAccessCtes(w, input.userId, pages, databases)}${location}, keyword_matches as (
     select p.id,'page'::text as type,p.name as title,s.path,s.emoji,${f?.titleOnly ? sql`null` : query ? sql`ts_headline('simple',s.content_text,${q},'MaxWords=35, MinWords=10, StartSel=__ZILOBASE_MATCH_START__, StopSel=__ZILOBASE_MATCH_STOP__')` : sql`left(s.content_text,280)`} as excerpt,${query ? sql`ts_rank_cd(s.search_vector,${q})` : sql`0`} as rank,p.created_at,p.last_edited_at
     from page p join search_document s on s.workspace_id=p.workspace_id and s.source_type='page' and s.source_id=p.id
-    where p.workspace_id=${w} and p.deleted_at is null and p.id in(select id from search_allowed_pages) and ${types.includes("page")} and ${pageMatch} and ${metadataFilters(input, "p")} and ${locationPage} and ${sourceFilter}
+    where p.workspace_id=${w} and p.deleted_at is null and (p.id in(select id from search_allowed_pages)) is true and ${types.includes("page")} and ${pageMatch} and ${metadataFilters(input, "p")} and ${locationPage} and ${sourceFilter}
     union all
     select d.id,'database',coalesce(heading.name,d.name),s.path,s.emoji,null,${query ? sql`ts_rank_cd(s.search_vector,${q})` : sql`0`},d.created_at,d.last_edited_at
     from database d join search_document s on s.workspace_id=d.workspace_id and s.source_type='database' and s.source_id=d.id
     left join lateral(
       select ds.name from database_data_source link join data_source ds on ds.id=link.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null
       left join lateral(select v.position,v.id from database_view v where v.database_id=d.id and v.data_source_id=ds.id order by v.position,v.id limit 1) first_view on true
-      where link.database_id=d.id and ds.parent_database_id in(select id from search_allowed_databases)
+      where link.database_id=d.id and (ds.parent_database_id in(select id from search_allowed_databases)) is true
       order by first_view.position nulls last,first_view.id nulls last,link.position,ds.id limit 1
     ) heading on true
-    where d.workspace_id=${w} and d.deleted_at is null and d.id in(select id from search_allowed_databases) and ${types.includes("database")} and ${f?.dataSourceIds?.length ? sql`false` : sql`true`} and ${dbMatch} and ${metadataFilters(input, "d")} and ${locationDatabase}
+    where d.workspace_id=${w} and d.deleted_at is null and (d.id in(select id from search_allowed_databases)) is true and ${types.includes("database")} and ${f?.dataSourceIds?.length ? sql`false` : sql`true`} and ${dbMatch} and ${metadataFilters(input, "d")} and ${locationDatabase}
   ) select id,type,title,path,emoji,excerpt from keyword_matches order by ${ordering[sort]},title,type,id limit ${Math.min(50, Math.max(1, input.limit ?? 50))}`;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useContentVerification,
   useUpdateContentVerification,
@@ -88,7 +88,11 @@ export function ContentVerificationDialog({
     );
   }, [open, resource?.id, query.data?.verification.revision]);
   const validExpiry = indefinite || Boolean(expiry && new Date(expiry).getTime() > Date.now());
+  const resourceKey = resource ? `${resource.workspaceId}:${resource.type}:${resource.id}` : null;
+  const currentResource = useRef(resourceKey);
+  currentResource.current = resourceKey;
   const save = async (remove = false) => {
+    const savingResource = resourceKey;
     setError(null);
     try {
       await mutation.mutateAsync(
@@ -96,9 +100,10 @@ export function ContentVerificationDialog({
           ? { remove: true }
           : { expiresAt: indefinite ? null : new Date(expiry).toISOString() },
       );
-      onOpenChange(false);
+      if (currentResource.current === savingResource) onOpenChange(false);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Could not update verification.");
+      if (currentResource.current === savingResource)
+        setError(error instanceof Error ? error.message : "Could not update verification.");
     }
   };
   return (

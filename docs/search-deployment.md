@@ -2,6 +2,9 @@
 
 Search remains disabled until `SEARCH_EMBEDDINGS_ENABLED=true` and a workspace owner or admin enables it in workspace settings. Set the same server-only `GEMINI_API_KEY` in API and background environments. Sidebar global search and pickers use keyword search. Ask AI has separate keyword and semantic tools; semantic retrieval ranks by similarity and never blends or falls back to keyword results. Enabling a workspace sends page text and supported stored property text to Google.
 
+For structured keyword controls and verification, deploy the additive migrations
+and server/client changes in the order described in [workspace search controls](search-controls.md#deployment-and-verification). These controls do not require enabling embeddings.
+
 ## Node processes
 
 `ZILOBASE_PROCESS_ROLE=all` serves the API and consumes every background lane. `api` serves requests and publishes notifications without consuming them. `worker` consumes background work without opening the API listener.

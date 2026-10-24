@@ -87,5 +87,6 @@ export async function reconcileContentVerification(
     },
   );
   await client.invalidateQueries({ queryKey: ["search", result.resource.workspaceId] });
+  if (!sharedClient(client).isCurrent(result.read)) return;
   await client.invalidateQueries({ queryKey: contentVerificationQueryKey(result.resource) });
 }

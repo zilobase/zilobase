@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { normalizeWorkspaceSearch, type SearchUser } from "@zilobase/features/search";
+import { workspaceSearchRequestSchema, type SearchUser } from "@zilobase/features/search";
 import { db } from "../../infrastructure/database";
 import { getMembership } from "../access/principal-access";
 import {
@@ -18,7 +18,13 @@ export async function searchWorkspaceUsersOperation(
   requireOperationPolicy(context, { write: false, oauthScope: "users.read" });
   const actor = requireOperationActor(context);
   requireOperationWorkspace(context, input.workspaceId);
-  const request = normalizeWorkspaceSearch(input.request as never);
+  const parsed = workspaceSearchRequestSchema.safeParse(input.request);
+  if (!parsed.success)
+    throw new ServerOperationError(
+      { error: "Invalid user lookup", details: parsed.error.issues },
+      400,
+    );
+  const request = parsed.data;
   if (request.queryType !== "user")
     throw new ServerOperationError({ error: "Expected user lookup" }, 400);
   return withSearchRead(async () => {

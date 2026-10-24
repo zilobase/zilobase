@@ -867,3 +867,20 @@ test("keyword search returns attribution and verification without making evidenc
   });
   expect(state.context.manifest).toEqual([]);
 });
+
+test("live page verification is returned with the successful read evidence", async () => {
+  const { call, dependencies } = readFixture();
+  const saved = await dependencies.document({} as never, { pageId: "page" });
+  const verification = {
+    state: "verified" as const,
+    verifiedAt: "2026-01-01T00:00:00.000Z",
+    verifiedById: "actor",
+    expiresAt: null,
+    revision: "2026-01-01T00:00:00.000Z",
+  };
+  vi.mocked(dependencies.document).mockResolvedValue({ ...saved, verification });
+  expect(await call("read_page", { pageId: "page" })).toMatchObject({
+    verification,
+    evidence: ["[[page:page]]"],
+  });
+});
