@@ -159,3 +159,54 @@ test("search rejects blended mode and oversized semantic queries", async () => {
   assert.equal(mocks.search.mock.calls.length, 0);
   assert.equal(mocks.semantic.mock.calls.length, 0);
 });
+
+test("POST accepts constrained discovery and passes normalized controls before retrieval", async () => {
+  const response = await app().request("/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      workspaceId: "granted",
+      filters: { createdByUserIds: ["me"] },
+      sort: "last_edited_desc",
+      limit: 7,
+    }),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    type: "workspace_search",
+    results: [],
+    exhaustive: false,
+  });
+  assert.equal(mocks.search.mock.calls[0][0].limit, 7);
+  assert.deepEqual(mocks.search.mock.calls[0][0].filters, { createdByUserIds: ["me"] });
+});
+test("POST strictly rejects unconstrained emptiness, malformed fields and mismatched scopes", async () => {
+  for (const body of [
+    { workspaceId: "granted" },
+    { workspaceId: "granted", query: "x", mode: "semantic" },
+    { workspaceId: "granted", query: "x", filters: { unknown: true } },
+    { workspaceId: "granted", queryType: "user", query: "Ada", sort: "relevance" },
+  ]) {
+    assert.equal(
+      (
+        await app().request("/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      ).status,
+      400,
+    );
+  }
+  assert.equal(
+    (
+      await app().request("/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: "granted", queryType: "user", query: "Ada" }),
+      })
+    ).status,
+    403,
+  );
+  assert.equal(mocks.search.mock.calls.length, 0);
+});

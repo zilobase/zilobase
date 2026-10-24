@@ -148,3 +148,15 @@ export function deriveContentVerification(
     revision: iso(input.verificationUpdatedAt),
   };
 }
+
+export const workspaceSearchHttpRequestSchema = workspaceSearchRequestSchema.safeExtend({
+  workspaceId: z.string().min(1).max(128),
+});
+export const contentVerificationSchema = z.object({
+  state: contentStatusSchema,
+  verifiedAt: z.string().nullable(),
+  verifiedById: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  revision: z.string().nullable(),
+});
+export const searchUserSchema = z.object({ id: z.string(), name: z.string(), email: z.string() });

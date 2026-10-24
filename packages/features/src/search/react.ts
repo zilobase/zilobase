@@ -68,3 +68,22 @@ export function useReindexWorkspaceSearch(workspaceId: string | null | undefined
     },
   });
 }
+
+import { workspaceSearchQueryOptions } from "./queries";
+import type { WorkspaceSearchRequestInput } from "./controls";
+export function useWorkspaceSearch(
+  workspaceId: string | null | undefined,
+  input: WorkspaceSearchRequestInput,
+  enabled = true,
+) {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const result = useQuery(workspaceSearchQueryOptions(apiFetch, workspaceId, input, enabled));
+  useSharedDataRevision(queryClient);
+  return {
+    ...result,
+    data:
+      result.data?.type === "workspace_search"
+        ? { ...result.data, results: resolveSearchReferences(queryClient, result.data.results) }
+        : result.data,
+  };
+}

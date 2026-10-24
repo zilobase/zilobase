@@ -1,3 +1,4 @@
+import { contentVerificationSchema } from "./controls";
 import { getDatabaseEmoji } from "../databases/views/appearance";
 import { z } from "zod";
 import type { QueryClient } from "@tanstack/react-query";
@@ -27,6 +28,11 @@ const resultSchema = z.object({
       recordId: z.string().optional(),
     })
     .optional(),
+  createdAt: z.string().optional(),
+  createdById: z.string().nullable().optional(),
+  lastEditedAt: z.string().optional(),
+  lastEditedById: z.string().nullable().optional(),
+  verification: contentVerificationSchema.optional(),
   entity: z.unknown(),
   titleSource: z.unknown().optional(),
 });

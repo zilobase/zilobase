@@ -1,5 +1,9 @@
 import { Hono } from "hono";
-import { searchWorkspaceOperation } from "../../services/search/operations";
+import { readJsonBody } from "../http/request";
+import {
+  searchWorkspaceOperation,
+  structuredWorkspaceSearchOperation,
+} from "../../services/search/operations";
 import { serverOperationContext } from "../http/operation-context";
 import { attachServiceErrorHandler } from "../http/route-error";
 
@@ -16,5 +20,11 @@ searchRoutes.get("/", async (c) =>
       mode: c.req.query("mode"),
     }),
     200,
+  ),
+);
+
+searchRoutes.post("/", async (c) =>
+  c.json(
+    await structuredWorkspaceSearchOperation(serverOperationContext(c), await readJsonBody(c.req)),
   ),
 );
