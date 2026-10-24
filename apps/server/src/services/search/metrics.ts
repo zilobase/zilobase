@@ -27,7 +27,7 @@ type Outcome =
   | "stale"
   | "hit"
   | "miss"
-  | "hybrid"
+  | "semantic"
   | "keyword"
   | "configuration"
   | "workspace_disabled"

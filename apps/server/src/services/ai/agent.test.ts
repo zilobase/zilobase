@@ -21,8 +21,9 @@ const usage = {
   inputTokens: { total: 20, noCache: 20, cacheRead: 0, cacheWrite: 0 },
   outputTokens: { total: 5, text: 5, reasoning: 0 },
 };
-for (const discover of [false, true])
-  test(`agent ${discover ? "searches without mentions then reads" : "reads mentioned sources"} and checkpoints before the next model step`, async () => {
+for (const discovery of [null, "search_workspace", "semantic_search_workspace", "both"] as const)
+  test(`agent ${discovery ? `discovers via ${discovery} then reads` : "reads mentioned sources"} and checkpoints before the next model step`, async () => {
+    const discover = Boolean(discovery);
     const logs = vi.spyOn(console, "info").mockImplementation(() => {});
     const request = chatRequestSchema.parse({
       workspaceId: "workspace",
@@ -42,7 +43,10 @@ for (const discover of [false, true])
     }));
     let step = 0;
     const model = new MockLanguageModelV4({
-      doStream: async ({ prompt }) => {
+      doStream: async ({ prompt, tools }) => {
+        expect(tools?.map((tool) => tool.name)).toEqual(
+          expect.arrayContaining(["search_workspace", "semantic_search_workspace"]),
+        );
         const current = step++;
         const searching = discover && current === 0;
         const first = current === (discover ? 1 : 0);
@@ -63,14 +67,25 @@ for (const discover of [false, true])
           stream: new ReadableStream({
             start(controller) {
               controller.enqueue({ type: "stream-start", warnings: [] });
-              if (usingTool)
+              if (usingTool) {
                 controller.enqueue({
                   type: "tool-call",
                   toolCallId: searching ? "search" : "read",
-                  toolName: searching ? "search_workspace" : "read_page",
+                  toolName: searching
+                    ? discovery === "both"
+                      ? "search_workspace"
+                      : discovery!
+                    : "read_page",
                   input: JSON.stringify(searching ? { query: "launch" } : { pageId: "page" }),
                 });
-              else {
+                if (searching && discovery === "both")
+                  controller.enqueue({
+                    type: "tool-call",
+                    toolCallId: "semantic-search",
+                    toolName: "semantic_search_workspace",
+                    input: JSON.stringify({ query: "release plans" }),
+                  });
+              } else {
                 controller.enqueue({ type: "text-start", id: "answer" });
                 controller.enqueue({
                   type: "text-delta",
@@ -95,7 +110,7 @@ for (const discover of [false, true])
     });
     const dependencies = {
       document,
-      search: async () => ({
+      search: vi.fn(async () => ({
         results: [
           {
             type: "page",
@@ -106,7 +121,7 @@ for (const discover of [false, true])
             updatedAt: new Date(),
           },
         ],
-      }),
+      })),
       authorizeWorkspace: async () => ({}),
     } as unknown as ReadToolDependencies;
     const chunks = [];
@@ -121,6 +136,14 @@ for (const discover of [false, true])
     }))
       chunks.push(chunk);
     expect(document).toHaveBeenCalledOnce();
+    const modes = vi.mocked(dependencies.search).mock.calls.map(([, input]) => input.mode);
+    expect(modes).toEqual(
+      discovery === "both"
+        ? ["keyword", "semantic"]
+        : discovery
+          ? [discovery === "search_workspace" ? "keyword" : "semantic"]
+          : [],
+    );
     expect(
       chunks
         .filter((c) => c.text)

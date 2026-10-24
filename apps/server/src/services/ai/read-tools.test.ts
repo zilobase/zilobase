@@ -101,6 +101,7 @@ test("only read operations are registered and @mentions do not read content", ()
   const { tools, dependencies } = readFixture();
   expect(Object.keys(tools)).toEqual([
     "search_workspace",
+    "semantic_search_workspace",
     "describe_source",
     "read_page",
     "query_records",
@@ -115,11 +116,18 @@ test("only read operations are registered and @mentions do not read content", ()
 test("workspace search validates nonempty bounded queries without accepting a workspace override", () => {
   const schema = readToolSchemas.search_workspace;
   expect(schema.parse({ query: " launch " })).toEqual({ query: "launch", types: [], limit: 10 });
+  expect(schema.parse({ query: "launch", limit: 50 }).limit).toBe(50);
+  expect(
+    readToolSchemas.semantic_search_workspace.parse({ query: "launch", limit: 50 }).limit,
+  ).toBe(50);
+  expect(
+    readToolSchemas.semantic_search_workspace.safeParse({ query: "launch", limit: 51 }).success,
+  ).toBe(false);
   for (const input of [
     { query: " " },
     { query: "x".repeat(513) },
     { query: "launch", workspaceId: "other-workspace" },
-    { query: "launch", limit: 21 },
+    { query: "launch", limit: 51 },
     { query: "launch", limit: 0 },
     { query: "launch", types: ["user"] },
   ])
@@ -137,8 +145,7 @@ test("search discovers accessible sources without mentions but grants no citatio
       workspaceId: "workspace",
       q: "launch",
       types: "page,database",
-      mode: "hybrid",
-      purpose: "question_answering",
+      mode: "keyword",
     },
   );
   expect(result).toMatchObject({
@@ -197,7 +204,7 @@ test("semantic property discovery supplies a live record reference without estab
       },
     ],
   } as never);
-  const search = await call("search_workspace", { query: "Which task cannot ship?" });
+  const search = await call("semantic_search_workspace", { query: "Which task cannot ship?" });
   expect(search.results[0].match).toMatchObject({ recordId: "record", propertyId: "status" });
   expect(state.context.manifest).toEqual([]);
   vi.mocked(dependencies.query).mockResolvedValue({
@@ -254,7 +261,7 @@ test("property discovery survives run replay but revoked live reads add no citat
       },
     ],
   } as never);
-  await fixture.call("search_workspace", { query: "Blocked work" });
+  await fixture.call("semantic_search_workspace", { query: "Blocked work" });
   const restored = structuredClone(fixture.state);
   vi.mocked(fixture.dependencies.query).mockRejectedValue(
     new ServerOperationError({ error: "Forbidden" }, 403),
@@ -284,40 +291,45 @@ test("property discovery survives run replay but revoked live reads add no citat
   expect(restored.context.manifest).toEqual([]);
 });
 
-test("search trims result bytes and grants only matches returned to the model", async () => {
-  const fixture = readFixture();
-  const template = (await fixture.dependencies.search(fixture.context, {})).results[0]!;
-  vi.mocked(fixture.dependencies.search).mockResolvedValue({
-    results: Array.from({ length: 30 }, (_, i) => ({
-      ...template,
-      id: `hit-${i}`,
-      title: "界".repeat(500),
-      path: "界".repeat(700),
-      excerpt: "界".repeat(500),
-    })),
+for (const name of ["search_workspace", "semantic_search_workspace"] as const)
+  test(`${name} returns 50 matches without a result-byte budget and grants only returned matches`, async () => {
+    const fixture = readFixture();
+    const template = (await fixture.dependencies.search(fixture.context, {})).results[0]!;
+    vi.mocked(fixture.dependencies.search).mockResolvedValue({
+      results: Array.from({ length: 55 }, (_, i) => ({
+        ...template,
+        id: `hit-${i}`,
+        title: "界".repeat(500),
+        path: "界".repeat(700),
+        excerpt: "界".repeat(500),
+      })),
+    });
+    const tools = createReadTools(fixture.context, fixture.state, {
+      signal: fixture.signal,
+      maxCalls: 24,
+      maxResultBytes: 4096,
+      dependencies: fixture.dependencies,
+    });
+    const result = (await tools[name].execute!(
+      { query: "launch", limit: 50, types: [] },
+      { toolCallId: "search", messages: [], abortSignal: fixture.signal, context: {} },
+    )) as any;
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeGreaterThan(4096);
+    expect(result.results).toHaveLength(50);
+    expect(result.results.at(-1).id).toBe("hit-49");
+    expect(fixture.state.progress.activities.at(-1)).toMatchObject({
+      status: "completed",
+      returned: 50,
+    });
+    expect(result.coverage.complete).toBe(false);
+    expect(
+      fixture.state.grants.filter((entry) => entry.resource.id.startsWith("hit-")),
+    ).toHaveLength(result.results.length);
+    expect(
+      fixture.state.grants.some((entry) => entry.resource.id === `hit-${result.results.length}`),
+    ).toBe(false);
+    expect(Object.keys(fixture.state.pending)).toHaveLength(0);
   });
-  const tools = createReadTools(fixture.context, fixture.state, {
-    signal: fixture.signal,
-    maxCalls: 24,
-    maxResultBytes: 4096,
-    dependencies: fixture.dependencies,
-  });
-  const result = (await tools.search_workspace.execute!(
-    { query: "launch", limit: 20, types: [] },
-    { toolCallId: "search", messages: [], abortSignal: fixture.signal, context: {} },
-  )) as any;
-  expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThanOrEqual(4096);
-  expect(result.results.length).toBeGreaterThan(0);
-  expect(result.results.length).toBeLessThan(20);
-  expect(result.coverage.complete).toBe(false);
-  expect(fixture.state.grants.filter((entry) => entry.resource.id.startsWith("hit-"))).toHaveLength(
-    result.results.length,
-  );
-  expect(
-    fixture.state.grants.some((entry) => entry.resource.id === `hit-${result.results.length}`),
-  ).toBe(false);
-  expect(Object.keys(fixture.state.pending)).toHaveLength(0);
-});
 
 test("search limits and type filters are forwarded; empty results are not an exhaustive absence claim", async () => {
   const { call, dependencies, state } = readFixture();
@@ -672,3 +684,105 @@ test("revoked metadata is forgotten and denied pending reads cannot be continued
   expect(Object.keys(state.cursors)).toHaveLength(0);
   expect(state.progress.canContinue).toBe(false);
 });
+
+test("semantic unavailability is explicit and AI can independently choose keyword search", async () => {
+  const { call, dependencies, state } = readFixture();
+  const metadata = {
+    mode: "semantic" as const,
+    indexAvailability: "ready" as const,
+    degradationReason: "provider_timeout" as const,
+  };
+  vi.mocked(dependencies.search).mockResolvedValueOnce({ results: [], metadata });
+  expect(await call("semantic_search_workspace", { query: "launch" })).toMatchObject({
+    results: [],
+    searchMetadata: metadata,
+  });
+  expect(dependencies.search).toHaveBeenCalledTimes(1);
+  expect(state.grants.some((entry) => entry.resource.id === "found-page")).toBe(false);
+  expect((await call("search_workspace", { query: "launch" })).results).toHaveLength(2);
+  expect(vi.mocked(dependencies.search).mock.calls.map(([, input]) => input.mode)).toEqual([
+    "semantic",
+    "keyword",
+  ]);
+});
+
+test("AI can use keyword and semantic tools in one run with independent result orders", async () => {
+  const { call, dependencies, state } = readFixture();
+  const matches = (await dependencies.search({} as never, {})).results.map((match, index) => ({
+    ...match,
+    type: "page" as const,
+    id: index === 0 ? "found-page" : "other-page",
+  }));
+  vi.mocked(dependencies.search).mockClear();
+  vi.mocked(dependencies.search)
+    .mockResolvedValueOnce({ results: matches })
+    .mockResolvedValueOnce({ results: [...matches].reverse() });
+  const keyword = await call("search_workspace", { query: "launch" });
+  const semantic = await call("semantic_search_workspace", { query: "release plans" });
+  expect(keyword.results.map((r: { id: string }) => r.id)).toEqual(["found-page", "other-page"]);
+  expect(semantic.results.map((r: { id: string }) => r.id)).toEqual(["other-page", "found-page"]);
+  expect(vi.mocked(dependencies.search).mock.calls.map(([, input]) => input)).toEqual([
+    { workspaceId: "workspace", q: "launch", types: "", mode: "keyword" },
+    {
+      workspaceId: "workspace",
+      q: "release plans",
+      types: "",
+      mode: "semantic",
+      purpose: "question_answering",
+    },
+  ]);
+  expect(state.calls).toBe(2);
+  expect(state.progress.activities).toMatchObject([
+    {
+      name: "search_workspace",
+      query: "launch",
+      label: "Searching workspace by keyword",
+      status: "completed",
+    },
+    {
+      name: "semantic_search_workspace",
+      query: "release plans",
+      label: "Searching workspace by meaning",
+      status: "completed",
+    },
+  ]);
+  expect(state.progress.activities.every((activity) => activity.source === undefined)).toBe(true);
+  expect(state.context.manifest).toEqual([]);
+});
+
+test("semantic schema accepts questions and page filters without a mode or workspace override", () => {
+  const schema = readToolSchemas.semantic_search_workspace;
+  expect(schema.parse({ query: " What blocks the launch? " })).toEqual({
+    query: "What blocks the launch?",
+    types: [],
+    limit: 10,
+  });
+  expect(schema.parse({ query: "launch", types: ["page"] }).types).toEqual(["page"]);
+  for (const input of [
+    { query: " " },
+    { query: "x".repeat(513) },
+    { query: "launch", types: ["database"] },
+    { query: "launch", mode: "keyword" },
+    { query: "launch", workspaceId: "other" },
+  ])
+    expect(schema.safeParse(input).success).toBe(false);
+});
+
+for (const name of ["search_workspace", "semantic_search_workspace"] as const)
+  test(`${name} requires current access and shares the run tool budget`, async () => {
+    const { call, dependencies, state } = readFixture();
+    const grants = structuredClone(state.grants);
+    vi.mocked(dependencies.authorizeWorkspace).mockRejectedValueOnce(
+      new ServerOperationError({ error: "Forbidden" }, 403),
+    );
+    expect(await call(name, { query: "launch" })).toMatchObject({
+      error: { code: "SOURCE_UNAVAILABLE" },
+    });
+    expect(dependencies.search).not.toHaveBeenCalled();
+    expect(state.grants).toEqual(grants);
+    state.calls = 24;
+    expect(await call(name, { query: "launch" })).toMatchObject({
+      error: { code: "BUDGET_EXHAUSTED" },
+    });
+    expect(dependencies.search).not.toHaveBeenCalled();
+  });

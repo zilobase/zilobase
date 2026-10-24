@@ -1,5 +1,10 @@
 # Search evaluation
 
+Current evaluation compares separate semantic and keyword requests. Semantic
+relevance gates cover meaning and paraphrases; the exact-title gate applies to
+keyword search for the sidebar. Historical hybrid reports below predate the
+separation and do not validate the current semantic-only ranking.
+
 The corpus is `scripts/search/relevance-corpus.json`: 38 authored synthetic pages,
 78 frozen queries, including 32 paraphrases, six property questions and 40 exact
 title/identifier cases. Labels were checked against explicit source text before

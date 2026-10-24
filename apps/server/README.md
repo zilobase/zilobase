@@ -162,10 +162,14 @@ origin for web and desktop, and streams responses from `POST /ai/chat`.
 
 Users can ask workspace questions directly or mention pages and databases with `@`.
 The model uses `search_workspace` to discover accessible sources by keywords or
-title. Search results are bounded discovery hints, not citation evidence or an
+title, and `semantic_search_workspace` to discover indexed pages by meaning,
+including supported property content. Both tools are available to the model; it
+can use either or both with independent rankings. Semantic unavailability is
+reported explicitly, and the model can then choose keyword search.
+Search results are bounded discovery hints, not citation evidence or an
 exhaustive inventory. The model reads important matches before relying on their
 content; listing search matches does not require reading every result.
-Search defaults to 10 matches, accepts at most 20, and shares the tool result-byte
+Both search tools default to 10 matches and accept at most 50, without a result-byte
 budget. Refine the keywords or page/database types for other matches; search has
 no continuation cursor. Mentions contain resource references only.
 The model calls `describe_source`, `read_page`,
@@ -192,7 +196,7 @@ step. Configure these limits on both API and background workers:
 | `AI_CONTEXT_WINDOW_TOKENS` | 32768   | Configured model context window                        |
 | `AI_MAX_STEPS`             | 12      | Maximum model steps per run, including final synthesis |
 | `AI_MAX_TOOL_CALLS`        | 24      | Maximum read operations per run                        |
-| `AI_TOOL_RESULT_BYTES`     | 6000    | Maximum serialized result bytes per tool               |
+| `AI_TOOL_RESULT_BYTES`     | 6000    | Maximum serialized result bytes per non-search tool    |
 | `AI_RUN_TOKEN_BUDGET`      | 128000  | Actual usage plus unresolved reservations per run      |
 
 A record page defaults to 50 records and accepts at most 100; result bytes may

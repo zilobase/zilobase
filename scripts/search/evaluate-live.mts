@@ -21,7 +21,7 @@ import {
   queryEmbeddingInput,
   SEARCH_PROFILE,
 } from "../../apps/server/src/services/search/vector-contracts";
-import { hybridSearchWorkspace } from "../../apps/server/src/services/search/retrieval";
+import { semanticSearchWorkspace } from "../../apps/server/src/services/search/retrieval";
 import { searchWorkspaceItems } from "../../apps/server/src/services/search/workspace-search";
 const credentials = {};
 config({
@@ -193,19 +193,19 @@ try {
         limit: 10,
       };
       const keyword = await searchWorkspaceItems(input);
-      const hybrid = await hybridSearchWorkspace(input, env);
+      const semantic = await semanticSearchWorkspace(input, env);
       const ids = (list) => list.map((r) => r.id.replace(w + "-", ""));
       const expected = new Set(q.expected);
       const rank = (list) => list.findIndex((id) => expected.has(id)) + 1;
-      const hr = rank(ids(hybrid.results)),
+      const sr = rank(ids(semantic.results)),
         kr = rank(ids(keyword));
       output.queries.push({
         text: q.text,
         kind: q.kind,
         expected: q.expected,
-        hybridRank: hr,
+        semanticRank: sr,
         keywordRank: kr,
-        actualMode: hybrid.metadata.mode,
+        actualMode: semantic.metadata.mode,
         embeddingMs,
       });
       if (index % 10 === 0) console.info(`Evaluated ${index + 1}/${corpus.queries.length} queries`);
@@ -216,22 +216,23 @@ try {
     const recall = (list, key) =>
       list.filter((q) => q[key] > 0 && q[key] <= 10).length / list.length;
     output.metrics = {
-      hybridRecallAt10: recall(semantic, "hybridRank"),
+      semanticRecallAt10: recall(semantic, "semanticRank"),
       keywordParaphraseRecallAt10: recall(paraphrase, "keywordRank"),
-      hybridParaphraseRecallAt10: recall(paraphrase, "hybridRank"),
-      exactTop1: exact.filter((q) => q.hybridRank === 1).length / exact.length,
+      semanticParaphraseRecallAt10: recall(paraphrase, "semanticRank"),
+      semanticExactTop1: exact.filter((q) => q.semanticRank === 1).length / exact.length,
+      keywordExactTop1: exact.filter((q) => q.keywordRank === 1).length / exact.length,
     };
     output.metrics.paraphraseImprovement =
-      output.metrics.hybridParaphraseRecallAt10 - output.metrics.keywordParaphraseRecallAt10;
+      output.metrics.semanticParaphraseRecallAt10 - output.metrics.keywordParaphraseRecallAt10;
     output.usage = (
       await db.execute(
         sql`select traffic_class,sum(requests)::int requests,sum(reserved_tokens)::text reserved_tokens,sum(reported_tokens)::text reported_tokens from search_embedding_usage_bucket where quota_scope=${searchQuotaScope(env)} and bucket_scope='deployment' and window_kind='minute' group by traffic_class`,
       )
     ).rows;
     output.passed =
-      output.metrics.hybridRecallAt10 >= 0.9 &&
+      output.metrics.semanticRecallAt10 >= 0.9 &&
       output.metrics.paraphraseImprovement >= 0.15 &&
-      output.metrics.exactTop1 >= 0.95;
+      output.metrics.keywordExactTop1 >= 0.95;
     console.info(
       JSON.stringify({ metrics: output.metrics, usage: output.usage, passed: output.passed }),
     );

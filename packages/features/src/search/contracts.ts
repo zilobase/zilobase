@@ -9,7 +9,7 @@ export type AppSearchResult = {
 };
 
 export type AppSearchResultType = AppSearchResult["type"];
-export type SearchMode = "keyword" | "hybrid";
+export type SearchMode = "keyword" | "semantic";
 export type SearchMatchProvenance = {
   chunkId: string;
   pageId: string;

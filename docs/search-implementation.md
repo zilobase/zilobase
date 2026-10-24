@@ -1,5 +1,9 @@
 # Vector search implementation ledger
 
+Current behavior: sidebar global search and pickers use keyword search. Ask AI has separate keyword and semantic tools; semantic retrieval uses
+vector ranking only, with no keyword fusion or fallback. The historical
+verification ledger below records the original implementation.
+
 Target: Gemini Embedding 2, 1536 dimensions, text only, opt-in per deployment and workspace.
 The approved 25-pass plan in the implementation chat is the specification.
 Baseline: `6966ac168e`; both application and hosted adapter were clean when implementation began.

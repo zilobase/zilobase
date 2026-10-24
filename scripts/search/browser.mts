@@ -89,18 +89,18 @@ export async function runSearchBrowser({ runtime, env, jar, workspace, pageId, r
       timeout: 60000,
     });
     await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-    await page.getByPlaceholder("Search pages and databases...").fill("aquatic research");
+    await page.getByPlaceholder("Search pages and databases...").fill("Underwater");
     const option = page.getByRole("option").filter({ hasText: "Underwater expedition" });
     await expect
-      .poll(() => requests.some((r) => r.query === "aquatic research" && r.mode === "hybrid"))
+      .poll(() => requests.some((r) => r.query === "Underwater" && r.mode === "keyword"))
       .toBe(true);
     await expect(option).toBeVisible({ timeout: 20000 });
-    assert.ok(requests.some((r) => r.query === "aquatic research" && r.mode === "hybrid"));
+    assert.ok(requests.some((r) => r.query === "Underwater" && r.mode === "keyword"));
     await page.screenshot({ path: ".test-results/search/browser-search.png" });
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
     await expect(page.getByPlaceholder("Search pages and databases...")).not.toBeVisible();
-    checks.push("global semantic search and keyboard navigation");
+    checks.push("global keyword search and keyboard navigation");
     await page.getByRole("button", { name: "Customize sidebar", exact: true }).click();
     await page.getByRole("button", { name: "Add shortcut", exact: true }).click();
     await page.getByText("Page", { exact: true }).last().hover();
@@ -135,14 +135,14 @@ export async function runSearchBrowser({ runtime, env, jar, workspace, pageId, r
     );
     await page.screenshot({ path: ".test-results/search/browser-mobile-settings.png" });
     await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
-    await page.getByPlaceholder("Search pages and databases...").fill("aquatic ecology");
+    await page.getByPlaceholder("Search pages and databases...").fill("Underwater");
     await expect(page.getByRole("option").filter({ hasText: "Underwater expedition" })).toBeVisible(
       { timeout: 20000 },
     );
     const bounds = await page.getByRole("dialog", { name: "Search", exact: true }).boundingBox();
     assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 391);
     await page.screenshot({ path: ".test-results/search/browser-mobile-search.png" });
-    checks.push("mobile settings and semantic results fit a 390px viewport");
+    checks.push("mobile settings and keyword results fit a 390px viewport");
     console.info(`Search browser acceptance passed (${checks.length} checks).`);
   } catch (error) {
     const diagnostics = await page

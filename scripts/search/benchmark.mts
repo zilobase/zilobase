@@ -19,7 +19,7 @@ import {
 import {
   exactSearchCandidates,
   hydrateVectorResults,
-  hybridSearchWorkspace,
+  semanticSearchWorkspace,
 } from "../../apps/server/src/services/search/retrieval";
 const url = process.env.ZILOBASE_BACKGROUND_VERIFY_URL!;
 assert.equal(new URL(url).hostname, "127.0.0.1");
@@ -144,7 +144,7 @@ try {
       const vector = JSON.parse(target.vector);
       const interactive = await timed(() =>
         work(() =>
-          hybridSearchWorkspace(
+          semanticSearchWorkspace(
             {
               workspaceId: workspace,
               userId: actor,

@@ -4,14 +4,14 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { db, runWithDbEnv } from "../../infrastructure/database";
 import { createBackgroundTask } from "../../infrastructure/background/contracts";
 import { indexSearchPage } from "./indexing";
-import { hybridSearchWorkspace, fuseSearchPageRanks, exactSearchCandidates } from "./retrieval";
-import { searchWorkspaceItems, type WorkspaceSearchResult } from "./workspace-search";
+import { semanticSearchWorkspace, exactSearchCandidates } from "./retrieval";
+import { searchWorkspaceItems } from "./workspace-search";
 import { SEARCH_PROFILE } from "./vector-contracts";
 import { fakeSearchProvider, fixtureEmbedding } from "./testing/fixtures";
 import { SearchEmbeddingError } from "./gemini";
 
 const url = process.env.ZILOBASE_SEARCH_TEST_DATABASE_URL;
-describe.skipIf(!url)("authorized exact hybrid search", () => {
+describe.skipIf(!url)("authorized exact semantic search", () => {
   let w: string, u: string, other: string, auth: string, travel: string, hidden: string;
   const within = <T>(fn: () => Promise<T>) => runWithDbEnv({ DATABASE_URL: url }, fn);
   const env = () => ({
@@ -24,9 +24,9 @@ describe.skipIf(!url)("authorized exact hybrid search", () => {
     fakeSearchProvider((text) => (/credential|authenticat|password/i.test(text) ? 0 : 1));
   const search = (
     q: string,
-    options: Parameters<typeof hybridSearchWorkspace>[2] = { provider: provider() },
+    options: Parameters<typeof semanticSearchWorkspace>[2] = { provider: provider() },
   ) =>
-    hybridSearchWorkspace(
+    semanticSearchWorkspace(
       { workspaceId: w, userId: u, query: q, membershipVerified: true, limit: 10 },
       env(),
       options,
@@ -93,7 +93,7 @@ describe.skipIf(!url)("authorized exact hybrid search", () => {
       const pageCandidates = await exactSearchCandidates(w, u, fixtureEmbedding(0), 2);
       expect(new Set(pageCandidates.map((c) => c.page_id)).size).toBe(2);
       const response = await search("I must authenticate again");
-      expect(response.metadata.mode).toBe("hybrid");
+      expect(response.metadata.mode).toBe("semantic");
       expect(response.results[0].id).toBe(auth);
       const wire = JSON.parse(JSON.stringify(response.results[0]));
       expect(wire.entity.updatedAt).toMatch(/^\d{4}-\d\d-\d\dT.*Z$/);
@@ -103,23 +103,41 @@ describe.skipIf(!url)("authorized exact hybrid search", () => {
       expect(response.results[0].match?.pageId).toBe(auth);
       expect(response.results[0].excerpt).not.toMatch(/<|__ZILOBASE/);
     }));
-  it("preserves keyword exact-title discovery and makes no query call for empty input or feature disablement", async () =>
+  it("ranks only by semantic similarity even when another page matches the title", async () =>
     within(async () => {
-      expect((await search("Trip schedule")).results[0].id).toBe(travel);
+      const query = "Trip schedule";
+      // Identical input: lexical search finds the title, while the query embedding favors credentials.
+      expect(
+        (
+          await searchWorkspaceItems({
+            workspaceId: w,
+            userId: u,
+            query,
+            membershipVerified: true,
+          })
+        )[0].id,
+      ).toBe(travel);
+      const response = await search(query, { provider: fakeSearchProvider(() => 0) });
+      expect(response.metadata.mode).toBe("semantic");
+      expect(response.results[0].id).toBe(auth);
+      expect(response.results.every((result) => result.match)).toBe(true);
+    }));
+  it("makes no query call and returns no keyword results for empty input or feature disablement", async () =>
+    within(async () => {
       const fake = provider();
       fake.embedQuery = vi.fn(fake.embedQuery);
-      await search("!!!", { provider: fake });
+      expect((await search("!!!", { provider: fake })).results).toEqual([]);
       expect(fake.embedQuery).not.toHaveBeenCalled();
-      const result = await hybridSearchWorkspace(
+      const result = await semanticSearchWorkspace(
         { workspaceId: w, userId: u, query: "Credentials", membershipVerified: true },
         { ...env(), SEARCH_EMBEDDINGS_ENABLED: "false" },
         { provider: fake },
       );
-      expect(result.metadata.mode).toBe("keyword");
-      expect(result.results[0].id).toBe(auth);
+      expect(result.metadata.mode).toBe("semantic");
+      expect(result.results).toEqual([]);
       expect(fake.embedQuery).not.toHaveBeenCalled();
     }));
-  it("excludes dirty and disabled vectors and retains authorized keyword fallback", async () =>
+  it("excludes dirty and disabled vectors without keyword fallback", async () =>
     within(async () => {
       await db.execute(sql`update page set name='Access documentation' where id=${auth}`);
       expect((await search("I must authenticate again")).results.map((r) => r.id)).not.toContain(
@@ -129,10 +147,10 @@ describe.skipIf(!url)("authorized exact hybrid search", () => {
         sql`update workspace_search_settings set enabled=false,index_epoch=index_epoch+1 where workspace_id=${w}`,
       );
       const result = await search("Credentials");
-      expect(result.metadata.mode).toBe("keyword");
-      expect(result.results[0].id).toBe(auth);
+      expect(result.metadata.mode).toBe("semantic");
+      expect(result.results).toEqual([]);
     }));
-  it("falls back on provider errors and respects the interactive timeout", async () =>
+  it("reports unavailability on provider errors and respects the interactive timeout", async () =>
     within(async () => {
       const fake = provider();
       fake.embedQuery = async () => {
@@ -145,18 +163,7 @@ describe.skipIf(!url)("authorized exact hybrid search", () => {
       const start = Date.now();
       const result = await search("Trip", { provider: fake });
       expect(result.metadata.degradationReason).toBe("provider_timeout");
-      expect(result.results[0].id).toBe(travel);
+      expect(result.results).toEqual([]);
       expect(Date.now() - start).toBeLessThan(2500);
     }));
-});
-
-it("deduplicates each ranking before reciprocal-rank fusion", () => {
-  const result = (id: string) => ({ id, type: "page" }) as WorkspaceSearchResult;
-  expect(
-    fuseSearchPageRanks(
-      [result("short")],
-      [result("long"), result("long"), result("short")],
-      10,
-    ).map((r) => r.id),
-  ).toEqual(["short", "long"]);
 });

@@ -25,11 +25,7 @@ import {
   type SearchEmbeddingProvider,
   type SearchPurpose,
 } from "./vector-contracts";
-import {
-  searchWorkspaceItems,
-  type WorkspaceSearchInput,
-  type WorkspaceSearchResult,
-} from "./workspace-search";
+import type { WorkspaceSearchInput, WorkspaceSearchResult } from "./workspace-search";
 
 export type { SearchMetadata } from "@zilobase/features/search";
 import type { SearchMetadata } from "@zilobase/features/search";
@@ -47,43 +43,6 @@ export async function exactSearchCandidates(
       sql`${searchVectorAccessCtes(workspaceId, userId)}, exact_search_chunks as materialized(select c.id,c.page_id,c.embedding from search_chunk c where ${freshSearchChunk(workspaceId)} and ${liveSearchChunkAllowed(workspaceId)}) select id,page_id,distance from (select distinct on(page_id) id,page_id,(embedding <=> ${value}::vector) as distance from exact_search_chunks order by page_id,embedding <=> ${value}::vector,id) best_chunks order by distance,page_id,id limit ${limit}`,
     )
   ).rows;
-}
-
-export function fuseSearchPageRanks(
-  keyword: readonly WorkspaceSearchResult[],
-  vector: readonly WorkspaceSearchResult[],
-  limit: number,
-) {
-  const entries = new Map<string, { result: WorkspaceSearchResult; score: number }>();
-  for (const list of [keyword, vector]) {
-    const seen = new Set<string>();
-    let rank = 0;
-    for (const result of list) {
-      const key = `${result.type}:${result.id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rank++;
-      const existing = entries.get(key);
-      entries.set(key, {
-        result: existing
-          ? {
-              ...existing.result,
-              ...(result.match ? { match: result.match, excerpt: result.excerpt } : {}),
-            }
-          : result,
-        score: (existing?.score ?? 0) + 1 / (60 + rank),
-      });
-    }
-  }
-  return [...entries.values()]
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        a.result.type.localeCompare(b.result.type) ||
-        a.result.id.localeCompare(b.result.id),
-    )
-    .slice(0, limit)
-    .map((e) => e.result);
 }
 
 function plainExcerpt(markdown: string) {
@@ -181,17 +140,14 @@ async function recheckSearchRead(input: WorkspaceSearchInput, results: Workspace
   });
 }
 
-export async function hybridSearchWorkspace(
+export async function semanticSearchWorkspace(
   input: WorkspaceSearchInput,
   env: RuntimeEnv,
   options: { purpose?: SearchPurpose; provider?: SearchEmbeddingProvider } = {},
 ) {
   const started = Date.now();
-  const keyword = searchWorkspaceItems(input);
-  // Attach a rejection handler immediately while capability is checked.
-  void keyword.catch(() => undefined);
   let metadata: SearchMetadata = {
-    mode: "keyword",
+    mode: "semantic",
     indexAvailability: "disabled",
     degradationReason: "configuration",
   };
@@ -200,9 +156,9 @@ export async function hybridSearchWorkspace(
     searchHistogram(env, "request_ms", metadata.mode, Date.now() - started);
     return { results, metadata };
   };
-  const fallback = async () => finish(await recheckResults(input, await keyword));
+  const unavailable = () => finish([]);
   if (env.SEARCH_EMBEDDINGS_ENABLED !== "true" || (!options.provider && !env.GEMINI_API_KEY))
-    return fallback();
+    return unavailable();
   const settings = (
     await withSearchRead(
       async () =>
@@ -213,16 +169,16 @@ export async function hybridSearchWorkspace(
   ).rows[0];
   if (!settings?.enabled) {
     metadata = { ...metadata, degradationReason: "workspace_disabled" };
-    return fallback();
+    return unavailable();
   }
   if (!settings.ready) {
     metadata = { ...metadata, indexAvailability: "building", degradationReason: "index_building" };
-    return fallback();
+    return unavailable();
   }
-  metadata = { mode: "keyword", indexAvailability: "ready" };
+  metadata = { mode: "semantic", indexAvailability: "ready" };
   if (!/[\p{L}\p{N}]/u.test(input.query) || (input.types && !input.types.includes("page"))) {
     metadata.degradationReason = "query_empty";
-    return fallback();
+    return unavailable();
   }
   const cancellation = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -253,7 +209,7 @@ export async function hybridSearchWorkspace(
     clearTimeout(timer);
     if (Date.now() - started > 2200) {
       metadata.degradationReason = "retrieval_budget";
-      return fallback();
+      return unavailable();
     }
     const databaseStarted = Date.now();
     const vectorResults = await db.transaction(async (tx) => {
@@ -288,10 +244,10 @@ export async function hybridSearchWorkspace(
       });
     });
     searchHistogram(env, "database_ms", "completed", Date.now() - databaseStarted);
-    const results = fuseSearchPageRanks(await keyword, vectorResults, input.limit ?? 50);
+    const results = vectorResults.slice(0, input.limit ?? 50);
     metadata = {
       ...metadata,
-      mode: vectorResults.length ? "hybrid" : "keyword",
+      mode: "semantic",
       indexAvailability: "ready",
     };
     const checked = await recheckResults(input, results);
@@ -299,7 +255,7 @@ export async function hybridSearchWorkspace(
     return finish(checked);
   } catch (error) {
     metadata = {
-      mode: "keyword",
+      mode: "semantic",
       indexAvailability: "ready",
       degradationReason:
         Date.now() - started >= 2100
@@ -311,7 +267,7 @@ export async function hybridSearchWorkspace(
               ? "provider_timeout"
               : "provider_unavailable",
     };
-    return fallback();
+    return unavailable();
   } finally {
     clearTimeout(timer);
     cancellation.abort();

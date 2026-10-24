@@ -14,7 +14,7 @@ test("search mode and workspace isolate cached responses and are sent explicitly
     return {
       results: [],
       metadata: {
-        mode: path.includes("hybrid") ? "hybrid" : "keyword",
+        mode: path.includes("semantic") ? "semantic" : "keyword",
         indexAvailability: "ready",
       },
     };
@@ -23,15 +23,15 @@ test("search mode and workspace isolate cached responses and are sent explicitly
     const keyword = await client.fetchQuery(
       appSearchQueryOptions(api, "workspace", "Login", true, ["page"], "keyword"),
     );
-    const hybrid = await client.fetchQuery(
-      appSearchQueryOptions(api, "workspace", "Login", true, ["page"], "hybrid"),
+    const semantic = await client.fetchQuery(
+      appSearchQueryOptions(api, "workspace", "Login", true, ["page"], "semantic"),
     );
     assert.deepEqual(keyword.results, []);
     assert.equal(keyword.metadata?.mode, "keyword");
-    assert.equal(hybrid.metadata?.mode, "hybrid");
+    assert.equal(semantic.metadata?.mode, "semantic");
     assert.notDeepEqual(
       appSearchQueryKey("workspace", "Login", undefined, "keyword"),
-      appSearchQueryKey("workspace", "Login", undefined, "hybrid"),
+      appSearchQueryKey("workspace", "Login", undefined, "semantic"),
     );
     assert.notDeepEqual(
       appSearchQueryKey("workspace", "Login"),
@@ -39,7 +39,7 @@ test("search mode and workspace isolate cached responses and are sent explicitly
     );
     assert.equal(paths.length, 2);
     assert.ok(paths[0].includes("mode=keyword"));
-    assert.ok(paths[1].includes("mode=hybrid"));
+    assert.ok(paths[1].includes("mode=semantic"));
   } finally {
     client.clear();
   }
@@ -52,7 +52,7 @@ test("a response arriving after session invalidation cannot publish search data"
     started();
     return new Promise<unknown>((r) => (resolve = r));
   }) as ApiFetcher;
-  const options = appSearchQueryOptions(api, "workspace", "query", true, undefined, "hybrid");
+  const options = appSearchQueryOptions(api, "workspace", "query", true, undefined, "semantic");
   const pending = options.queryFn!({ client, signal: new AbortController().signal } as never);
   await requested;
   sharedClient(client).clear();

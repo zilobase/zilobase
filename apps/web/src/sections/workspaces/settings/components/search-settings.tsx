@@ -22,8 +22,8 @@ export function WorkspaceSearchSettingsSection({ workspaceId }: { workspaceId: s
           Semantic search
         </h3>
         <p className="text-sm text-content-secondary">
-          Find pages by meaning as well as keywords. Enabling this sends page text and supported
-          property values to Google for search embeddings.
+          Let AI find pages by meaning. Global search in the sidebar uses keywords. Enabling this
+          sends page text and supported property values to Google for search embeddings.
         </p>
       </div>
       {settings.isPending ? (

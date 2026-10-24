@@ -1,6 +1,6 @@
 # Deploying Gemini search
 
-Search remains disabled until `SEARCH_EMBEDDINGS_ENABLED=true` and a workspace owner or admin enables it in workspace settings. Set the same server-only `GEMINI_API_KEY` in API and background environments. Pickers continue using keyword search. Enabling a workspace sends page text and supported stored property text to Google.
+Search remains disabled until `SEARCH_EMBEDDINGS_ENABLED=true` and a workspace owner or admin enables it in workspace settings. Set the same server-only `GEMINI_API_KEY` in API and background environments. Sidebar global search and pickers use keyword search. Ask AI has separate keyword and semantic tools; semantic retrieval ranks by similarity and never blends or falls back to keyword results. Enabling a workspace sends page text and supported stored property text to Google.
 
 ## Node processes
 
@@ -83,7 +83,7 @@ The final large-set path uses one authorized pool of at most 2000 chunks,
 relaxed iterative HNSW scanning, and actual cosine reranking before page fusion.
 It uses ef_search 1000, max_scan_tuples 100000 and scan_mem_multiplier 4;
 smaller diagnostic windows start at 100. Sets of at most 10,000 eligible chunks
-use exact retrieval. The database phase reserves time for authorization/fallback
+use exact retrieval. The database phase reserves time for authorization/response
 within the 2.5-second request budget. JIT and vector settings are transaction-local.
 
 These settings were refined by the million-chunk gate; repeating full workspace
@@ -121,7 +121,7 @@ states, provider cooldown and the shared database maintenance heartbeat.
 
 Existing process metrics include search provider latency, reserved/reported
 usage, query-vector cache hits, generated/reused chunks, publication/stale work,
-indexing lag, retrieval/fallback reasons, database duration, candidate refill and
+indexing lag, retrieval availability reasons, database duration, candidate refill and
 final authorization rejections. Labels are closed outcomes plus runtime/cell,
 never workspace/page/query identifiers. Queue delay/retries/exhaustion use the
 existing background metrics. Node exposes these through its existing metrics

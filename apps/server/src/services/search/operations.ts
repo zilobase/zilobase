@@ -5,7 +5,7 @@ import {
   ServerOperationError,
   type ServerOperationContext,
 } from "../operations/context";
-import { hybridSearchWorkspace } from "./retrieval";
+import { semanticSearchWorkspace } from "./retrieval";
 import type { SearchPurpose } from "./vector-contracts";
 import { searchWorkspaceItems } from "./workspace-search";
 const maxSearchResults = 50;
@@ -41,11 +41,11 @@ export async function searchWorkspaceOperation(
   if (
     operationInput.mode !== undefined &&
     operationInput.mode !== "keyword" &&
-    operationInput.mode !== "hybrid"
+    operationInput.mode !== "semantic"
   )
     return deny({ error: "Invalid search mode" }, 400);
-  if (operationInput.mode === "hybrid" && (operationInput.q ?? "").length > 512)
-    return deny({ error: "Hybrid search is limited to 512 characters" }, 400);
+  if (operationInput.mode === "semantic" && (operationInput.q ?? "").length > 512)
+    return deny({ error: "Semantic search is limited to 512 characters" }, 400);
   const input = {
     limit: maxSearchResults,
     membershipVerified: true,
@@ -54,8 +54,8 @@ export async function searchWorkspaceOperation(
     userId: user.id,
     workspaceId,
   };
-  if (operationInput.mode === "hybrid")
-    return hybridSearchWorkspace(input, context.env, { purpose: operationInput.purpose });
+  if (operationInput.mode === "semantic")
+    return semanticSearchWorkspace(input, context.env, { purpose: operationInput.purpose });
   const results = await searchWorkspaceItems(input);
   return {
     results,

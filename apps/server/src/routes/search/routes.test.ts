@@ -4,9 +4,11 @@ import { beforeEach, test, vi } from "vitest";
 import type { AppBindings } from "../../shared/contracts/http";
 import { searchRoutes } from "./routes";
 
-const mocks = vi.hoisted(() => ({ membership: vi.fn(), search: vi.fn() }));
+const mocks = vi.hoisted(() => ({ membership: vi.fn(), search: vi.fn(), semantic: vi.fn() }));
 vi.mock("../../services/access/principal-access", () => ({ getMembership: mocks.membership }));
 vi.mock("../../services/search/workspace-search", () => ({ searchWorkspaceItems: mocks.search }));
+
+vi.mock("../../services/search/retrieval", () => ({ semanticSearchWorkspace: mocks.semantic }));
 
 function app(
   options: {
@@ -30,6 +32,9 @@ function app(
 beforeEach(() => {
   mocks.membership.mockReset().mockResolvedValue({ role: "member" });
   mocks.search.mockReset().mockResolvedValue([]);
+  mocks.semantic
+    .mockReset()
+    .mockResolvedValue({ results: [], metadata: { mode: "semantic", indexAvailability: "ready" } });
 });
 
 test("search rejects missing OAuth scope before membership or search", async () => {
@@ -125,4 +130,32 @@ test("search delegates valid grants and retains authorized entity clocks and sni
       workspaceId: "other",
     },
   ]);
+});
+
+test("keyword and semantic requests use separate retrieval paths", async () => {
+  assert.equal(
+    (await app().request("/search?workspaceId=granted&mode=keyword&q=Notes")).status,
+    200,
+  );
+  assert.equal(mocks.search.mock.calls.length, 1);
+  assert.equal(mocks.semantic.mock.calls.length, 0);
+  mocks.search.mockClear();
+  const response = await app().request("/search?workspaceId=granted&mode=semantic&q=Notes");
+  assert.equal(response.status, 200);
+  assert.equal(mocks.semantic.mock.calls.length, 1);
+  assert.equal(mocks.search.mock.calls.length, 0);
+  assert.deepEqual(await response.json(), {
+    results: [],
+    metadata: { mode: "semantic", indexAvailability: "ready" },
+  });
+});
+
+test("search rejects blended mode and oversized semantic queries", async () => {
+  assert.equal((await app().request("/search?workspaceId=granted&mode=hybrid")).status, 400);
+  assert.equal(
+    (await app().request(`/search?workspaceId=granted&mode=semantic&q=${"x".repeat(513)}`)).status,
+    400,
+  );
+  assert.equal(mocks.search.mock.calls.length, 0);
+  assert.equal(mocks.semantic.mock.calls.length, 0);
 });

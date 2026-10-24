@@ -6,8 +6,12 @@ Use this with [deployment configuration](search-deployment.md), the
 
 ## Coverage and ownership
 
-Global search and Ask AI discover pages through keyword + vector retrieval.
-Pickers use keyword search. The server owns serialization, indexing, permissions,
+Sidebar global search and pickers use keyword search. Ask AI has separate keyword
+(`search_workspace`) and semantic (`semantic_search_workspace`) tools. The model
+can use either or both. Semantic retrieval searches indexed pages, ranked only by
+cosine similarity. Keyword matches never enter semantic ranking. Semantic requests use `mode=semantic`;
+unavailable or disabled semantic retrieval returns empty results with metadata,
+without a keyword fallback. The server owns serialization, indexing, permissions,
 retrieval and ranking; features owns client requests/cache behavior; web owns UI.
 There is no model selector. The immutable profile fixes Gemini Embedding 2,
 1536 dimensions, cosine distance, retrieval prompts and serializer/chunker policy.
@@ -69,7 +73,7 @@ token counts. The provider never silently truncates. Reported token usage is
 separate from conservative reservations; the OpenAI tokenizer is not used.
 
 Background calls time out after 20 seconds; query embedding times out after
-1.8 seconds. Interactive retrieval targets a 2.5-second fallback budget. Query
+1.8 seconds. Interactive retrieval targets a 2.5-second response budget. Query
 vectors are cached for ten minutes by workspace/user/profile/purpose/exact-input
 hash, without retaining raw query text or caching authorized search results.
 
@@ -127,10 +131,10 @@ operations after the release gates pass:
    Verify readiness, maintenance heartbeat, queue routing and source-free logs.
 5. Enable the deployment capability in staging, then opt in one workspace.
    Complete backfill and check progress, failure codes, real-provider queries,
-   property permissions, revocation, usage and provider fallback.
+   property permissions, revocation, usage and provider unavailability.
 6. Enable the production capability, then opt in a small workspace. Inspect lag,
    ready/failed counts, quota cooldown, result quality, request latency and
-   retrieval fallback before wider opt-in.
+   retrieval availability before wider opt-in.
 
 The owner/admin settings UI exposes enablement, progress, bounded failures and
 reindexing. Reindex schedules work; it does not embed in the HTTP request.

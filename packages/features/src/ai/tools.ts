@@ -3,6 +3,7 @@ import type { BuildContextResult } from "@zilobase/page-context";
 
 export const chatToolNameSchema = z.enum([
   "search_workspace",
+  "semantic_search_workspace",
   "describe_source",
   "read_page",
   "query_records",

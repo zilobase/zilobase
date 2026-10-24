@@ -33,10 +33,11 @@ export function groupSourceReads(message: ChatMessage) {
 }
 
 function readLabel(activity: ChatToolActivity, active: boolean) {
-  if (activity.name === "search_workspace") {
-    if (activity.status === "failed") return "Couldn't search workspace";
-    if (activity.status === "running") return active ? "Searching workspace" : "Search stopped";
-    return "Workspace searched";
+  if (activity.name === "search_workspace" || activity.name === "semantic_search_workspace") {
+    const kind = activity.name === "search_workspace" ? "Keyword" : "Semantic";
+    if (activity.status === "failed") return `Couldn't finish ${kind.toLowerCase()} search`;
+    if (activity.status === "running") return active ? `${kind} search` : `${kind} search stopped`;
+    return `${kind} search completed`;
   }
   if (activity.status === "failed") return "Couldn't read source";
   if (activity.cached && activity.status === "completed") return "Source reused";
@@ -97,7 +98,7 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
           latest.hasMore ??
           [...group.calls].reverse().find((call) => call.status === "completed")?.hasMore;
         const detail =
-          latest.name === "search_workspace"
+          latest.name === "search_workspace" || latest.name === "semantic_search_workspace"
             ? status === "failed"
               ? "Workspace search couldn't finish."
               : status === "stopped"

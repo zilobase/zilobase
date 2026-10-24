@@ -39,7 +39,7 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
     debouncedQuery,
     open,
     undefined,
-    "hybrid",
+    "keyword",
   );
   const contextValue = useMemo(() => ({ openSearch: () => setOpen(true) }), []);
 

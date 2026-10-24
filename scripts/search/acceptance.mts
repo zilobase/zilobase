@@ -161,9 +161,9 @@ try {
     await ready(space);
     await ready(sea);
     const result = await request(
-      `/search?workspaceId=${workspace}&mode=hybrid&q=celestial%20exploration`,
+      `/search?workspaceId=${workspace}&mode=semantic&q=celestial%20exploration`,
     );
-    assert.equal(result.metadata.mode, "hybrid");
+    assert.equal(result.metadata.mode, "semantic");
     assert.equal(result.results[0].id, space);
     assert.ok(result.results[0].match.chunkId);
     const parity = {
@@ -247,7 +247,7 @@ try {
       (s) => s.requested_revision !== first.requested_revision,
     );
     const stale = await request(
-      `/search?workspaceId=${workspace}&mode=hybrid&q=celestial%20exploration`,
+      `/search?workspaceId=${workspace}&mode=semantic&q=celestial%20exploration`,
     );
     assert.ok(stale.results.every((r) => r.id !== space || !r.match));
     await runtime.resume();
@@ -256,7 +256,7 @@ try {
     await request(`/pages/${space}`, "PATCH", { name: "Underwater expedition" });
     await ready(space);
     const found = await request(
-      `/search?workspaceId=${workspace}&mode=hybrid&q=aquatic%20research`,
+      `/search?workspaceId=${workspace}&mode=semantic&q=aquatic%20research`,
     );
     assert.ok(found.results.some((r) => r.id === space && r.title === "Underwater expedition"));
   });
@@ -284,11 +284,13 @@ try {
   });
   await check("page deletion and restore obey live eligibility", async () => {
     await request(`/pages/${space}`, "DELETE");
-    let result = await request(`/search?workspaceId=${workspace}&mode=hybrid&q=aquatic%20research`);
+    let result = await request(
+      `/search?workspaceId=${workspace}&mode=semantic&q=aquatic%20research`,
+    );
     assert.ok(result.results.every((r) => r.id !== space));
     await request(`/pages/${space}/restore`, "POST");
     await ready(space);
-    result = await request(`/search?workspaceId=${workspace}&mode=hybrid&q=aquatic%20research`);
+    result = await request(`/search?workspaceId=${workspace}&mode=semantic&q=aquatic%20research`);
     assert.ok(result.results.some((r) => r.id === space));
   });
   await check(
@@ -332,7 +334,7 @@ try {
       });
       await ready(record.pageId);
       const found = await request(
-        `/search?workspaceId=${workspace}&mode=hybrid&q=receipt%20reconciliation`,
+        `/search?workspaceId=${workspace}&mode=semantic&q=receipt%20reconciliation`,
       );
       const match = found.results.find((r) => r.id === record.pageId);
       assert.equal(match.match.kind, "property");
@@ -389,7 +391,7 @@ try {
       assert.equal((await chunks()).length, 1);
       await command(path, { type: "row.archive", rowId: record.id });
       const removed = await request(
-        `/search?workspaceId=${workspace}&mode=hybrid&q=receipt%20reconciliation`,
+        `/search?workspaceId=${workspace}&mode=semantic&q=receipt%20reconciliation`,
       );
       assert.ok(
         removed.results.every((r) => r.id !== record.pageId || r.match?.kind !== "property"),
@@ -397,16 +399,19 @@ try {
     },
   );
 
-  await check("provider delay respects interactive keyword fallback budget", async () => {
-    provider.state.delayMs = 4000;
-    const start = Date.now();
-    const result = await request(`/search?workspaceId=${workspace}&mode=hybrid&q=Underwater`);
-    provider.state.delayMs = 0;
-    assert.equal(result.metadata.mode, "keyword");
-    assert.equal(result.metadata.degradationReason, "provider_timeout");
-    assert.ok(Date.now() - start < 2500);
-    assert.ok(result.results.some((r) => r.id === space));
-  });
+  await check(
+    "provider delay reports semantic unavailability within the interactive budget",
+    async () => {
+      provider.state.delayMs = 4000;
+      const start = Date.now();
+      const result = await request(`/search?workspaceId=${workspace}&mode=semantic&q=Underwater`);
+      provider.state.delayMs = 0;
+      assert.equal(result.metadata.mode, "semantic");
+      assert.equal(result.metadata.degradationReason, "provider_timeout");
+      assert.ok(Date.now() - start < 2500);
+      assert.deepEqual(result.results, []);
+    },
+  );
   if (kind === "node") {
     await check("worker SIGKILL during provider resumes from durable state", async () => {
       provider.state.holdAt = provider.state.calls + 1;
@@ -486,7 +491,7 @@ try {
       await runtime.close();
       runtime = await startSearchRuntime(kind, env, provider.origin);
       const result = await request(
-        `/search?workspaceId=${workspace}&mode=hybrid&q=aquatic%20research`,
+        `/search?workspaceId=${workspace}&mode=semantic&q=aquatic%20research`,
       );
       assert.ok(result.results.some((r) => r.id === space));
     });
@@ -569,9 +574,10 @@ try {
       ).rows[0].n === 0,
     );
     const calls = provider.state.calls;
-    const result = await request(`/search?workspaceId=${workspace}&mode=hybrid&q=Underwater`);
-    assert.equal(result.metadata.mode, "keyword");
+    const result = await request(`/search?workspaceId=${workspace}&mode=semantic&q=Underwater`);
+    assert.equal(result.metadata.mode, "semantic");
     assert.equal(provider.state.calls, calls);
+    assert.deepEqual(result.results, []);
     await runtime.maintenance();
     assert.equal(
       (await query("select count(*)::int n from search_chunk where workspace_id=$1", [workspace]))

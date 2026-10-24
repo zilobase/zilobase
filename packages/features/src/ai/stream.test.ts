@@ -2,40 +2,41 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { consumeChatStream } from "./stream";
 
-test("live workspace search progress preserves its query without a source association", async () => {
-  const event = {
-    type: "read-progress",
-    context: {
-      version: 1,
-      status: "complete",
-      markdown: "",
-      charCount: 0,
-      manifest: [],
-      omissions: [],
-      trimmedAttachmentIds: [],
-    },
-    progress: {
-      activities: [
-        {
-          id: "search",
-          name: "search_workspace",
-          label: "Searching workspace",
-          query: "launch",
-          status: "completed",
-          returned: 2,
-        },
-      ],
-      canContinue: false,
-    },
-  };
-  const events: unknown[] = [];
-  await consumeChatStream(
-    new Response(JSON.stringify(event) + '\n{"type":"done","status":"completed"}\n'),
-    new AbortController().signal,
-    (value) => events.push(value),
-  );
-  assert.deepEqual(events[0], event);
-});
+for (const name of ["search_workspace", "semantic_search_workspace"] as const)
+  test(`live workspace search progress preserves its query without a source association (${name})`, async () => {
+    const event = {
+      type: "read-progress",
+      context: {
+        version: 1,
+        status: "complete",
+        markdown: "",
+        charCount: 0,
+        manifest: [],
+        omissions: [],
+        trimmedAttachmentIds: [],
+      },
+      progress: {
+        activities: [
+          {
+            id: "search",
+            name,
+            label: "Searching workspace",
+            query: "launch",
+            status: "completed",
+            returned: 2,
+          },
+        ],
+        canContinue: false,
+      },
+    };
+    const events: unknown[] = [];
+    await consumeChatStream(
+      new Response(JSON.stringify(event) + '\n{"type":"done","status":"completed"}\n'),
+      new AbortController().signal,
+      (value) => events.push(value),
+    );
+    assert.deepEqual(events[0], event);
+  });
 
 test("stream handles split UTF-8 frames and detects interrupted responses", async () => {
   const bytes = new TextEncoder().encode(

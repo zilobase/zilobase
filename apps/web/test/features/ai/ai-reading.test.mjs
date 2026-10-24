@@ -9,7 +9,12 @@ export function register({ loadModule, assert, test }) {
       progress: {
         activities: [
           { id: "search-1", name: "search_workspace", query: "launch", status: "completed" },
-          { id: "search-2", name: "search_workspace", query: "roadmap", status: "completed" },
+          {
+            id: "search-2",
+            name: "semantic_search_workspace",
+            query: "roadmap",
+            status: "completed",
+          },
           {
             id: "read",
             name: "read_page",
