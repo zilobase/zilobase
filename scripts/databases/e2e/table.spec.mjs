@@ -152,7 +152,7 @@ for (const mode of ["ungrouped", "grouped", "nested"]) {
     );
     await expect(grid(page).locator("thead")).toHaveCount(0);
     const pageScroll = page.locator("[data-page-scroll-viewport]");
-    await expect(grid(page)).toHaveAttribute("aria-rowcount", mode === "nested" ? "9" : "41");
+    await expect(grid(page)).toHaveAttribute("aria-rowcount", mode === "nested" ? "8" : "41");
     await pageScroll.evaluate(async (node) => {
       node.style.height = "200px";
       // Let resize observers update the inline gutters before scrolling.
@@ -395,17 +395,50 @@ test("keyboard navigation crosses virtual windows and keeps the active editor mo
   await expect(cell(page, 0, "text")).toBeInViewport();
 });
 
-test("nested children collapse without entering structural creation rows", async ({ page }) => {
-  await options(page, { nested: true });
-  await expect(page.getByRole("button", { name: "Collapse sub-items for Record 0" })).toBeVisible();
+test("nested rows start collapsed and arrows reflect children and hover without persisting expansion", async ({
+  page,
+}) => {
+  await options(page, { nested: true, deepNested: true });
+  const parentToggle = () => page.getByRole("button", { name: "Expand sub-items for Record 0" });
+  await expect(cell(page, 1, "name")).toHaveCount(0);
+  await expect(cell(page, 3, "name")).toHaveCount(0);
+  await page.mouse.move(0, 0);
+  await grid(page).focus();
+  await expect(parentToggle()).toHaveCSS("opacity", "1");
+
+  const emptyToggle = cell(page, 2, "name").locator(".database-sub-item-toggle");
+  await expect(emptyToggle).toHaveCSS("opacity", "0");
+  await cell(page, 2, "name").hover();
+  await expect(emptyToggle).toHaveCSS("opacity", "1");
+  await page.mouse.move(0, 0);
+  await emptyToggle.focus();
+  await expect(emptyToggle).toHaveCSS("opacity", "1");
+  await emptyToggle.click();
+  await expect(page.getByRole("button", { name: "New sub-item", exact: true })).toBeVisible();
+  await emptyToggle.click();
+
+  await parentToggle().click();
   await expect(cell(page, 1, "name")).toBeVisible();
+  await expect(cell(page, 3, "name")).toHaveCount(0);
+  await page.getByRole("button", { name: "Expand sub-items for Record 1" }).click();
+  await expect(cell(page, 3, "name")).toBeVisible();
+  await page.getByRole("button", { name: "Collapse sub-items for Record 1" }).click();
   await page.getByRole("button", { name: "Collapse sub-items for Record 0" }).click();
   await expect(cell(page, 1, "name")).toHaveCount(0);
   await select(page, 0, "text");
   await page.keyboard.press("ArrowDown");
   await expect(cell(page, 2, "text")).toHaveAttribute("data-cell-focused", "true");
-  await page.getByRole("button", { name: "Expand sub-items for Record 0" }).click();
-  await expect(page.getByRole("button", { name: "New sub-item", exact: true })).toBeVisible();
+
+  await parentToggle().click();
+  await options(page, { scope: "two" });
+  await expect(cell(page, 1, "name")).toHaveCount(0);
+  await options(page, { scope: "one" });
+  await expect(cell(page, 1, "name")).toHaveCount(0);
+  await parentToggle().click();
+  await page.reload();
+  await options(page, { nested: true, deepNested: true });
+  await expect(cell(page, 1, "name")).toHaveCount(0);
+  await expect(parentToggle()).toHaveAttribute("aria-expanded", "false");
 });
 
 test("clipboard copy, cut and undo retain typed cells and editor clipboard stays native", async ({

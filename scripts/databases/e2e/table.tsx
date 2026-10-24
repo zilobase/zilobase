@@ -186,6 +186,7 @@ function Proof() {
     grouped: false,
     comments: false,
     nested: false,
+    deepNested: false,
     wrap: false,
     editable: true,
     readOnlyProperties: false,
@@ -344,9 +345,15 @@ function Proof() {
       parentPropertyId: "parent",
       subItemPropertyId: "children",
     },
-    subItemChildRowIdsByParentId: options.nested ? { "row-0": ["row-1"] } : {},
-    subItemDepthByRowId: options.nested ? { "row-1": 1 } : {},
-    subItemParentRowIdsByRowId: options.nested ? { "row-1": ["row-0"] } : {},
+    subItemChildRowIdsByParentId: options.nested
+      ? { "row-0": ["row-1"], ...(options.deepNested ? { "row-1": ["row-3"] } : {}) }
+      : {},
+    subItemDepthByRowId: options.nested
+      ? { "row-1": 1, ...(options.deepNested ? { "row-3": 2 } : {}) }
+      : {},
+    subItemParentRowIdsByRowId: options.nested
+      ? { "row-1": ["row-0"], ...(options.deepNested ? { "row-3": ["row-1"] } : {}) }
+      : {},
     hasNextPage: false,
     isFetchingNextPage: false,
     fetchNextPage: async () => {},

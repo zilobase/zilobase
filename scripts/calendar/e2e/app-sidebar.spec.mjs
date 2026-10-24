@@ -1,6 +1,39 @@
 import { test, expect } from "@playwright/test";
 const url = "/scripts/calendar/e2e/index.html?appSidebar=1";
 
+test("Calendar opens its view while other header tabs switch only the sidebar", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.clock.setFixedTime(new Date("2026-10-24T06:00:00Z"));
+  await page.goto(url + "&navigationTabs=1");
+  const sidebar = page.getByLabel("Application sidebar", { exact: true });
+  const path = page.locator("[data-fixture-path]");
+  const selectTab = async (name, expectedPath) => {
+    const tab = sidebar.getByRole("button", { name, exact: true });
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-current", "page");
+    await expect(path).toHaveText(expectedPath);
+  };
+  await selectTab("AI", "/recents");
+  await expect(sidebar.getByText("No AI chats yet", { exact: true })).toBeVisible();
+  await sidebar.getByRole("button", { name: "New AI chat", exact: true }).click();
+  await expect(path).toHaveText("/ai");
+  await selectTab("Home", "/ai");
+  await selectTab("Work", "/ai");
+  await selectTab("Calendar", "/calendar");
+  await expect(sidebar.getByLabel("Calendar accounts", { exact: true })).toBeVisible();
+  await selectTab("AI", "/calendar");
+  await selectTab("Work", "/calendar");
+  await selectTab("Home", "/calendar");
+  await sidebar.getByRole("link", { name: "Parent page", exact: true }).first().click();
+  await expect(path).toHaveText("/p/parent");
+  await selectTab("Calendar", "/calendar");
+  await selectTab("Home", "/calendar");
+  expect(errors).toEqual([]);
+});
+
 test("application sidebar preserves tabs, trees, routes and customization", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -134,9 +167,6 @@ test("section options change counts, reorder, move and remove saved sections", a
     ["Recents", "recents"],
     ["Favorites", "favourites"],
     ["Private", "private"],
-    ["Meetings", "meetings"],
-    ["Shared", "shared"],
-    ["Teamspaces", "teamspaces"],
   ]) {
     await expect(
       sections.getByRole("button", { name: `${label} section options`, exact: true }),
@@ -146,6 +176,17 @@ test("section options change counts, reorder, move and remove saved sections", a
     await link.click();
     await expect(page.locator("[data-fixture-path]")).toHaveText(`/recents?view=${view}`);
   }
+  for (const label of ["Meetings", "Shared"]) {
+    await expect(
+      sections.getByRole("button", { name: `${label} section options`, exact: true }),
+    ).toBeAttached();
+    await expect(
+      sections.getByRole("link", { name: `View all ${label}`, exact: true }),
+    ).toHaveCount(0);
+  }
+  await expect(
+    sections.getByRole("button", { name: "Teamspaces section options", exact: true }),
+  ).toHaveCount(0);
   await sections.getByRole("button", { name: "Recents section options", exact: true }).click();
   await expect(page.getByRole("menuitem", { name: "Move up", exact: true })).toBeDisabled();
   await page.screenshot({
@@ -164,6 +205,19 @@ test("section options change counts, reorder, move and remove saved sections", a
   await expect.poll(() => page.evaluate(() => window.appSidebarFixture.saves.length)).toBe(1);
   await page.reload();
   await expect(recents.locator(":scope > li")).toHaveCount(11);
+  for (const [limit, count, viewAll] of [
+    [15, 15, 0],
+    [20, 15, 0],
+    [5, 6, 1],
+  ]) {
+    await sections.getByRole("button", { name: "Favorites section options", exact: true }).click();
+    await page.getByRole("menuitem", { name: /Show/ }).hover();
+    await page.getByRole("menuitem", { name: `${limit} items`, exact: true }).click();
+    await expect(favorites.locator(":scope > li")).toHaveCount(count);
+    await expect(
+      sections.getByRole("link", { name: "View all Favorites", exact: true }),
+    ).toHaveCount(viewAll);
+  }
   await sections.getByRole("button", { name: "Recents section options", exact: true }).click();
   await page.getByRole("menuitem", { name: "Move down", exact: true }).click();
   await expect

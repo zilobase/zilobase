@@ -32,7 +32,7 @@ async function openReadHistory(
       if (search)
         calls.unshift({
           id: "search",
-          name: "search_workspace",
+          name: search === "semantic" ? "semantic_search_workspace" : "search_workspace",
           label: "Searching workspace",
           query: "customer feedback",
           status: failed ? "failed" : "completed",
@@ -94,24 +94,27 @@ async function openReadHistory(
   await conversation.click();
 }
 
-for (const failed of [false, true]) {
-  test(`workspace search activity renders ${failed ? "failure" : "matches"} without a fake source`, async ({
-    page,
-  }) => {
-    await openReadHistory(page, { search: true, failed });
-    const reading = page.getByLabel("Source reading activity", { exact: true });
-    await expect(reading.locator("[data-ai-read-source]")).toHaveCount(1);
-    await reading
-      .getByRole("button", {
-        name: failed ? /Couldn't search workspace/ : /Workspace searched/,
-      })
-      .click();
-    await expect(reading).toContainText(
-      failed ? "Workspace search couldn't finish." : "“customer feedback” · 2 matching sources",
-    );
-    await expect(reading).not.toContainText("Source details are unavailable");
-  });
-}
+for (const search of ["keyword", "semantic"])
+  for (const failed of [false, true]) {
+    test(`${search} search activity renders ${failed ? "failure" : "matches"} without a fake source`, async ({
+      page,
+    }) => {
+      await openReadHistory(page, { search, failed });
+      const reading = page.getByLabel("Source reading activity", { exact: true });
+      await expect(reading.locator("[data-ai-read-source]")).toHaveCount(1);
+      await reading
+        .getByRole("button", {
+          name: failed
+            ? new RegExp(`Couldn't finish ${search} search`)
+            : new RegExp(`${search === "keyword" ? "Keyword" : "Semantic"} search completed`),
+        })
+        .click();
+      await expect(reading).toContainText(
+        failed ? "Workspace search couldn't finish." : "“customer feedback” · 2 matching sources",
+      );
+      await expect(reading).not.toContainText("Source details are unavailable");
+    });
+  }
 
 for (const width of [1400, 390]) {
   test(`one page stays one named reading pill across chunks at ${width}px`, async ({ page }) => {

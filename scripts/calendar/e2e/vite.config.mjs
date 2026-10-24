@@ -13,7 +13,12 @@ export default defineConfig({
   configFile: false,
   envDir: false,
   plugins: [react(), tailwind()],
-  resolve: { alias: { "@": path.join(root, "apps/web/src") } },
+  resolve: {
+    alias: {
+      "@": path.join(root, "apps/web/src"),
+      "@zilobase/edition-web": path.join(root, "apps/web/src/edition/community-module.ts"),
+    },
+  },
   define: { "import.meta.env.VITE_API_URL": JSON.stringify("http://127.0.0.1:1498") },
   server: { host: "127.0.0.1", port: 1498, strictPort: true },
 });

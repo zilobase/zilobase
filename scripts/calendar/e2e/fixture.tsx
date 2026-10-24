@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { validateCalendarSearch } from "@/app/routing/search-validators";
 import { useCalendarChatVisibility } from "@/app/shell/panels/components/tool-panels";
 import { useState } from "react";
+import { PageEditorRegistryProvider } from "@/sections/pages/editor/runtime/components/page-editor-registry";
+import RecentsScreen from "@/sections/library/recents-screen";
+import { PageSidePaneProvider } from "@/sections/pages/presentation/components/page-presentation";
 import { RightSidebars, RightSidebarMobilePanels } from "@/app/shell/panels/components/tool-panels";
 import { ResizablePanelGroup, ResizablePanel } from "@/components/ui/resizable";
 import { PageHeader } from "@/sections/pages/header/components/page-header";
@@ -186,7 +189,20 @@ const router = createRouter({
       calendar,
       ...["/recents", "/p/$pageId", "/d/$databaseId", "/m/$meetingId", "/ai", "/tasks"].map(
         (path) =>
-          createRoute({ getParentRoute: () => app, path, component: () => <p>Fixture content</p> }),
+          createRoute({
+            getParentRoute: () => app,
+            path,
+            component: () =>
+              path === "/recents" && new URLSearchParams(window.location.search).has("library") ? (
+                <PageEditorRegistryProvider>
+                  <PageSidePaneProvider>
+                    <RecentsScreen />
+                  </PageSidePaneProvider>
+                </PageEditorRegistryProvider>
+              ) : (
+                <p>Fixture content</p>
+              ),
+          }),
       ),
     ]),
   ]),

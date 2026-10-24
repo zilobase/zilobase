@@ -105,6 +105,8 @@ if (meetingFixture)
 const fixtureAudience = new URLSearchParams(window.location.search).get("audience");
 const databaseCreationFixture =
   new URLSearchParams(window.location.search).get("workspace") === "database-creation";
+const databaseViewsFixture =
+  new URLSearchParams(window.location.search).get("workspace") === "database-views";
 const databaseCreations: Array<{ commandId: string; command: { name: string; pageId: string } }> =
   [];
 let rejectDatabaseCreation: (error: Error) => void;
@@ -182,7 +184,7 @@ const apiFetch: ApiFetcher = async <T,>(path: string, options?: RequestInit) => 
         workspaceId: "workspace",
         pageId: null,
         name: "Rows",
-        accessLevel: sharingTarget ? sharingLevel : "view",
+        accessLevel: databaseViewsFixture ? "full" : sharingTarget ? sharingLevel : "view",
         config: {},
         createdAt: records[0].createdAt,
         updatedAt: records[0].updatedAt,
@@ -204,7 +206,29 @@ const apiFetch: ApiFetcher = async <T,>(path: string, options?: RequestInit) => 
           updatedAt: records[0].updatedAt,
         },
       ],
-      properties: [],
+      properties: databaseViewsFixture
+        ? [
+            {
+              id: "date-column",
+              dataSourceId: "source",
+              propertyId: "date",
+              position: 0,
+              visible: true,
+              width: null,
+              createdAt: records[0].createdAt,
+              updatedAt: records[0].updatedAt,
+              property: {
+                id: "date",
+                workspaceId: "workspace",
+                name: "Date",
+                type: "date",
+                config: {},
+                createdAt: records[0].createdAt,
+                updatedAt: records[0].updatedAt,
+              },
+            },
+          ]
+        : [],
       views: [
         {
           id: "view",
@@ -217,6 +241,21 @@ const apiFetch: ApiFetcher = async <T,>(path: string, options?: RequestInit) => 
           createdAt: records[0].createdAt,
           updatedAt: records[0].updatedAt,
         },
+        ...(databaseViewsFixture
+          ? [
+              {
+                id: "timeline-view",
+                databaseId: "database",
+                dataSourceId: "source",
+                name: "Timeline",
+                type: "timeline",
+                position: 1,
+                config: { datePropertyId: "date" },
+                createdAt: records[0].createdAt,
+                updatedAt: records[0].updatedAt,
+              },
+            ]
+          : []),
       ],
     } as T;
   if (path.includes("/records?"))
@@ -282,7 +321,7 @@ function Body({ id }: { id: string }) {
   useEffect(() => {
     mounts[id] = (mounts[id] ?? 0) + 1;
   }, [id]);
-  if (databaseCreationFixture)
+  if (databaseCreationFixture || databaseViewsFixture)
     return (
       <Editor
         session={{
@@ -290,7 +329,9 @@ function Body({ id }: { id: string }) {
           documentId: id,
           workspaceId: "workspace",
           pageId: id,
-          content: "<p></p>",
+          content: databaseViewsFixture
+            ? '<p>Before database</p><div data-type="databaseBlock" data-database-id="database"></div><p>After database</p>'
+            : "<p></p>",
         }}
         capabilities={{ comments: false }}
         presentation={{ hideMetadata: true, enableComments: false }}
