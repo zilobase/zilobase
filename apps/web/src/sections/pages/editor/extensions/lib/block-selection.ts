@@ -363,6 +363,7 @@ export const BlockSelection = Extension.create({
           },
         },
         view(view) {
+          let blockSelectionActive = false;
           const marquee = createBlockMarquee(view, {
             getRanges: () =>
               getBlockSelectionRanges(view.state.doc, 0, view.state.doc.content.size),
@@ -394,6 +395,15 @@ export const BlockSelection = Extension.create({
           });
           const syncNativeSelectionVisibility = () => {
             const useBlockHighlight = isBlockSelectionActive(view.state);
+
+            if (useBlockHighlight !== blockSelectionActive) {
+              blockSelectionActive = useBlockHighlight;
+              view.dom.dispatchEvent(
+                new CustomEvent<boolean>("editor-block-selection-change", {
+                  detail: useBlockHighlight,
+                }),
+              );
+            }
 
             view.dom.classList.toggle(
               "ProseMirror-hideselection",

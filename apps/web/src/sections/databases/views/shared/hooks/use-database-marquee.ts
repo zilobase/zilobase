@@ -419,12 +419,22 @@ export function useDatabaseMarquee({
       doc.addEventListener("scroll", schedule, true);
       win.addEventListener("blur", cancel);
     };
+    const editor = surface.closest(".tiptap-editor");
+    const clearBlockRowSelection = (event: Event) => {
+      if ((event as CustomEvent<boolean>).detail) {
+        setSelectedRowIds((current) => (current.size ? new Set() : current));
+      }
+    };
+    // Whole-block selection owns the editor, including databases other than the
+    // one where a record marquee started. Other editor panes keep their rows.
+    editor?.addEventListener("editor-block-selection-change", clearBlockRowSelection);
     doc.addEventListener("pointerdown", down, true);
     return () => {
       stop();
       delete surface.dataset.databaseMarqueeSurface;
       if (previousTabIndex === null) surface.removeAttribute("tabindex");
       doc.removeEventListener("pointerdown", down, true);
+      editor?.removeEventListener("editor-block-selection-change", clearBlockRowSelection);
       doc.removeEventListener("click", suppressClick, true);
       if (clickTimer !== undefined) win.clearTimeout(clickTimer);
     };

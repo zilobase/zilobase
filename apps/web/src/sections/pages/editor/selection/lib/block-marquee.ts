@@ -258,9 +258,10 @@ export function createBlockMarquee(view: EditorView, options: MarqueeOptions) {
     ownerWindow.addEventListener("blur", onCancel);
   };
 
-  const onDatabaseFocus = (event: FocusEvent) => {
+  const onDatabaseInteraction = (event: Event) => {
     if (
       event.target instanceof ownerWindow.Element &&
+      event.target.closest(".tiptap-editor") === view.dom &&
       event.target.closest("[data-database-marquee-surface]")
     ) {
       options.select(null);
@@ -321,7 +322,8 @@ export function createBlockMarquee(view: EditorView, options: MarqueeOptions) {
       if (cancelled && doc === view.state.doc) restore();
     };
   };
-  view.dom.addEventListener("focusin", onDatabaseFocus);
+  view.dom.addEventListener("focusin", onDatabaseInteraction);
+  view.dom.addEventListener("pointerdown", onDatabaseInteraction);
   view.dom.addEventListener("database-marquee-start", onDatabaseStart);
   ownerDocument.addEventListener("pointerdown", onDown, true);
   return {
@@ -333,7 +335,8 @@ export function createBlockMarquee(view: EditorView, options: MarqueeOptions) {
     destroy() {
       stop();
       databaseGesture?.gesture.cancel();
-      view.dom.removeEventListener("focusin", onDatabaseFocus);
+      view.dom.removeEventListener("focusin", onDatabaseInteraction);
+      view.dom.removeEventListener("pointerdown", onDatabaseInteraction);
       view.dom.removeEventListener("database-marquee-start", onDatabaseStart);
       ownerDocument.removeEventListener("pointerdown", onDown, true);
     },

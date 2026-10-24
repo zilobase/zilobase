@@ -27,6 +27,33 @@ test.beforeEach(async ({ page }) => {
   await expect(main(page).locator("[data-database-marquee-surface]")).toHaveCount(2);
 });
 
+test("a page block marquee clears row checkboxes in its editor and preserves another pane", async ({
+  page,
+}) => {
+  const first = database(page);
+  const second = main(page).locator('[data-type="databaseBlock"]').nth(1);
+  const side = page.getByTestId("side").locator('[data-type="databaseBlock"]').first();
+  await first.getByRole("checkbox", { name: "Select one" }).check();
+  await second.getByRole("checkbox", { name: "Select two" }).check();
+  await side.getByRole("checkbox", { name: "Select three" }).check();
+
+  const before = await editor(page).locator("p").first().boundingBox();
+  const heading = await editor(page).locator("h2").boundingBox();
+  await page.mouse.move(before.x - 20, before.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(heading.x + 40, heading.y + 10, { steps: 8 });
+  await expect(blocks(page)).toHaveCount(3);
+  await expect(rows(page)).toHaveCount(0);
+  await expect(main(page).getByRole("button", { name: /selected/ })).toHaveCount(0);
+  await expect(side.getByRole("checkbox", { name: "Select three" })).toBeChecked();
+  await page.mouse.up();
+  await expect(rows(page)).toHaveCount(0);
+
+  await first.getByRole("checkbox", { name: "Select one" }).check();
+  await expect(blocks(page)).toHaveCount(0);
+  await expect(rows(page)).toHaveCount(1);
+});
+
 for (const reverse of [false, true]) {
   for (const right of [false, true]) {
     test(`database rows become whole blocks dragging ${reverse ? "up" : "down"} from ${right ? "right" : "left"}`, async ({
