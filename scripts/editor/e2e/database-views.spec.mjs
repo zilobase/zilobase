@@ -1,5 +1,22 @@
 import { test, expect } from "@playwright/test";
 
+test("repeated clicks on a row grip SVG open actions without selecting the database block", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/scripts/editor/e2e/page-layout.html?workspace=database-views");
+  const block = page.locator('[data-type="databaseBlock"]');
+  const grip = block.getByRole("button", { name: "Drag child", exact: true });
+  for (const clickCount of [2, 3]) {
+    await grip.locator("svg").click({ clickCount, force: true });
+    await expect(page.locator(".ProseMirror-selectednode")).toHaveCount(0);
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("");
+    await page.keyboard.press("Escape");
+  }
+  expect(errors).toEqual([]);
+});
+
 test("embedded database add-view menu opens on the first click and preserves the active view", async ({
   page,
 }) => {
