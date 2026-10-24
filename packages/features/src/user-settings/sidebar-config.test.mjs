@@ -287,3 +287,28 @@ test("shortcut icon overrides retain safe icons and reject executable markup", a
     undefined,
   );
 });
+
+test("sidebar counts default to five recents and ten for every other section", async () => {
+  const { defaultSidebarConfig, normalizeSidebarWorkspaceLayout, sidebarSectionKinds } =
+    await import(configPath);
+  for (const tab of defaultSidebarConfig.defaultLayout.tabs) {
+    for (const section of tab.sections)
+      assert.equal(section.limit, section.kind === "recents" ? 5 : 10);
+  }
+  const layout = normalizeSidebarWorkspaceLayout({
+    tabs: [
+      {
+        id: "home",
+        sections: sidebarSectionKinds
+          .filter((kind) => kind !== "aiChats")
+          .map((kind) => ({ id: kind, kind, databaseId: "db" })),
+      },
+    ],
+  });
+  for (const section of layout.tabs[0].sections)
+    assert.equal(section.limit, section.kind === "recents" ? 5 : 10);
+  const explicit = normalizeSidebarWorkspaceLayout({
+    tabs: [{ id: "home", sections: [{ id: "recents", kind: "recents", limit: 20 }] }],
+  });
+  assert.equal(explicit.tabs[0].sections[0].limit, 20, "retain explicit saved counts");
+});

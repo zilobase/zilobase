@@ -3,6 +3,11 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { isDesktopApp } from "@/platform/environment";
 import { useNavigate, Link } from "@tanstack/react-router";
 import {
+  ArrowUpIcon,
+  ArrowDownIcon,
+  ArrowRightIcon,
+  HashIcon,
+  XIcon,
   MonitorUpIcon,
   SlidersHorizontalIcon,
   ArrowUpRightIcon,
@@ -64,7 +69,8 @@ import {
 } from "@zilobase/features/teamspaces/react";
 import {
   type SidebarSection,
-  type SidebarSectionId,
+  isStaticSidebarTabId,
+  sidebarSectionLimits,
   type LibraryView,
 } from "@zilobase/features/user-settings";
 import { NotificationCenter } from "@/app/shell/notifications/components/notification-center";
@@ -79,6 +85,9 @@ import {
   DropDrawerTrigger,
   DropDrawerLabel,
   DropDrawerShortcut,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
 } from "@/components/ui/dropdrawer";
 import { DesktopConnectServerDialog } from "@/sections/desktop/servers/components/desktop-connect-server-dialog";
 import { getApiErrorMessage } from "@/platform/network/api";
@@ -108,6 +117,7 @@ import {
   serverSectionLabel,
   getWorkspaceInitials,
   getSidebarDatabaseViewSearchId,
+  getSectionLabel,
   isActiveItem,
   type SidebarIcon,
   type SidebarNavItem,
@@ -243,11 +253,15 @@ export function AppSidebar(sidebar: AppSidebarProps) {
                   >
                     {activeTab.sections.map((section) => (
                       <RuntimeSectionDragItem id={section.id} key={section.id}>
-                        {navItems
-                          .filter((model) => model.section.id === section.id)
-                          .map((model) => (
-                            <NavigationSection key={model.id} model={model} sidebar={sidebar} />
-                          ))}
+                        {section.kind === "teamspaces" ? (
+                          <TeamspacesSection section={section} sidebar={sidebar} />
+                        ) : (
+                          navItems
+                            .filter((model) => model.section.id === section.id)
+                            .map((model) => (
+                              <NavigationSection key={model.id} model={model} sidebar={sidebar} />
+                            ))
+                        )}
                       </RuntimeSectionDragItem>
                     ))}
                   </SortableContext>
@@ -1080,8 +1094,12 @@ function SectionShell({
   onOpenChange,
   actions,
   header,
+  section,
+  sidebar,
   children,
 }: {
+  section?: SidebarSection;
+  sidebar?: AppSidebarProps;
   label: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1097,7 +1115,7 @@ function SectionShell({
             <CollapsibleTrigger asChild>
               <SidebarGroupLabel
                 asChild
-                className="pr-16 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral [&>svg]:size-2.5"
+                className="pr-24 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral [&>svg]:size-2.5"
               >
                 <button className="group/section-label w-full cursor-pointer" type="button">
                   <span>{label}</span>
@@ -1106,6 +1124,7 @@ function SectionShell({
               </SidebarGroupLabel>
             </CollapsibleTrigger>
             {actions}
+            {section && sidebar ? <SectionActionsMenu section={section} sidebar={sidebar} /> : null}
           </div>
         )}
         <CollapsibleContent className="pb-4 pt-0.5">
@@ -1113,6 +1132,151 @@ function SectionShell({
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>
+  );
+}
+
+function SectionActionsMenu({
+  section,
+  sidebar,
+}: {
+  section: SidebarSection;
+  sidebar: AppSidebarProps;
+}) {
+  const index = sidebar.activeTab.sections.findIndex((entry) => entry.id === section.id);
+  const destinations = sidebar.layout.tabs.filter(
+    (tab) => tab.id !== sidebar.activeTab.id && !isStaticSidebarTabId(tab.id),
+  );
+  const label = getSectionLabel(section);
+  return (
+    <DropDrawer>
+      <DropDrawerTrigger asChild>
+        <SidebarGroupAction
+          aria-label={`${label} section options`}
+          title={`${label} section options`}
+          disabled={sidebar.isSaving}
+          className="right-2 transition-opacity md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontalIcon />
+        </SidebarGroupAction>
+      </DropDrawerTrigger>
+      <DropDrawerContent align="start" side="right" className="w-56 rounded-xl">
+        <DropDrawerSub title="Show">
+          <DropDrawerSubTrigger>
+            <HashIcon />
+            <span>Show</span>
+            <span className="ml-auto text-xs text-content-secondary">{section.limit}</span>
+          </DropDrawerSubTrigger>
+          <DropDrawerSubContent className="w-36">
+            {sidebarSectionLimits.map((limit) => (
+              <DropDrawerItem
+                key={limit}
+                onSelect={() => sidebar.changeRuntimeSection(section.id, { limit })}
+              >
+                <span className="flex size-4 items-center">
+                  {section.limit === limit ? <CheckIcon /> : null}
+                </span>
+                {limit} items
+              </DropDrawerItem>
+            ))}
+          </DropDrawerSubContent>
+        </DropDrawerSub>
+        <DropDrawerSeparator />
+        <DropDrawerItem
+          disabled={index <= 0}
+          onSelect={() => sidebar.changeRuntimeSection(section.id, { offset: -1 })}
+        >
+          <ArrowUpIcon />
+          Move up
+        </DropDrawerItem>
+        <DropDrawerItem
+          disabled={index === sidebar.activeTab.sections.length - 1}
+          onSelect={() => sidebar.changeRuntimeSection(section.id, { offset: 1 })}
+        >
+          <ArrowDownIcon />
+          Move down
+        </DropDrawerItem>
+        <DropDrawerSub title="Move to tab">
+          <DropDrawerSubTrigger disabled={isStaticSidebarTabId(sidebar.activeTab.id)}>
+            <ArrowRightIcon />
+            Move to tab
+          </DropDrawerSubTrigger>
+          <DropDrawerSubContent className="w-48">
+            {destinations.length ? (
+              destinations.map((tab) => (
+                <DropDrawerItem
+                  key={tab.id}
+                  disabled={
+                    tab.sections.length >= 24 ||
+                    tab.sections.some((entry) => entry.id === section.id)
+                  }
+                  onSelect={() => sidebar.changeRuntimeSection(section.id, { targetTabId: tab.id })}
+                >
+                  {tab.name}
+                </DropDrawerItem>
+              ))
+            ) : (
+              <DropDrawerItem onSelect={() => sidebar.setCustomizing(true)}>
+                <PlusIcon />
+                Create a tab…
+              </DropDrawerItem>
+            )}
+          </DropDrawerSubContent>
+        </DropDrawerSub>
+        <DropDrawerItem onSelect={() => sidebar.changeRuntimeSection(section.id, { remove: true })}>
+          <XIcon />
+          Remove section
+        </DropDrawerItem>
+        <DropDrawerSeparator />
+        <DropDrawerItem onSelect={() => sidebar.setCustomizing(true)}>
+          <SlidersHorizontalIcon />
+          Customize sidebar
+        </DropDrawerItem>
+      </DropDrawerContent>
+    </DropDrawer>
+  );
+}
+
+function SidebarViewAll({ label, view }: { label: string; view: LibraryView }) {
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild className="text-content-secondary">
+        <Link aria-label={`View all ${label}`} to="/recents" search={{ view }}>
+          <MoreHorizontalIcon />
+          <span>View all</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function TeamspacesSection({
+  section,
+  sidebar,
+}: {
+  section: SidebarSection;
+  sidebar: AppSidebarProps;
+}) {
+  const [open, setOpen] = useSidebarSectionOpen(
+    `zilobase:sidebar-section:${sidebar.workspaceId ?? "default"}:${sidebar.activeTab.id}:${section.id}`,
+  );
+  const models = sidebar.navItems.filter((model) => model.section.id === section.id);
+  return (
+    <SectionShell
+      label={section.label || "Teamspaces"}
+      section={section}
+      sidebar={sidebar}
+      open={open}
+      onOpenChange={setOpen}
+      actions={<SidebarLibraryLink className="right-9" label="Teamspaces" sectionId="teamspaces" />}
+    >
+      {models.map((model) => (
+        <NavigationSection key={model.id} model={model} sidebar={sidebar} />
+      ))}
+      <SidebarMenu>
+        <SidebarViewAll label="Teamspaces" view="teamspaces" />
+      </SidebarMenu>
+    </SectionShell>
   );
 }
 
@@ -1128,7 +1292,7 @@ function CreateMenu({
       <DropDrawerTrigger asChild>
         <SidebarGroupAction
           aria-label="Create"
-          className="right-2 transition-opacity md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
+          className="right-9 transition-opacity md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
           title="Create"
         >
           <PlusIcon />
@@ -1180,7 +1344,13 @@ function AiChatsSection({
     )
     .slice(0, model.section.limit);
   return (
-    <SectionShell label={model.label} open={open} onOpenChange={setOpen}>
+    <SectionShell
+      label={model.label}
+      open={open}
+      onOpenChange={setOpen}
+      section={model.section}
+      sidebar={sidebar}
+    >
       <SidebarMenu aria-label="AI chats">
         {threads.map((thread) => (
           <SidebarMenuItem key={thread.id}>
@@ -1246,12 +1416,16 @@ function StaticSection({
     model.kind === "favorites" ||
     model.kind === "private" ||
     model.kind === "recents" ||
-    model.kind === "shared"
+    model.kind === "shared" ||
+    model.kind === "meetings" ||
+    model.kind === "teamspaces"
       ? model.kind
       : null;
   return (
     <SectionShell
       label={model.label}
+      section={model.section}
+      sidebar={sidebar}
       open={open}
       onOpenChange={setOpen}
       header={
@@ -1263,7 +1437,7 @@ function StaticSection({
         <>
           {librarySection ? (
             <SidebarLibraryLink
-              className={model.create ? "right-9" : "right-2"}
+              className={model.create ? "right-16" : "right-9"}
               label={model.label}
               sectionId={librarySection}
             />
@@ -1305,6 +1479,9 @@ function StaticSection({
             )
           }
         />
+        {librarySection ? (
+          <SidebarViewAll label={model.label} view={getLibraryViewForSection(librarySection)} />
+        ) : null}
         {model.items.length === 0 ? (
           <li className="px-2 py-1.5 text-xs text-content-secondary">
             {sidebar.navigationLoading && model.kind !== "meetings"
@@ -1382,18 +1559,14 @@ function TasksSection({
       pages: [],
       isShared: false,
     });
-  if (rows.length === model.section.limit)
-    items.push({
-      id: "view-all-tasks",
-      name: "View all",
-      emoji: null,
-      pageId: null,
-      href: "/tasks",
-      pages: [],
-      isShared: false,
-    });
   return (
-    <SectionShell label="Tasks" open={open} onOpenChange={setOpen}>
+    <SectionShell
+      label={model.label}
+      open={open}
+      onOpenChange={setOpen}
+      section={model.section}
+      sidebar={sidebar}
+    >
       <SidebarMenu aria-label="My tasks">
         <SidebarNavList
           {...sidebar.activeNavigation}
@@ -1401,6 +1574,14 @@ function TasksSection({
           storageKey={model.treeKey}
           renderItemMenu={() => null}
         />
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link to="/tasks">
+              <MoreHorizontalIcon />
+              <span>View all</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
         {!items.length ? (
           <li className="px-2 py-1.5 text-xs text-content-secondary">
             {loading ? "Loading tasks…" : "No tasks assigned to you"}
@@ -1442,6 +1623,8 @@ function DatabaseSection({
   return (
     <SectionShell
       label={title}
+      section={section}
+      sidebar={sidebar}
       open={open}
       onOpenChange={setOpen}
       actions={
@@ -1452,7 +1635,7 @@ function DatabaseSection({
           !isDatabaseLocked(database.data.database) ? (
             <SidebarGroupAction
               aria-label={"Add row to " + title}
-              className="right-9 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
+              className="right-16 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
               title="Add row"
               onClick={() =>
                 addRow.mutate(
@@ -1469,7 +1652,7 @@ function DatabaseSection({
           ) : null}
           <SidebarGroupAction
             asChild
-            className="right-2 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
+            className="right-9 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
             title="View all"
           >
             <Link
@@ -1527,7 +1710,7 @@ function SidebarLibraryLink({
 }: {
   className?: string;
   label: string;
-  sectionId: SidebarSectionId;
+  sectionId: "recents" | "favorites" | "private" | "shared" | "meetings" | "teamspaces";
   view?: LibraryView;
 }) {
   const view = viewOverride ?? getLibraryViewForSection(sectionId);
@@ -1552,6 +1735,8 @@ function SidebarLibraryLink({
   );
 }
 
-function getLibraryViewForSection(sectionId: SidebarSectionId): LibraryView {
+function getLibraryViewForSection(
+  sectionId: "recents" | "favorites" | "private" | "shared" | "meetings" | "teamspaces",
+): LibraryView {
   return sectionId === "favorites" ? "favourites" : sectionId;
 }

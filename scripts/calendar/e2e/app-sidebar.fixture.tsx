@@ -7,7 +7,13 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { defaultUserSettings, normalizeSidebarConfig } from "@zilobase/features/user-settings";
 import type { ApiFetcher, ZilobaseAuthClient } from "@zilobase/features";
 
-const section = (kind: string) => ({ id: kind, kind, limit: 10, sort: "alphabetical" });
+const sectionMenus = new URLSearchParams(window.location.search).has("sectionMenus");
+const section = (kind: string) => ({
+  id: kind,
+  kind,
+  limit: kind === "recents" ? 5 : 10,
+  sort: "alphabetical",
+});
 let settings = {
   ...defaultUserSettings,
   sidebarConfig: normalizeSidebarConfig({
@@ -19,7 +25,13 @@ let settings = {
           name: "Home",
           icon: "home",
           shortcuts: [{ id: "create", target: { type: "action", action: "createPage" } }],
-          sections: [section("favorites"), section("private"), section("meetings")],
+          sections: [
+            ...(sectionMenus ? [section("recents")] : []),
+            section("favorites"),
+            section("private"),
+            section("meetings"),
+            ...(sectionMenus ? [section("shared"), section("teamspaces")] : []),
+          ],
         },
         {
           id: "work",
@@ -34,6 +46,10 @@ let settings = {
     workspaceLayouts: {},
   }),
 };
+if (sectionMenus) {
+  const saved = sessionStorage.getItem("sidebar-menu-settings");
+  if (saved) settings = { ...settings, ...JSON.parse(saved) };
+}
 const page = (id: string, name: string) => ({
   id,
   name,
@@ -51,6 +67,15 @@ const page = (id: string, name: string) => ({
   deletedAt: null,
 });
 const pages = [page("parent", "Parent page"), page("child", "Child page")];
+if (sectionMenus) {
+  pages.push(
+    ...Array.from({ length: 12 }, (_, index) => ({
+      ...page(`extra-${index}`, `Extra ${index}`),
+      isFavorite: true,
+    })),
+  );
+  pages.push({ ...page("shared", "Shared page"), isShared: true });
+}
 const requests: string[] = [];
 const saves: unknown[] = [];
 export const sidebarFixtureApi: ApiFetcher = async <T,>(
@@ -63,6 +88,7 @@ export const sidebarFixtureApi: ApiFetcher = async <T,>(
       const patch = JSON.parse(String(options.body));
       saves.push(patch);
       settings = { ...settings, ...patch };
+      if (sectionMenus) sessionStorage.setItem("sidebar-menu-settings", JSON.stringify(patch));
     }
     return { settings } as T;
   }
@@ -82,7 +108,7 @@ export const sidebarFixtureApi: ApiFetcher = async <T,>(
               id: "source",
               workspaceId: "workspace",
               parentDatabaseId: "database",
-              name: "Source",
+              name: "Database",
               config: {},
               configVersion: 1,
               version: 1,

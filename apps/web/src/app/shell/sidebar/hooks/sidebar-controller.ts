@@ -11,6 +11,10 @@ import { type DragEvent, type ComponentProps } from "react";
 import {
   type SidebarSection,
   type SidebarSectionKind,
+  type SidebarSectionLimit,
+  moveArrayItem,
+  moveLayoutEntry,
+  updateSidebarTab,
   type SidebarShortcut,
   defaultUserSettings,
   isStaticSidebarTabId,
@@ -637,6 +641,38 @@ export function useAppSidebar({
       ),
     [sidebarAvailability, sidebarConfig, storedLayout, updateUserSettings, workspaceId],
   );
+  const changeRuntimeSection = React.useCallback(
+    (
+      sectionId: string,
+      change:
+        | { limit: SidebarSectionLimit }
+        | { offset: -1 | 1 }
+        | { targetTabId: string }
+        | { remove: true },
+    ) => {
+      if (!workspaceId || updateUserSettings.isPending) return;
+      const nextLayout =
+        "targetTabId" in change
+          ? moveLayoutEntry(layout, activeTab.id, change.targetTabId, "sections", sectionId)
+          : updateSidebarTab(layout, activeTab.id, (tab) => ({
+              ...tab,
+              sections:
+                "offset" in change
+                  ? moveArrayItem(
+                      tab.sections,
+                      tab.sections.findIndex((section) => section.id === sectionId),
+                      change.offset,
+                    )
+                  : "remove" in change
+                    ? tab.sections.filter((section) => section.id !== sectionId)
+                    : tab.sections.map((section) =>
+                        section.id === sectionId ? { ...section, limit: change.limit } : section,
+                      ),
+            }));
+      void saveLayout(nextLayout).catch(showMutationError("Could not update sidebar section."));
+    },
+    [activeTab.id, layout, saveLayout, updateUserSettings.isPending, workspaceId],
+  );
   const handleRuntimeSectionDragEnd = React.useCallback(
     ({ active, over }: DragEndEvent) => {
       if (!over || active.id === over.id || !workspaceId) return;
@@ -763,6 +799,7 @@ export function useAppSidebar({
     handleRemoveDatabaseFavorite,
     saveLayout,
     handleRuntimeSectionDragEnd,
+    changeRuntimeSection,
     selectTab,
     selectNavigationTab,
     isSaving: updateUserSettings.isPending,

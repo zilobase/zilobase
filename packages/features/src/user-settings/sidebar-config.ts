@@ -94,7 +94,7 @@ export type SidebarConfig = {
 };
 
 const defaultSections: SidebarSection[] = [
-  { id: "default-recents", kind: "recents", limit: 10, sort: "lastEdited" },
+  { id: "default-recents", kind: "recents", limit: 5, sort: "lastEdited" },
   { id: "default-favorites", kind: "favorites", limit: 10, sort: "lastEdited" },
   { id: "default-private", kind: "private", limit: 10, sort: "lastEdited" },
   { id: "default-shared", kind: "shared", limit: 10, sort: "lastEdited" },
@@ -113,7 +113,7 @@ const defaultAiShortcuts: SidebarShortcut[] = [
 ];
 
 const defaultAiSections: SidebarSection[] = [
-  { id: "default-ai-chats", kind: "aiChats", limit: 50, sort: "lastEdited" },
+  { id: "default-ai-chats", kind: "aiChats", limit: 10, sort: "lastEdited" },
 ];
 
 export const defaultSidebarWorkspaceLayout: SidebarWorkspaceLayout = {
@@ -339,7 +339,11 @@ function normalizeSection(value: unknown): SidebarSection | null {
   const base = {
     id: value.id,
     ...(label ? { label } : {}),
-    limit: isIncluded(value.limit, sidebarSectionLimits) ? value.limit : 10,
+    limit: isIncluded(value.limit, sidebarSectionLimits)
+      ? value.limit
+      : value.kind === "recents"
+        ? 5
+        : 10,
   };
 
   if (value.kind === "databaseView") {

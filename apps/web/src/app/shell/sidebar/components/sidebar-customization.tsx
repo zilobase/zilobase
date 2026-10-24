@@ -256,7 +256,10 @@ export function SidebarCustomizePanel({
     }
     updateTab((tab) => ({
       ...tab,
-      sections: [...tab.sections, { id: crypto.randomUUID(), kind, limit: 10, sort: "lastEdited" }],
+      sections: [
+        ...tab.sections,
+        { id: crypto.randomUUID(), kind, limit: kind === "recents" ? 5 : 10, sort: "lastEdited" },
+      ],
     }));
   };
   const addDatabaseSection = (database: PageDatabase, viewId?: string) => {

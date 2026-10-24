@@ -119,3 +119,89 @@ test("section dragging saves order and customization completes through the contr
   ).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.appSidebarFixture.saves.length)).toBe(2);
 });
+
+test("section options change counts, reorder, move and remove saved sections", async ({ page }) => {
+  await page.goto(url + "&sectionMenus=1");
+  const sidebar = page.getByLabel("Application sidebar", { exact: true });
+  const sections = sidebar.getByLabel("Sidebar sections", { exact: true });
+  const recents = sections.getByRole("list", { name: "Recents pages", exact: true });
+  const privatePages = sections.getByRole("list", { name: "Private pages", exact: true });
+  const favorites = sections.getByRole("list", { name: "Favorite pages", exact: true });
+  await expect(recents.locator(":scope > li")).toHaveCount(6);
+  await expect(privatePages.locator(":scope > li")).toHaveCount(11);
+  await expect(favorites.locator(":scope > li")).toHaveCount(11);
+  for (const [label, view] of [
+    ["Recents", "recents"],
+    ["Favorites", "favourites"],
+    ["Private", "private"],
+    ["Meetings", "meetings"],
+    ["Shared", "shared"],
+    ["Teamspaces", "teamspaces"],
+  ]) {
+    await expect(
+      sections.getByRole("button", { name: `${label} section options`, exact: true }),
+    ).toBeAttached();
+    const link = sections.getByRole("link", { name: `View all ${label}`, exact: true });
+    await expect(link).toHaveAttribute("href", `/recents?view=${view}`);
+    await link.click();
+    await expect(page.locator("[data-fixture-path]")).toHaveText(`/recents?view=${view}`);
+  }
+  await sections.getByRole("button", { name: "Recents section options", exact: true }).click();
+  await expect(page.getByRole("menuitem", { name: "Move up", exact: true })).toBeDisabled();
+  await page.screenshot({
+    animations: "disabled",
+    path: ".dev/calendar-e2e-results/sidebar-section-options-light.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.add("dark"));
+  await page.screenshot({
+    animations: "disabled",
+    path: ".dev/calendar-e2e-results/sidebar-section-options-dark.png",
+  });
+  await page.evaluate(() => document.documentElement.classList.remove("dark"));
+  await page.getByRole("menuitem", { name: /Show/ }).hover();
+  await page.getByRole("menuitem", { name: "10 items", exact: true }).click();
+  await expect(recents.locator(":scope > li")).toHaveCount(11);
+  await expect.poll(() => page.evaluate(() => window.appSidebarFixture.saves.length)).toBe(1);
+  await page.reload();
+  await expect(recents.locator(":scope > li")).toHaveCount(11);
+  await sections.getByRole("button", { name: "Recents section options", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Move down", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          window.appSidebarFixture.saves.at(-1).sidebarConfig.workspaceLayouts.workspace.tabs[0]
+            .sections[0].kind,
+      ),
+    )
+    .toBe("favorites");
+  await sections.getByRole("button", { name: "Recents section options", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Move up", exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          window.appSidebarFixture.saves.at(-1).sidebarConfig.workspaceLayouts.workspace.tabs[0]
+            .sections[0].kind,
+      ),
+    )
+    .toBe("recents");
+  await sections.getByRole("button", { name: "Private section options", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Move to tab", exact: true }).hover();
+  await page.getByRole("menuitem", { name: "Work", exact: true }).click();
+  await expect(
+    sections.getByRole("button", { name: "Private section options", exact: true }),
+  ).toHaveCount(0);
+  await sidebar.getByRole("button", { name: "Work", exact: true }).click();
+  await expect(
+    sections.getByRole("button", { name: "Private section options", exact: true }),
+  ).toBeAttached();
+  await sections.getByRole("button", { name: "Private section options", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Remove section", exact: true }).click();
+  await expect(
+    sections.getByRole("button", { name: "Private section options", exact: true }),
+  ).toHaveCount(0);
+  await sections.getByRole("button", { name: "Recents section options", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Customize sidebar", exact: true }).click();
+  await expect(sidebar.getByRole("button", { name: "Done", exact: true })).toBeVisible();
+});

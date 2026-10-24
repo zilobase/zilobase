@@ -70,7 +70,14 @@ export function moveLayoutEntry(
     return layout;
   const source = layout.tabs.find((tab) => tab.id === sourceTabId);
   const entry = source?.[entryType].find((item) => item.id === entryId);
-  if (!entry) return layout;
+  const target = layout.tabs.find((tab) => tab.id === targetTabId);
+  if (
+    !entry ||
+    !target ||
+    target[entryType].some((item) => item.id === entryId) ||
+    target[entryType].length >= 24
+  )
+    return layout;
 
   return {
     ...layout,

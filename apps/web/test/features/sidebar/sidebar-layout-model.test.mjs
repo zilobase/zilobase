@@ -31,6 +31,14 @@ export function register({ assert, loadModule, test }) {
       moved.tabs[2].shortcuts.map((item) => item.id),
       ["two"],
     );
+    assert.equal(moveLayoutEntry(layout, "home", "missing", "shortcuts", "two"), layout);
+    const duplicate = {
+      ...layout,
+      tabs: layout.tabs.map((tab) =>
+        tab.id === "work" ? { ...tab, shortcuts: [layout.tabs[0].shortcuts[1]] } : tab,
+      ),
+    };
+    assert.equal(moveLayoutEntry(duplicate, "home", "work", "shortcuts", "two"), duplicate);
     assert.equal(moveLayoutEntry(layout, "home", "ai", "shortcuts", "two"), layout);
     assert.equal(moveLayoutEntry(layout, "home", "calendar", "shortcuts", "two"), layout);
   });
