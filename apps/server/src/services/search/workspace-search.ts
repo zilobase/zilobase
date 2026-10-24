@@ -1,16 +1,11 @@
+import { keywordCandidateQuery, type KeywordCandidate } from "./keyword-query";
+import type { WorkspaceSearchFilters } from "@zilobase/features/search";
 import { getDatabaseEmoji, type DataSourceEntity } from "@zilobase/features/runtime";
 import { getDatabaseTitleSourcesService } from "../databases/read/service";
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "../../infrastructure/database";
-import {
-  database,
-  databaseView,
-  databaseDataSource,
-  dataSource,
-  page,
-  searchDocument,
-} from "../../infrastructure/database/schema";
+import { database, page } from "../../infrastructure/database/schema";
 import { authorizedSearchIdentities, withSearchRead } from "./eligibility";
 import { getMembership } from "../access/principal-access";
 
@@ -31,6 +26,7 @@ export type { SearchMatchProvenance } from "@zilobase/features/search";
 import type { SearchMatchProvenance } from "@zilobase/features/search";
 export type WorkspaceSearchInput = {
   limit?: number;
+  filters?: WorkspaceSearchFilters;
   membershipVerified?: boolean;
   query: string;
   types?: Array<WorkspaceSearchResult["type"]>;
@@ -54,7 +50,9 @@ async function readWorkspaceSearchItems(input: WorkspaceSearchInput) {
   }
 
   const query = normalizeSearchQuery(input.query);
-  const requestedTypes = new Set(input.types ?? ["page", "database"]);
+  const requestedTypes = new Set<WorkspaceSearchResult["type"]>(
+    input.types ?? ["page", "database"],
+  );
   const limit = Math.max(
     1,
     Math.min(input.limit ?? DEFAULT_MAX_SEARCH_RESULTS, MAX_SEARCH_RESULTS),
@@ -62,110 +60,9 @@ async function readWorkspaceSearchItems(input: WorkspaceSearchInput) {
 
   const types = [...requestedTypes];
   if (types.length === 0) return [];
-  const candidateLimit = Math.min(Math.max(limit * 5, 50), 500);
-  const tsQuery = query ? sql`websearch_to_tsquery('simple', ${query})` : null;
-  const matchingViewDatabaseIds =
-    tsQuery && requestedTypes.has("database")
-      ? (
-          await db
-            .selectDistinct({ databaseId: databaseView.databaseId })
-            .from(databaseView)
-            .innerJoin(database, eq(database.id, databaseView.databaseId))
-            .where(
-              and(
-                eq(database.workspaceId, input.workspaceId),
-                isNull(database.deletedAt),
-                sql`to_tsvector('simple', ${databaseView.name}) @@ ${tsQuery}`,
-              ),
-            )
-            .limit(candidateLimit)
-        ).map((match) => match.databaseId)
-      : [];
-  // Source titles are authoritative and may never have been copied into the
-  // legacy host search document. Match them directly, checking foreign access
-  // before allowing a source name to make its host discoverable.
-  const sourceMatches =
-    tsQuery && requestedTypes.has("database")
-      ? await db
-          .select({ databaseId: database.id, parentDatabaseId: dataSource.parentDatabaseId })
-          .from(databaseDataSource)
-          .innerJoin(database, eq(database.id, databaseDataSource.databaseId))
-          .innerJoin(dataSource, eq(dataSource.id, databaseDataSource.dataSourceId))
-          .where(
-            and(
-              eq(database.workspaceId, input.workspaceId),
-              isNull(database.deletedAt),
-              isNull(dataSource.deletedAt),
-              sql`to_tsvector('simple', ${dataSource.name}) @@ ${tsQuery}`,
-            ),
-          )
-          .limit(candidateLimit)
-      : [];
-  const sourceAccess = await authorizedSearchIdentities(
-    input.workspaceId,
-    input.userId,
-    [],
-    [...new Set(sourceMatches.map((m) => m.parentDatabaseId))],
-  );
-  for (const match of sourceMatches)
-    if (
-      match.databaseId === match.parentDatabaseId ||
-      sourceAccess.databases.has(match.parentDatabaseId)
-    )
-      matchingViewDatabaseIds.push(match.databaseId);
-  const excerpt = tsQuery
-    ? sql<
-        string | null
-      >`nullif(ts_headline('simple', ${searchDocument.contentText}, ${tsQuery}, ${SEARCH_HEADLINE_OPTIONS}), '')`
-    : sql<
-        string | null
-      >`nullif(left(${searchDocument.contentText}, ${MAX_SEARCH_EXCERPT_CHARS}), '')`;
-  const rank = tsQuery ? sql<number>`ts_rank_cd(${searchDocument.searchVector}, ${tsQuery})` : null;
-  const candidates = await db
-    .select({
-      emoji: searchDocument.emoji,
-      excerpt,
-      id: searchDocument.sourceId,
-      path: searchDocument.path,
-      sourcePageId: searchDocument.sourcePageId,
-      title: searchDocument.title,
-      type: searchDocument.sourceType,
-      updatedAt: searchDocument.sourceUpdatedAt,
-    })
-    .from(searchDocument)
-    .where(
-      and(
-        eq(searchDocument.workspaceId, input.workspaceId),
-        inArray(searchDocument.sourceType, types),
-        tsQuery
-          ? or(
-              sql`${searchDocument.searchVector} @@ ${tsQuery}`,
-              matchingViewDatabaseIds.length
-                ? and(
-                    eq(searchDocument.sourceType, "database"),
-                    inArray(searchDocument.sourceId, matchingViewDatabaseIds),
-                  )
-                : undefined,
-            )
-          : undefined,
-      ),
-    )
-    .orderBy(...(rank ? [desc(rank), searchDocument.title] : [searchDocument.title]))
-    .limit(candidateLimit);
-
-  const allowed = await authorizedSearchIdentities(
-    input.workspaceId,
-    input.userId,
-    candidates.filter((c) => c.type === "page").map((c) => c.id),
-    candidates.filter((c) => c.type === "database").map((c) => c.id),
-  );
-  const visible = candidates
-    .filter((c) =>
-      c.type === "page"
-        ? allowed.pages.has(c.id)
-        : c.type === "database" && allowed.databases.has(c.id),
-    )
-    .slice(0, limit);
+  const visible = (
+    await db.execute<KeywordCandidate>(keywordCandidateQuery({ ...input, query, types, limit }))
+  ).rows;
   const pageIds = visible.filter((item) => item.type === "page").map((item) => item.id);
   const hostIds = visible.filter((item) => item.type === "database").map((item) => item.id);
   const [pages, hosts] = await Promise.all([
