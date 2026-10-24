@@ -12,7 +12,7 @@ export type KeywordCandidate = {
 };
 const set = (values: readonly string[]) =>
   sql`select jsonb_array_elements_text(${JSON.stringify(values)}::jsonb)`;
-function peopleFilters(input: WorkspaceSearchInput, alias: "p" | "d") {
+function metadataFilters(input: WorkspaceSearchInput, alias: "p" | "d") {
   const f = input.filters;
   const conditions: SQL[] = [];
   for (const [ids, column] of [
@@ -26,6 +26,18 @@ function peopleFilters(input: WorkspaceSearchInput, alias: "p" | "d") {
   }
   if (f?.teamspaceIds?.length)
     conditions.push(sql`${sql.identifier(alias)}.teamspace_id in (${set(f.teamspaceIds)})`);
+  for (const [range, column] of [
+    [f?.createdAt, "created_at"],
+    [f?.lastEditedAt, "last_edited_at"],
+  ] as const) {
+    const field = sql`${sql.identifier(alias)}.${sql.identifier(column)}`;
+    if (range?.onOrAfter) conditions.push(sql`${field} >= ${range.onOrAfter}::timestamptz`);
+    if (range?.before) conditions.push(sql`${field} < ${range.before}::timestamptz`);
+  }
+  if (f?.contentStatus?.length)
+    conditions.push(
+      sql`(case when ${sql.identifier(alias)}.verified_at is null then 'unverified' when ${sql.identifier(alias)}.verification_expires_at <= statement_timestamp() then 'expired' else 'verified' end) in (${set(f.contentStatus)})`,
+    );
   return conditions.length ? sql.join(conditions, sql` and `) : sql`true`;
 }
 /** Every matching/ACL predicate is evaluated before the single final LIMIT. */
@@ -35,8 +47,12 @@ export function keywordCandidateQuery(input: WorkspaceSearchInput) {
   const q = sql`websearch_to_tsquery('simple', ${query})`;
   const types = input.types ?? ["page", "database"];
   const f = input.filters;
-  const pageMatch = query ? sql`s.search_vector @@ ${q}` : sql`true`;
-  const pages = sql`select p.id from page p join search_document s on s.workspace_id=p.workspace_id and s.source_type='page' and s.source_id=p.id where p.workspace_id=${w} and p.deleted_at is null and ${peopleFilters(input, "p")} and ${pageMatch}
+  const pageMatch = query
+    ? f?.titleOnly
+      ? sql`to_tsvector('simple',p.name) @@ ${q}`
+      : sql`s.search_vector @@ ${q}`
+    : sql`true`;
+  const pages = sql`select p.id from page p join search_document s on s.workspace_id=p.workspace_id and s.source_type='page' and s.source_id=p.id where p.workspace_id=${w} and p.deleted_at is null and ${metadataFilters(input, "p")} and ${pageMatch}
     ${f?.pageIds?.length ? sql`union select p.id from page p where p.workspace_id=${w} and p.deleted_at is null and p.id in (${set(f.pageIds)})` : sql``}`;
   const databases = sql`select id from database where workspace_id=${w} and deleted_at is null`;
   const location = f?.pageIds?.length
@@ -58,14 +74,26 @@ export function keywordCandidateQuery(input: WorkspaceSearchInput) {
     ? sql`exists(select 1 from database_row r join data_source ds on ds.id=r.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where r.page_id=p.id and r.deleted_at is null and ds.id in (${set(f.dataSourceIds)}) and ds.parent_database_id in(select id from search_allowed_databases))`
     : sql`true`;
   const dbMatch = query
-    ? sql`(s.search_vector @@ ${q} or to_tsvector('simple',coalesce(heading.name,d.name)) @@ ${q} or exists(select 1 from database_view v where v.database_id=d.id and to_tsvector('simple',v.name) @@ ${q}) or exists(select 1 from database_data_source link join data_source ds on ds.id=link.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where link.database_id=d.id and ds.parent_database_id in(select id from search_allowed_databases) and to_tsvector('simple',ds.name) @@ ${q}))`
+    ? f?.titleOnly
+      ? sql`to_tsvector('simple',coalesce(heading.name,d.name)) @@ ${q}`
+      : sql`(s.search_vector @@ ${q} or to_tsvector('simple',coalesce(heading.name,d.name)) @@ ${q} or exists(select 1 from database_view v where v.database_id=d.id and to_tsvector('simple',v.name) @@ ${q}) or exists(select 1 from database_data_source link join data_source ds on ds.id=link.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null where link.database_id=d.id and ds.parent_database_id in(select id from search_allowed_databases) and to_tsvector('simple',ds.name) @@ ${q}))`
     : sql`true`;
+  const sort = input.sort ?? (query ? "relevance" : "title_asc");
+  const ordering: Record<string, SQL> = {
+    relevance: sql`rank desc`,
+    created_asc: sql`created_at asc`,
+    created_desc: sql`created_at desc`,
+    last_edited_asc: sql`last_edited_at asc`,
+    last_edited_desc: sql`last_edited_at desc`,
+    title_asc: sql`title asc`,
+    title_desc: sql`title desc`,
+  };
   return sql`${searchAccessCtes(w, input.userId, pages, databases)}${location}, keyword_matches as (
-    select p.id,'page'::text as type,p.name as title,s.path,s.emoji,left(s.content_text,280) as excerpt,${query ? sql`ts_rank_cd(s.search_vector,${q})` : sql`0`} as rank
+    select p.id,'page'::text as type,p.name as title,s.path,s.emoji,${f?.titleOnly ? sql`null` : query ? sql`ts_headline('simple',s.content_text,${q},'MaxWords=35, MinWords=10, StartSel=__ZILOBASE_MATCH_START__, StopSel=__ZILOBASE_MATCH_STOP__')` : sql`left(s.content_text,280)`} as excerpt,${query ? sql`ts_rank_cd(s.search_vector,${q})` : sql`0`} as rank,p.created_at,p.last_edited_at
     from page p join search_document s on s.workspace_id=p.workspace_id and s.source_type='page' and s.source_id=p.id
-    where p.workspace_id=${w} and p.deleted_at is null and p.id in(select id from search_allowed_pages) and ${types.includes("page")} and ${pageMatch} and ${peopleFilters(input, "p")} and ${locationPage} and ${sourceFilter}
+    where p.workspace_id=${w} and p.deleted_at is null and p.id in(select id from search_allowed_pages) and ${types.includes("page")} and ${pageMatch} and ${metadataFilters(input, "p")} and ${locationPage} and ${sourceFilter}
     union all
-    select d.id,'database',coalesce(heading.name,d.name),s.path,s.emoji,null,${query ? sql`ts_rank_cd(s.search_vector,${q})` : sql`0`}
+    select d.id,'database',coalesce(heading.name,d.name),s.path,s.emoji,null,${query ? sql`ts_rank_cd(s.search_vector,${q})` : sql`0`},d.created_at,d.last_edited_at
     from database d join search_document s on s.workspace_id=d.workspace_id and s.source_type='database' and s.source_id=d.id
     left join lateral(
       select ds.name from database_data_source link join data_source ds on ds.id=link.data_source_id and ds.workspace_id=${w} and ds.deleted_at is null
@@ -73,6 +101,6 @@ export function keywordCandidateQuery(input: WorkspaceSearchInput) {
       where link.database_id=d.id and ds.parent_database_id in(select id from search_allowed_databases)
       order by first_view.position nulls last,first_view.id nulls last,link.position,ds.id limit 1
     ) heading on true
-    where d.workspace_id=${w} and d.deleted_at is null and d.id in(select id from search_allowed_databases) and ${types.includes("database")} and ${f?.dataSourceIds?.length ? sql`false` : sql`true`} and ${dbMatch} and ${peopleFilters(input, "d")} and ${locationDatabase}
-  ) select id,type,title,path,emoji,excerpt from keyword_matches order by rank desc,title,type,id limit ${Math.min(50, Math.max(1, input.limit ?? 50))}`;
+    where d.workspace_id=${w} and d.deleted_at is null and d.id in(select id from search_allowed_databases) and ${types.includes("database")} and ${f?.dataSourceIds?.length ? sql`false` : sql`true`} and ${dbMatch} and ${metadataFilters(input, "d")} and ${locationDatabase}
+  ) select id,type,title,path,emoji,excerpt from keyword_matches order by ${ordering[sort]},title,type,id limit ${Math.min(50, Math.max(1, input.limit ?? 50))}`;
 }

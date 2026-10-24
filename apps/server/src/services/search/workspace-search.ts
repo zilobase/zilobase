@@ -1,5 +1,10 @@
 import { keywordCandidateQuery, type KeywordCandidate } from "./keyword-query";
-import type { WorkspaceSearchFilters } from "@zilobase/features/search";
+import {
+  deriveContentVerification,
+  type SearchResultMetadata,
+  type WorkspaceSearchSort,
+  type WorkspaceSearchFilters,
+} from "@zilobase/features/search";
 import { getDatabaseEmoji, type DataSourceEntity } from "@zilobase/features/runtime";
 import { getDatabaseTitleSourcesService } from "../databases/read/service";
 import { and, eq, inArray, isNull } from "drizzle-orm";
@@ -9,7 +14,7 @@ import { database, page } from "../../infrastructure/database/schema";
 import { authorizedSearchIdentities, withSearchRead } from "./eligibility";
 import { getMembership } from "../access/principal-access";
 
-export type WorkspaceSearchResult = {
+export type WorkspaceSearchResult = Partial<SearchResultMetadata> & {
   emoji: string | null;
   excerpt: string | null;
   id: string;
@@ -27,6 +32,7 @@ import type { SearchMatchProvenance } from "@zilobase/features/search";
 export type WorkspaceSearchInput = {
   limit?: number;
   filters?: WorkspaceSearchFilters;
+  sort?: WorkspaceSearchSort;
   membershipVerified?: boolean;
   query: string;
   types?: Array<WorkspaceSearchResult["type"]>;
@@ -35,7 +41,7 @@ export type WorkspaceSearchInput = {
 };
 
 const DEFAULT_MAX_SEARCH_RESULTS = 50;
-const MAX_SEARCH_RESULTS = 100;
+const MAX_SEARCH_RESULTS = 50;
 const MAX_SEARCH_EXCERPT_CHARS = 280;
 const SEARCH_HEADLINE_START = "__ZILOBASE_MATCH_START__";
 const SEARCH_HEADLINE_STOP = "__ZILOBASE_MATCH_STOP__";
@@ -69,6 +75,14 @@ async function readWorkspaceSearchItems(input: WorkspaceSearchInput) {
     pageIds.length
       ? db
           .select({
+            createdAt: page.createdAt,
+            createdById: page.createdById,
+            lastEditedAt: page.lastEditedAt,
+            lastEditedById: page.lastEditedById,
+            verifiedAt: page.verifiedAt,
+            verifiedById: page.verifiedById,
+            verificationExpiresAt: page.verificationExpiresAt,
+            verificationUpdatedAt: page.verificationUpdatedAt,
             id: page.id,
             name: page.name,
             workspaceId: page.workspaceId,
@@ -140,6 +154,11 @@ async function readWorkspaceSearchItems(input: WorkspaceSearchInput) {
         path: candidate.path,
         title: titleSource?.name ?? entity.name,
         type: candidate.type as WorkspaceSearchResult["type"],
+        createdAt: entity.createdAt.toISOString(),
+        createdById: entity.createdById,
+        lastEditedAt: entity.lastEditedAt.toISOString(),
+        lastEditedById: entity.lastEditedById,
+        verification: deriveContentVerification(entity),
         updatedAt: entity.updatedAt,
         entity,
         ...(candidate.type === "database" ? { titleSource: titleSource ?? null } : {}),

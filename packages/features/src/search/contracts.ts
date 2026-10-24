@@ -1,4 +1,5 @@
-export type AppSearchResult = {
+import type { SearchResultMetadata } from "./controls";
+export type AppSearchResult = Partial<SearchResultMetadata> & {
   emoji: string | null;
   id: string;
   path: string;

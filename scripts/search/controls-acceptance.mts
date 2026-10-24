@@ -1,3 +1,10 @@
+import {
+  database,
+  dataSource,
+  databaseDataSource,
+  databaseView,
+} from "../../apps/server/src/infrastructure/database/schema";
+import { keywordCandidateQuery } from "../../apps/server/src/services/search/keyword-query";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
@@ -56,6 +63,71 @@ try {
     assert.equal(
       (await search({ createdByUserIds: ["me"], editedByUserIds: [other] }, "Changed")).length,
       1,
+    );
+    await db.execute(
+      sql`update page set content='{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"bodysecret"}]}]}'::jsonb where id=${child}`,
+    );
+    assert.equal((await search({}, "bodysecret")).length, 1);
+    assert.equal((await search({ titleOnly: true }, "bodysecret")).length, 0);
+    await db.execute(
+      sql`update page set created_at='2026-01-01T00:00:00Z',verified_at='2026-01-01T00:00:00Z',verification_expires_at='2026-02-01T00:00:00Z' where id=${child}`,
+    );
+    assert.equal((await search({ contentStatus: ["expired"] }, "")).length, 1);
+    assert.equal((await search({ contentStatus: ["verified"] }, "")).length, 0);
+    assert.equal(
+      (
+        await search(
+          { createdAt: { onOrAfter: "2026-01-01T00:00:00Z", before: "2026-01-02T00:00:00Z" } },
+          "",
+        )
+      ).length,
+      1,
+    );
+    assert.equal((await search({ createdAt: { before: "2026-01-01T00:00:00Z" } }, "")).length, 0);
+    const ordered = await searchWorkspaceItems({
+      workspaceId: w,
+      userId: actor,
+      query: "",
+      sort: "created_asc",
+      limit: 1,
+    });
+    assert.equal(ordered[0]?.id, child);
+    assert.equal(ordered[0]?.verification?.state, "expired");
+    assert.equal(ordered[0]?.createdAt, "2026-01-01T00:00:00.000Z");
+    const host = randomUUID(),
+      source = randomUUID();
+    await db.insert(database).values({
+      id: host,
+      workspaceId: w,
+      createdById: actor,
+      name: "Container old",
+      pageId: null,
+    });
+    await db.insert(dataSource).values({
+      id: source,
+      workspaceId: w,
+      parentDatabaseId: host,
+      createdById: actor,
+      name: "Authoritative heading",
+    });
+    await db.insert(databaseDataSource).values({ databaseId: host, dataSourceId: source });
+    await db.insert(databaseView).values({
+      id: randomUUID(),
+      databaseId: host,
+      dataSourceId: source,
+      name: "Hidden view name",
+      type: "table",
+    });
+    assert.equal((await search({ titleOnly: true }, "Authoritative"))[0]?.id, host);
+    assert.equal((await search({ titleOnly: true }, "Container")).length, 0);
+    assert.equal((await search({ titleOnly: true }, "Hidden")).length, 0);
+    assert.equal((await search({}, "Hidden"))[0]?.id, host);
+    const plan = await db.execute(
+      sql`explain (analyze,format json) ${keywordCandidateQuery({ workspaceId: w, userId: actor, query: "", filters: { createdByUserIds: ["me"] }, sort: "last_edited_desc", limit: 10 })}`,
+    );
+    assert.ok(plan.rows.length);
+    console.info(
+      "PASS title-only, date boundaries, expiry, sorting, live source headings, query plan",
     );
     console.info("PASS location, people, me, inaccessible candidates, and editor migration");
   });
