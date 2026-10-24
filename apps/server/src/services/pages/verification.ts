@@ -73,13 +73,26 @@ export async function contentVerificationOperation(
       if (write && !canManage) throw new ServerOperationError({ error: "Forbidden" }, 403);
       if (expiry && expiry.getTime() <= Date.now())
         throw new ServerOperationError({ error: "Verification expiry must be in the future" }, 400);
-      if (!write) return { verification: verificationFromRow(record), canManage };
+      if (!write)
+        return {
+          workspaceId: record.workspace_id,
+          type: input.type,
+          id: input.id,
+          verification: verificationFromRow(record),
+          canManage,
+        };
       const result = (
         await tx.execute<VerificationRow>(
           sql`update ${table} set verified_at=${input.action === "verify" ? sql`clock_timestamp()` : sql`null`}, verified_by_id=${input.action === "verify" ? actor.id : null}, verification_expires_at=${expiry?.toISOString() ?? null}::timestamptz,verification_updated_at=greatest(clock_timestamp(),coalesce(verification_updated_at, '-infinity'::timestamptz)+interval '1 millisecond') where id=${input.id} returning workspace_id,verified_at,verified_by_id,verification_expires_at,verification_updated_at`,
         )
       ).rows[0]!;
-      return { verification: verificationFromRow(result), canManage };
+      return {
+        workspaceId: result.workspace_id,
+        type: input.type,
+        id: input.id,
+        verification: verificationFromRow(result),
+        canManage,
+      };
     }),
   );
 }

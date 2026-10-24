@@ -593,7 +593,15 @@ try {
   if (process.env.ZILOBASE_SEARCH_BROWSER === "true")
     await check("browser search and settings", async () => {
       const { runSearchBrowser } = await import("./browser.mts");
-      await runSearchBrowser({ runtime, env, jar, workspace, pageId: space, ready });
+      await runSearchBrowser({
+        runtime,
+        env,
+        jar,
+        workspace,
+        pageId: space,
+        backgroundPageId: sea,
+        ready,
+      });
     });
   if (kind === "node")
     await check("backup and restore preserve vectors and HNSW partitions", async () => {

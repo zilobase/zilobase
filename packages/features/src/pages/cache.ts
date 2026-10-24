@@ -52,7 +52,23 @@ export function prepareAuthorizedPages(
       ...metadata
     } = page;
     return {
-      metadata: pageCacheEntitySchema.parse(metadata),
+      // Editorial/verification metadata has independent clocks and dedicated reads.
+      // Do not publish it under the body entity timestamp.
+      metadata: pageCacheEntitySchema.parse(
+        Object.fromEntries(
+          Object.entries(metadata).filter(
+            ([key]) =>
+              ![
+                "lastEditedAt",
+                "lastEditedById",
+                "verifiedAt",
+                "verifiedById",
+                "verificationExpiresAt",
+                "verificationUpdatedAt",
+              ].includes(key),
+          ),
+        ),
+      ),
       preferences: {
         id: page.id,
         readSequence: read.sequence,

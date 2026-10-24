@@ -41,3 +41,5 @@ export { useItemActionController } from "./item-action-hooks";
 export { useChangePageProperty } from "./content-mutations";
 
 export { useCachedPage } from "./query-hooks";
+
+export { useContentVerification, useUpdateContentVerification } from "./verification-hooks";

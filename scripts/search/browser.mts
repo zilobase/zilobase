@@ -1,10 +1,19 @@
+import { checkVerificationBrowser } from "./verification-browser.mts";
 import assert from "node:assert/strict";
 import { createServer as createReservation } from "node:net";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium, expect } from "@playwright/test";
-export async function runSearchBrowser({ runtime, env, jar, workspace, pageId, ready }) {
+export async function runSearchBrowser({
+  runtime,
+  env,
+  jar,
+  workspace,
+  pageId,
+  backgroundPageId,
+  ready,
+}) {
   const root = fileURLToPath(new URL("../../", import.meta.url));
   const reservation = createReservation();
   await new Promise<void>((resolve) => reservation.listen(0, "127.0.0.1", resolve));
@@ -143,6 +152,12 @@ export async function runSearchBrowser({ runtime, env, jar, workspace, pageId, r
     assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 391);
     await page.screenshot({ path: ".test-results/search/browser-mobile-search.png" });
     checks.push("mobile settings and keyword results fit a 390px viewport");
+    await page.keyboard.press("Escape");
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await checkVerificationBrowser(page, { origin, pageId, backgroundPageId });
+    checks.push(
+      "verification lifecycle, failures, readers, expiry, main/pane/dialog presentations",
+    );
     console.info(`Search browser acceptance passed (${checks.length} checks).`);
   } catch (error) {
     const diagnostics = await page

@@ -156,3 +156,25 @@ test("same-page edits serialize supported previews and a rejection preserves col
     client.clear();
   }
 });
+
+test("editorial transport clocks do not enter the body-clock page collection", () => {
+  const client = new TestQueryClient();
+  try {
+    const transport = {
+      ...page,
+      lastEditedAt: stamp(2),
+      lastEditedById: "editor",
+      verifiedAt: stamp(2),
+      verifiedById: "editor",
+      verificationExpiresAt: null,
+      verificationUpdatedAt: stamp(3),
+    };
+    cachePageDetail(client, { page: transport, accessLevel: "full", databaseIds: [] });
+    const value = resolved(client);
+    assert.equal(value.name, page.name);
+    assert.equal("verifiedAt" in value, false);
+    assert.equal("verificationUpdatedAt" in value, false);
+  } finally {
+    client.clear();
+  }
+});

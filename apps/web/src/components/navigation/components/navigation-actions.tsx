@@ -1,3 +1,10 @@
+import { useEffect, useState } from "react";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
+import type { VerificationResource } from "@zilobase/features/pages";
+import {
+  ContentVerificationDialog,
+  ContentVerificationMenuItem,
+} from "@/sections/pages/header/components/content-verification";
 import {
   ArrowUpRightIcon,
   Building2Icon,
@@ -76,6 +83,13 @@ export function HeaderActions({
     meetingId,
   });
 
+  const workspaceId = useActiveWorkspaceId();
+  const [verificationOpen, setVerificationOpen] = useState(false);
+  useEffect(() => setVerificationOpen(false), [workspaceId, pageId, databaseId]);
+  const verificationResource: VerificationResource | null =
+    workspaceId && (databaseId || pageId)
+      ? { workspaceId, type: databaseId ? "database" : "page", id: databaseId || pageId! }
+      : null;
   const isMobile = useIsMobile();
   const comments = usePageCommentsSnapshot(pageId);
   const openDiscussionCount = comments.threads.filter((thread) => !thread.resolvedAt).length;
@@ -139,6 +153,7 @@ export function HeaderActions({
           <DropDrawer open={moreMenu.open} onOpenChange={moreMenu.setOpen}>
             <DropDrawerTrigger asChild>
               <Button
+                aria-label="More page actions"
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 data-[state=open]:bg-action-neutral-hover"
@@ -182,6 +197,12 @@ export function HeaderActions({
                   </DropDrawerItem>
                 </>
               ) : null}
+              {verificationResource ? (
+                <ContentVerificationMenuItem
+                  resource={verificationResource}
+                  onOpen={() => setVerificationOpen(true)}
+                />
+              ) : null}
               {moreActions.map((label) => (
                 <DropDrawerItem
                   className={
@@ -198,6 +219,11 @@ export function HeaderActions({
               ))}
             </DropDrawerContent>
           </DropDrawer>
+          <ContentVerificationDialog
+            resource={verificationResource}
+            open={verificationOpen}
+            onOpenChange={setVerificationOpen}
+          />
           <AlertDialog open={trash.open} onOpenChange={trash.setOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
