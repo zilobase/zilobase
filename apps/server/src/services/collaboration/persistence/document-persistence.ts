@@ -1,5 +1,6 @@
+import type { ContentEdit } from "../documents/content-editor";
 import { nudgeSearchIndexing } from "../../search/invalidation";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import * as Y from "yjs";
 import { db, runWithDbEnv } from "../../../infrastructure/database/index";
 import {
@@ -165,7 +166,12 @@ export async function getOrCreateMeetingCollaborationDocumentState(meetingId: st
 
 export type CollaborationDocumentPersistence = {
   load(documentName: string): Promise<Uint8Array>;
-  store(input: { document: Y.Doc; documentName: string; state: Uint8Array }): Promise<void>;
+  store(input: {
+    document: Y.Doc;
+    documentName: string;
+    state: Uint8Array;
+    contentEdit?: ContentEdit;
+  }): Promise<void>;
 };
 
 export async function loadDocument(documentName: string, env: RuntimeEnv) {
@@ -199,6 +205,7 @@ export async function storeDocument(
   document: Y.Doc,
   state: Uint8Array,
   env: RuntimeEnv,
+  contentEdit?: ContentEdit,
 ) {
   const pageId = pageIdFromDocumentName(documentName);
   const meetingId = meetingIdFromDocumentName(documentName);
@@ -230,6 +237,10 @@ export async function storeDocument(
 
   await withDatabase(env, async () => {
     await db.transaction(async (tx) => {
+      if (contentEdit)
+        await tx.execute(
+          sql`select set_config('zilobase.content_actor', ${contentEdit.userId ?? ""}, true), set_config('zilobase.content_edit_at', ${contentEdit.occurredAt.toISOString()}, true)`,
+        );
       const [existing] = await tx
         .select({ content: page.content })
         .from(page)

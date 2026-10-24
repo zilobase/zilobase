@@ -1,3 +1,4 @@
+import { ContentEditorTracker } from "../documents/content-editor";
 import { Database } from "@hocuspocus/extension-database";
 import { Hocuspocus, type Extension } from "@hocuspocus/server";
 import type { RuntimeEnv } from "../../../shared/config/config";
@@ -21,6 +22,7 @@ export function createCollaborationHocuspocus(
   env: RuntimeEnv,
   persistence?: CollaborationDocumentPersistence,
 ) {
+  const editors = new ContentEditorTracker();
   const documentLoads = new Map<string, Promise<Uint8Array>>();
 
   const preloadDocument = (documentName: string) => {
@@ -51,10 +53,21 @@ export function createCollaborationHocuspocus(
         fetch: async ({ documentName }) => consumeDocument(documentName),
         store: async ({ documentName, document, state }) =>
           persistence
-            ? persistence.store({ document, documentName, state })
-            : storeDocument(documentName, document, state, env),
+            ? persistence.store({
+                document,
+                documentName,
+                state,
+                contentEdit: editors.pending(document),
+              })
+            : storeDocument(documentName, document, state, env, editors.pending(document)),
       }),
     ],
+    async afterLoadDocument({ document }) {
+      editors.loaded(document);
+    },
+    async onChange({ document, context }) {
+      editors.changed(document, context?.scope === "read-write" ? context.userId : undefined);
+    },
     async onAuthenticate({ connectionConfig, documentName, requestParameters, token }) {
       const authenticateStartedAt = performance.now();
       const claims = await verifyCollaborationTicket(token, env);

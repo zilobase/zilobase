@@ -43,6 +43,8 @@ const existingRecord: typeof database.$inferSelect = {
   config: {},
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   createdById: "user-1",
+  lastEditedById: null,
+  lastEditedAt: new Date("2026-01-01T00:00:00Z"),
   deletedAt: null,
   deletedById: null,
   id: "database-1",

@@ -37,6 +37,7 @@ function transactionExecutor(versions: Array<number | null>) {
   const outbox: unknown[] = [];
   let updateCalls = 0;
   const tx = {
+    execute: vi.fn(async () => ({ rows: [] })),
     insert(table: unknown) {
       return {
         async values(value: unknown) {

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { sql, and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "../../../infrastructure/database";
 import { type AfterCommit } from "../../../infrastructure/database/after-commit";
@@ -113,6 +113,7 @@ export async function createDatabaseService(input: {
       : [];
 
   await db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('zilobase.content_actor', ${input.userId}, true)`);
     await tx.insert(database).values({
       id: databaseId,
       workspaceId: input.workspaceId,

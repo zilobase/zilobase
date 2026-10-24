@@ -103,6 +103,9 @@ export async function commitDatabaseMutationBatch<T>(
     { operation: "internal", scope: "source" },
     () =>
       backgroundTransaction(options.env ?? {}, async (tx) => {
+        await tx.execute(
+          sql`select set_config('zilobase.content_actor', ${options.actorId}, true)`,
+        );
         const mutationResult = await mutate(tx);
         if (mutationResult.automationFacts?.length) {
           if (options.env) {
@@ -270,6 +273,7 @@ export async function commitDatabaseMutation(
       env: options.env,
     },
     async (tx) => {
+      await tx.execute(sql`select set_config('zilobase.content_actor', ${options.actorId}, true)`);
       const result = await mutate(tx);
       return {
         automationFacts: result.automationFacts,
@@ -311,6 +315,7 @@ export async function commitDataSourceMutation(
   const { commits, result: metadata } = await commitDatabaseMutationBatch(
     { actorId: options.actorId, env: options.env },
     async (tx) => {
+      await tx.execute(sql`select set_config('zilobase.content_actor', ${options.actorId}, true)`);
       const result = await mutate(tx);
       const [versioned] = await tx
         .update(dataSource)
@@ -374,6 +379,7 @@ export async function commitDataSourceMutationBatch<T>(
   const batch = await commitDatabaseMutationBatch(
     { actorId: options.actorId, env: options.env },
     async (tx) => {
+      await tx.execute(sql`select set_config('zilobase.content_actor', ${options.actorId}, true)`);
       const mutationResult = await mutate(tx);
       const owners: Array<{ containerCount: number; ownerDatabaseId: string }> = [];
       const containerMutations: BatchMutation[] = [];

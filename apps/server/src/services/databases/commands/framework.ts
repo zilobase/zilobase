@@ -176,6 +176,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
   };
   const committed = await measureDatabaseOperation("commit_duration_ms", metricAttributes, () =>
     executor.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('zilobase.content_actor', ${input.actorId}, true)`);
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${input.request.commandId}, 0))`,
       );

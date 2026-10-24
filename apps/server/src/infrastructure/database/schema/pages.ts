@@ -27,6 +27,8 @@ export const page = pgTable(
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    lastEditedAt: timestamp("last_edited_at", { withTimezone: true }).defaultNow().notNull(),
+    lastEditedById: text("last_edited_by_id").references(() => user.id, { onDelete: "set null" }),
     type: text("type").notNull().default("pageblock"),
     name: text("name").notNull(),
     url: text("url").notNull().default("#"),

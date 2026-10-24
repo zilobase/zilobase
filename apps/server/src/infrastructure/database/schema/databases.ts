@@ -31,6 +31,8 @@ export const database = pgTable(
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    lastEditedAt: timestamp("last_edited_at", { withTimezone: true }).defaultNow().notNull(),
+    lastEditedById: text("last_edited_by_id").references(() => user.id, { onDelete: "set null" }),
     pageId: text("page_id").references(() => page.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     config: jsonb("config"),

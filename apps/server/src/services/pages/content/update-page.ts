@@ -19,6 +19,7 @@ export async function updatePage(
 ) {
   const values: Partial<typeof page.$inferInsert> = {
     updatedAt: new Date(),
+    ...(patch.name !== undefined ? { lastEditedById: user.id, lastEditedAt: new Date() } : {}),
   };
 
   if (patch.type !== undefined) {
