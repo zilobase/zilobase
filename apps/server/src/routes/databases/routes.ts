@@ -1,3 +1,4 @@
+import { createContentVerificationRoutes } from "../content/verification-routes";
 import { Hono } from "hono";
 
 import type { AppBindings } from "../../shared/contracts/http";
@@ -20,3 +21,5 @@ databaseRoutes.route("/", databaseCommandRoutes);
 databaseRoutes.route("/", databaseAutomationRoutes);
 databaseRoutes.route("/", automationSlackRoutes);
 databaseRoutes.route("/", databaseCoreRoutes);
+
+databaseRoutes.route("/", createContentVerificationRoutes("database"));

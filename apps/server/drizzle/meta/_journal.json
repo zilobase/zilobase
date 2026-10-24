@@ -820,6 +820,13 @@
       "when": 1792800000000,
       "tag": "0119_content_editor",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1792800000001,
+      "tag": "0120_content_verification",
+      "breakpoints": true
     }
   ]
 }

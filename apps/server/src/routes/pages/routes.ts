@@ -1,3 +1,4 @@
+import { createContentVerificationRoutes } from "../content/verification-routes";
 import { Hono } from "hono";
 import { getPageIncludingDeleted } from "../../services/pages/read/page-records";
 import { pinnedResourceMiddleware } from "../auth/pinned-resource-middleware";
@@ -25,3 +26,5 @@ pageRoutes.route("/", pageNavigationRoutes);
 pageRoutes.route("/", pageSharingRoutes);
 pageRoutes.route("/", pageContentRoutes);
 pageRoutes.route("/", pageLifecycleRoutes);
+
+pageRoutes.route("/", createContentVerificationRoutes("page"));

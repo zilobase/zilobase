@@ -1,3 +1,4 @@
+import { deriveContentVerification, type ContentVerification } from "@zilobase/features/search";
 import { and, asc, desc, eq, gt, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import {
   sourceRecordQuerySchema,
@@ -140,6 +141,9 @@ export async function describeDatabaseSource(
               .limit(limit + 1);
     }
     return {
+      ...({ verification: deriveContentVerification(access.record) } as {
+        verification?: ContentVerification;
+      }),
       title: access.record.name,
       revision,
       section: input.section,

@@ -1,3 +1,4 @@
+import { deriveContentVerification, type ContentVerification } from "@zilobase/features/search";
 import { createHash } from "node:crypto";
 import { parsePageDocument } from "@zilobase/features/runtime";
 import { prosemirrorToMarkdown, type ResourceRef } from "@zilobase/page-context";
@@ -25,6 +26,10 @@ export async function readPageIdentity(context: ServerOperationContext, pageId: 
       metadata: page.metadata,
       workspaceId: page.workspaceId,
       updatedAt: page.updatedAt,
+      verifiedAt: page.verifiedAt,
+      verifiedById: page.verifiedById,
+      verificationExpiresAt: page.verificationExpiresAt,
+      verificationUpdatedAt: page.verificationUpdatedAt,
     })
     .from(page)
     .where(and(eq(page.id, pageId), isNull(page.deletedAt)))
@@ -158,6 +163,9 @@ export async function readDocumentWindow(
     throw new ServerOperationError({ error: "Invalid document position" }, 400);
   const limit = Math.min(25, Math.max(1, input.limit ?? 10));
   return {
+    ...({ verification: deriveContentVerification(identity) } as {
+      verification?: ContentVerification;
+    }),
     title: saved.name,
     revision,
     entries: entries.slice(offset, offset + limit),
