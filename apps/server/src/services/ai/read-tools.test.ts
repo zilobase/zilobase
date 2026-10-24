@@ -36,6 +36,11 @@ export function readFixture() {
         entity: { private: "Never return the underlying entity" },
       })),
     })),
+    users: vi.fn(async () => ({
+      type: "user_search",
+      users: [{ id: "ada", name: "Ada", email: "ada@example.test" }],
+      exhaustive: false,
+    })),
     authorizeWorkspace: vi.fn(async () => ({})),
     metadataRevision: vi.fn(async () => "v1"),
     authorizeDatabase: vi.fn(async () => ({})),
@@ -115,7 +120,12 @@ test("only read operations are registered and @mentions do not read content", ()
 
 test("workspace search validates nonempty bounded queries without accepting a workspace override", () => {
   const schema = readToolSchemas.search_workspace;
-  expect(schema.parse({ query: " launch " })).toEqual({ query: "launch", types: [], limit: 10 });
+  expect(schema.parse({ query: " launch " })).toEqual({
+    queryType: "content",
+    query: "launch",
+    types: [],
+    limit: 10,
+  });
   expect(schema.parse({ query: "launch", limit: 50 }).limit).toBe(50);
   expect(
     readToolSchemas.semantic_search_workspace.parse({ query: "launch", limit: 50 }).limit,
@@ -144,8 +154,9 @@ test("search discovers accessible sources without mentions but grants no citatio
     {
       workspaceId: "workspace",
       q: "launch",
-      types: "page,database",
+      types: "database,page",
       mode: "keyword",
+      limit: 10,
     },
   );
   expect(result).toMatchObject({
@@ -311,7 +322,7 @@ for (const name of ["search_workspace", "semantic_search_workspace"] as const)
       dependencies: fixture.dependencies,
     });
     const result = (await tools[name].execute!(
-      { query: "launch", limit: 50, types: [] },
+      { queryType: "content", query: "launch", limit: 50, types: [] },
       { toolCallId: "search", messages: [], abortSignal: fixture.signal, context: {} },
     )) as any;
     expect(Buffer.byteLength(JSON.stringify(result))).toBeGreaterThan(4096);
@@ -722,13 +733,14 @@ test("AI can use keyword and semantic tools in one run with independent result o
   expect(keyword.results.map((r: { id: string }) => r.id)).toEqual(["found-page", "other-page"]);
   expect(semantic.results.map((r: { id: string }) => r.id)).toEqual(["other-page", "found-page"]);
   expect(vi.mocked(dependencies.search).mock.calls.map(([, input]) => input)).toEqual([
-    { workspaceId: "workspace", q: "launch", types: "", mode: "keyword" },
+    { workspaceId: "workspace", q: "launch", types: "", mode: "keyword", limit: 10 },
     {
       workspaceId: "workspace",
       q: "release plans",
       types: "",
       mode: "semantic",
       purpose: "question_answering",
+      limit: 10,
     },
   ]);
   expect(state.calls).toBe(2);
@@ -786,3 +798,72 @@ for (const name of ["search_workspace", "semantic_search_workspace"] as const)
     });
     expect(dependencies.search).not.toHaveBeenCalled();
   });
+
+test("user lookup supplies filter IDs without granting resources or evidence", async () => {
+  const { call, dependencies, state } = readFixture();
+  const result = await call("search_workspace", { queryType: "user", query: "Ada" });
+  expect(result).toMatchObject({ type: "user_search", users: [{ id: "ada" }], exhaustive: false });
+  expect(dependencies.search).not.toHaveBeenCalled();
+  expect(state.context.manifest).toEqual([]);
+  expect(await call("read_page", { pageId: "ada" })).toMatchObject({
+    error: { code: "OUT_OF_SCOPE" },
+  });
+  await call("search_workspace", {
+    filters: { createdByUserIds: ["ada"], editedByUserIds: ["me"] },
+    sort: "last_edited_desc",
+    limit: 4,
+  });
+  expect(dependencies.search).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      q: "",
+      filters: { createdByUserIds: ["ada"], editedByUserIds: ["me"] },
+      sort: "last_edited_desc",
+      limit: 4,
+    }),
+  );
+});
+test("structured filters never extend semantic search or permit user/content mixtures", () => {
+  expect(
+    readToolSchemas.semantic_search_workspace.safeParse({
+      query: "ideas",
+      filters: { titleOnly: true },
+    }).success,
+  ).toBe(false);
+  expect(
+    readToolSchemas.search_workspace.safeParse({ queryType: "user", query: "Ada", filters: {} })
+      .success,
+  ).toBe(false);
+  expect(readToolSchemas.search_workspace.safeParse({ query: "", types: ["page"] }).success).toBe(
+    true,
+  );
+});
+test("keyword search returns attribution and verification without making evidence", async () => {
+  const { call, dependencies, state } = readFixture();
+  const original = await dependencies.search({} as never, {});
+  vi.mocked(dependencies.search).mockResolvedValue({
+    ...original,
+    results: original.results.map((r) => ({
+      ...r,
+      createdAt: "2026-01-01T00:00:00Z",
+      createdById: "ada",
+      lastEditedAt: "2026-02-01T00:00:00Z",
+      lastEditedById: "ada",
+      verification: {
+        state: "expired",
+        verifiedAt: "2026-01-01T00:00:00Z",
+        verifiedById: "ada",
+        expiresAt: "2026-02-01T00:00:00Z",
+        revision: "v1",
+      },
+    })),
+  });
+  expect(await call("search_workspace", { query: "launch" })).toMatchObject({
+    type: "workspace_search",
+    results: [
+      { lastEditedById: "ada", verification: { state: "expired" } },
+      { verification: { state: "expired" } },
+    ],
+  });
+  expect(state.context.manifest).toEqual([]);
+});

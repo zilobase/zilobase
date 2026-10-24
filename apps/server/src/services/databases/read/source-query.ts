@@ -56,7 +56,11 @@ async function metadataScope(
     : [];
   if (input.dataSourceId && (!source || source.workspaceId !== access.record.workspaceId))
     deny("Source unavailable", 403);
-  return { access, source, revision: `${access.record.version}:${source?.version ?? "host"}` };
+  return {
+    access,
+    source,
+    revision: `${access.record.version}:${source?.version ?? "host"}${access.record.verificationUpdatedAt ? `:${access.record.verificationUpdatedAt.toISOString()}:${deriveContentVerification(access.record).state}` : ""}`,
+  };
 }
 
 /** Reauthorize and check metadata versions before reusing a run-local inspection. */

@@ -1,3 +1,5 @@
+import { workspaceSearchRequestSchema } from "@zilobase/features/search";
+import { searchWorkspaceUsersOperation } from "../search/users";
 import { recordDebugEvent } from "./debug";
 import { createHash, randomUUID } from "node:crypto";
 import type { AiDiagnostics } from "./diagnostics";
@@ -38,21 +40,7 @@ import {
 
 const id = z.string().min(1).max(128);
 const cursor = z.string().max(128).nullable().default(null);
-const searchSchema = z
-  .object({
-    query: z
-      .string()
-      .trim()
-      .min(1)
-      .max(512)
-      .describe("Specific keywords, an identifier, or a page/database title."),
-    types: z
-      .array(z.enum(["page", "database"]))
-      .max(2)
-      .default([]),
-    limit: z.number().int().min(1).max(50).default(10),
-  })
-  .strict();
+const searchSchema = workspaceSearchRequestSchema;
 const semanticSearchSchema = z
   .object({
     query: z
@@ -136,12 +124,16 @@ export const readToolSchemas = {
 };
 export const readToolSchemaText = JSON.stringify(
   Object.fromEntries(
-    Object.entries(readToolSchemas).map(([name, schema]) => [name, z.toJSONSchema(schema)]),
+    Object.entries(readToolSchemas).map(([name, schema]) => [
+      name,
+      z.toJSONSchema(schema, { io: "input" }),
+    ]),
   ),
 );
 
 export type ReadToolDependencies = {
   search: typeof searchWorkspaceOperation;
+  users: typeof searchWorkspaceUsersOperation;
   document: typeof readDocumentWindow;
   describe: typeof describeDatabaseSource;
   query: typeof querySourceRecords;
@@ -153,6 +145,7 @@ export type ReadToolDependencies = {
 };
 const dependencies: ReadToolDependencies = {
   search: searchWorkspaceOperation,
+  users: searchWorkspaceUsersOperation,
   document: readDocumentWindow,
   describe: describeDatabaseSource,
   query: querySourceRecords,
@@ -425,15 +418,18 @@ export function createReadTools(
       source,
       ...(isSearch ? { query: String(input.query) } : {}),
       status: "running" as "running" | "completed" | "failed",
-      label: {
-        search_workspace: "Searching workspace by keyword",
-        semantic_search_workspace: "Searching workspace by meaning",
-        describe_source: "Inspecting source",
-        read_page: "Reading page",
-        query_records: "Reading records",
-        read_record: "Reading record",
-        aggregate_records: "Calculating totals",
-      }[name],
+      label:
+        name === "search_workspace" && input.queryType === "user"
+          ? "Finding workspace users"
+          : {
+              search_workspace: "Searching workspace by keyword",
+              semantic_search_workspace: "Searching workspace by meaning",
+              describe_source: "Inspecting source",
+              read_page: "Reading page",
+              query_records: "Reading records",
+              read_record: "Reading record",
+              aggregate_records: "Calculating totals",
+            }[name],
       returned: undefined as number | undefined,
       hasMore: undefined as boolean | undefined,
       error: undefined as string | undefined,
@@ -560,6 +556,7 @@ export function createReadTools(
       result.revision,
     );
     return {
+      ...(result.verification ? { verification: result.verification } : {}),
       title: result.title.slice(0, 512),
       revision: result.revision,
       entries,
@@ -669,17 +666,36 @@ export function createReadTools(
   };
   const search = (
     name: "search_workspace" | "semantic_search_workspace",
-    input: z.infer<typeof searchSchema>,
+    input: z.infer<typeof searchSchema> | z.infer<typeof semanticSearchSchema>,
     toolCallId: string,
     mode: "keyword" | "semantic",
   ) =>
     execute(name, input, toolCallId, async () => {
+      if ("queryType" in input && input.queryType === "user") {
+        const found = await ports.users(scoped, { workspaceId: state.workspaceId, request: input });
+        const users = found.users.slice(0, input.limit);
+        return {
+          type: "user_search",
+          users,
+          exhaustive: false,
+          coverage: {
+            scope: "workspace-users",
+            complete: users.length === found.users.length,
+            returned: users.length,
+            total: null,
+          },
+          next: "Use returned user IDs in createdByUserIds or editedByUserIds. User matches grant no content access and are not citation evidence.",
+        };
+      }
       const matches = await ports.search(scoped, {
         workspaceId: state.workspaceId,
         q: input.query,
         mode,
         ...(mode === "semantic" ? { purpose: "question_answering" as const } : {}),
         types: input.types.join(","),
+        limit: input.limit,
+        ...("filters" in input && input.filters ? { filters: input.filters } : {}),
+        ...("sort" in input && input.sort ? { sort: input.sort } : {}),
       });
       const results = matches.results.slice(0, input.limit).map((match) => ({
         type: match.type,
@@ -688,6 +704,15 @@ export function createReadTools(
         path: match.path.slice(0, 256),
         excerpt: match.excerpt?.slice(0, 280) ?? null,
         updatedAt: match.updatedAt.toISOString(),
+        ...(match.createdAt
+          ? {
+              createdAt: match.createdAt,
+              createdById: match.createdById ?? null,
+              lastEditedAt: match.lastEditedAt,
+              lastEditedById: match.lastEditedById ?? null,
+            }
+          : {}),
+        ...(match.verification ? { verification: match.verification } : {}),
         ...(match.match ? { match: match.match } : {}),
       }));
       // Only matches actually returned to the model become traversable. Search
@@ -698,6 +723,7 @@ export function createReadTools(
           grant({ type: "database", id: result.match.databaseId });
       }
       return {
+        ...(mode === "keyword" ? { type: "workspace_search" } : {}),
         results,
         exhaustive: false,
         ...("metadata" in matches ? { searchMetadata: matches.metadata } : {}),
@@ -713,7 +739,7 @@ export function createReadTools(
   return {
     search_workspace: tool({
       description:
-        "Search accessible pages and databases in the current workspace by keywords, identifiers or titles. Use for precise terms and named sources. This is independent of semantic_search_workspace and works without an embedding index. Results are bounded keyword-ranked discovery hints, not citation evidence or an exhaustive inventory. Read important matches before relying on their content; listing matches needs no page read. Refine keywords or types for other matches; there is no search cursor.",
+        "Search accessible pages and databases by keywords or exact controls: locations (page/subtree, data source, teamspace), creators, latest editors, created/edited date ranges, titleOnly, verification status, and sorting. Use me for the current user in creator/editor filters. Empty query requires a narrowing filter or a single type. Dates require ISO timestamps with offsets. queryType=user looks up workspace users by name/email and rejects content filters, types and sorting. Use returned user IDs in content filters. User matches grant no content access. Use this tool for precise constraints, date ordering and filter-only discovery. This is independent of semantic_search_workspace and works without an embedding index. Results are bounded keyword-ranked discovery hints, not citation evidence or an exhaustive inventory. Read important matches before relying on their content; listing matches needs no page read. Refine keywords or types for other matches; there is no search cursor.",
       inputSchema: searchSchema,
       execute: (input, { toolCallId }) => search("search_workspace", input, toolCallId, "keyword"),
     }),
@@ -817,6 +843,7 @@ export function createReadTools(
               result.revision,
             );
           const response = {
+            ...(result.verification ? { verification: result.verification } : {}),
             title: result.title.slice(0, 512),
             kind: "database_metadata",
             databaseId: input.id,

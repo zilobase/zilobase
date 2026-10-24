@@ -298,7 +298,7 @@ try {
   };
   const found = (await run(async () =>
     searchTools.search_workspace.execute!(
-      { query: "Saved source", types: ["page"], limit: 20 },
+      { queryType: "content", query: "Saved source", types: ["page"], limit: 20 },
       searchOptions,
     ),
   )) as { results: Array<{ id: string; type: string }> };
@@ -316,7 +316,7 @@ try {
   assert.ok(JSON.stringify(discovered).includes("Saved source content"));
   const foundDatabase = (await run(async () =>
     searchTools.search_workspace.execute!(
-      { query: "Tasks", types: ["database"], limit: 20 },
+      { queryType: "content", query: "Tasks", types: ["database"], limit: 20 },
       { ...searchOptions, toolCallId: "search-db" },
     ),
   )) as { results: Array<{ id: string; type: string }> };
