@@ -89,6 +89,7 @@ export type SidebarWorkspaceLayout = {
 export type SidebarConfig = {
   defaultLayout: SidebarWorkspaceLayout;
   libraryView: LibraryView;
+  libraryOrders?: Record<string, Partial<Record<LibraryView, string[]>>>;
   version: 3;
   workspaceLayouts: Record<string, SidebarWorkspaceLayout>;
 };
@@ -160,6 +161,23 @@ export function normalizeSidebarConfig(value: unknown): SidebarConfig {
     libraryView: isIncluded(config.libraryView, libraryViewIds)
       ? config.libraryView
       : defaultSidebarConfig.libraryView,
+    ...(isRecord(config.libraryOrders)
+      ? {
+          libraryOrders: Object.fromEntries(
+            Object.entries(config.libraryOrders)
+              .filter(([workspaceId, orders]) => isSafeId(workspaceId) && isRecord(orders))
+              .slice(0, 64)
+              .map(([workspaceId, orders]) => [
+                workspaceId,
+                Object.fromEntries(
+                  Object.entries(orders as Record<string, unknown>)
+                    .filter(([view]) => isIncluded(view, libraryViewIds))
+                    .map(([view, ids]) => [view, uniqueStrings(ids).slice(0, 10000)]),
+                ),
+              ]),
+          ),
+        }
+      : {}),
     version: 3,
     workspaceLayouts: Object.fromEntries(
       Object.entries(layouts)

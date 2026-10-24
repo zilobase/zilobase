@@ -312,3 +312,28 @@ test("sidebar counts default to five recents and ten for every other section", a
   });
   assert.equal(explicit.tabs[0].sections[0].limit, 20, "retain explicit saved counts");
 });
+
+test("personal Library orders stay scoped to workspace and view while rejecting malformed entries", async () => {
+  const { normalizeSidebarConfig, withSidebarWorkspaceLayout, defaultSidebarWorkspaceLayout } =
+    await import(configPath);
+  const config = normalizeSidebarConfig({
+    version: 3,
+    libraryOrders: {
+      workspace: {
+        recents: ["page:a", "page:b", "page:a", null],
+        private: ["page:b"],
+        unknown: ["page:c"],
+      },
+      other: { recents: ["page:z"] },
+      invalid: null,
+    },
+  });
+  assert.deepEqual(config.libraryOrders, {
+    workspace: { recents: ["page:a", "page:b"], private: ["page:b"] },
+    other: { recents: ["page:z"] },
+  });
+  assert.deepEqual(
+    withSidebarWorkspaceLayout(config, "workspace", defaultSidebarWorkspaceLayout).libraryOrders,
+    config.libraryOrders,
+  );
+});

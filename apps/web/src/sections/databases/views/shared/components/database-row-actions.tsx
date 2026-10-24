@@ -76,6 +76,17 @@ const RowActionsContext = createContext<ActionsContext | null>(null);
 export const useDatabaseRowActions = () => useContext(RowActionsContext);
 
 export function DatabaseRowActionsProvider({
+  disabled = false,
+  ...props
+}: Parameters<typeof DatabaseRecordRowActionsProvider>[0] & { disabled?: boolean }) {
+  return disabled ? (
+    <RowActionsContext.Provider value={null}>{props.children}</RowActionsContext.Provider>
+  ) : (
+    <DatabaseRecordRowActionsProvider {...props} />
+  );
+}
+
+function DatabaseRecordRowActionsProvider({
   children,
   selection,
 }: {

@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
   type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -114,7 +115,19 @@ import { CreateDatabaseRowButton, DatabaseActiveTableCell } from "./database-tab
 import { DatabaseSelectionToolbar } from "../../shared/components/database-selection-toolbar";
 import { DatabaseHeaderReorderItem } from "./database-table-drag-controls";
 
-export function DatabaseTableView() {
+export type TableRowInteractions = {
+  newRowLabel?: string;
+  canCreateRow: (parentRowId?: string) => boolean;
+  createRow: (parentRowId?: string) => void;
+  dragRow?: (row: TableRow, event: ReactDragEvent<HTMLButtonElement>) => void;
+  canDragRow?: (row: TableRow) => boolean;
+  moveRow?: (move: RowMove) => void | Promise<void>;
+  renderSelectionToolbar: (selectedRows: TableRow[], clearSelection: () => void) => ReactNode;
+};
+
+export function DatabaseTableView({
+  rowInteractions,
+}: { rowInteractions?: TableRowInteractions } = {}) {
   const sidePane = useOptionalPageSidePane();
   const {
     addDatabaseProperty,
@@ -208,11 +221,19 @@ export function DatabaseTableView() {
   const manualPlacement = useManualRecordPlacement();
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [collapsedSubItemRowIds, setCollapsedSubItemRowIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [expandedEmptySubItemRowIds, setExpandedEmptySubItemRowIds] = useState<Set<string>>(
-    () => new Set(),
+  const gridScope = [databaseWorkspaceId, hostDatabaseId, databaseId, activeView?.id].join(":");
+  const [subItemExpansionScope, setSubItemExpansionScope] = useState(gridScope);
+  const [openedSubItemRowIds, setOpenedSubItemRowIds] = useState<Set<string>>(() => new Set());
+  if (subItemExpansionScope !== gridScope) {
+    setSubItemExpansionScope(gridScope);
+    setOpenedSubItemRowIds(new Set());
+  }
+  const collapsedSubItemRowIds = useMemo(
+    () =>
+      new Set(
+        Object.keys(subItemChildRowIdsByParentId).filter((id) => !openedSubItemRowIds.has(id)),
+      ),
+    [openedSubItemRowIds, subItemChildRowIdsByParentId],
   );
   const stickyHeaderScrollRef = useRef<HTMLDivElement | null>(null);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
@@ -278,7 +299,15 @@ export function DatabaseTableView() {
     [personOptions],
   );
 
-  const canReorderRows = editable;
+  const canSelectRows = editable || Boolean(rowInteractions);
+  const canReorderRows = editable || Boolean(rowInteractions?.moveRow);
+  const canDragRows = canReorderRows || Boolean(rowInteractions?.dragRow);
+  const canCreateRow = (parentRowId?: string) =>
+    rowInteractions ? rowInteractions.canCreateRow(parentRowId) : editable;
+  const createRow = (parentRowId?: string) => {
+    if (rowInteractions) rowInteractions.createRow(parentRowId);
+    else addDatabaseRow(undefined, undefined, parentRowId);
+  };
 
   const rowDragTitle = getRowDragTitle({
     canReorder: canReorderRows,
@@ -352,22 +381,13 @@ export function DatabaseTableView() {
     if (!isSubItemsNested) return expandedRowIds;
 
     for (const row of visibleRows) {
-      const hasSubItems = (subItemChildRowIdsByParentId[row.id]?.length ?? 0) > 0;
-      const isExpanded = hasSubItems
-        ? !collapsedSubItemRowIds.has(row.id)
-        : expandedEmptySubItemRowIds.has(row.id);
+      const isExpanded = openedSubItemRowIds.has(row.id);
 
       if (isExpanded) expandedRowIds.add(row.id);
     }
 
     return expandedRowIds;
-  }, [
-    collapsedSubItemRowIds,
-    expandedEmptySubItemRowIds,
-    isSubItemsNested,
-    subItemChildRowIdsByParentId,
-    visibleRows,
-  ]);
+  }, [openedSubItemRowIds, isSubItemsNested, visibleRows]);
   const subItemCreateRowIdsByAfterRowId = useMemo(
     () =>
       getSubItemCreateRowsAfterRow({
@@ -381,7 +401,6 @@ export function DatabaseTableView() {
     () => new Map(visibleRows.map((row, index) => [row.id, index])),
     [visibleRows],
   );
-  const gridScope = [databaseWorkspaceId, hostDatabaseId, databaseId, activeView?.id].join(":");
   const grid = useDatabaseGrid({
     rows: visibleRows,
     allRows: rows,
@@ -399,7 +418,7 @@ export function DatabaseTableView() {
   });
   useDatabaseMarquee({
     surfaceRef: tableWrapRef,
-    enabled: editable,
+    enabled: canSelectRows,
     scope: gridScope,
     rowIds: visibleRows.map((row) => row.id),
     selectedRowIds,
@@ -417,7 +436,10 @@ export function DatabaseTableView() {
   }, [groupedSections]);
 
   const getSubItemDropParentRowId = (targetIndex: number, preferPreviousRowAsParent = false) =>
-    isSubItemsNested && subItemsSettings.parentPropertyId && subItemsSettings.subItemPropertyId
+    !rowInteractions &&
+    isSubItemsNested &&
+    subItemsSettings.parentPropertyId &&
+    subItemsSettings.subItemPropertyId
       ? getDatabaseSubItemLineParentRowId({
           childRowIdsByParentId: subItemChildRowIdsByParentId,
           collapsedRowIds: collapsedSubItemRowIds,
@@ -630,9 +652,9 @@ export function DatabaseTableView() {
       { onError: (error) => toast.error(error.message) },
     );
     if (nextMove.subItemParentRowId)
-      setCollapsedSubItemRowIds((current) => {
+      setOpenedSubItemRowIds((current) => {
         const next = new Set(current);
-        next.delete(nextMove.subItemParentRowId!);
+        next.add(nextMove.subItemParentRowId!);
         return next;
       });
   };
@@ -806,6 +828,10 @@ export function DatabaseTableView() {
   };
 
   const startRowDrag = (row: TableRow, event: ReactDragEvent<HTMLButtonElement>) => {
+    if (rowInteractions?.dragRow && !rowInteractions.moveRow) {
+      rowInteractions.dragRow(row, event);
+      return;
+    }
     if (!canReorderRows) {
       return;
     }
@@ -853,6 +879,10 @@ export function DatabaseTableView() {
           }
         : null,
     );
+    if (rowInteractions?.dragRow) {
+      rowInteractions.dragRow(row, event);
+      return;
+    }
     setDatabasePageDragPayload(event.dataTransfer, {
       databaseId: loadedDatabaseId,
       hostDatabaseId: hostDatabaseId ?? undefined,
@@ -1114,29 +1144,13 @@ export function DatabaseTableView() {
       const childRowIds = subItemChildRowIdsByParentId[row.id] ?? [];
       const hasSubItems = childRowIds.length > 0;
       const subItemDepth = isSubItemsNested ? (subItemDepthByRowId[row.id] ?? 0) : 0;
-      const subItemsExpanded = hasSubItems
-        ? !collapsedSubItemRowIds.has(row.id)
-        : expandedEmptySubItemRowIds.has(row.id);
-      const showSubItemToggle = isSubItemsNested && (hasSubItems || editable);
+      const subItemsExpanded = openedSubItemRowIds.has(row.id);
+      const showSubItemToggle = isSubItemsNested;
       const toggleSubItems = () => {
-        if (hasSubItems) {
-          setCollapsedSubItemRowIds((current) => {
-            const next = new Set(current);
-
-            if (next.has(row.id)) next.delete(row.id);
-            else next.add(row.id);
-
-            return next;
-          });
-          return;
-        }
-
-        setExpandedEmptySubItemRowIds((current) => {
+        setOpenedSubItemRowIds((current) => {
           const next = new Set(current);
-
           if (next.has(row.id)) next.delete(row.id);
           else next.add(row.id);
-
           return next;
         });
       };
@@ -1152,7 +1166,7 @@ export function DatabaseTableView() {
             "data-database-row-id": row.id,
             "data-row-selected": selectedRowIds.has(row.id) ? "true" : undefined,
             "data-side-pane-open": sidePane?.sidePanePageId === row.pageId ? "true" : undefined,
-            onMouseEnter: editable ? () => setHoveredRowId(row.id) : undefined,
+            onMouseEnter: canSelectRows ? () => setHoveredRowId(row.id) : undefined,
           }}
         >
           {renderedColumnIds.map((columnId) => {
@@ -1246,6 +1260,7 @@ export function DatabaseTableView() {
                             aria-expanded={subItemsExpanded}
                             aria-label={`${subItemsExpanded ? "Collapse" : "Expand"} sub-items for ${getRowTitle(row)}`}
                             className="database-sub-item-toggle"
+                            data-has-sub-items={hasSubItems ? "true" : undefined}
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -1294,54 +1309,60 @@ export function DatabaseTableView() {
 
       const subItemCreateRowIds = subItemCreateRowIdsByAfterRowId[row.id] ?? [];
 
-      if (!editable || subItemCreateRowIds.length === 0) {
+      if (subItemCreateRowIds.length === 0) {
         return tableRow;
       }
 
       return (
         <Fragment key={row.id}>
           {tableRow}
-          {subItemCreateRowIds.map((parentRowId) => (
-            <tr className="database-sub-item-create-row" key={`create-sub-item:${parentRowId}`}>
-              <td colSpan={columnKeys.length}>
-                <button
-                  className="database-sub-item-create"
-                  disabled={
-                    !databaseId ||
-                    !subItemsSettings.parentPropertyId ||
-                    !subItemsSettings.subItemPropertyId
-                  }
-                  onClick={() => addDatabaseRow(undefined, undefined, parentRowId)}
-                  title={
-                    !subItemsSettings.parentPropertyId || !subItemsSettings.subItemPropertyId
-                      ? "Setting up sub-items"
-                      : undefined
-                  }
-                  style={
-                    {
-                      "--database-sub-item-depth": (subItemDepthByRowId[parentRowId] ?? 0) + 1,
-                    } as CSSProperties
-                  }
-                  type="button"
-                >
-                  <Plus />
-                  <span>New sub-item</span>
-                </button>
-              </td>
-            </tr>
-          ))}
+          {subItemCreateRowIds
+            .filter((parentRowId) => canCreateRow(parentRowId))
+            .map((parentRowId) => (
+              <tr className="database-sub-item-create-row" key={`create-sub-item:${parentRowId}`}>
+                <td colSpan={columnKeys.length}>
+                  <button
+                    className="database-sub-item-create"
+                    disabled={
+                      !canCreateRow(parentRowId) ||
+                      (!rowInteractions &&
+                        (!databaseId ||
+                          !subItemsSettings.parentPropertyId ||
+                          !subItemsSettings.subItemPropertyId))
+                    }
+                    onClick={() => createRow(parentRowId)}
+                    title={
+                      !rowInteractions &&
+                      (!subItemsSettings.parentPropertyId || !subItemsSettings.subItemPropertyId)
+                        ? "Setting up sub-items"
+                        : undefined
+                    }
+                    style={
+                      {
+                        "--database-sub-item-depth": (subItemDepthByRowId[parentRowId] ?? 0) + 1,
+                      } as CSSProperties
+                    }
+                    type="button"
+                  >
+                    <Plus />
+                    <span>New sub-item</span>
+                  </button>
+                </td>
+              </tr>
+            ))}
         </Fragment>
       );
     },
     [
       addDatabaseRow,
+      rowInteractions,
+      canSelectRows,
       canEditStructure,
       columnKeys.length,
       grid.table,
       conditionalColorsByRowId,
       databaseId,
       editable,
-      expandedEmptySubItemRowIds,
       isSubItemsNested,
       nameColumnLabel,
       nameColumnShowPageIcon,
@@ -1360,13 +1381,14 @@ export function DatabaseTableView() {
       subItemChildRowIdsByParentId,
       subItemCreateRowIdsByAfterRowId,
       subItemDepthByRowId,
-      collapsedSubItemRowIds,
+      openedSubItemRowIds,
       updateDatabasePropertyConfig,
     ],
   );
 
   return (
     <DatabaseRowActionsProvider
+      disabled={Boolean(rowInteractions)}
       selection={{
         selectedRows,
         selectedRowIds,
@@ -1391,10 +1413,16 @@ export function DatabaseTableView() {
       >
         <DatabaseGridScrollContext.Provider value={grid.scrollContext}>
           {selectedRows.length > 0 ? (
-            <DatabaseSelectionToolbar
-              clearSelection={() => setSelectedRowIds(new Set())}
-              selectedCount={selectedRows.length}
-            />
+            rowInteractions ? (
+              rowInteractions.renderSelectionToolbar(selectedRows, () =>
+                setSelectedRowIds(new Set()),
+              )
+            ) : (
+              <DatabaseSelectionToolbar
+                clearSelection={() => setSelectedRowIds(new Set())}
+                selectedCount={selectedRows.length}
+              />
+            )
           ) : null}
           <div
             className="database-table-wrap database-inline-scroll-wrap"
@@ -1442,7 +1470,9 @@ export function DatabaseTableView() {
               }
             }}
             onDrop={(event) => {
-              const dragPayload = getDatabasePageDragPayload(event.dataTransfer);
+              const dragPayload = rowInteractions
+                ? null
+                : getDatabasePageDragPayload(event.dataTransfer);
               const resolvedRowTarget = isTableGrouped
                 ? null
                 : resolveRowDropTarget(event.clientY, event.clientX);
@@ -1466,7 +1496,11 @@ export function DatabaseTableView() {
               function moveInternalRow() {
                 const nextMove = getDraggedRowMove();
 
-                if (nextMove)
+                if (nextMove && rowInteractions?.moveRow) {
+                  void Promise.resolve(rowInteractions.moveRow(nextMove)).catch((error) =>
+                    toast.error(error instanceof Error ? error.message : "Could not move item."),
+                  );
+                } else if (nextMove)
                   manualPlacement.request((clearSortViewId) =>
                     applyRowMove(nextMove, clearSortViewId),
                   );
@@ -1510,7 +1544,7 @@ export function DatabaseTableView() {
               clearRowDrag();
             }}
           >
-            {editable ? (
+            {canSelectRows ? (
               <Checkbox
                 aria-label="Select all records"
                 className="database-row-checkbox database-table-header-checkbox"
@@ -1532,15 +1566,16 @@ export function DatabaseTableView() {
             ) : null}
             {!isInlineTableScrollEnabled ? (
               <DatabaseRowDragControls
-                canReorderRows={canReorderRows}
+                canReorderRows={canDragRows}
+                canDragRow={rowInteractions?.canDragRow}
                 draggedRowId={draggedRowId}
-                editable={editable}
+                editable={canSelectRows}
                 hoveredRowId={hoveredRowId}
                 onDragEnd={clearRowDrag}
                 onDragStart={startRowDrag}
                 onHoveredRowChange={setHoveredRowId}
                 onSelectedRowChange={toggleSelectedRow}
-                rowDragTitle={rowDragTitle}
+                rowDragTitle={rowInteractions ? "Drag item" : rowDragTitle}
                 rowLayout={rowLayout}
                 rowsById={rowsById}
                 selectedRowIds={selectedRowIds}
@@ -1576,15 +1611,16 @@ export function DatabaseTableView() {
               <div className="database-table-scroll-content database-inline-scroll-content">
                 {isInlineTableScrollEnabled ? (
                   <DatabaseRowDragControls
-                    canReorderRows={canReorderRows}
+                    canReorderRows={canDragRows}
+                    canDragRow={rowInteractions?.canDragRow}
                     draggedRowId={draggedRowId}
-                    editable={editable}
+                    editable={canSelectRows}
                     hoveredRowId={hoveredRowId}
                     onDragEnd={clearRowDrag}
                     onDragStart={startRowDrag}
                     onHoveredRowChange={setHoveredRowId}
                     onSelectedRowChange={toggleSelectedRow}
-                    rowDragTitle={rowDragTitle}
+                    rowDragTitle={rowInteractions ? "Drag item" : rowDragTitle}
                     rowLayout={rowLayout}
                     rowsById={rowsById}
                     selectedRowIds={selectedRowIds}
@@ -1666,11 +1702,12 @@ export function DatabaseTableView() {
                     columnKeys={columnKeys}
                     columnWidths={columnWidths}
                     footerRow={
-                      editable ? (
+                      canCreateRow() ? (
                         <CreateDatabaseRowButton
+                          label={rowInteractions?.newRowLabel}
                           columnCount={columnKeys.length}
-                          disabled={!databaseId}
-                          onClick={() => addDatabaseRow()}
+                          disabled={!canCreateRow()}
+                          onClick={() => createRow()}
                         />
                       ) : undefined
                     }

@@ -116,7 +116,7 @@ export function TeamspacesLibraryTable({
                       type="button"
                     >
                       <ChevronRight
-                        className={`size-3.5 shrink-0 text-content-secondary transition-transform ${expanded ? "rotate-90" : ""}`}
+                        className={`size-3.5 shrink-0 text-content-secondary transition-[transform,opacity] ${expanded ? "rotate-90" : teamspaceRows.length > 0 ? "" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
                       />
                       {typeof teamspace.icon === "string" && teamspace.icon ? (
                         <PageIconDisplay size="sm" value={teamspace.icon} />

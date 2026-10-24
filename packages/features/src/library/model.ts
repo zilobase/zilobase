@@ -399,3 +399,34 @@ function getLibraryRowPlacement(
     position: hierarchy.positionByRowId[rowId] ?? Number.MAX_SAFE_INTEGER,
   };
 }
+
+export function applyLibraryItemOrder(rows: HomepageRow[], order: string[] | undefined) {
+  if (!order?.length) return rows;
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const ordered = [...new Set(order)].flatMap((id) => {
+    const row = byId.get(id);
+    if (!row) return [];
+    byId.delete(id);
+    return [row];
+  });
+  return [
+    ...ordered,
+    ...[...byId.values()].sort(
+      (left, right) => left.position - right.position || left.name.localeCompare(right.name),
+    ),
+  ].map((row, position) => ({ ...row, position }));
+}
+
+export function moveLibraryItem(
+  order: string[],
+  move: { rowId: string; afterRowId: string | null; beforeRowId: string | null },
+) {
+  if (!order.includes(move.rowId)) throw new Error("The Library item is unavailable.");
+  const next = order.filter((id) => id !== move.rowId);
+  const before = move.beforeRowId ? next.indexOf(move.beforeRowId) : -1;
+  const after = move.afterRowId ? next.indexOf(move.afterRowId) : -1;
+  if ((move.beforeRowId || move.afterRowId) && before < 0 && after < 0)
+    throw new Error("The Library order changed. Try again.");
+  next.splice(before >= 0 ? before : after >= 0 ? after + 1 : 0, 0, move.rowId);
+  return next;
+}

@@ -20,7 +20,7 @@ export function register({ readSource, assert, loadModule, test }) {
     ).join("\n");
   test("Library Teamspaces uses the shared hierarchy table", async () => {
     const source = await readLibrarySource();
-    assert.match(source, /<DatabaseTableView \/>/);
+    assert.match(source, /<DatabaseTableView rowInteractions=\{libraryRowInteractions\} \/>/);
     assert.doesNotMatch(source, /<TeamspacesLibraryTable/);
     assert.match(source, /<Plus \/> New teamspace/);
     assert.match(source, /<CreateLibraryTeamspaceDialog/);

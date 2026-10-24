@@ -6,6 +6,7 @@ import {
   libraryParentPropertyId,
   homepageViews as libraryViews,
   type RecentsMode,
+  type HomepageView,
 } from "./lib/library-model";
 import { CreateTeamspaceDialog as CreateLibraryTeamspaceDialog } from "@/sections/teamspaces/components/create-teamspace-dialog";
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +15,15 @@ import { ChevronDown, Database, FileText, Loader2, Plus } from "@/components/ico
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ButtonGroup, ButtonGroupItem } from "@/components/ui/button-group";
+import { useCreateLibraryItem } from "@zilobase/features/library/react";
+import {
+  applyLibraryItemOrder,
+  moveLibraryItem,
+  canCreateLibraryChild,
+} from "@zilobase/features/library";
+import { setDatabasePageDragPayload } from "@/sections/databases/interactions/lib/database-page-drop";
+import { type TableRowInteractions } from "@/sections/databases/views/table/components/database-table-view";
 
 import { libraryViewIcons } from "@/components/navigation/lib/library-views";
 
@@ -71,7 +81,7 @@ export default function RecentsScreen() {
     [userSettings.sidebarConfig],
   );
   const requestedView = isHomepageView(location.search.view) ? location.search.view : null;
-  const [activeViewId, setActiveViewId] = useState<string | null>(
+  const [activeViewId, setActiveViewId] = useState<HomepageView | null>(
     () => requestedView ?? sidebarConfig.libraryView,
   );
   const mode: RecentsMode = activeViewId === "trash" ? "trash" : "home";
@@ -100,6 +110,7 @@ export default function RecentsScreen() {
     page: null,
   });
   const createPageMutation = useCreatePage();
+  const createLibraryItem = useCreateLibraryItem();
   const createDatabase = useCreateDatabase();
   const [createTeamspaceOpen, setCreateTeamspaceOpen] = useState(false);
   const [databaseConfig, setDatabaseConfig] = useState<unknown>({
@@ -114,11 +125,6 @@ export default function RecentsScreen() {
       homepageViews.map((view) => [
         view.id,
         {
-          ...(view.id === "recents"
-            ? {
-                sorts: [{ column: "lastVisitedAt", direction: "descending" }],
-              }
-            : {}),
           subItems: {
             display: "nested",
             enabled: true,
@@ -131,13 +137,26 @@ export default function RecentsScreen() {
     ),
   );
   const rows = useMemo(() => {
-    return buildHomepageRows(
-      navigation ?? { databases: [], pages: [], placements: [] },
-      meetingsPayload?.meetings ?? [],
-      mode,
-      teamspaces,
+    return applyLibraryItemOrder(
+      buildHomepageRows(
+        navigation ?? { databases: [], pages: [], placements: [] },
+        meetingsPayload?.meetings ?? [],
+        mode,
+        teamspaces,
+      ),
+      workspaceId && activeViewId
+        ? sidebarConfig.libraryOrders?.[workspaceId]?.[activeViewId]
+        : undefined,
     );
-  }, [meetingsPayload?.meetings, navigation, mode, teamspaces]);
+  }, [
+    meetingsPayload?.meetings,
+    navigation,
+    mode,
+    teamspaces,
+    sidebarConfig.libraryOrders,
+    workspaceId,
+    activeViewId,
+  ]);
   const pageTitle = "Library";
 
   useEffect(() => {
@@ -180,9 +199,26 @@ export default function RecentsScreen() {
         workspaceId,
         propertyConfigs,
         rows,
-        viewConfigs,
+        viewConfigs: {
+          ...viewConfigs,
+          recents: {
+            ...(!workspaceId || !sidebarConfig.libraryOrders?.[workspaceId]?.recents
+              ? { sorts: [{ column: "lastVisitedAt", direction: "descending" }] }
+              : {}),
+            ...(viewConfigs.recents as Record<string, unknown>),
+          },
+        },
       }),
-    [activeViewId, databaseConfig, mode, workspaceId, propertyConfigs, rows, viewConfigs],
+    [
+      activeViewId,
+      databaseConfig,
+      mode,
+      workspaceId,
+      propertyConfigs,
+      rows,
+      viewConfigs,
+      sidebarConfig.libraryOrders,
+    ],
   );
   const viewModel = useMemo(
     () =>
@@ -305,6 +341,83 @@ export default function RecentsScreen() {
 
     openPage(pageId);
   };
+  const libraryRowInteractions: TableRowInteractions = {
+    newRowLabel: activeViewId === "teamspaces" ? "New teamspace" : "New page",
+    canCreateRow: (parentRowId) =>
+      mode === "home" &&
+      Boolean(workspaceId) &&
+      !createLibraryItem.isPending &&
+      (!parentRowId || rows.some((row) => row.id === parentRowId && canCreateLibraryChild(row))),
+    createRow: (parentRowId) => {
+      if (!workspaceId || createLibraryItem.isPending || mode !== "home") return;
+      if (!parentRowId && activeViewId === "teamspaces") {
+        setCreateTeamspaceOpen(true);
+        return;
+      }
+      const parent = parentRowId ? rows.find((row) => row.id === parentRowId) : undefined;
+      if (parentRowId && !parent) return;
+      createLibraryItem.mutate(
+        { workspaceId, parent, favorite: activeViewId === "favourites" },
+        {
+          onError: (error) =>
+            toast.error(error instanceof Error ? error.message : "Could not create page."),
+        },
+      );
+    },
+    canDragRow: () => mode === "home" && !updateUserSettings.isPending,
+    dragRow: (item, event) => {
+      const row = rows.find((row) => row.id === item.id);
+      if (!row) return;
+      event.dataTransfer.effectAllowed = "copyMove";
+      event.dataTransfer.setData(
+        "application/x-zilobase-library-item",
+        JSON.stringify({ id: row.id, title: row.name }),
+      );
+      if (row.openPageId) {
+        setDatabasePageDragPayload(event.dataTransfer, {
+          pageId: row.openPageId,
+          title: row.name,
+        });
+      }
+    },
+    moveRow: async (move) => {
+      if (!workspaceId || !activeViewId || updateUserSettings.isPending || mode !== "home") return;
+      const order = moveLibraryItem(
+        [...new Set([...viewModel.sortedItems.map((row) => row.id), ...rows.map((row) => row.id)])],
+        move,
+      );
+      await updateUserSettings.mutateAsync({
+        sidebarConfig: {
+          ...sidebarConfig,
+          libraryOrders: {
+            ...sidebarConfig.libraryOrders,
+            [workspaceId]: { ...sidebarConfig.libraryOrders?.[workspaceId], [activeViewId]: order },
+          },
+        },
+      });
+      updateActiveViewConfig(getMergedDatabaseConfig(activeView?.config, { sorts: [] }));
+    },
+    renderSelectionToolbar: (selectedRows, clearSelection) => (
+      <div className="database-selection-toolbar-layer">
+        <ButtonGroup
+          aria-label="Selected Library items"
+          className="database-selection-toolbar"
+          role="toolbar"
+          variant="segmented"
+        >
+          <ButtonGroupItem
+            aria-label={`Clear selection of ${selectedRows.length} items`}
+            onClick={clearSelection}
+            tone="accent"
+            type="button"
+          >
+            {selectedRows.length} selected
+          </ButtonGroupItem>
+        </ButtonGroup>
+      </div>
+    ),
+  };
+
   const openSidePaneChildPage = (pageId: string) => {
     openPage(pageId, { databaseId: sidePaneDatabaseId });
   };
@@ -491,7 +604,7 @@ export default function RecentsScreen() {
                       (activeViewId === "teamspaces" && teamspacesLoading) ? (
                         <DatabaseViewSkeleton viewType="table" />
                       ) : (
-                        <DatabaseTableView />
+                        <DatabaseTableView rowInteractions={libraryRowInteractions} />
                       )}
                     </div>
                   </div>

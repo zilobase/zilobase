@@ -79,11 +79,13 @@ export function DatabaseActiveTableCell({
 }
 
 export function CreateDatabaseRowButton({
+  label = "New page",
   columnCount,
   disabled,
   onClick,
   rowProps,
 }: {
+  label?: string;
   columnCount: number;
   disabled: boolean;
   onClick: () => void;
@@ -103,7 +105,7 @@ export function CreateDatabaseRowButton({
           type="button"
         >
           <Plus />
-          <span>New page</span>
+          <span>{label}</span>
         </button>
       </td>
     </tr>

@@ -7,6 +7,7 @@ import type { DatabaseRowLayout } from "../lib/database-table-layout";
 
 export function DatabaseRowDragControls({
   canReorderRows,
+  canDragRow,
   draggedRowId,
   editable,
   hoveredRowId,
@@ -20,6 +21,7 @@ export function DatabaseRowDragControls({
   selectedRowIds,
 }: {
   canReorderRows: boolean;
+  canDragRow?: (row: SortableDatabaseItem) => boolean;
   draggedRowId: string | null;
   editable: boolean;
   hoveredRowId: string | null;
@@ -69,8 +71,8 @@ export function DatabaseRowDragControls({
               className="database-row-drag-handle"
               data-database-row-drag-handle
               data-dragging={draggedRowId === row.id ? "true" : undefined}
-              draggable={canReorderRows}
-              aria-haspopup="menu"
+              draggable={canReorderRows && (canDragRow?.(row) ?? true)}
+              aria-haspopup={actions ? "menu" : undefined}
               onPointerDown={(event) => {
                 gesture.current = {
                   x: event.clientX,

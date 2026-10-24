@@ -448,6 +448,14 @@
   .database-sub-item-toggle {
     @apply absolute inset-y-0 z-20 flex w-6 cursor-pointer select-none items-center justify-center text-content-secondary outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral;
     left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
+    opacity: 0;
+  }
+
+  .database-table tr:hover .database-sub-item-toggle,
+  .database-table tr:focus-within .database-sub-item-toggle,
+  .database-sub-item-toggle[aria-expanded="true"],
+  .database-sub-item-toggle[data-has-sub-items="true"] {
+    opacity: 1;
   }
 
   .database-sub-item-toggle svg {

@@ -165,6 +165,10 @@
       "types": "./src/library/index.ts",
       "default": "./src/library/index.ts"
     },
+    "./library/react": {
+      "types": "./src/library/react.ts",
+      "default": "./src/library/react.ts"
+    },
     "./tasks/react": {
       "types": "./src/tasks/react.ts",
       "default": "./src/tasks/react.ts"
