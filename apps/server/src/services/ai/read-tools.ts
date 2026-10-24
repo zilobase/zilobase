@@ -53,19 +53,22 @@ const searchSchema = z
     limit: z.number().int().min(1).max(50).default(10),
   })
   .strict();
-const semanticSearchSchema = searchSchema.extend({
-  query: z
-    .string()
-    .trim()
-    .min(1)
-    .max(512)
-    .describe("A natural-language question or concept to find by meaning."),
-  types: z
-    .array(z.literal("page"))
-    .max(1)
-    .default([])
-    .describe("Semantic search indexes pages, including database row pages."),
-});
+const semanticSearchSchema = z
+  .object({
+    query: z
+      .string()
+      .trim()
+      .min(1)
+      .max(512)
+      .describe("A natural-language question or concept to find by meaning."),
+    types: z
+      .array(z.literal("page"))
+      .max(1)
+      .default([])
+      .describe("Semantic search indexes pages, including database row pages."),
+    limit: z.number().int().min(1).max(50).default(10),
+  })
+  .strict();
 const describeSchema = z
   .object({
     type: z.enum(["page", "database"]),
