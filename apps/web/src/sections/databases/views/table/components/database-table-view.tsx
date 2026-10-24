@@ -1547,7 +1547,7 @@ export function DatabaseTableView({
             {canSelectRows ? (
               <Checkbox
                 aria-label="Select all records"
-                className="database-row-checkbox database-table-header-checkbox"
+                className="absolute database-row-checkbox database-table-header-checkbox"
                 ref={headerCheckboxRef}
                 checked={
                   selectedRows.length > 0

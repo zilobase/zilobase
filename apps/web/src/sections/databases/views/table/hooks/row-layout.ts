@@ -124,6 +124,7 @@ export function useTableRowLayout({
       ?.getBoundingClientRect();
     if (wrapperRect && headerRect && headerCheckboxRef.current) {
       headerCheckboxRef.current.style.top = `${headerRect.top + headerRect.height / 2 - wrapperRect.top}px`;
+      headerCheckboxRef.current.style.marginLeft = `${headerRect.left - wrapperRect.left}px`;
     }
     const nextLayout = measureTableRowLayout(layoutElement, getRowElements());
     rowLayoutRef.current = nextLayout;

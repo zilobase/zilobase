@@ -538,7 +538,7 @@
   }
 
   .database-table-header-checkbox {
-    @apply absolute left-[-1.5rem] z-50 -translate-y-1/2 opacity-0 transition-opacity;
+    @apply absolute left-[-1.5rem] z-[60] -translate-y-1/2 opacity-0 transition-opacity;
   }
 
   .database-table-wrap:has(.database-table thead:hover) > .database-table-header-checkbox,

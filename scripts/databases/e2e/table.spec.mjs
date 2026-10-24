@@ -590,6 +590,44 @@ test("the header checkbox appears on hover or keyboard focus and stays visible f
   await expect(all).toHaveCSS("opacity", "0");
 });
 
+test("embedded select-all remains above the expanded sticky header and follows the row gutter", async ({
+  page,
+}) => {
+  await options(page, { embedded: true, narrow: true });
+  const wrap = page.locator(".database-table-wrap");
+  await expect(wrap).toHaveAttribute("data-inline-scroll", "true");
+  const all = page.getByRole("checkbox", { name: "Select all records", exact: true });
+  await expect(all).toHaveCSS("position", "absolute");
+  const rowCheckbox = page.getByRole("checkbox", { name: "Select Record 0", exact: true });
+  await rowCheckbox.check();
+  await page.mouse.move(0, 0);
+  await expect(all).toHaveCSS("opacity", "1");
+  const assertGutter = async () => {
+    await expect
+      .poll(async () => {
+        const header = await all.boundingBox();
+        const row = await rowCheckbox.boundingBox();
+        return Math.abs(header.x - row.x);
+      })
+      .toBeLessThanOrEqual(1);
+    expect(
+      await all.evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+        return node.contains(
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
+        );
+      }),
+    ).toBe(true);
+  };
+  await assertGutter();
+  await grid(page).evaluate((node) => (node.scrollLeft = 100));
+  await assertGutter();
+  await all.click();
+  await expect(page.locator('[data-row-selected="true"]')).toHaveCount(8);
+  await all.click();
+  await expect(page.locator('[data-row-selected="true"]')).toHaveCount(0);
+});
+
 test("header selection includes loaded records across collapsed and virtualized groups without changing geometry", async ({
   page,
 }) => {
