@@ -23,6 +23,7 @@ describe("oauth provider configuration", () => {
       "databases.read",
       "databases.write",
       "search.read",
+      "users.read",
     ]);
     expect(OAUTH_API_RESOURCE_SCOPES).not.toContain("openid");
     expect(OAUTH_API_RESOURCE_SCOPES).toContain("clips.write");

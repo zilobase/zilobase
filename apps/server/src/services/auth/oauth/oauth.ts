@@ -15,6 +15,7 @@ export const OAUTH_SCOPES = [
   "databases.read",
   "databases.write",
   "search.read",
+  "users.read",
 ] as const;
 
 export const OAUTH_API_RESOURCE_SCOPES = [
@@ -25,6 +26,7 @@ export const OAUTH_API_RESOURCE_SCOPES = [
   "databases.read",
   "databases.write",
   "search.read",
+  "users.read",
 ] as const;
 
 export const OAUTH_ACCESS_TOKEN_TTL_SECONDS = 1800;

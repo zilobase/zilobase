@@ -1,3 +1,5 @@
+import { searchWorkspaceUsersOperation } from "../../apps/server/src/services/search/users";
+import type { ServerOperationContext } from "../../apps/server/src/services/operations/context";
 import {
   database,
   dataSource,
@@ -126,6 +128,69 @@ try {
       sql`explain (analyze,format json) ${keywordCandidateQuery({ workspaceId: w, userId: actor, query: "", filters: { createdByUserIds: ["me"] }, sort: "last_edited_desc", limit: 10 })}`,
     );
     assert.ok(plan.rows.length);
+    const context = {
+      authentication: { authMethod: "session", user: { id: actor } },
+      pinnedWorkspaceId: w,
+    } as ServerOperationContext;
+    const lookup = (query: string, actorContext = context) =>
+      searchWorkspaceUsersOperation(actorContext, {
+        workspaceId: w,
+        request: { queryType: "user", query },
+      });
+    assert.equal((await lookup(actor + "@TEST.INVALID")).users[0]?.id, actor);
+    assert.equal((await lookup("Ada")).users[0]?.id, actor);
+    const guest = randomUUID(),
+      outsider = randomUUID(),
+      expired = randomUUID();
+    await db.execute(
+      sql`insert into "user"(id,name,email) values(${guest},'Directory Guest',${guest + "@test.invalid"}),(${outsider},'Directory Outsider',${outsider + "@test.invalid"}),(${expired},'Directory Expired',${expired + "@test.invalid"})`,
+    );
+    await db.execute(
+      sql`insert into workspace_guest(id,workspace_id,user_id) values(${randomUUID()},${w},${guest})`,
+    );
+    await db.execute(
+      sql`insert into member(id,workspace_id,user_id,role,access_expires_at) values(${randomUUID()},${w},${expired},'temporary',now()-interval '1 day')`,
+    );
+    assert.deepEqual(
+      (await lookup("Directory")).users.map((u) => u.id),
+      [guest],
+    );
+    assert.equal(
+      (
+        await lookup("Directory", {
+          ...context,
+          authentication: { ...context.authentication, user: { id: other } as never },
+        })
+      ).users.length,
+      0,
+    );
+    await assert.rejects(
+      lookup("Ada", {
+        ...context,
+        authentication: {
+          ...context.authentication,
+          authMethod: "oauth",
+          oauthScopes: ["search.read"],
+        },
+      }),
+      { status: 403 },
+    );
+    assert.equal(
+      (
+        await lookup("Ada", {
+          ...context,
+          authentication: {
+            ...context.authentication,
+            authMethod: "oauth",
+            oauthScopes: ["users.read"],
+          },
+        })
+      ).users[0]?.id,
+      actor,
+    );
+    console.info(
+      "PASS workspace directory, guest privileges, temporary expiry, isolated OAuth scope",
+    );
     console.info(
       "PASS title-only, date boundaries, expiry, sorting, live source headings, query plan",
     );

@@ -87,6 +87,10 @@ const scopeLabels: Record<string, { description: string; title: string }> = {
     title: "Edit databases",
     description: "Create rows and update database properties.",
   },
+  "users.read": {
+    title: "Find workspace users",
+    description: "Look up names and email addresses in the selected workspace directory.",
+  },
   "search.read": {
     title: "Search",
     description: "Search pages and databases in the workspace.",
