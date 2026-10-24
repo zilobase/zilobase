@@ -58,7 +58,11 @@ export function OptionEditorSubmenu({
   const content = (
     <>
       <DropDrawerSub title={option.name}>
-        <DropDrawerSubTrigger>
+        <DropDrawerSubTrigger
+          trailing={
+            option.id === defaultOptionId ? <DropDrawerShortcut>DEFAULT</DropDrawerShortcut> : null
+          }
+        >
           <span
             aria-label={`Drag ${option.name} option`}
             className="inline-flex size-4 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
@@ -82,7 +86,6 @@ export function OptionEditorSubmenu({
             ) : null}
             {option.name}
           </span>
-          {option.id === defaultOptionId ? <DropDrawerShortcut>DEFAULT</DropDrawerShortcut> : null}
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           <div className="px-1.5 py-1">

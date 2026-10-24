@@ -48,7 +48,6 @@ import { partitionManagedDataSources } from "@zilobase/features/databases";
 import type { DatabaseViewSettingsMenuProps } from "../lib/view-settings-contracts";
 import { ViewTypeOptionGrid } from "./view-type-option-grid";
 import { getDatabaseViewTypePresentation, type DatabaseViewType } from "../lib/view-type-options";
-import { ViewSettingsRow } from "./view-settings-row";
 import { SubItemsSettingsSection } from "./sub-items-settings";
 
 type LinkableDatabaseOption = PageDatabasePickerOption & {
@@ -358,12 +357,9 @@ export function DataSourceSettingsSection({
         Data source settings
       </DropDrawerLabel>
       <DropDrawerSub displayMode="inline" id="database-view-source" title="Source">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<Cable />}
-            label="Source"
-            right={<span className="block max-w-28 truncate">{currentSourceName}</span>}
-          />
+        <DropDrawerSubTrigger trailing={currentSourceName}>
+          <Cable />
+          <span className="truncate">Source</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72 p-0" style={{ overflow: "hidden" }}>
           {renderDataSourcePicker(dataSourceOptions)}

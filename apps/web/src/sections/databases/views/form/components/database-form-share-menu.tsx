@@ -7,7 +7,7 @@ import {
   Share2,
   UserRoundCheck,
 } from "@/components/icons";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -103,12 +103,9 @@ export function DatabaseFormShareMenu() {
       </DropDrawerTrigger>
       <DropDrawerContent align="end" className="w-[min(31rem,calc(100vw-1rem))] p-2">
         <DropDrawerSub title="Who can fill out">
-          <DropDrawerSubTrigger>
-            <ShareMenuRow
-              icon={<CircleUserRound />}
-              label="Who can fill out"
-              value={fillAccessLabels[settings.fillAccess]}
-            />
+          <DropDrawerSubTrigger trailing={fillAccessLabels[settings.fillAccess]}>
+            <CircleUserRound />
+            <span className="truncate">Who can fill out</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-80">
             <FillAccessItem
@@ -174,12 +171,9 @@ export function DatabaseFormShareMenu() {
           </DropDrawerItem>
         ) : (
           <DropDrawerSub title="Access to submission">
-            <DropDrawerSubTrigger>
-              <ShareMenuRow
-                icon={<FileLock2 />}
-                label="Access to submission"
-                value={submissionAccessLabels[settings.submissionAccess]}
-              />
+            <DropDrawerSubTrigger trailing={submissionAccessLabels[settings.submissionAccess]}>
+              <FileLock2 />
+              <span className="truncate">Access to submission</span>
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-64">
               {submissionAccessValues.map((submissionAccess) => (
@@ -216,16 +210,6 @@ export function DatabaseFormShareMenu() {
         </ButtonGroup>
       </DropDrawerContent>
     </DropDrawer>
-  );
-}
-
-function ShareMenuRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      {icon}
-      <span className="shrink-0">{label}</span>
-      <span className="ml-auto max-w-60 truncate text-content-secondary">{value}</span>
-    </div>
   );
 }
 

@@ -2,6 +2,7 @@ import * as React from "react";
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
+import { MenuItemContent } from "@/components/ui/menu-item-content";
 import {
   menuSurfaceVariants,
   menuContentVariants,
@@ -104,9 +105,11 @@ function ContextMenuSubTrigger({
   className,
   inset,
   children,
+  trailing,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubTrigger> & {
   inset?: boolean;
+  trailing?: React.ReactNode;
 }) {
   return (
     <ContextMenuPrimitive.SubTrigger
@@ -119,8 +122,8 @@ function ContextMenuSubTrigger({
       )}
       {...props}
     >
-      {children}
-      <ChevronRightIcon className="ml-auto" />
+      <MenuItemContent trailing={trailing}>{children}</MenuItemContent>
+      <ChevronRightIcon />
     </ContextMenuPrimitive.SubTrigger>
   );
 }

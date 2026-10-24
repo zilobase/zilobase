@@ -59,7 +59,6 @@ import {
   isChartDateProperty,
   parseOptionalChartNumber,
 } from "@zilobase/features/databases";
-import { ViewSettingsRow } from "./view-settings-row";
 
 const chartTypeOptions: Array<{
   icon: typeof BarChart3;
@@ -169,12 +168,9 @@ export function DatabaseChartSettingsSection({
         X axis
       </DropDrawerLabel>
       <DropDrawerSub title="What to show">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<Zap />}
-            label="What to show"
-            right={axisProperty?.property.name ?? titlePropertyLabel}
-          />
+        <DropDrawerSubTrigger trailing={axisProperty?.property.name ?? titlePropertyLabel}>
+          <Zap />
+          <span className="truncate">What to show</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           <DropDrawerItem
@@ -212,8 +208,9 @@ export function DatabaseChartSettingsSection({
         </DropDrawerSubContent>
       </DropDrawerSub>
       <DropDrawerSub title="Sort by">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow icon={<ArrowDownUp />} label="Sort by" right={sortLabel} />
+        <DropDrawerSubTrigger trailing={sortLabel}>
+          <ArrowDownUp />
+          <span className="truncate">Sort by</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           {sortOptions.map((option) => (
@@ -296,12 +293,9 @@ export function DatabaseChartSettingsSection({
         Y axis
       </DropDrawerLabel>
       <DropDrawerSub title="What to show">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<ChartLine />}
-            label="What to show"
-            right={measureProperty?.property.name ?? "Task count"}
-          />
+        <DropDrawerSubTrigger trailing={measureProperty?.property.name ?? "Task count"}>
+          <ChartLine />
+          <span className="truncate">What to show</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           <DropDrawerItem onSelect={() => onChange({ measurePropertyId: "count" })}>
@@ -330,8 +324,9 @@ export function DatabaseChartSettingsSection({
       </DropDrawerSub>
 
       <DropDrawerSub title="Group by">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow icon={<Rows3 />} label="Group by" right={splitPropertyLabel} />
+        <DropDrawerSubTrigger trailing={splitPropertyLabel}>
+          <Rows3 />
+          <span className="truncate">Group by</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="max-h-80 w-72 overflow-y-auto">
           <DropDrawerItem
@@ -355,10 +350,11 @@ export function DatabaseChartSettingsSection({
             if (isChartDateProperty(property)) {
               return (
                 <DropDrawerSub key={property.id} title={property.property.name}>
-                  <DropDrawerSubTrigger>
+                  <DropDrawerSubTrigger
+                    trailing={selected ? <Check className="text-content-primary" /> : null}
+                  >
                     <PropertyIcon />
                     <span>{property.property.name}</span>
-                    {selected ? <Check className="ml-auto text-content-primary" /> : null}
                   </DropDrawerSubTrigger>
                   <DropDrawerSubContent className="w-56">
                     {chartDateIntervalOptions.map((option) => (
@@ -404,12 +400,9 @@ export function DatabaseChartSettingsSection({
       {supportsCartesianControls ? (
         <>
           <DropDrawerSub title="Range">
-            <DropDrawerSubTrigger>
-              <ViewSettingsRow
-                icon={<ArrowDownUp />}
-                label="Range"
-                right={getChartRangeLabel(settings)}
-              />
+            <DropDrawerSubTrigger trailing={getChartRangeLabel(settings)}>
+              <ArrowDownUp />
+              <span className="truncate">Range</span>
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72 p-3">
               <div className="mb-2 text-xs font-medium text-content-secondary">
@@ -583,8 +576,9 @@ export function DatabaseChartSettingsSection({
         Style
       </DropDrawerLabel>
       <DropDrawerSub title="Color">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow icon={<Palette />} label="Color" right={colorLabel} />
+        <DropDrawerSubTrigger trailing={colorLabel}>
+          <Palette />
+          <span className="truncate">Color</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-64">
           <DropDrawerItem onSelect={() => onChange({ color: "auto" })}>

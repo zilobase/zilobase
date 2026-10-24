@@ -38,7 +38,6 @@ import { ConditionalColorPanel } from "./conditional-color-settings";
 import { DataSourceSettingsSection } from "./data-source-settings";
 import { LayoutSettingsSection } from "./layout-settings";
 import { getDatabaseViewTypePresentation } from "../lib/view-type-options";
-import { ViewSettingsRow } from "./view-settings-row";
 
 export function DatabaseViewSettingsMenu({
   activeConditionalColors,
@@ -234,12 +233,9 @@ export function DatabaseViewSettingsMenu({
         viewConfig={viewConfig}
       />
       <DropDrawerSub displayMode="inline" title="Property visibility">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<Eye />}
-            label="Property visibility"
-            right={visiblePropertyCount}
-          />
+        <DropDrawerSubTrigger trailing={visiblePropertyCount}>
+          <Eye />
+          <span className="truncate">Property visibility</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent width="default">
           <div className="p-1">
@@ -306,12 +302,10 @@ export function DatabaseViewSettingsMenu({
         onUpdateDatabaseFilter={onUpdateDatabaseFilter}
         displayMode="inline"
         title="Filter"
+        trailing={activeDatabaseFilters.length > 0 ? activeDatabaseFilters.length : undefined}
       >
-        <ViewSettingsRow
-          icon={<Filter />}
-          label="Filter"
-          right={activeDatabaseFilters.length > 0 ? activeDatabaseFilters.length : undefined}
-        />
+        <Filter />
+        <span>Filter</span>
       </DatabaseFilterSubmenu>
       <DatabaseSortSubmenu
         activeDatabaseSorts={activeDatabaseSorts}
@@ -324,21 +318,16 @@ export function DatabaseViewSettingsMenu({
         sortFieldOptions={sortFieldOptions}
         displayMode="inline"
         title="Sort"
+        trailing={activeDatabaseSorts.length > 0 ? activeDatabaseSorts.length : undefined}
       >
-        <ViewSettingsRow
-          icon={<ArrowDownUp />}
-          label="Sort"
-          right={activeDatabaseSorts.length > 0 ? activeDatabaseSorts.length : undefined}
-        />
+        <ArrowDownUp />
+        <span>Sort</span>
       </DatabaseSortSubmenu>
       {activeViewType !== "calendar" ? (
         <DropDrawerSub displayMode="inline" title="Group">
-          <DropDrawerSubTrigger>
-            <ViewSettingsRow
-              icon={<IntersectSquareIcon />}
-              label="Group"
-              right={activeGroupProperty?.property.name ?? "None"}
-            />
+          <DropDrawerSubTrigger trailing={activeGroupProperty?.property.name ?? "None"}>
+            <IntersectSquareIcon />
+            <span className="truncate">Group</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-72">
             <DropDrawerItem onSelect={() => onSetViewGroupProperty(null)}>
@@ -369,12 +358,11 @@ export function DatabaseViewSettingsMenu({
         </DropDrawerSub>
       ) : null}
       <DropDrawerSub displayMode="inline" title="Conditional color">
-        <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<Palette />}
-            label="Conditional color"
-            right={activeConditionalColors.length > 0 ? activeConditionalColors.length : undefined}
-          />
+        <DropDrawerSubTrigger
+          trailing={activeConditionalColors.length > 0 ? activeConditionalColors.length : undefined}
+        >
+          <Palette />
+          <span className="truncate">Conditional color</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-80">
           <ConditionalColorPanel

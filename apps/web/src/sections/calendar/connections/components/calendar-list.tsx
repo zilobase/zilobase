@@ -351,10 +351,9 @@ function CalendarRowMenu({
         }}
       >
         <DropdownMenuSub title="Color">
-          <DropdownMenuSubTrigger disabled={disabled}>
+          <DropdownMenuSubTrigger disabled={disabled} trailing={colorName(color)}>
             <span className={`size-4 rounded-sm ${PALETTE[color].swatchClass}`} />
-            <span className="flex-1">Color</span>
-            <span className="text-content-secondary">{colorName(color)}</span>
+            <span>Color</span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {colors.map((option) => (

@@ -193,6 +193,7 @@ export function DatabaseFilterSubmenu({
   addableFilterFieldOptions,
   canAddDatabaseFilter,
   children,
+  trailing,
   filterFieldOptions,
   filterValueOptionsByField,
   onClearDatabaseFilter,
@@ -204,12 +205,13 @@ export function DatabaseFilterSubmenu({
   title = "Filter",
 }: DatabaseFilterMenuProps & {
   children: ReactNode;
+  trailing?: ReactNode;
   displayMode?: "inline" | "nested";
   title?: string;
 }) {
   return (
     <DropDrawerSub displayMode={displayMode} title={title}>
-      <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
+      <DropDrawerSubTrigger trailing={trailing}>{children}</DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-80 max-w-[calc(100vw-2rem)]">
         <DatabaseFilterMenuContent
           activeDatabaseFilters={activeDatabaseFilters}

@@ -31,10 +31,9 @@ export function PropertySettingSubmenu<TValue extends string | number>({
 
   return (
     <DropDrawerSub title={label}>
-      <DropDrawerSubTrigger>
+      <DropDrawerSubTrigger trailing={selectedOption?.label}>
         {icon}
-        <span className="flex-1">{label}</span>
-        <span className="text-content-secondary">{selectedOption?.label}</span>
+        <span>{label}</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-64">
         {options.map((option) => (

@@ -9,7 +9,6 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
-  type ReactNode,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -62,28 +61,6 @@ import { DatabaseViewToolbarButton } from "./database-view-toolbar-button";
 import { DatabaseViewToolbarDialogs } from "./database-view-toolbar-dialogs";
 import { ViewTypeOptionGrid } from "../../settings/components/view-type-option-grid";
 import type { DatabaseViewType } from "../../settings/lib/view-type-options";
-
-function ToolbarMenuRow({
-  icon,
-  label,
-  right,
-}: {
-  icon: ReactNode;
-  label: string;
-  right?: ReactNode;
-}) {
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      {icon}
-      <span className="truncate">{label}</span>
-      {right ? (
-        <span className="ml-auto flex min-w-0 shrink-0 items-center gap-1 text-content-secondary">
-          {right}
-        </span>
-      ) : null}
-    </div>
-  );
-}
 
 export function DatabaseViewToolbar({
   canRestoreDeleted = false,
@@ -507,21 +484,18 @@ export function DatabaseViewToolbar({
                   function renderViewSource() {
                     return (
                       <DropDrawerSub>
-                        <DropDrawerSubTrigger>
-                          <ToolbarMenuRow
-                            icon={<Database />}
-                            label="Source"
-                            right={
-                              <>
-                                {isExternalDataSourceView(view) ? (
-                                  <ArrowUpRightIcon className="size-3" />
-                                ) : null}
-                                <span className="block max-w-28 truncate">
-                                  {sourceDatabaseName}
-                                </span>
-                              </>
-                            }
-                          />
+                        <DropDrawerSubTrigger
+                          trailing={
+                            <span className="flex items-center gap-1">
+                              {isExternalDataSourceView(view) ? (
+                                <ArrowUpRightIcon className="size-3" />
+                              ) : null}
+                              <span className="block max-w-28 truncate">{sourceDatabaseName}</span>
+                            </span>
+                          }
+                        >
+                          <Database />
+                          <span className="truncate">Source</span>
                         </DropDrawerSubTrigger>
                         <DropDrawerSubContent className="w-60">
                           <DropDrawerItem
@@ -645,7 +619,8 @@ export function DatabaseViewToolbar({
                         />
                         <DropDrawerSub>
                           <DropDrawerSubTrigger>
-                            <ToolbarMenuRow icon={<Paintbrush />} label="Display as" />
+                            <Paintbrush />
+                            <span className="truncate">Display as</span>
                           </DropDrawerSubTrigger>
                           <DropDrawerSubContent width="md">
                             {(
@@ -746,7 +721,9 @@ export function DatabaseViewToolbar({
               </DropDrawer>
             ) : null}
             {canRenderAddView ? (
-              <DropDrawer onOpenChange={setAddViewMenuOpen} open={addViewMenuOpen}>
+              // Modal aria-hiding touches neighboring editor blocks when the
+              // timeline has a live region, causing ProseMirror to remount us.
+              <DropDrawer modal={false} onOpenChange={setAddViewMenuOpen} open={addViewMenuOpen}>
                 <DropDrawerTrigger asChild>
                   <DatabaseViewToolbarButton
                     aria-label="Add database view"

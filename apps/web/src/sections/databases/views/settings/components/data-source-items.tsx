@@ -38,13 +38,16 @@ export function DataSourceMenuItem({
 
   return (
     <DropDrawerSub title={item.name}>
-      <DropDrawerSubTrigger>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {icon ?? <Database className="text-content-secondary" />}
-          <span className="truncate">{item.name}</span>
-          <span className="ml-auto shrink-0 text-content-secondary">{viewLabel}</span>
-          <MoreHorizontal className="text-content-secondary" />
-        </div>
+      <DropDrawerSubTrigger
+        trailing={
+          <span className="flex items-center gap-2">
+            {viewLabel}
+            <MoreHorizontal />
+          </span>
+        }
+      >
+        {icon ?? <Database className="text-content-secondary" />}
+        <span className="truncate">{item.name}</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-56">
         {onAddView ? (

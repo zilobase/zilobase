@@ -33,7 +33,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(listView, /className="database-list-row-checkbox"/);
     assert.match(
       dataSourceSettings,
-      /displayMode="inline"[\s\S]*?title="Source"[\s\S]*?label="Source"/,
+      /displayMode="inline"[\s\S]*?title="Source"[\s\S]*?<DropDrawerSubTrigger trailing=\{currentSourceName\}>[\s\S]*?>Source<\/span>/,
     );
     assert.doesNotMatch(dataSourceSettings, /Configure data sources/);
     assert.match(dataSourceSettings, /disabled=\{!onAddDataSource \|\| isAddingDataSource\}/);

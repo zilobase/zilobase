@@ -906,12 +906,9 @@ function SectionSettings({
         ) : null}
         {section.kind !== "databaseView" ? (
           <DropDrawerSub title="Sort">
-            <DropDrawerSubTrigger>
+            <DropDrawerSubTrigger trailing={section.sort === "alphabetical" ? "A–Z" : "Recent"}>
               <HistoryIcon />
               Sort
-              <span className="ml-auto text-xs text-content-secondary">
-                {section.sort === "alphabetical" ? "A–Z" : "Recent"}
-              </span>
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-44">
               {sidebarSectionSorts.map((sort) => (
@@ -924,9 +921,9 @@ function SectionSettings({
           </DropDrawerSub>
         ) : null}
         <DropDrawerSub title="Show">
-          <DropDrawerSubTrigger>
+          <DropDrawerSubTrigger trailing={section.limit}>
             <ListChecksIcon />
-            Show<span className="ml-auto text-xs text-content-secondary">{section.limit}</span>
+            Show
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-36">
             {sidebarSectionLimits.map((limit) => (
@@ -1033,12 +1030,9 @@ function DatabaseSourceMenu({
   return (
     <>
       <DropDrawerSub title="Source">
-        <DropDrawerSubTrigger>
+        <DropDrawerSubTrigger trailing={database?.name ?? "Unavailable"}>
           <DatabaseIcon />
           Source
-          <span className="ml-auto max-w-24 truncate text-xs text-content-secondary">
-            {database?.name ?? "Unavailable"}
-          </span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-64">
           {databases.map((entry) => (
@@ -1054,12 +1048,11 @@ function DatabaseSourceMenu({
       </DropDrawerSub>
       {database ? (
         <DropDrawerSub title="View">
-          <DropDrawerSubTrigger>
+          <DropDrawerSubTrigger
+            trailing={database.views.find((view) => view.id === section.viewId)?.name ?? "Default"}
+          >
             <ListChecksIcon />
             View
-            <span className="ml-auto max-w-24 truncate text-xs text-content-secondary">
-              {database.views.find((view) => view.id === section.viewId)?.name ?? "Default"}
-            </span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-64">
             {database.views.map((view) => (

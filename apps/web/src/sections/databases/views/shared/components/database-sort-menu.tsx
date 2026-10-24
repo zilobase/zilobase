@@ -173,12 +173,9 @@ function DatabaseSortNestedMenuContent({
 
           return (
             <DropDrawerSub key={`${sort.column}:${index}`} title={sort.label}>
-              <DropDrawerSubTrigger>
+              <DropDrawerSubTrigger trailing={getSortDirectionLabel(sort.direction)}>
                 <ArrowDownUp />
                 <span className="truncate">{sort.label}</span>
-                <span className="ml-auto shrink-0 text-content-secondary">
-                  {getSortDirectionLabel(sort.direction)}
-                </span>
               </DropDrawerSubTrigger>
               <DropDrawerSubContent className="w-72">
                 <DatabaseSearchableMenuItems
@@ -284,6 +281,7 @@ export function DatabaseSortSubmenu({
   addableSortFieldOptions,
   canAddDatabaseSort,
   children,
+  trailing,
   onClearDatabaseSort,
   onCreateDatabaseSort,
   onRemoveDatabaseSort,
@@ -293,12 +291,13 @@ export function DatabaseSortSubmenu({
   title = "Sort",
 }: DatabaseSortMenuProps & {
   children: ReactNode;
+  trailing?: ReactNode;
   displayMode?: "inline" | "nested";
   title?: string;
 }) {
   return (
     <DropDrawerSub displayMode={displayMode} title={title}>
-      <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
+      <DropDrawerSubTrigger trailing={trailing}>{children}</DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72">
         <DatabaseSortNestedMenuContent
           activeDatabaseSorts={activeDatabaseSorts}

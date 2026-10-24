@@ -189,7 +189,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(toolbar, /activeDataSourceId:/);
     assert.match(toolbar, /view\?\.dataSourceId/);
     assert.match(settings, /activeDataSourceName/);
-    assert.match(settings, /icon=\{<Cable \/>\}/);
+    assert.match(settings, /<DropDrawerSubTrigger trailing=\{currentSourceName\}>\s*<Cable \/>/);
     assert.match(settings, /getDatabaseIconNode\(database\)/);
     assert.match(settings, /getDatabaseIconNode\(source\)/);
     assert.match(settings, /DEFAULT_DATABASE_ITEM_ICON/);

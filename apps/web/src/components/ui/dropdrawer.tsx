@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { MenuItemContent } from "@/components/ui/menu-item-content";
 import { menuItemVariants, menuViewportClassName } from "@/components/ui/menu-styles";
 
 const DropDrawerContext = React.createContext<{
@@ -756,6 +757,7 @@ function DropDrawerSubTrigger({
   className,
   inset,
   children,
+  trailing,
   size,
   ...props
 }: React.ComponentProps<typeof DropdownMenuSubTrigger> & {
@@ -797,9 +799,7 @@ function DropDrawerSubTrigger({
         onClick={handleClick}
         {...restProps}
       >
-        <div data-slot="menu-item-content" className="flex min-w-0 flex-1 items-center gap-2">
-          {children}
-        </div>
+        <MenuItemContent trailing={trailing}>{children}</MenuItemContent>
         <ChevronRightIcon className="size-4 text-content-secondary" />
       </div>
     );
@@ -812,6 +812,7 @@ function DropDrawerSubTrigger({
       className={className}
       inset={inset}
       size={resolvedSize}
+      trailing={trailing}
       {...props}
     >
       {children}

@@ -5,6 +5,7 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MenuItemContent } from "@/components/ui/menu-item-content";
 import {
   menuSurfaceVariants,
   menuContentVariants,
@@ -482,10 +483,12 @@ function DropdownMenuSubTrigger({
   className,
   inset,
   children,
+  trailing,
   size = "default",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
   inset?: boolean;
+  trailing?: React.ReactNode;
   size?: "default" | "comfortable";
 }) {
   const submenu = React.useContext(DropdownMenuSubContext);
@@ -519,8 +522,8 @@ function DropdownMenuSubTrigger({
           inlineNavigation?.navigateTo(submenu.id);
         }}
       >
-        {children}
-        <ChevronRightIcon className="ml-auto" />
+        <MenuItemContent trailing={trailing}>{children}</MenuItemContent>
+        <ChevronRightIcon />
       </DropdownMenuPrimitive.Item>
     );
   }
@@ -532,8 +535,8 @@ function DropdownMenuSubTrigger({
       className={triggerClassName}
       {...props}
     >
-      {children}
-      <ChevronRightIcon className="ml-auto" />
+      <MenuItemContent trailing={trailing}>{children}</MenuItemContent>
+      <ChevronRightIcon />
     </DropdownMenuPrimitive.SubTrigger>
   );
 }

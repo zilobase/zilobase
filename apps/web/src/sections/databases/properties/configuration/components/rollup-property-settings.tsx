@@ -357,10 +357,9 @@ function RollupCalculationSubmenu({
 
   return (
     <DropDrawerSub title="Calculate">
-      <DropDrawerSubTrigger>
+      <DropDrawerSubTrigger trailing={selectedOption?.label}>
         <Sigma />
-        <span className="flex-1">Calculate</span>
-        <span className="text-content-secondary">{selectedOption?.label}</span>
+        <span>Calculate</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-64">
         {optionGroups.ungrouped.map((option) => (

@@ -27,7 +27,6 @@ import { DatabaseChartSettingsSection } from "./chart-settings";
 import type { DatabaseViewSettingsMenuProps } from "../lib/view-settings-contracts";
 import { ViewTypeOptionGrid } from "./view-type-option-grid";
 import { getDatabaseViewTypePresentation } from "../lib/view-type-options";
-import { ViewSettingsRow } from "./view-settings-row";
 
 type LayoutSettingsSectionProps = Pick<
   DatabaseViewSettingsMenuProps,
@@ -104,8 +103,9 @@ export function LayoutSettingsSection({
 
   return (
     <DropDrawerSub displayMode="inline" title="Layout">
-      <DropDrawerSubTrigger>
-        <ViewSettingsRow icon={<ViewTypeIcon />} label="Layout" right={viewTypeLabel} />
+      <DropDrawerSubTrigger trailing={viewTypeLabel}>
+        <ViewTypeIcon />
+        <span className="truncate">Layout</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72 max-w-[calc(100vw-1rem)] p-1">
         <ViewTypeOptionGrid onSelect={onSetViewType} selectedType={activeViewType} />
@@ -194,12 +194,9 @@ export function LayoutSettingsSection({
         ) : null}
         {isKanbanView || isGalleryView ? (
           <DropDrawerSub title="Group by">
-            <DropDrawerSubTrigger>
-              <ViewSettingsRow
-                icon={<GripVertical />}
-                label="Group by"
-                right={activeGroupProperty?.property.name ?? "None"}
-              />
+            <DropDrawerSubTrigger trailing={activeGroupProperty?.property.name ?? "None"}>
+              <GripVertical />
+              <span className="truncate">Group by</span>
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72">
               <DropDrawerItem onSelect={() => onSetViewGroupProperty(null)}>
@@ -247,12 +244,11 @@ export function LayoutSettingsSection({
         ) : null}
         {isTimelineView || isCalendarView ? (
           <DropDrawerSub title={isCalendarView ? "Show calendar by" : "Show timeline by"}>
-            <DropDrawerSubTrigger>
-              <ViewSettingsRow
-                icon={<CalendarRange />}
-                label={isCalendarView ? "Show calendar by" : "Show timeline by"}
-                right={activeDateProperty?.property.name ?? "None"}
-              />
+            <DropDrawerSubTrigger trailing={activeDateProperty?.property.name ?? "None"}>
+              <CalendarRange />
+              <span className="truncate">
+                {isCalendarView ? "Show calendar by" : "Show timeline by"}
+              </span>
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72">
               {dateProperties.length > 0 ? (
@@ -281,12 +277,11 @@ export function LayoutSettingsSection({
         {isGalleryView ? (
           <>
             <DropDrawerSub title="Card preview">
-              <DropDrawerSubTrigger>
-                <ViewSettingsRow
-                  icon={<ImageIcon />}
-                  label="Card preview"
-                  right={layoutSettings.cardPreview === "page-cover" ? "Page cover" : "None"}
-                />
+              <DropDrawerSubTrigger
+                trailing={layoutSettings.cardPreview === "page-cover" ? "Page cover" : "None"}
+              >
+                <ImageIcon />
+                <span className="truncate">Card preview</span>
               </DropDrawerSubTrigger>
               <DropDrawerSubContent className="w-72">
                 <DropDrawerItem

@@ -142,10 +142,9 @@ function NumberFormatSettingSubmenu({
 
   return (
     <DropDrawerSub title="Number format">
-      <DropDrawerSubTrigger>
+      <DropDrawerSubTrigger trailing={selectedOption?.label}>
         <Hash />
-        <span className="flex-1">Number format</span>
-        <span className="text-content-secondary">{selectedOption?.label}</span>
+        <span>Number format</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72">
         <div className="px-1.5 py-1">
