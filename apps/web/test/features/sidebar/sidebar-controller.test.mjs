@@ -44,6 +44,13 @@ export function register({ assert, loadModule, readSource, test }) {
       ["a", "z"],
     );
     assert.equal(models[0].items[0], linked);
+    assert.equal(models[0].itemCount, 1);
+    const limited = buildSidebarSections({
+      ...base,
+      sections: [{ ...section("private"), limit: 1 }],
+    })[0];
+    assert.equal(limited.items.length, 1);
+    assert.equal(limited.itemCount, 2);
     assert.equal(models[2].items[0].navNodeId, "linked-placement");
     assert.equal(models[0].treeKey, "zilobase:sidebar-tree:v1:workspace:favorites");
     assert.equal(models[2].treeKey, "zilobase:sidebar-section:workspace:home:teamspaces:team:tree");
@@ -91,7 +98,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.equal(getActiveMeetingId("/m/meeting%20one"), "meeting one");
   });
 
-  test("database sections query records only while open with a resolved source and view", async () => {
+  test("database sections resolve item availability while collapsed with a resolved source and view", async () => {
     const run = await probeFunction(readSource, "useSidebarDatabaseSection");
     let open = true;
     let view = { id: "view" };
@@ -131,8 +138,11 @@ export function register({ assert, loadModule, readSource, test }) {
     calls.length = 0;
     open = false;
     run(ports)(input);
-    assert.equal(calls[0][1], null);
-    assert.deepEqual(calls[1], ["records", null]);
+    assert.equal(calls[0][1], "owner");
+    assert.deepEqual(calls[1], [
+      "records",
+      { databaseId: "owner", dataSourceId: "source", viewId: "view" },
+    ]);
     calls.length = 0;
     open = true;
     view = null;

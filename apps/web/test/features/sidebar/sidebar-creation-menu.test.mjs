@@ -9,8 +9,8 @@ export function register({ readSource, assert, test }) {
     assert.doesNotMatch(source, /usePageNavigation\(|useWorkspaceMeetings\(|useDatabaseRecords\(/);
     assert.match(controller, /usePageNavigation\(workspaceId\)/);
     assert.match(controller, /useWorkspaceMeetings\(needsMeetings \? workspaceId : null/);
-    assert.match(controller, /open && activeDataSourceId && activeView/);
-    assert.match(controller, /useTaskDatabases\(open \? databaseIds : \[\]/);
+    assert.match(controller, /activeDataSourceId && activeView/);
+    assert.match(controller, /useTaskDatabases\(databaseIds\)/);
     assert.match(source, /<SidebarLayoutTabs/);
     assert.match(customization, /horizontalListSortingStrategy/);
     assert.match(customization, /editing && active && activeTabSettings/);

@@ -1162,10 +1162,9 @@ function SectionActionsMenu({
       </DropDrawerTrigger>
       <DropDrawerContent align="start" side="right" className="w-56 rounded-xl">
         <DropDrawerSub title="Show">
-          <DropDrawerSubTrigger>
+          <DropDrawerSubTrigger trailing={section.limit}>
             <HashIcon />
             <span>Show</span>
-            <span className="ml-auto text-xs text-content-secondary">{section.limit}</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-36">
             {sidebarSectionLimits.map((limit) => (
@@ -1261,6 +1260,7 @@ function TeamspacesSection({
     `zilobase:sidebar-section:${sidebar.workspaceId ?? "default"}:${sidebar.activeTab.id}:${section.id}`,
   );
   const models = sidebar.navItems.filter((model) => model.section.id === section.id);
+  if (!models.length) return null;
   return (
     <SectionShell
       label={section.label || "Teamspaces"}
@@ -1273,9 +1273,11 @@ function TeamspacesSection({
       {models.map((model) => (
         <NavigationSection key={model.id} model={model} sidebar={sidebar} />
       ))}
-      <SidebarMenu>
-        <SidebarViewAll label="Teamspaces" view="teamspaces" />
-      </SidebarMenu>
+      {models[0]!.itemCount > section.limit ? (
+        <SidebarMenu>
+          <SidebarViewAll label="Teamspaces" view="teamspaces" />
+        </SidebarMenu>
+      ) : null}
     </SectionShell>
   );
 }
@@ -1343,6 +1345,7 @@ function AiChatsSection({
         : right.updatedAt.localeCompare(left.updatedAt),
     )
     .slice(0, model.section.limit);
+  if (!threads.length) return null;
   return (
     <SectionShell
       label={model.label}
@@ -1412,13 +1415,15 @@ function StaticSection({
     onDatabaseDropTargetChange: sidebar.setDatabaseDropTargetId,
     onDropPageOnDatabase: sidebar.handleDropPageOnDatabase,
   });
+  if (!model.items.length && !model.teamspace) return null;
   const librarySection =
-    model.kind === "favorites" ||
-    model.kind === "private" ||
-    model.kind === "recents" ||
-    model.kind === "shared" ||
-    model.kind === "meetings" ||
-    model.kind === "teamspaces"
+    !model.teamspace &&
+    (model.kind === "favorites" ||
+      model.kind === "private" ||
+      model.kind === "recents" ||
+      model.kind === "shared" ||
+      model.kind === "meetings" ||
+      model.kind === "teamspaces")
       ? model.kind
       : null;
   return (
@@ -1479,21 +1484,8 @@ function StaticSection({
             )
           }
         />
-        {librarySection ? (
+        {librarySection && model.itemCount > model.section.limit ? (
           <SidebarViewAll label={model.label} view={getLibraryViewForSection(librarySection)} />
-        ) : null}
-        {model.items.length === 0 ? (
-          <li className="px-2 py-1.5 text-xs text-content-secondary">
-            {sidebar.navigationLoading && model.kind !== "meetings"
-              ? "Loading…"
-              : sidebar.navigationError && model.kind !== "meetings"
-                ? "Source unavailable"
-                : model.kind === "favorites"
-                  ? "No favorites"
-                  : model.kind === "meetings"
-                    ? "Meeting blocks on pages appear here."
-                    : "No pages"}
-          </li>
         ) : null}
       </SidebarMenu>
     </SectionShell>
@@ -1536,7 +1528,7 @@ function TasksSection({
   model: SidebarSectionModel;
   sidebar: AppSidebarProps;
 }) {
-  const { open, setOpen, rows, loading } = useSidebarTasksSection({
+  const { open, setOpen, rows, hasMore } = useSidebarTasksSection({
     databaseIds: sidebar.layout.taskDatabaseIds,
     limit: model.section.limit,
     storageKey: model.storageKey,
@@ -1549,16 +1541,7 @@ function TasksSection({
     pages: [],
     isShared: false,
   }));
-  if (!sidebar.layout.taskDatabaseIds.length)
-    items.push({
-      id: "configure-tasks",
-      name: "Configure My Tasks",
-      emoji: { kind: "task" },
-      pageId: null,
-      href: "/tasks",
-      pages: [],
-      isShared: false,
-    });
+  if (!items.length) return null;
   return (
     <SectionShell
       label={model.label}
@@ -1574,18 +1557,15 @@ function TasksSection({
           storageKey={model.treeKey}
           renderItemMenu={() => null}
         />
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <Link to="/tasks">
-              <MoreHorizontalIcon />
-              <span>View all</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-        {!items.length ? (
-          <li className="px-2 py-1.5 text-xs text-content-secondary">
-            {loading ? "Loading tasks…" : "No tasks assigned to you"}
-          </li>
+        {hasMore ? (
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link to="/tasks">
+                <MoreHorizontalIcon />
+                <span>View all</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         ) : null}
       </SidebarMenu>
     </SectionShell>
@@ -1620,6 +1600,7 @@ function DatabaseSection({
     pages: [],
     isShared: false,
   }));
+  if (!items.length) return null;
   return (
     <SectionShell
       label={title}
@@ -1650,20 +1631,22 @@ function DatabaseSection({
               <PlusIcon />
             </SidebarGroupAction>
           ) : null}
-          <SidebarGroupAction
-            asChild
-            className="right-9 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
-            title="View all"
-          >
-            <Link
-              params={{ databaseId: section.databaseId }}
-              search={{ view: section.viewId }}
-              to="/d/$databaseId"
+          {hasMore ? (
+            <SidebarGroupAction
+              asChild
+              className="right-9 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
+              title="View all"
             >
-              <DatabaseIcon />
-              <span className="sr-only">View all</span>
-            </Link>
-          </SidebarGroupAction>
+              <Link
+                params={{ databaseId: section.databaseId }}
+                search={{ view: section.viewId }}
+                to="/d/$databaseId"
+              >
+                <DatabaseIcon />
+                <span className="sr-only">View all</span>
+              </Link>
+            </SidebarGroupAction>
+          ) : null}
         </>
       }
     >
@@ -1673,8 +1656,6 @@ function DatabaseSection({
         <p className="rounded-md bg-surface-muted px-2 py-2 text-xs text-content-secondary">
           Source unavailable
         </p>
-      ) : !items.length ? (
-        <p className="px-2 py-1.5 text-xs text-content-secondary">No matching rows</p>
       ) : (
         <SidebarMenu aria-label={title + " rows"}>
           <SidebarNavList

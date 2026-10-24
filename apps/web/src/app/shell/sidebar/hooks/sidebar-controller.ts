@@ -325,6 +325,7 @@ export type SidebarSectionModel = {
   storageKey: string;
   treeKey: string;
   items: SidebarNavItem[];
+  itemCount: number;
   teamspace?: Teamspace;
   create?: boolean;
   kind: SidebarSection["kind"];
@@ -437,15 +438,9 @@ export function useAppSidebar({
   const selectNavigationTab = React.useCallback(
     (tabId: string) => {
       selectTab(tabId);
-      if (tabId === "calendar") {
-        void navigate({ to: "/calendar" });
-      } else if (tabId === "ai") {
-        void navigate({ to: "/ai" });
-      } else if (pathname === "/ai" || pathname === "/calendar") {
-        void navigate({ search: { view: "recents" }, to: "/recents" });
-      }
+      if (tabId === "calendar") void navigate({ to: "/calendar" });
     },
-    [navigate, pathname, selectTab],
+    [navigate, selectTab],
   );
   React.useEffect(() => {
     if (customizing) return;
@@ -457,16 +452,15 @@ export function useAppSidebar({
     if (integrations.settled && pathname === "/calendar" && !integrations.calendar) {
       void navigate({ search: { view: "recents" }, to: "/recents" });
     }
-    if (!staticTabId && isStaticSidebarTabId(activeTabId)) {
+    if (!staticTabId) {
       const stored = readActiveSidebarTab(workspaceId);
       const next =
         layout.tabs.some((tab) => tab.id === stored) && !isStaticSidebarTabId(stored)
           ? stored
           : "home";
-      setActiveTabId(next);
+      setActiveTabId((current) => (isStaticSidebarTabId(current) ? next : current));
     }
   }, [
-    activeTabId,
     customizing,
     integrations.calendar,
     integrations.settled,
@@ -1041,7 +1035,7 @@ export function useSidebarDatabaseSection({
   currentUserId?: string;
 }) {
   const [open, setOpen] = useSidebarSectionOpen(storageKey);
-  const database = useDatabaseMetadata(open ? section.databaseId : null, {
+  const database = useDatabaseMetadata(section.databaseId, {
     viewId: section.viewId,
   });
   const activeView = section.viewId
@@ -1049,7 +1043,7 @@ export function useSidebarDatabaseSection({
     : database.data?.views[0];
   const activeDataSourceId = database.data?.activeDataSource?.id ?? null;
   const records = useDatabaseRecords(
-    open && activeDataSourceId && activeView
+    activeDataSourceId && activeView
       ? {
           databaseId: section.databaseId,
           dataSourceId: activeDataSourceId,
@@ -1090,7 +1084,9 @@ export function useSidebarDatabaseSection({
     title,
     activeDataSourceId,
     addRow,
-    hasMore: model.sortedItems.length > rows.length,
+    hasMore:
+      model.sortedItems.length > section.limit ||
+      (rows.length === section.limit && records.hasMore),
   };
 }
 
@@ -1105,11 +1101,12 @@ export function useSidebarTasksSection({
 }) {
   const [open, setOpen] = useSidebarSectionOpen(storageKey);
   const { data: session } = useSession();
-  const { queries, payloads: sources } = useTaskDatabases(open ? databaseIds : []);
+  const { payloads: sources } = useTaskDatabases(databaseIds);
   const payloads = sources.filter((payload) => getTaskDatabaseSchema(payload).missing.length === 0);
-  const rows = filterMyTaskRows(buildTaskRows(payloads), session?.user?.id ?? null).slice(0, limit);
+  const allRows = filterMyTaskRows(buildTaskRows(payloads), session?.user?.id ?? null);
+  const rows = allRows.slice(0, limit);
 
-  return { open, setOpen, rows, loading: queries.some((query) => query.isLoading) };
+  return { open, setOpen, rows, hasMore: allRows.length > limit };
 }
 
 export function useSidebarWorkspaceIdentity() {
@@ -1292,10 +1289,11 @@ export function buildSidebarSections({
       storageKey,
       treeKey: storageKey + ":tree",
       items: [] as SidebarNavItem[],
+      itemCount: 0,
     };
-    if (section.kind === "teamspaces")
-      return [...teamspaces]
-        .filter((t) => t.currentUserRole)
+    if (section.kind === "teamspaces") {
+      const joinedTeamspaces = teamspaces.filter((t) => t.currentUserRole);
+      return [...joinedTeamspaces]
         .sort((a, b) =>
           section.sort === "alphabetical"
             ? a.name.localeCompare(b.name)
@@ -1304,6 +1302,7 @@ export function buildSidebarSections({
         .slice(0, section.limit)
         .map((teamspace) => ({
           ...base,
+          itemCount: joinedTeamspaces.length,
           id: section.id + ":" + teamspace.id,
           label: teamspace.name,
           teamspace,
@@ -1316,11 +1315,13 @@ export function buildSidebarSections({
             section,
           ),
         }));
+    }
     if (section.kind === "shared" && !pageSections.teamspacePages.length) return [];
     if (section.kind === "favorites")
       return [
         {
           ...base,
+          itemCount: favorites.length,
           treeKey: getSidebarExpansionStorageKey(workspaceId, "favorites"),
           items: getConfiguredSidebarItems(favorites, "favorites", section),
         },
@@ -1331,6 +1332,12 @@ export function buildSidebarSections({
           ...base,
           storageKey: section.kind === "shared" ? storageKey + ":pages" : storageKey,
           treeKey: section.kind === "shared" ? storageKey + ":pages:tree" : storageKey + ":tree",
+          itemCount:
+            section.kind === "private"
+              ? pageSections.privatePages.length
+              : section.kind === "recents"
+                ? recents.length
+                : pageSections.teamspacePages.length,
           create: section.kind === "private",
           items: getConfiguredSidebarItems(
             section.kind === "private"
@@ -1347,6 +1354,7 @@ export function buildSidebarSections({
       return [
         {
           ...base,
+          itemCount: meetings.length,
           items: meetings.slice(0, section.limit).map((meeting) => ({
             id: meeting.id,
             name: meeting.title.trim() || "Meeting",
