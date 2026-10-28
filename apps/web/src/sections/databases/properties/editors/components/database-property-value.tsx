@@ -1,10 +1,11 @@
+import { ContentVerificationValue } from "@/sections/pages/header/components/content-verification";
 import { useCallback, useEffect, useRef, type FormEvent } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check } from "@/components/icons";
 import { type DatabasePropertyEntity } from "@zilobase/features/databases";
 
-import { defaultStatusOption, defaultStatusOptions } from "@zilobase/features/databases";
+import { getEffectiveStatusValue, defaultStatusOptions } from "@zilobase/features/databases";
 import { DatabasePropertyButton } from "./database-property-button";
 import { DatabasePropertyDate } from "./database-property-date";
 import { DatabasePropertyFiles } from "./database-property-files";
@@ -46,6 +47,7 @@ type DatabaseRow = {
   };
   pageId: string;
   updatedAt: string;
+  valuesByPropertyId?: Record<string, { value: unknown }>;
 };
 
 type PersonOption = {
@@ -201,9 +203,26 @@ export function DatabasePropertyValue({
     wrapContentOverride ??
     (layoutSettings.wrapAllContent || getPropertyWrapContent(pageProperty.config));
   const displayValue =
-    pageProperty.type === "status" && !persistedValue ? defaultStatusOption.name : value;
+    pageProperty.type === "status" ? getEffectiveStatusValue(value, pageProperty.config) : value;
   const content =
-    cellKind === "read_only_time" ? (
+    cellKind === "verification" ? (
+      (databaseWorkspaceId ?? hostDatabaseWorkspaceId ?? workspaceId) ? (
+        <ContentVerificationValue
+          resource={{
+            workspaceId: (databaseWorkspaceId ?? hostDatabaseWorkspaceId ?? workspaceId)!,
+            type: "page",
+            id: row.pageId,
+          }}
+          editable={editable}
+          preview={preview}
+          value={row.valuesByPropertyId?.[pageProperty.id]?.value}
+        />
+      ) : (
+        <span className="database-input-cell-trigger text-content-secondary">
+          Verification unavailable
+        </span>
+      )
+    ) : cellKind === "read_only_time" ? (
       <span className="database-input-cell-trigger">
         {formatReadOnlyTimePropertyValue(row, pageProperty.config, pageProperty.type) || (
           <span className="text-content-secondary">Empty</span>

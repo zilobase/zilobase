@@ -1,3 +1,4 @@
+import { contentVerificationSchema, deriveContentVerification } from "../../search/controls";
 import type { PagePropertyValueEntity } from "../core/entities";
 
 export type DatabasePropertyValue = string | string[];
@@ -39,6 +40,20 @@ export function getPropertyValue(
 }
 
 export function parsePropertyValue(value: unknown, propertyType = "text"): DatabasePropertyValue {
+  if (propertyType === "verification") {
+    const parsed = contentVerificationSchema.safeParse(value);
+    if (!parsed.success) return "Unverified";
+    const verification = deriveContentVerification({
+      verifiedAt: parsed.data.verifiedAt,
+      verifiedById: parsed.data.verifiedById,
+      verificationExpiresAt: parsed.data.expiresAt,
+      verificationUpdatedAt: parsed.data.revision,
+    });
+    return { verified: "Verified", expired: "Expired", unverified: "Unverified" }[
+      verification.state
+    ];
+  }
+
   if (typeof value === "string") {
     return value;
   }

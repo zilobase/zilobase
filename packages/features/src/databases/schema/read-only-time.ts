@@ -1,5 +1,3 @@
-import { isReadOnlyPropertyType } from "./property-defaults";
-
 export type ReadOnlyTimePropertySource = {
   createdAt: string;
   page: {
@@ -9,7 +7,8 @@ export type ReadOnlyTimePropertySource = {
   updatedAt: string;
 };
 
-export const isReadOnlyTimeProperty = (type: string) => isReadOnlyPropertyType(type);
+export const isReadOnlyTimeProperty = (type: string) =>
+  type === "created_time" || type === "edited_time";
 
 export const getReadOnlyTimePropertyRawValue = (
   source: ReadOnlyTimePropertySource,

@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { deriveContentVerification } from "@zilobase/features/search";
+import {
+  commitDatabaseMutationBatch,
+  type DatabaseTransaction,
+} from "../databases/mutations/commit";
 import { db, runWithDb } from "../../infrastructure/database";
 import { canAccessDatabaseInWorkspace, canAccessPageInWorkspace } from "../access/effective-access";
 import {
@@ -56,7 +60,7 @@ export async function contentVerificationOperation(
   if (expiry && expiry.getTime() <= Date.now())
     throw new ServerOperationError({ error: "Verification expiry must be in the future" }, 400);
   const table = sql.identifier(input.type);
-  return db.transaction((tx) =>
+  const operation = (tx: DatabaseTransaction) =>
     runWithDb(tx, async () => {
       const record = (
         await tx.execute<VerificationRow>(
@@ -93,6 +97,44 @@ export async function contentVerificationOperation(
         verification: verificationFromRow(result),
         canManage,
       };
-    }),
+    });
+  if (!write) return db.transaction(operation);
+  const { result } = await commitDatabaseMutationBatch(
+    { actorId: actor.id, env: context.env },
+    async (tx) => {
+      const result = await operation(tx);
+      if (input.type !== "page") return { result, mutations: [] };
+      // A page can appear through several linked sources. Advance each source
+      // and notify every container in the same transaction as its trust change.
+      const sources = (
+        await tx.execute<{ id: string; parent_database_id: string }>(sql`
+        update data_source set version=version+1
+        where id in (select data_source_id from database_row where page_id=${input.id} and deleted_at is null)
+        returning id,parent_database_id
+      `)
+      ).rows;
+      const mutations = [];
+      for (const source of sources) {
+        const links = (
+          await tx.execute<{ database_id: string }>(sql`
+          select database_id from database_data_source where data_source_id=${source.id}
+        `)
+        ).rows;
+        for (const databaseId of new Set([
+          source.parent_database_id,
+          ...links.map((link) => link.database_id),
+        ])) {
+          mutations.push({
+            databaseId,
+            dataSourceId: source.id,
+            areas: ["records" as const],
+            changes: {},
+            requiresReset: true as const,
+          });
+        }
+      }
+      return { result, mutations };
+    },
   );
+  return result;
 }

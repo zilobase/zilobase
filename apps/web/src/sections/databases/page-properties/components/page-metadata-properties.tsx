@@ -1,3 +1,4 @@
+import { ContentVerificationValue } from "@/sections/pages/header/components/content-verification";
 import type { PageLayoutConfig } from "@zilobase/features/pages";
 import { usePageProperties } from "@zilobase/features/pages/react";
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
@@ -140,7 +141,15 @@ export function PageMetadataProperties({
               }
             >
               <PagePropertyPresence collaborators={propertyPresenceById[property.id] ?? []} />
-              {isReadOnlyTimeProperty ? (
+              {property.type === "verification" && pageId && propertyPayload?.workspaceId ? (
+                <ContentVerificationValue
+                  resource={{ workspaceId: propertyPayload.workspaceId, type: "page", id: pageId }}
+                  editable={editable}
+                  value={
+                    propertyPayload.values.find((value) => value.propertyId === property.id)?.value
+                  }
+                />
+              ) : isReadOnlyTimeProperty ? (
                 <span className="database-date-cell-trigger">
                   {formatDatabaseDateValue(value, property.config) || (
                     <span className="text-content-secondary">Empty</span>

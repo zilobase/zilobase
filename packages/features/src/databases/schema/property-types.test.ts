@@ -19,6 +19,7 @@ test("database property type helpers expose the canonical contract", () => {
   assert.equal(normalizeDatabasePropertyType(123), null);
   assert.equal(normalizeDatabasePropertyType("made_up"), null);
   assert.equal(isReadOnlyPropertyType("created_time"), true);
+  assert.equal(isReadOnlyPropertyType("verification"), true);
   assert.equal(isReadOnlyPropertyType("date"), false);
   assert.equal(isSelectLikePropertyType("multi_select"), true);
   assert.equal(isSelectLikePropertyType("person"), false);

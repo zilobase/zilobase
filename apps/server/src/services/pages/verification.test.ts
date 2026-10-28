@@ -25,7 +25,7 @@ it("legacy and expired verification use the same derivation as search", () => {
 import { vi, beforeEach } from "vitest";
 import { contentVerificationOperation } from "./verification";
 import type { ServerOperationContext } from "../operations/context";
-const mocks = vi.hoisted(() => ({ execute: vi.fn(), access: vi.fn() }));
+const mocks = vi.hoisted(() => ({ execute: vi.fn(), access: vi.fn(), committed: vi.fn() }));
 vi.mock("../../infrastructure/database", () => ({
   db: { transaction: async (run: (tx: unknown) => unknown) => run({ execute: mocks.execute }) },
   runWithDb: async (_: unknown, run: () => unknown) => run(),
@@ -33,6 +33,16 @@ vi.mock("../../infrastructure/database", () => ({
 vi.mock("../access/effective-access", () => ({
   canAccessPageInWorkspace: mocks.access,
   canAccessDatabaseInWorkspace: mocks.access,
+}));
+vi.mock("../databases/mutations/commit", () => ({
+  commitDatabaseMutationBatch: async (
+    _options: unknown,
+    run: (tx: unknown) => Promise<unknown>,
+  ) => {
+    const result = await run({ execute: mocks.execute });
+    mocks.committed(result);
+    return result;
+  },
 }));
 const context = {
   authentication: { authMethod: "session", user: { id: "actor" } },
@@ -46,6 +56,7 @@ const row = {
   verification_updated_at: null,
 };
 beforeEach(() => {
+  mocks.committed.mockReset();
   mocks.execute.mockReset().mockResolvedValue({ rows: [row] });
   mocks.access
     .mockReset()
@@ -88,4 +99,49 @@ it("editors may remove verification; past expiry and spoofed actors are rejected
       body: { expiresAt: "2020-01-01T00:00:00Z" },
     }),
   ).rejects.toMatchObject({ status: 400 });
+});
+
+it("page verification commits one refresh for every source container, including linked databases", async () => {
+  mocks.access.mockResolvedValue(true);
+  mocks.execute
+    .mockReset()
+    .mockResolvedValueOnce({ rows: [row] })
+    .mockResolvedValueOnce({
+      rows: [
+        {
+          ...row,
+          verified_at: new Date("2026-02-01"),
+          verified_by_id: "actor",
+          verification_updated_at: new Date("2026-02-01"),
+        },
+      ],
+    })
+    .mockResolvedValueOnce({ rows: [{ id: "source", parent_database_id: "parent" }] })
+    .mockResolvedValueOnce({ rows: [{ database_id: "parent" }, { database_id: "linked" }] });
+  const response = await contentVerificationOperation(context, {
+    type: "page",
+    id: "p",
+    action: "verify",
+    body: { expiresAt: null },
+  });
+  expect(response.verification).toMatchObject({ state: "verified", verifiedById: "actor" });
+  expect(mocks.committed).toHaveBeenCalledWith({
+    result: response,
+    mutations: [
+      {
+        databaseId: "parent",
+        dataSourceId: "source",
+        areas: ["records"],
+        changes: {},
+        requiresReset: true,
+      },
+      {
+        databaseId: "linked",
+        dataSourceId: "source",
+        areas: ["records"],
+        changes: {},
+        requiresReset: true,
+      },
+    ],
+  });
 });

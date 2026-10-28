@@ -1,3 +1,4 @@
+import { verificationPropertyValues } from "../verification-values";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "../../../infrastructure/database/index";
 import {
@@ -7,6 +8,7 @@ import {
   dataSource,
   pageProperty,
   pagePropertyValue,
+  page,
 } from "../../../infrastructure/database/schema";
 import { canAccessDatabaseInWorkspace } from "../../access/effective-access";
 export const getPagePropertyPayload = async (
@@ -57,6 +59,13 @@ export const getPagePropertyPayload = async (
     db.select().from(pagePropertyValue).where(eq(pagePropertyValue.pageId, pageId)),
   ]);
 
+  const hasVerification = databaseProperties.some(
+    ({ property }) => property.type === "verification",
+  );
+  const [record] = hasVerification
+    ? await db.select().from(page).where(eq(page.id, pageId)).limit(1)
+    : [];
+
   const properties = Array.from(
     new Map(databaseProperties.map(({ property }) => [property.id, property])).values(),
   );
@@ -104,13 +113,23 @@ export const getPagePropertyPayload = async (
       deletedAt: property.deletedAt,
       deletedById: property.deletedById,
     })),
-    values: values.map((value) => ({
-      id: value.id,
-      pageId: value.pageId,
-      propertyId: value.propertyId,
-      value: value.value,
-      createdAt: value.createdAt,
-      updatedAt: value.updatedAt,
-    })),
+    values: [
+      ...values
+        .filter(
+          (value) =>
+            !properties.some(
+              (property) => property.id === value.propertyId && property.type === "verification",
+            ),
+        )
+        .map((value) => ({
+          id: value.id,
+          pageId: value.pageId,
+          propertyId: value.propertyId,
+          value: value.value,
+          createdAt: value.createdAt,
+          updatedAt: value.updatedAt,
+        })),
+      ...(record ? verificationPropertyValues(record, properties) : []),
+    ],
   };
 };

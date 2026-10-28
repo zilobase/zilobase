@@ -89,3 +89,21 @@ test("verification uses dedicated endpoints and explicit removal", async () => {
   assert.equal(calls[1].method, "DELETE");
   client.clear();
 });
+
+test("verification refreshes page metadata and database windows after the acknowledgement", async () => {
+  const client = new TestQueryClient();
+  const metadata = ["page", "p", "properties"];
+  const database = ["db", "session", "host", "window", "source", "query", false];
+  client.setQueryData(metadata, {});
+  client.setQueryData(database, {});
+  const result = await changeContentVerification(
+    client,
+    (async () => response()) as ApiFetcher,
+    resource,
+    { expiresAt: null },
+  );
+  await reconcileContentVerification(client, result);
+  assert.equal(client.getQueryState(metadata)?.isInvalidated, true);
+  assert.equal(client.getQueryState(database)?.isInvalidated, true);
+  client.clear();
+});

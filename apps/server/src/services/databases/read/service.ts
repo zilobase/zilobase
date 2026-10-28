@@ -1,3 +1,4 @@
+import { verificationPropertyValues } from "../../pages/verification-values";
 import type {
   DatabaseBootstrapResponse,
   DatabaseHostEntity,
@@ -54,7 +55,17 @@ type PropertyRecord = {
 type RowRecord = {
   page: Pick<
     typeof page.$inferSelect,
-    "createdAt" | "deletedAt" | "hasContent" | "id" | "metadata" | "name" | "updatedAt"
+    | "createdAt"
+    | "deletedAt"
+    | "hasContent"
+    | "id"
+    | "metadata"
+    | "name"
+    | "updatedAt"
+    | "verifiedAt"
+    | "verifiedById"
+    | "verificationExpiresAt"
+    | "verificationUpdatedAt"
   >;
   row: typeof databaseRow.$inferSelect;
 };
@@ -194,6 +205,7 @@ function recordEntity(
   entry: RowRecord,
   position: number,
   values: Array<typeof pagePropertyValue.$inferSelect>,
+  properties: PropertyRecord[],
 ): DatabaseRecordEntity {
   const { page: rowPage, row } = entry;
   return {
@@ -214,9 +226,15 @@ function recordEntity(
     parentRowId: row.parentRowId ?? null,
     updatedAt: timestamp(row.updatedAt),
     valuesByPropertyId: Object.fromEntries(
-      values
-        .filter((value) => value.pageId === row.pageId)
-        .map((value) => [value.propertyId, valueEntity(value)]),
+      [
+        ...values.filter((value) => value.pageId === row.pageId).map(valueEntity),
+        ...verificationPropertyValues(
+          rowPage,
+          properties
+            .filter(({ column }) => column.dataSourceId === row.dataSourceId)
+            .map(({ property }) => property),
+        ),
+      ].map((value) => [value.propertyId, value]),
     ),
   };
 }
@@ -378,6 +396,10 @@ async function loadDatabaseReadModel(input: {
       ? await db
           .select({
             page: {
+              verifiedAt: page.verifiedAt,
+              verifiedById: page.verifiedById,
+              verificationExpiresAt: page.verificationExpiresAt,
+              verificationUpdatedAt: page.verificationUpdatedAt,
               createdAt: page.createdAt,
               deletedAt: page.deletedAt,
               hasContent: page.hasContent,
@@ -422,7 +444,7 @@ async function loadDatabaseReadModel(input: {
       }),
     ),
     properties: properties.map(propertyEntity),
-    records: rows.map((entry, position) => recordEntity(entry, position, values)),
+    records: rows.map((entry, position) => recordEntity(entry, position, values, properties)),
     views: storedViews
       .filter((view) => accessibleSourceIds.includes(view.dataSourceId))
       .map(viewEntity),

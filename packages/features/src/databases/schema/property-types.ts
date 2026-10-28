@@ -44,7 +44,7 @@ export function normalizeDatabasePropertyType(
 }
 
 export function isReadOnlyPropertyType(type: string) {
-  return type === "created_time" || type === "edited_time";
+  return type === "created_time" || type === "edited_time" || type === "verification";
 }
 
 export function isSelectLikePropertyType(type: string) {

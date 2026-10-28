@@ -17,7 +17,8 @@ export type DatabasePropertyCellKind =
   | "read_only_time"
   | "relation"
   | "rollup"
-  | "select";
+  | "select"
+  | "verification";
 export type DatabasePropertyCapability = {
   cellKind?: DatabasePropertyCellKind;
   editable?: boolean;
@@ -105,6 +106,7 @@ export const databasePropertyCapabilities: DatabasePropertyCapability[] = [
   { filterKind: "text", type: "id" },
   { filterKind: "text", type: "place" },
   {
+    cellKind: "verification",
     filterKind: "text",
     type: "verification",
   },

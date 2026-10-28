@@ -1,3 +1,4 @@
+import { verificationPropertyValues } from "../../pages/verification-values";
 import { databaseRecordEntitySchema, type DatabaseRecordEntity } from "@zilobase/features/runtime";
 import { and, eq } from "drizzle-orm";
 
@@ -6,6 +7,7 @@ import {
   databaseRow,
   page,
   pagePropertyValue,
+  pageProperty,
 } from "../../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import type { DatabaseCommandContext } from "./framework";
@@ -39,6 +41,12 @@ export async function getDatabaseRecordEntity(
     )
     .where(eq(pagePropertyValue.pageId, record.row.pageId));
 
+  const properties = await transaction
+    .select({ id: pageProperty.id, type: pageProperty.type })
+    .from(databaseProperty)
+    .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
+    .where(eq(databaseProperty.dataSourceId, dataSourceId));
+
   return databaseRecordEntitySchema.parse({
     createdAt: timestamp(record.row.createdAt),
     dataSourceId: record.row.dataSourceId,
@@ -56,8 +64,8 @@ export async function getDatabaseRecordEntity(
     pageId: record.row.pageId,
     parentRowId: record.row.parentRowId ?? null,
     updatedAt: timestamp(record.row.updatedAt),
-    valuesByPropertyId: Object.fromEntries(
-      values.map(({ value }) => [
+    valuesByPropertyId: Object.fromEntries([
+      ...values.map(({ value }) => [
         value.propertyId,
         {
           createdAt: timestamp(value.createdAt),
@@ -68,6 +76,10 @@ export async function getDatabaseRecordEntity(
           value: value.value,
         },
       ]),
-    ),
+      ...verificationPropertyValues(record.page, properties).map((value) => [
+        value.propertyId,
+        value,
+      ]),
+    ]),
   });
 }

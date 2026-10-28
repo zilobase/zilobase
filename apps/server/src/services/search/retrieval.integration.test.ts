@@ -103,6 +103,19 @@ describe.skipIf(!url)("authorized exact semantic search", () => {
       expect(response.results[0].match?.pageId).toBe(auth);
       expect(response.results[0].excerpt).not.toMatch(/<|__ZILOBASE/);
     }));
+  it("hydrates live attribution and expired verification without re-embedding", async () =>
+    within(async () => {
+      await db.execute(
+        sql`update page set last_edited_by_id=${u},verified_at=now()-interval '2 days',verified_by_id=${u},verification_expires_at=now()-interval '1 day',verification_updated_at=now() where id=${auth}`,
+      );
+      const result = (await search("authenticate again")).results.find(
+        (result) => result.id === auth,
+      )!;
+      expect(result.createdAt).toBeTruthy();
+      expect(result.createdById).toBe(u);
+      expect(result.lastEditedById).toBe(u);
+      expect(result.verification?.state).toBe("expired");
+    }));
   it("ranks only by semantic similarity even when another page matches the title", async () =>
     within(async () => {
       const query = "Trip schedule";

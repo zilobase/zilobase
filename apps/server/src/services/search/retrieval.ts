@@ -26,6 +26,7 @@ import {
   type SearchPurpose,
 } from "./vector-contracts";
 import type { WorkspaceSearchInput, WorkspaceSearchResult } from "./workspace-search";
+import { deriveContentVerification } from "@zilobase/features/search";
 
 export type { SearchMetadata } from "@zilobase/features/search";
 import type { SearchMetadata } from "@zilobase/features/search";
@@ -81,6 +82,20 @@ export async function hydrateVectorResults(
       path: c.name,
       emoji,
       updatedAt,
+      ...(c.created_at
+        ? {
+            createdAt: new Date(c.created_at).toISOString(),
+            createdById: c.created_by_id ?? null,
+            lastEditedAt: new Date(c.last_edited_at ?? c.updated_at).toISOString(),
+            lastEditedById: c.last_edited_by_id ?? null,
+            verification: deriveContentVerification({
+              verifiedAt: c.verified_at,
+              verifiedById: c.verified_by_id,
+              verificationExpiresAt: c.verification_expires_at,
+              verificationUpdatedAt: c.verification_updated_at,
+            }),
+          }
+        : {}),
       excerpt: plainExcerpt(c.content_markdown),
       entity: {
         id: c.page_id,

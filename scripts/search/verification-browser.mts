@@ -18,7 +18,15 @@ export async function checkVerificationBrowser(
   let dialog = await open();
   await dialog.getByRole("button", { name: "Verify", exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  dialog = await open();
+  const badge = page.getByRole("button", { name: "Verified page", exact: true });
+  await expect(badge).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Verified: view verification", exact: true }),
+  ).toBeVisible();
+  // The badge belongs between the breadcrumb title and collaboration status.
+  await expect(badge.locator("xpath=following-sibling::*[1]")).toHaveAttribute("role", "status");
+  await badge.click();
+  dialog = page.getByRole("dialog", { name: "Content verification", exact: true });
   await expect(dialog.getByRole("status")).toHaveText("Status: Verified");
   await dialog.getByLabel("Verify indefinitely").uncheck();
   await dialog.getByLabel("Verification expiry").fill("2030-01-01T12:00");
@@ -38,7 +46,9 @@ export async function checkVerificationBrowser(
   await page.unroute(pattern, fail);
   await dialog.getByRole("button", { name: "Remove verification", exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  dialog = await open();
+  await expect(badge).toHaveCount(0);
+  await page.getByRole("button", { name: "Unverified: view verification", exact: true }).click();
+  dialog = page.getByRole("dialog", { name: "Content verification", exact: true });
   await expect(dialog.getByRole("status")).toHaveText("Status: Unverified");
   await page.keyboard.press("Escape");
   const reader = async (route) => {
@@ -82,4 +92,75 @@ export async function checkVerificationBrowser(
   await expect(dialog.getByRole("status")).toContainText("Status:");
   await page.keyboard.press("Escape");
   await page.screenshot({ path: ".test-results/search/browser-verification.png" });
+}
+
+export async function checkDatabaseVerificationBrowser(
+  page: Page,
+  { origin, apiOrigin, workspaceId }: { origin: string; apiOrigin: string; workspaceId: string },
+) {
+  const command = async (path: string, command: unknown) => {
+    const response = await page.request.post(`${apiOrigin}${path}`, {
+      headers: { origin: apiOrigin },
+      data: { protocolVersion: 2, commandId: crypto.randomUUID(), command },
+    });
+    expect(response.ok(), await response.text()).toBe(true);
+    return (await response.json()).result;
+  };
+  const created = await command("/databases/commands", {
+    type: "database.create",
+    workspaceId,
+    name: "Verification browser proof",
+    standalone: true,
+  });
+  const databaseId = created.database.id,
+    sourceId = created.activeDataSource.id;
+  const path = `/databases/${databaseId}/data-sources/${sourceId}/commands`;
+  const column = await command(path, {
+    type: "property.create",
+    name: "Verification",
+    propertyType: "verification",
+    config: {},
+    beforePropertyId: null,
+    afterPropertyId: null,
+  });
+  const row = await command(path, {
+    type: "row.place",
+    title: "Verified database page",
+    beforeRowId: null,
+    afterRowId: null,
+    parentRowId: null,
+  });
+  await page.goto(`${origin}/d/${databaseId}`, { waitUntil: "domcontentloaded" });
+  const cell = page
+    .locator(".database-value-cell")
+    .getByRole("button", { name: "Unverified: view verification", exact: true });
+  await expect(cell).toBeVisible({ timeout: 30000 });
+  await cell.click();
+  const dialog = page.getByRole("dialog", { name: "Content verification", exact: true });
+  await expect(dialog.getByRole("button", { name: "Verify", exact: true })).toBeEnabled();
+  await dialog.getByRole("button", { name: "Verify", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(
+    page
+      .locator(".database-value-cell")
+      .getByRole("button", { name: "Verified: view verification", exact: true }),
+  ).toBeVisible();
+  const propertiesResponse = await page.request.get(`${apiOrigin}/pages/${row.pageId}/properties`);
+  expect(propertiesResponse.ok()).toBe(true);
+  const payload = await propertiesResponse.json();
+  expect(payload.values.find((value) => value.propertyId === column.property.id)?.value.state).toBe(
+    "verified",
+  );
+  await page.goto(`${origin}/p/${row.pageId}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "Verified page", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Verified: view verification", exact: true }).click();
+  await page.getByRole("button", { name: "Remove verification", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Verified page", exact: true })).toHaveCount(0);
+  await page.goto(`${origin}/d/${databaseId}`, { waitUntil: "domcontentloaded" });
+  await expect(
+    page
+      .locator(".database-value-cell")
+      .getByRole("button", { name: "Unverified: view verification", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: ".test-results/search/browser-database-verification.png" });
 }

@@ -120,7 +120,7 @@ export async function readAuthorizedSearchChunks(
   const sources = sql`select distinct ds.parent_database_id from database_row r join data_source ds on ds.id=r.data_source_id where r.page_id in(${selected}) and r.deleted_at is null and ds.deleted_at is null and ds.workspace_id=${workspaceId}`;
   return (
     await db.execute<AuthorizedSearchChunk>(sql`${searchAccessCtes(workspaceId, userId, selected, sources)}
-    select c.id,c.page_id,c.chunk_kind,c.content_markdown,c.metadata,p.name,p.updated_at,p.metadata as page_metadata,source.database_id,source.data_source_id,source.record_id
+    select c.id,c.page_id,c.chunk_kind,c.content_markdown,c.metadata,p.name,p.updated_at,p.created_at,p.created_by_id,p.last_edited_at,p.last_edited_by_id,p.verified_at,p.verified_by_id,p.verification_expires_at,p.verification_updated_at,p.metadata as page_metadata,source.database_id,source.data_source_id,source.record_id
     from search_chunk c join page p on p.id=c.page_id and p.workspace_id=c.workspace_id
     left join lateral (
       select ds.parent_database_id as database_id,ds.id as data_source_id,r.id as record_id from database_row r join data_source ds on ds.id=r.data_source_id join database_property dp on dp.data_source_id=ds.id and dp.property_id=c.source_key
@@ -139,6 +139,14 @@ export type AuthorizedSearchChunk = {
   metadata: SearchChunkMetadata;
   name: string;
   updated_at: Date | string;
+  created_at?: Date | string;
+  created_by_id?: string | null;
+  last_edited_at?: Date | string;
+  last_edited_by_id?: string | null;
+  verified_at?: Date | string | null;
+  verified_by_id?: string | null;
+  verification_expires_at?: Date | string | null;
+  verification_updated_at?: Date | string | null;
   page_metadata: Record<string, unknown> | null;
   database_id: string | null;
   data_source_id: string | null;

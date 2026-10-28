@@ -1,4 +1,7 @@
-import { checkVerificationBrowser } from "./verification-browser.mts";
+import {
+  checkDatabaseVerificationBrowser,
+  checkVerificationBrowser,
+} from "./verification-browser.mts";
 import assert from "node:assert/strict";
 import { createServer as createReservation } from "node:net";
 import { createRequire } from "node:module";
@@ -157,6 +160,14 @@ export async function runSearchBrowser({
     await checkVerificationBrowser(page, { origin, pageId, backgroundPageId });
     checks.push(
       "verification lifecycle, failures, readers, expiry, main/pane/dialog presentations",
+    );
+    await checkDatabaseVerificationBrowser(page, {
+      origin,
+      apiOrigin: runtime.origin,
+      workspaceId: workspace,
+    });
+    checks.push(
+      "database verification cells share page trust and persist verification/removal across navigation",
     );
     console.info(`Search browser acceptance passed (${checks.length} checks).`);
   } catch (error) {

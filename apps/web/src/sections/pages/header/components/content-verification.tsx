@@ -4,7 +4,11 @@ import {
   useUpdateContentVerification,
 } from "@zilobase/features/pages/react";
 import type { VerificationResource } from "@zilobase/features/pages";
-import { deriveContentVerification, type ContentVerification } from "@zilobase/features/search";
+import {
+  contentVerificationSchema,
+  deriveContentVerification,
+  type ContentVerification,
+} from "@zilobase/features/search";
 import { DropDrawerItem } from "@/components/ui/dropdrawer";
 import {
   Dialog,
@@ -15,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BadgeCheck } from "@/components/icons";
 
 function useLiveVerification(verification?: ContentVerification) {
   const [now, setNow] = useState(Date.now);
@@ -41,6 +46,104 @@ function useLiveVerification(verification?: ContentVerification) {
   );
 }
 const labels = { verified: "Verified", unverified: "Unverified", expired: "Expired" };
+
+/** All verification entry points share the same scoped query and editor. */
+export function ContentVerificationValue({
+  resource,
+  badgeOnly = false,
+  editable = true,
+  preview = false,
+  value,
+}: {
+  resource: VerificationResource;
+  badgeOnly?: boolean;
+  editable?: boolean;
+  preview?: boolean;
+  value?: unknown;
+}) {
+  const [open, setOpen] = useState(false);
+  const projection = contentVerificationSchema.safeParse(value);
+  const query = useContentVerification(resource, !projection.success || open);
+  const projected = projection.success ? projection.data : undefined;
+  const cached = query.data?.verification;
+  const current =
+    projected && (!cached || (projected.revision ?? "") >= (cached.revision ?? ""))
+      ? projected
+      : cached;
+  const verification = useLiveVerification(current);
+  const loading = !current && query.isPending;
+  const unavailable = !current && query.isError;
+  if (badgeOnly && (unavailable || verification.state !== "verified")) return null;
+  const label = loading
+    ? "Loading verification…"
+    : unavailable
+      ? "Verification unavailable"
+      : labels[verification.state];
+  const detail = verification.expiresAt
+    ? `Expires ${new Date(verification.expiresAt).toLocaleString()}`
+    : verification.verifiedAt
+      ? "No expiry"
+      : "Review and verify this page";
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={badgeOnly ? "Verified page" : `${label}: view verification`}
+        title={`${label}. ${detail}`}
+        className={
+          badgeOnly
+            ? "inline-flex shrink-0 items-center rounded-sm text-palette-blue focus-visible:ring-2 focus-visible:ring-action-focus-ring"
+            : "database-input-cell-trigger inline-flex items-center gap-1.5 text-sm"
+        }
+        disabled={preview || loading}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen(true);
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {verification.state === "verified" ? (
+          <BadgeCheck aria-hidden="true" className="size-4 shrink-0 text-palette-blue" />
+        ) : null}
+        {!badgeOnly ? (
+          <span
+            className={
+              verification.state === "verified" ? "text-content-primary" : "text-content-secondary"
+            }
+          >
+            {label}
+          </span>
+        ) : null}
+      </button>
+      {open ? (
+        <ContentVerificationDialog
+          resource={resource}
+          open={open}
+          onOpenChange={setOpen}
+          editable={editable}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function ContentVerificationMetadata({
+  resource,
+  editable,
+}: {
+  resource: VerificationResource;
+  editable: boolean;
+}) {
+  return (
+    <div className="mt-4 grid min-h-8 grid-cols-[9rem_minmax(0,1fr)] items-center gap-3 text-sm">
+      <span className="flex items-center gap-2 text-content-secondary">
+        <BadgeCheck className="size-4" />
+        Verified
+      </span>
+      <ContentVerificationValue resource={resource} editable={editable} />
+    </div>
+  );
+}
 export function ContentVerificationMenuItem({
   resource,
   onOpen,
@@ -68,7 +171,9 @@ export function ContentVerificationDialog({
   resource,
   open,
   onOpenChange,
+  editable = true,
 }: {
+  editable?: boolean;
   resource: VerificationResource | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -137,7 +242,7 @@ export function ContentVerificationDialog({
                   : "No expiry."}
               </p>
             ) : null}
-            {query.data?.canManage ? (
+            {editable && query.data?.canManage ? (
               <>
                 <label className="flex items-center gap-2 text-sm">
                   <input

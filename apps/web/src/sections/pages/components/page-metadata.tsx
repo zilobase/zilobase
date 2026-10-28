@@ -1,3 +1,4 @@
+import { ContentVerificationMetadata } from "../header/components/content-verification";
 import { toast } from "sonner";
 import { ImagePlus, MessageSquare, SmilePlus } from "@/components/icons";
 import {
@@ -890,6 +891,17 @@ export function PageMetadata({
             )}
             <div className="mt-5 border-t border-stroke-default" />
           </div>
+        ) : null}
+
+        {showProperties &&
+        pageId &&
+        workspaceId &&
+        !layoutPropertyId &&
+        !propertyPayload?.properties.some((property) => property.type === "verification") ? (
+          <ContentVerificationMetadata
+            resource={{ workspaceId, type: "page", id: pageId }}
+            editable={editable}
+          />
         ) : null}
 
         {showProperties &&

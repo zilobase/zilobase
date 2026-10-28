@@ -38,6 +38,7 @@ try {
     await cp(CORE_MIGRATION_SET.migrationsFolder, upgradeFolder, { recursive: true });
     const journalFile = join(upgradeFolder, "meta", "_journal.json");
     const journal = JSON.parse(await readFile(journalFile, "utf8"));
+    const allEntries = journal.entries;
     journal.entries = journal.entries.filter((entry) => entry.when < 1792800000000);
     await writeFile(journalFile, JSON.stringify(journal));
     await runMigrationSets(fixture.db, [
@@ -49,7 +50,11 @@ try {
     await fixture.client.query(
       "insert into page(id,workspace_id,name,created_at,updated_at) values('legacy-controls-page','legacy-controls','Legacy','2020-01-01','2020-02-01')",
     );
-    await runMigrationSets(fixture.db, [CORE_MIGRATION_SET]);
+    journal.entries = allEntries.filter((entry) => entry.when < 1792800000004);
+    await writeFile(journalFile, JSON.stringify(journal));
+    await runMigrationSets(fixture.db, [
+      { ...CORE_MIGRATION_SET, migrationsFolder: upgradeFolder },
+    ]);
     const legacy = (
       await fixture.client.query(
         "select updated_at,last_edited_at,last_edited_by_id,verified_at from page where id='legacy-controls-page'",
@@ -59,9 +64,38 @@ try {
     assert.equal(legacy.updated_at.toISOString(), "2020-02-01T00:00:00.000Z");
     assert.equal(legacy.last_edited_by_id, null);
     assert.equal(legacy.verified_at, null);
+    // Emulate the original applied 0119/0122: their journal entries exist, but
+    // metadata-only page updates still advance the document confirmation clock.
+    await fixture.client.query(`
+      CREATE OR REPLACE FUNCTION zilobase_stamp_entity_update() RETURNS trigger AS $$
+      BEGIN
+        NEW.updated_at := GREATEST(
+          date_trunc('milliseconds', clock_timestamp()),
+          date_trunc('milliseconds', OLD.updated_at) + interval '1 millisecond'
+        );
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    await runMigrationSets(fixture.db, [CORE_MIGRATION_SET]);
+    const metadataOnly = (
+      await fixture.client.query(
+        "update page set verified_at=now(),verification_updated_at=now(),last_edited_at=now() where id='legacy-controls-page' returning updated_at",
+      )
+    ).rows[0];
+    assert.equal(metadataOnly.updated_at.toISOString(), "2020-02-01T00:00:00.000Z");
+    const contentEdit = (
+      await fixture.client.query(
+        "update page set name='Edited legacy' where id='legacy-controls-page' returning updated_at,verified_at",
+      )
+    ).rows[0];
+    assert.ok(contentEdit.updated_at > metadataOnly.updated_at);
+    assert.ok(contentEdit.verified_at);
     await runMigrationSets(fixture.db, [CORE_MIGRATION_SET]);
     await fixture.client.query("delete from workspace where id='legacy-controls'");
-    console.info("PASS upgrade migration, legacy clocks, unknown editor, repeat migration");
+    console.info(
+      "PASS upgrade migration, legacy clocks, unknown editor, applied-migration clock repair, repeat migration",
+    );
   } finally {
     await rm(upgradeFolder, { recursive: true, force: true });
   }
@@ -331,11 +365,12 @@ try {
       sql`analyze page,search_document,page_item_placement,database_row,database,data_source`,
     );
     const collaborationPage = randomUUID();
-    await db.execute(
-      sql`insert into page(id,workspace_id,name,created_by_id,created_at,updated_at) values(${collaborationPage},${w},'Collaboration attribution',${actor},now(),now())`,
+    const created = await db.execute<{ last_edited_at: Date }>(
+      sql`insert into page(id,workspace_id,name,created_by_id,created_at,updated_at) values(${collaborationPage},${w},'Collaboration attribution',${actor},now(),now()) returning last_edited_at`,
     );
-    const firstEdit = new Date(Date.now() + 10),
-      secondEdit = new Date(Date.now() + 20);
+    const baseline = new Date(created.rows[0].last_edited_at).getTime();
+    const firstEdit = new Date(baseline + 10),
+      secondEdit = new Date(baseline + 20);
     const store = async (text: string, userId: string, occurredAt: Date) => {
       const doc = new Y.Doc();
       Y.applyUpdate(

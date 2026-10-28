@@ -1,3 +1,4 @@
+import { parsePropertyValue } from "../schema/property-values";
 import type {
   DatabaseInitialPageSize,
   DatabasePropertyEntity,
@@ -113,7 +114,10 @@ export function evaluateDatabaseRecordsForView(input: {
     const propertyValuesByKey: Record<string, DatabaseFormulaPropertyValue> = {};
     for (const property of input.properties) {
       const value = record.valuesByPropertyId[property.property.id]?.value;
-      propertyValuesByKey[`${record.pageId}:${property.property.id}`] = rawFormulaValue(value);
+      propertyValuesByKey[`${record.pageId}:${property.property.id}`] =
+        property.property.type === "verification"
+          ? parsePropertyValue(value, "verification")
+          : rawFormulaValue(value);
     }
     valuesByRecordId.set(
       record.id,

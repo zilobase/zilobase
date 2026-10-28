@@ -6,7 +6,8 @@ vi.mock("../../../infrastructure/database/index", () => {
   const select = () => {
     const result = Promise.resolve(state.rows.shift() ?? []);
     const chain: Record<string, unknown> = { then: result.then.bind(result) };
-    for (const method of ["from", "innerJoin", "where", "orderBy"]) chain[method] = () => chain;
+    for (const method of ["from", "innerJoin", "where", "orderBy", "limit"])
+      chain[method] = () => chain;
     return chain;
   };
   return { db: { select, selectDistinct: select } };
@@ -95,4 +96,27 @@ test("page property responses project public fields without leaking storage revi
     },
   ]);
   assert.deepEqual(payload.databaseVersions, { host: 3 });
+});
+
+test("page metadata ignores legacy verification text and returns canonical trust", async () => {
+  const propertyRow = state.rows[1]![0] as { property: { type: string } };
+  propertyRow.property.type = "verification";
+  (state.rows[2]![0] as { value: unknown }).value = "Verified";
+  state.rows.push([
+    {
+      id: "page",
+      createdAt: new Date("2026-01-01"),
+      verifiedAt: null,
+      verificationUpdatedAt: new Date("2026-02-01"),
+    },
+  ]);
+  const payload = await getPagePropertyPayload("page", "workspace", "actor");
+  assert.equal(payload.values.length, 1);
+  assert.deepEqual(payload.values[0]?.value, {
+    state: "unverified",
+    verifiedAt: null,
+    verifiedById: null,
+    expiresAt: null,
+    revision: "2026-02-01T00:00:00.000Z",
+  });
 });

@@ -1,3 +1,4 @@
+import { ContentVerificationValue } from "@/sections/pages/header/components/content-verification";
 import { CalendarIcon, Layers3Icon, LockIcon, UsersIcon } from "@/components/icons";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useCallback, useSyncExternalStore, type ReactNode } from "react";
@@ -178,6 +179,9 @@ function PageBreadcrumb({ pageId }: { pageId: string }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <CollapsedBreadcrumbTrail entries={entries} />
+      {workspaceId ? (
+        <ContentVerificationValue resource={{ workspaceId, type: "page", id: pageId }} badgeOnly />
+      ) : null}
       <PageConnectionDot pageId={pageId} />
     </div>
   );
