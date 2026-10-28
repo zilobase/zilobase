@@ -28,12 +28,36 @@ export const chatToolActivitySchema = z.object({
   hasMore: z.boolean().optional(),
   error: z.string().max(512).optional(),
   cached: z.boolean().optional(),
+  searchMetadata: z
+    .object({
+      mode: z.enum(["keyword", "semantic"]),
+      indexAvailability: z.enum(["disabled", "unavailable", "building", "ready"]),
+      degradationReason: z
+        .enum([
+          "configuration",
+          "workspace_disabled",
+          "index_building",
+          "query_empty",
+          "provider_timeout",
+          "provider_unavailable",
+          "capacity",
+          "retrieval_budget",
+        ])
+        .optional(),
+    })
+    .optional(),
 });
 export type ChatToolActivity = z.infer<typeof chatToolActivitySchema>;
+export const chatCompactionSchema = z.object({
+  status: z.enum(["running", "completed", "failed"]),
+  count: z.number().int().nonnegative(),
+  summarizedMessages: z.number().int().nonnegative(),
+});
 export type ChatReadProgress = {
   activities: ChatToolActivity[];
   canContinue: boolean;
   stopReason?: string | null;
+  compaction?: z.infer<typeof chatCompactionSchema>;
 };
 
 const coverageSchema = z.object({
@@ -50,33 +74,32 @@ export const chatContextMetadataSchema: z.ZodType<BuildContextResult> = z.object
   status: z.enum(["complete", "partial", "blocked"]),
   trimmedAttachmentIds: z.array(z.string().max(128)).max(200),
   omissions: z.array(z.string().max(2048)).max(100),
-  manifest: z
-    .array(
-      z.object({
-        key: z.string().max(512),
-        type: z.enum(["page", "database", "source", "record"]),
-        id: z.string().max(128),
-        title: z.string().max(512),
-        emoji: z.string().max(16384).nullable().optional(),
-        pageId: z.string().max(128).optional(),
-        databaseId: z.string().max(128).optional(),
-        sourceId: z.string().max(128).optional(),
-        provenance: z.object({
-          capturedAt: z.string().max(128),
-          origin: z.enum(["saved", "local-editor"]),
-          revision: z.string().max(2048).optional(),
-        }),
-        coverage: coverageSchema.optional(),
+  manifest: z.array(
+    z.object({
+      key: z.string().max(512),
+      type: z.enum(["page", "database", "source", "record"]),
+      id: z.string().max(128),
+      title: z.string().max(512),
+      emoji: z.string().max(16384).nullable().optional(),
+      pageId: z.string().max(128).optional(),
+      databaseId: z.string().max(128).optional(),
+      sourceId: z.string().max(128).optional(),
+      provenance: z.object({
+        capturedAt: z.string().max(128),
+        origin: z.enum(["saved", "local-editor"]),
+        revision: z.string().max(2048).optional(),
       }),
-    )
-    .max(1000),
+      coverage: coverageSchema.optional(),
+    }),
+  ),
 });
 export const chatReadProgressEventSchema = z.object({
   type: z.literal("read-progress"),
   context: chatContextMetadataSchema,
   progress: z.object({
-    activities: z.array(chatToolActivitySchema).max(100),
+    activities: z.array(chatToolActivitySchema),
     canContinue: z.boolean(),
     stopReason: z.string().max(128).nullish(),
+    compaction: chatCompactionSchema.optional(),
   }),
 });

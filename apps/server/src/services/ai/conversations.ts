@@ -11,6 +11,8 @@ import { readPageIdentity } from "../pages/read/document-window";
 import { authorizeSourceRead } from "../databases/read/source-query";
 import type { ChatReadProgress } from "@zilobase/features/runtime";
 import { chatDisplayText } from "@zilobase/features/runtime";
+import { sealRunInput } from "./run-input";
+import type { ConversationMemory } from "./compaction";
 
 type Turn = typeof askAiTurn.$inferSelect;
 const owner = (workspaceId: string, userId: string) =>
@@ -108,7 +110,7 @@ export async function listChatThreads(context: ServerOperationContext, workspace
           ),
         )
     : [];
-  return threads.map((thread) => ({
+  return threads.map(({ compactedMemory: _compactedMemory, ...thread }) => ({
     ...thread,
     status: active.find((run) => run.threadId === thread.id)?.status,
   }));
@@ -149,8 +151,9 @@ export async function getChatThread(
     const messageRun = runs.find((item) => message.id === `${item.turnId}:assistant`);
     return messageRun ? { ...message, runId: messageRun.id } : message;
   });
+  const { compactedMemory: _compactedMemory, ...publicThread } = thread;
   return {
-    thread,
+    thread: publicThread,
     messages,
     roots: turns.at(-1)?.roots ?? [],
     run,
@@ -214,9 +217,15 @@ export async function beginChatTurn(
         previous.turn.status === "streaming"
           ? { ...previous.turn, status: "interrupted" }
           : previous.turn;
-      return { threadId: previous.thread.id, turns: [turn], replay: turn };
+      return {
+        threadId: previous.thread.id,
+        turns: [turn],
+        replay: turn,
+        compactedMemory: previous.thread.compactedMemory,
+      };
     }
     const threadId = request.threadId ?? randomUUID();
+    let compactedMemory: string | null = null;
     if (request.threadId) {
       const [thread] = await tx
         .select()
@@ -224,6 +233,7 @@ export async function beginChatTurn(
         .where(and(owner(request.workspaceId, user.id), eq(askAiThread.id, threadId)))
         .limit(1);
       if (!thread) throw new ServerOperationError({ error: "Conversation not found" }, 404);
+      compactedMemory = thread.compactedMemory;
     } else
       await tx.insert(askAiThread).values({
         id: threadId,
@@ -236,11 +246,6 @@ export async function beginChatTurn(
       .from(askAiTurn)
       .where(eq(askAiTurn.threadId, threadId))
       .orderBy(asc(askAiTurn.createdAt), asc(askAiTurn.id));
-    if (turns.length >= 100)
-      throw new ServerOperationError(
-        { error: "This conversation is full. Start a new chat." },
-        422,
-      );
     if (turns.some((turn) => turn.status === "streaming" && turn.expiresAt > new Date()))
       throw new ServerOperationError(
         { error: "Wait for the current answer or stop it first" },
@@ -260,7 +265,7 @@ export async function beginChatTurn(
       expiresAt: new Date(Date.now() + 200_000),
     });
     await tx.update(askAiThread).set({ updatedAt: new Date() }).where(eq(askAiThread.id, threadId));
-    return { threadId, turns, replay: null };
+    return { threadId, turns, replay: null, compactedMemory };
   });
   try {
     await assertHistoryAccess(context, request.workspaceId, claimed.turns);
@@ -289,5 +294,26 @@ export async function finishChatTurn(
       ...(progress ? { progress } : {}),
       updatedAt: new Date(),
     })
+    .where(and(eq(askAiTurn.id, id), eq(askAiTurn.status, "streaming")));
+}
+
+export async function persistChatMemory(
+  context: ServerOperationContext,
+  threadId: string,
+  memory: ConversationMemory,
+) {
+  await db
+    .update(askAiThread)
+    .set({ compactedMemory: sealRunInput(context.env, `thread:${threadId}`, memory) })
+    .where(
+      and(eq(askAiThread.id, threadId), eq(askAiThread.userId, context.authentication.user!.id)),
+    );
+}
+
+/** Expiry is an abandoned-request lease, not a duration limit on an active chat. */
+export async function renewChatTurn(id: string) {
+  await db
+    .update(askAiTurn)
+    .set({ expiresAt: new Date(Date.now() + 200_000) })
     .where(and(eq(askAiTurn.id, id), eq(askAiTurn.status, "streaming")));
 }

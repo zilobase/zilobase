@@ -13,19 +13,17 @@ function payloadKey(env: Record<string, unknown>) {
 }
 export function sealRunInput<T>(env: Record<string, unknown>, runId: string, input: T) {
   const value = Buffer.from(JSON.stringify(input));
-  if (value.byteLength > 2_000_000)
-    throw new ServerOperationError({ error: "Chat input exceeds size limit" }, 413);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", payloadKey(env), iv);
   cipher.setAAD(Buffer.from(runId));
   const encrypted = Buffer.concat([cipher.update(value), cipher.final()]);
   return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64");
 }
-export function openRunInput(
+export function openRunInput<T = ProviderInput>(
   env: Record<string, unknown>,
   runId: string,
   sealed: string,
-): ProviderInput {
+): T {
   const bytes = Buffer.from(sealed, "base64");
   const cipher = createDecipheriv("aes-256-gcm", payloadKey(env), bytes.subarray(0, 12));
   cipher.setAAD(Buffer.from(runId));

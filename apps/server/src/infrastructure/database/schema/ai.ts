@@ -28,6 +28,7 @@ export const askAiThread = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    compactedMemory: text("compacted_memory"),
     ...timestampColumns(),
   },
   (table) => [
@@ -98,7 +99,7 @@ export const askAiRun = pgTable(
     providerCursor: integer("provider_cursor"),
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
-    deadlineAt: timestamp("deadline_at", { withTimezone: true }).notNull(),
+    deadlineAt: timestamp("deadline_at", { withTimezone: true }),
     ...timestampColumns(),
   },
   (table) => [

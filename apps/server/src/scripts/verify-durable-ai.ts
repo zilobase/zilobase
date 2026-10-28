@@ -2,6 +2,7 @@ import { BACKGROUND_LANE_POLICY } from "../infrastructure/background/task-v2";
 import { createNodeQueueRuntime } from "@zilobase/runtime-adapter/node";
 import { getChatThread } from "../services/ai/conversations";
 import { generateReadAgent } from "../services/ai/agent";
+import type { generateChatOutput } from "../services/ai/provider";
 import { openRunInput } from "../services/ai/run-input";
 import { MockLanguageModelV4 } from "ai/test";
 import { processAiGeneration } from "../services/ai/background";
@@ -28,6 +29,7 @@ import {
   askAiRunInput,
   askAiRunEvent,
   askAiTurn,
+  askAiThread,
   backgroundDispatch,
   member,
   session,
@@ -368,7 +370,7 @@ try {
         ),
         "Admission must not preload record content",
       );
-      const providerFor = (continuing = false) =>
+      const providerFor = (continuing = false, noProgress = false) =>
         async function* (
           ctx: ServerOperationContext,
           input: import("../services/ai/provider").ProviderInput,
@@ -380,7 +382,11 @@ try {
           let step = 0;
           const pending = Object.values(input.agent!.pending)[0];
           const model = new MockLanguageModelV4({
-            doStream: async () => {
+            doStream: async ({ tools }) => {
+              if (continuing) {
+                assert.ok(!tools?.some((tool) => tool.name === "search_workspace"));
+                assert.ok(!tools?.some((tool) => tool.name === "semantic_search_workspace"));
+              }
               const current = step++;
               if (!continuing && current === 1)
                 assert.ok(
@@ -388,7 +394,7 @@ try {
                   "Page content must arrive through read_page",
                 );
               const invocation = continuing
-                ? current === 0
+                ? current === 0 && !noProgress
                   ? { name: pending!.name, input: pending!.input }
                   : null
                 : current === 0
@@ -448,6 +454,7 @@ try {
               };
             },
           });
+          input.agent!.intent ??= { mode: "read", keywordQuery: null, teamspaceNames: [] };
           yield* generateReadAgent(ctx, input.agent!, signal, { model, persistence });
         };
       await processAiGeneration(env, { runId: toolRun.runId, workerId: "tools" }, providerFor());
@@ -479,6 +486,14 @@ try {
         continueFromRunId: toolRun.runId,
         text: "Continue reading [[page:tools-page-0]] [[database:tools-db]]",
       });
+      const [continuationInput] = await client.db
+        .select()
+        .from(askAiRunInput)
+        .where(eq(askAiRunInput.runId, continued.runId));
+      const resumed = openRunInput(env, continued.runId, continuationInput!.sealed).agent!;
+      assert.equal(resumed.messages.length, 1, "Continuation starts a fresh model window");
+      assert.ok(!JSON.stringify(resumed.messages).includes("Saved project plan 0"));
+      assert.ok(resumed.continuation?.initialProgress);
       await processAiGeneration(
         env,
         { runId: continued.runId, workerId: "continue" },
@@ -491,6 +506,31 @@ try {
         lastPage.context?.manifest.some((entry) => entry.key === "record:tools-source:tools-row-1"),
       );
       assert.ok(lastPage.text.includes("Second project"));
+      const stalled = await admitChatRun(context, {
+        ...toolRequest,
+        requestId: randomUUID(),
+        threadId: toolRun.threadId,
+        continueFromRunId: toolRun.runId,
+        text: "Continue reading [[page:tools-page-0]] [[database:tools-db]]",
+      });
+      await processAiGeneration(
+        env,
+        { runId: stalled.runId, workerId: "no-progress" },
+        providerFor(true, true),
+      );
+      const stalledResult = await getChatRequest(context, stalled.requestId, "workspace");
+      assert.equal(stalledResult.progress?.canContinue, false);
+      assert.equal(stalledResult.progress?.stopReason, "no_progress");
+      await assert.rejects(
+        admitChatRun(context, {
+          ...toolRequest,
+          requestId: randomUUID(),
+          threadId: toolRun.threadId,
+          continueFromRunId: stalled.runId,
+          text: "Continue reading [[page:tools-page-0]] [[database:tools-db]]",
+        }),
+        /cannot be continued/,
+      );
       await assert.rejects(
         admitChatRun(context, {
           ...toolRequest,
@@ -501,6 +541,139 @@ try {
         }),
         /sources changed/,
       );
+
+      // A chat longer than the former 100-turn ceiling compacts to durable,
+      // encrypted memory, then carries that memory into the next message.
+      for (let i = 0; i < 105; i++)
+        await client.db.insert(askAiTurn).values({
+          id: randomUUID(),
+          threadId: toolRun.threadId,
+          requestHash: randomUUID(),
+          userText: `${i === 0 ? "Remember EU hosting for launch." : "Earlier discussion."} ${"context ".repeat(120)}`,
+          assistantText: "We chose EU hosting. " + "detail ".repeat(120),
+          status: "completed",
+          roots: [],
+          context: {
+            version: 1,
+            status: "complete",
+            charCount: 0,
+            manifest: [],
+            omissions: [],
+            trimmedAttachmentIds: [],
+          },
+          expiresAt: new Date(Date.now() + 60_000),
+          createdAt: new Date(Date.now() - 200_000 + i * 1000),
+        });
+      const memoryRun = await admitChatRun(context, {
+        workspaceId: "workspace",
+        requestId: randomUUID(),
+        threadId: toolRun.threadId,
+        text: "What did we decide about hosting?",
+      });
+      const compactingProvider = async function* (
+        ctx,
+        input,
+        signal,
+        _cursor,
+        _transport,
+        persistence,
+      ) {
+        const model = new MockLanguageModelV4({
+          doGenerate: async () => ({
+            content: [
+              {
+                type: "text",
+                text: "The user decided to use EU hosting for launch. Earlier read and record coverage remain in the retained inventory.",
+              },
+            ],
+            finishReason: { unified: "stop", raw: "stop" },
+            warnings: [],
+            usage: {
+              inputTokens: { total: 20, noCache: 20, cacheRead: 0, cacheWrite: 0 },
+              outputTokens: { total: 5, text: 5, reasoning: 0 },
+            },
+          }),
+          doStream: async ({ prompt }) => {
+            assert.ok(JSON.stringify(prompt).includes("EU hosting"));
+            return {
+              stream: new ReadableStream({
+                start(controller) {
+                  controller.enqueue({ type: "stream-start", warnings: [] });
+                  controller.enqueue({ type: "text-start", id: "memory" });
+                  controller.enqueue({
+                    type: "text-delta",
+                    id: "memory",
+                    delta: "We decided on EU hosting.",
+                  });
+                  controller.enqueue({ type: "text-end", id: "memory" });
+                  controller.enqueue({
+                    type: "finish",
+                    finishReason: { unified: "stop", raw: "stop" },
+                    usage: {
+                      inputTokens: { total: 20, noCache: 20, cacheRead: 0, cacheWrite: 0 },
+                      outputTokens: { total: 5, text: 5, reasoning: 0 },
+                    },
+                  });
+                  controller.close();
+                },
+              }),
+            };
+          },
+        });
+        input.agent!.intent ??= { mode: "read", keywordQuery: null, teamspaceNames: [] };
+        yield* generateReadAgent(ctx, input.agent!, signal, { model, persistence });
+      } satisfies typeof generateChatOutput;
+      await processAiGeneration(
+        env,
+        { runId: memoryRun.runId, workerId: "compaction" },
+        compactingProvider,
+      );
+      const memoryResult = await getChatRequest(context, memoryRun.requestId, "workspace");
+      assert.equal(memoryResult.progress?.compaction?.status, "completed");
+      const restoredThread = await getChatThread(context, "workspace", toolRun.threadId);
+      assert.equal(restoredThread.messages.at(-1)?.progress?.compaction?.status, "completed");
+      assert.ok(!("compactedMemory" in restoredThread.thread));
+      const [memoryThread] = await client.db
+        .select()
+        .from(askAiThread)
+        .where(eq(askAiThread.id, toolRun.threadId));
+      assert.ok(memoryThread!.compactedMemory);
+      assert.ok(!memoryThread!.compactedMemory.includes("EU hosting"));
+      const memory = openRunInput<{ summary: string; throughTurnId: string }>(
+        env,
+        `thread:${toolRun.threadId}`,
+        memoryThread!.compactedMemory,
+      );
+      assert.ok(memory.summary.includes("EU hosting"));
+      assert.ok(memory.throughTurnId);
+      const following = await admitChatRun(context, {
+        workspaceId: "workspace",
+        requestId: randomUUID(),
+        threadId: toolRun.threadId,
+        text: "And which region?",
+      });
+      const [followingInput] = await client.db
+        .select()
+        .from(askAiRunInput)
+        .where(eq(askAiRunInput.runId, following.runId));
+      const followingState = openRunInput(env, following.runId, followingInput!.sealed).agent!;
+      assert.ok(JSON.stringify(followingState.messages).includes("EU hosting"));
+      assert.equal(followingState.conversation?.memory?.throughTurnId, memory.throughTurnId);
+      assert.ok(
+        followingState.grants.some((grant) => grant.resource.id === "tools-db"),
+        "Typed prior sources remain discoverable for follow-up live reads",
+      );
+      assert.deepEqual(
+        followingState.context.manifest,
+        [],
+        "Historical source references are not current evidence",
+      );
+      assert.ok(
+        !followingState.grants.some((grant) => grant.resource.id === "EU hosting"),
+        "Prose summaries cannot grant content access",
+      );
+      await cancelChatRun(context, following.runId, "workspace");
+      console.info("PASS rolling compaction, encrypted summary, >100 turns, and follow-up context");
 
       let calls = 0;
       const queueEnv = { ...env, QUEUE_REDIS_URL: process.env.ZILOBASE_QUEUE_VERIFY_URL };

@@ -46,10 +46,21 @@ export type AgentKnowledge = {
     section?: string;
     complete: boolean;
     returned: number;
+    historical?: boolean;
   }>;
   repeatedInspections: number;
   unavailable: string[];
   inventoryLimited?: boolean;
+  searchKeys?: string[];
+  stalledProgress?: string;
+  operations?: Array<{
+    key: string;
+    tool: ChatToolName;
+    input: Record<string, unknown>;
+    signature: string;
+    progress: string;
+    result: Record<string, unknown>;
+  }>;
 };
 export const newAgentKnowledge = (): AgentKnowledge => ({
   sources: [],
@@ -61,7 +72,7 @@ export const newAgentKnowledge = (): AgentKnowledge => ({
 export const inspectionKey = (input: InspectionInput) =>
   JSON.stringify([input.id, input.dataSourceId, input.section, input.cursor]);
 
-/** Pure bounded, encrypted-checkpoint memory. It never authorizes a resource. */
+/** Data-only encrypted-checkpoint memory. It never authorizes a resource. */
 export function rememberInspection(
   state: AgentState,
   input: InspectionInput,
@@ -71,11 +82,6 @@ export function rememberInspection(
   const key = inspectionKey(input);
   knowledge.inspections = knowledge.inspections.filter((entry) => entry.key !== key);
   knowledge.inspections.push({ key, input, result, revision: String(result.revision), hits: 0 });
-  while (
-    knowledge.inspections.length > 32 ||
-    new TextEncoder().encode(JSON.stringify(knowledge.inspections)).length > 65_536
-  )
-    knowledge.inspections.shift();
   for (const entry of result.entries ?? []) {
     if (input.section !== "sources") continue;
     const dataSourceId = entry.dataSourceId ?? entry.id;
@@ -99,11 +105,6 @@ export function rememberInspection(
         revision,
       });
   }
-  if (knowledge.sources.length > 100) {
-    knowledge.inventoryLimited = true;
-    state.progress.stopReason = "memory_budget";
-  }
-  knowledge.sources = knowledge.sources.slice(0, 100);
   rememberRead(
     state,
     "describe_source",
@@ -132,7 +133,6 @@ export function rememberRead(
     entry.section === section;
   knowledge.reads = knowledge.reads.filter((entry) => !match(entry));
   knowledge.reads.push({ tool, resource, dataSourceId, section, complete, returned });
-  knowledge.reads = knowledge.reads.slice(-640);
   if (tool !== "describe_source") {
     knowledge.repeatedInspections = 0;
     if (resource.type === "database") {
@@ -150,13 +150,18 @@ export function forgetDatabaseKnowledge(state: AgentState, databaseId: string) {
   knowledge.reads = knowledge.reads.filter(
     (entry) => entry.resource.type !== "database" || entry.resource.id !== databaseId,
   );
+  knowledge.operations = knowledge.operations?.filter(
+    (entry) => (entry.input.databaseId ?? entry.input.id) !== databaseId,
+  );
 }
 
 export function markReadUnavailable(state: AgentState, resource: ResourceRef) {
   const key = `${resource.type}:${resource.id}`;
   if (!state.knowledge!.unavailable.includes(key)) state.knowledge!.unavailable.push(key);
-  state.knowledge!.unavailable = state.knowledge!.unavailable.slice(-200);
   if (resource.type === "database") forgetDatabaseKnowledge(state, resource.id);
+  state.knowledge!.operations = state.knowledge!.operations?.filter(
+    (entry) => (entry.input.pageId ?? entry.input.databaseId ?? entry.input.id) !== resource.id,
+  );
   const dependentPages = new Set(
     state.grants
       .filter((grant) => grant.parent?.type === resource.type && grant.parent.id === resource.id)
@@ -260,6 +265,7 @@ export function agentKnowledgeSummary(state: AgentState) {
     pending: typeof state.pending;
     inventoryLimited?: boolean;
     summaryLimited: boolean;
+    operations?: Array<Record<string, unknown>>;
   } = {
     sources: [],
     discovered: [],
@@ -269,74 +275,54 @@ export function agentKnowledgeSummary(state: AgentState) {
     inventoryLimited: knowledge.inventoryLimited,
     summaryLimited: false,
   };
-  const fits = () => new TextEncoder().encode(JSON.stringify(inventory)).length <= 6000;
-  for (const source of [...knowledge.sources].sort(
-    (a, b) => Number(a.recordsRead) - Number(b.recordsRead),
-  )) {
-    inventory.sources.push(source);
-    if (!fits()) {
-      inventory.sources.pop();
-      inventory.summaryLimited = true;
-      break;
-    }
-  }
-  // Search grants survive checkpoint recovery even if their tool exchange was
-  // compacted. Keep their typed identities available without treating them as reads.
-  for (const { resource, parent } of [...state.grants].reverse()) {
-    if (
-      parent ||
-      state.roots.some((root) => root.type === resource.type && root.id === resource.id) ||
-      knowledge.unavailable.includes(`${resource.type}:${resource.id}`)
+  inventory.sources = knowledge.sources;
+  inventory.reads = knowledge.reads;
+  inventory.pending = state.pending;
+  inventory.operations = (knowledge.operations ?? []).map(({ tool, input, result }) => ({
+    tool,
+    input,
+    coverage: result.coverage,
+    ...(tool === "aggregate_records"
+      ? {
+          value: result.value,
+          operation: result.operation,
+          matchingRecords: result.matchingRecords,
+        }
+      : {}),
+  }));
+  inventory.discovered = state.grants
+    .filter(
+      ({ resource, parent }) =>
+        !parent && !knowledge.unavailable.includes(`${resource.type}:${resource.id}`),
     )
-      continue;
-    inventory.discovered.push(resource);
-    if (!fits()) {
-      inventory.discovered.pop();
-      inventory.summaryLimited = true;
-      break;
-    }
-  }
-  for (const inspection of [...knowledge.inspections].reverse()) {
-    const entry = {
-      databaseId: inspection.input.id,
-      dataSourceId: inspection.input.dataSourceId,
-      section: inspection.input.section,
-      revision: inspection.revision,
-      entries: (inspection.result.entries ?? [])
-        .slice(0, 20)
-        .map((item: Record<string, unknown>) => ({
-          kind: item.kind,
-          propertyId:
-            item.propertyId ?? (inspection.input.section === "properties" ? item.id : undefined),
-          viewId: item.viewId ?? (inspection.input.section === "views" ? item.id : undefined),
-          name: item.name,
-          type: item.type,
-        })),
-      complete: inspection.result.coverage?.complete,
-    };
-    inventory.inspections.push(entry);
-    if (!fits()) {
-      inventory.inspections.pop();
-      inventory.summaryLimited = true;
-    }
-  }
-  for (const read of [...knowledge.reads].reverse()) {
-    inventory.reads.push(read);
-    if (!fits()) {
-      inventory.reads.pop();
-      inventory.summaryLimited = true;
-      break;
-    }
-  }
-  for (const [key, read] of Object.entries(state.pending)) {
-    inventory.pending[key] = read;
-    if (!fits()) {
-      delete inventory.pending[key];
-      inventory.summaryLimited = true;
-      break;
-    }
-  }
+    .map(({ resource }) => resource);
+  inventory.inspections = knowledge.inspections.map((entry) => ({
+    databaseId: entry.input.id,
+    dataSourceId: entry.input.dataSourceId,
+    section: entry.input.section,
+    revision: entry.revision,
+    entries: entry.result.entries,
+    complete: entry.result.coverage?.complete,
+  }));
   return JSON.stringify(inventory);
+}
+
+/** Persist identities and coverage only, never tool bodies or access decisions. */
+export function retainConversationSources(state: AgentState) {
+  if (!state.conversation) return;
+  const retained = {
+    grants: state.grants,
+    reads: (state.knowledge?.reads ?? []).map(({ historical: _historical, ...read }) => read),
+  };
+  if (!retained.grants.length && !retained.reads.length) return;
+  const previous = state.conversation.memory;
+  if (JSON.stringify(previous?.retained) === JSON.stringify(retained)) return;
+  state.conversation.memory = {
+    summary: previous?.summary ?? "",
+    throughTurnId: previous?.throughTurnId ?? "",
+    retained: structuredClone(retained),
+  };
+  state.conversation.dirty = true;
 }
 
 /** Work must be a real pending cursor or an unread, discovered source/page, not merely a stop label. */

@@ -1,4 +1,15 @@
 import { expect, test, vi } from "vitest";
+vi.mock("./intent", async (original) => ({
+  ...(await original<typeof import("./intent")>()),
+  routeSearchIntent: async () => ({
+    intent: { mode: "read", keywordQuery: null, teamspaceNames: [] },
+    usage: {},
+  }),
+}));
+vi.mock("./conversations", async (original) => ({
+  ...(await original<typeof import("./conversations")>()),
+  persistChatMemory: vi.fn(async () => {}),
+}));
 vi.mock("../operations/context", async (original) => ({
   ...(await original<typeof import("../operations/context")>()),
   runServerOperation: async (_context: unknown, run: () => Promise<unknown>) => run(),
@@ -64,7 +75,12 @@ test("chat sends source references without eagerly loading content and emits tex
   const authorize = vi.fn(
     async () => ({}) as Awaited<ReturnType<typeof import("./context").authorizeChatWorkspace>>,
   );
-  const begin = vi.fn(async () => ({ threadId: "thread", turns: [], replay: null }));
+  const begin = vi.fn(async () => ({
+    threadId: "thread",
+    turns: [],
+    replay: null,
+    compactedMemory: null,
+  }));
   const prepared = await prepareChat(
     context,
     { workspaceId: request.workspaceId, requestId: request.requestId, text: "Read page:plan" },
@@ -113,7 +129,7 @@ test("authorization failure prevents provider setup and streaming", async () => 
       authorize: async () => {
         throw new Error("Forbidden");
       },
-      begin: async () => ({ threadId: "thread", turns: [], replay: null }),
+      begin: async () => ({ threadId: "thread", turns: [], replay: null, compactedMemory: null }),
       finish: async () => {},
       model,
     }),
@@ -143,7 +159,7 @@ test("aborting after a partial delta stops the provider and persists the partial
     authorize: async () =>
       ({}) as Awaited<ReturnType<typeof import("./context").authorizeChatWorkspace>>,
     model: () => model,
-    begin: async () => ({ threadId: "thread", turns: [], replay: null }),
+    begin: async () => ({ threadId: "thread", turns: [], replay: null, compactedMemory: null }),
     finish,
   });
   const events = [];
@@ -179,7 +195,7 @@ test("provider failure emits a useful error and finalizes the saved turn", async
     authorize: async () =>
       ({}) as Awaited<ReturnType<typeof import("./context").authorizeChatWorkspace>>,
     model: () => model,
-    begin: async () => ({ threadId: "thread", turns: [], replay: null }),
+    begin: async () => ({ threadId: "thread", turns: [], replay: null, compactedMemory: null }),
     finish,
   });
   const events = [];

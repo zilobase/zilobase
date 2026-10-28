@@ -34,12 +34,16 @@ import {
 } from "../../infrastructure/background/task-v2";
 import { ServerOperationError, type ServerOperationContext } from "../operations/context";
 import { authorizeChatWorkspace } from "./context";
-import { createAgentState, emptyChatContext, type AgentState } from "./agent-state";
+import {
+  createAgentState,
+  emptyChatContext,
+  resumeAgentState,
+  type AgentState,
+} from "./agent-state";
 import { chatRequestSchema, chatDisplayText } from "@zilobase/features/runtime";
 import { assertHistoryAccess } from "./conversations";
 import { CHAT_INSTRUCTIONS, configuredChatModel, DEFAULT_CHAT_MODEL } from "./chat";
-import { chatBudget, budgetHistory } from "./budget";
-import { assertAgentPromptFits } from "./agent";
+import { attachConversationHistory, type ConversationMemory } from "./compaction";
 import { type ProviderChunk } from "./provider";
 import { openRunInput, sealRunInput } from "./run-input";
 import { createAiDiagnostics } from "./diagnostics";
@@ -114,7 +118,6 @@ async function admitChatRunOperation(
       existing.turn.progress,
     );
   }
-  const budget = chatBudget(context.env, CHAT_INSTRUCTIONS, request.text, !!request.threadId);
   let continued: AgentState | undefined;
   if (request.continueFromRunId) {
     const previous = await readChatRun(context, request.continueFromRunId, request.workspaceId);
@@ -143,6 +146,8 @@ async function admitChatRunOperation(
         { error: "Continuation sources changed. Ask again with your sources." },
         409,
       );
+    if (!resumeAgentState(continued))
+      throw new ServerOperationError({ error: "No unfinished reads remain to continue" }, 409);
   }
   const built = continued?.context ?? emptyChatContext();
   const { markdown: _markdown, ...metadata } = built;
@@ -162,6 +167,7 @@ async function admitChatRunOperation(
       return snapshot(found.run, previous.assistantText, previous.context, previous.progress);
     }
     const threadId = request.threadId ?? randomUUID();
+    let compactedMemory: string | null = null;
     if (request.threadId) {
       const [thread] = await tx
         .select()
@@ -174,6 +180,7 @@ async function admitChatRunOperation(
           ),
         );
       if (!thread) throw new ServerOperationError({ error: "Conversation not found" }, 404);
+      compactedMemory = thread.compactedMemory;
     } else
       await tx.insert(askAiThread).values({
         id: threadId,
@@ -187,44 +194,30 @@ async function admitChatRunOperation(
       .where(eq(askAiTurn.threadId, threadId))
       .orderBy(asc(askAiTurn.createdAt), asc(askAiTurn.id));
     await assertHistoryAccess(context, request.workspaceId, turns);
-    if (turns.length >= 100)
-      throw new ServerOperationError({ error: "Conversation is full. Start a new chat." }, 422);
-    if (turns.some((turn) => turn.status === "streaming" && turn.expiresAt > new Date()))
+    if (turns.some((turn) => turn.status === "streaming"))
       throw new ServerOperationError(
         { error: "Wait for the current answer or stop it first" },
         409,
       );
-    const history = budgetHistory(turns, budget.historyBytes);
     const runId = randomUUID();
     const agent =
       continued ??
       createAgentState(request.workspaceId, request.roots, [
-        ...history.messages,
         {
           role: "user",
           content: `Mentioned sources (references only): ${JSON.stringify(request.roots)}\n\nUser question:\n${request.text}`,
         },
       ]);
-    if (continued) {
-      agent.messages.push({
-        role: "user",
-        content: `Original task: ${agent.task}\nContinue unfinished reads in the retained inventory and these remaining cursors: ${JSON.stringify(agent.pending)}. Recheck changed sources; do not repeat completed pages.`,
-      });
-      agent.steps = 0;
-      agent.calls = 0;
-      agent.inputTokens = 0;
-      agent.outputTokens = 0;
-      agent.chargedTokens = 0;
-      agent.usage = undefined;
-      if (agent.knowledge) agent.knowledge.repeatedInspections = 0;
-      agent.committedText = "";
-      agent.progress = { activities: [], canContinue: true };
-      agent.debug = undefined;
-    }
-    assertAgentPromptFits(context.env, agent.messages);
+    if (!continued)
+      attachConversationHistory(
+        agent,
+        turns,
+        compactedMemory
+          ? openRunInput<ConversationMemory>(context.env, `thread:${threadId}`, compactedMemory)
+          : undefined,
+      );
     const sealed = sealRunInput(context.env, runId, {
       messages: agent.messages,
-      maxOutputTokens: budget.output,
       model: String(context.env.AI_MODEL ?? "").trim() || DEFAULT_CHAT_MODEL,
       agent,
     });
@@ -251,7 +244,7 @@ async function admitChatRunOperation(
         model: String(context.env.AI_MODEL ?? "").trim() || DEFAULT_CHAT_MODEL,
         background: false,
         agentVersion: 2,
-        deadlineAt: deadline,
+        deadlineAt: null,
       })
       .returning();
     await tx.insert(askAiRunInput).values({ runId, sealed, expiresAt: new Date(agent.expiresAt) });
@@ -458,7 +451,7 @@ export async function claimChatRun(runId: string, owner: string, cellId: string)
       .where(and(eq(askAiRun.id, runId), eq(askAiRun.cellId, cellId)))
       .for("update");
     if (!run || isRunTerminal(run.status)) return null;
-    if (run.cancelRequestedAt || run.deadlineAt <= new Date()) {
+    if (run.cancelRequestedAt || (run.deadlineAt && run.deadlineAt <= new Date())) {
       await finalizeRunLocked(tx, run, run.cancelRequestedAt ? "stopped" : "interrupted");
       return null;
     }
@@ -533,10 +526,19 @@ export async function checkpointChatRun(
       const sealed = sealRunInput(env, runId, {
         messages: state.messages,
         model: run.model,
-        maxOutputTokens: 4096,
         agent: state,
       });
-      await tx.update(askAiRunInput).set({ sealed }).where(eq(askAiRunInput.runId, runId));
+      await tx
+        .update(askAiRunInput)
+        .set({ sealed, expiresAt: new Date(state.expiresAt) })
+        .where(eq(askAiRunInput.runId, runId));
+      if (state.conversation?.dirty && state.conversation.memory)
+        await tx
+          .update(askAiThread)
+          .set({
+            compactedMemory: sealRunInput(env, `thread:${run.threadId}`, state.conversation.memory),
+          })
+          .where(eq(askAiThread.id, run.threadId));
     }
     if (chunk.text) {
       if (chunk.text.length > 65_536) throw new Error("CHAT_RUN_BATCH_TOO_LARGE");

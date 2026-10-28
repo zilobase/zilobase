@@ -1,19 +1,32 @@
 import { afterEach, expect, test, vi } from "vitest";
+vi.mock("./intent", async (original) => {
+  const actual = await original<typeof import("./intent")>();
+  return {
+    ...actual,
+    routeSearchIntent: async (...args: Parameters<typeof actual.routeSearchIntent>) =>
+      process.env.AI_LIVE_SMOKE === "1"
+        ? actual.routeSearchIntent(...args)
+        : {
+            intent: {
+              mode: /^Find\b/i.test(actual.currentQuestion(args[1])) ? "list" : "read",
+              keywordQuery: null,
+              teamspaceNames: [],
+            },
+            usage: {},
+          },
+  };
+});
 vi.mock("../operations/context", async (original) => ({
   ...(await original<typeof import("../operations/context")>()),
   runServerOperation: async (_: unknown, run: () => Promise<unknown>) => run(),
 }));
 import { MockLanguageModelV4 } from "ai/test";
 import type { ServerOperationContext } from "../operations/context";
-import {
-  compactAgentMessages,
-  generateReadAgent,
-  readAgentLimits,
-  assertAgentPromptFits,
-} from "./agent";
+import { generateReadAgent } from "./agent";
 import { chatRequestSchema } from "@zilobase/features/runtime";
-import { createAgentState, type AgentState } from "./agent-state";
+import { createAgentState, resumeAgentState, type AgentState } from "./agent-state";
 import type { ReadToolDependencies } from "./read-tools";
+import { rememberRead } from "./agent-memory";
 
 const context = { env: {} } as ServerOperationContext;
 afterEach(() => vi.restoreAllMocks());
@@ -185,83 +198,6 @@ for (const discovery of [null, "search_workspace", "semantic_search_workspace", 
     expect(JSON.stringify(diagnostics)).not.toMatch(/Due Friday|What is due|Mentioned page/);
   });
 
-test("compaction removes whole tool exchanges and preserves the latest request", () => {
-  const result = compactAgentMessages(
-    [
-      { role: "user", content: "original question" },
-      {
-        role: "assistant",
-        content: [{ type: "tool-call", toolCallId: "old", toolName: "read_page", input: {} }],
-      },
-      {
-        role: "tool",
-        content: [
-          {
-            type: "tool-result",
-            toolCallId: "old",
-            toolName: "read_page",
-            output: { type: "text", value: "x".repeat(4000) },
-          },
-        ],
-      },
-      {
-        role: "assistant",
-        content: [{ type: "tool-call", toolCallId: "new", toolName: "read_page", input: {} }],
-      },
-      {
-        role: "tool",
-        content: [
-          {
-            type: "tool-result",
-            toolCallId: "new",
-            toolName: "read_page",
-            output: { type: "text", value: "latest evidence" },
-          },
-        ],
-      },
-    ],
-    1000,
-  );
-  expect(result.omitted).toBe(1);
-  expect(result.messages.map((m) => m.role)).toEqual(["user", "assistant", "tool"]);
-  expect(JSON.stringify(result.messages)).not.toContain('"old"');
-  expect(JSON.stringify(result.messages)).toContain("original question");
-});
-
-test("limits reject invalid deployment settings rather than silently exceeding them", () => {
-  expect(() => readAgentLimits({ AI_MAX_STEPS: "0" })).toThrow(/AI_MAX_STEPS/);
-  expect(() => readAgentLimits({ AI_CONTEXT_WINDOW_TOKENS: "invalid" })).toThrow(
-    /AI_CONTEXT_WINDOW_TOKENS/,
-  );
-  expect(readAgentLimits({})).toMatchObject({ maxSteps: 12, maxCalls: 24, totalTokens: 128000 });
-  expect(() => assertAgentPromptFits({}, [{ role: "user", content: "x".repeat(32768) }])).toThrow(
-    /Shorten the question/,
-  );
-});
-test("an exhausted context or usage budget completes with explicit coverage and no provider call", async () => {
-  const state = createAgentState(
-    "workspace",
-    [{ type: "page", id: "page" }],
-    [{ role: "user", content: "Read this source" }],
-  );
-  state.usage!.actualInput = 8192;
-  const model = new MockLanguageModelV4();
-  const chunks = [];
-  for await (const chunk of generateReadAgent(
-    { ...context, env: { AI_RUN_TOKEN_BUDGET: "8192" } },
-    state,
-    new AbortController().signal,
-    { model },
-  ))
-    chunks.push(chunk);
-  expect(model.doStreamCalls).toHaveLength(0);
-  expect(chunks.at(-1)).toMatchObject({
-    completed: true,
-    progress: { canContinue: true, stopReason: "token_budget" },
-  });
-  expect(state.context.status).toBe("partial");
-});
-
 function responseStream(call?: { toolName: string; input: unknown }) {
   return {
     stream: new ReadableStream({
@@ -297,8 +233,258 @@ function responseStream(call?: { toolName: string; input: unknown }) {
   };
 }
 
-test("reported usage releases reservations so six small calls do not exhaust a 128k run", async () => {
-  const fixture = budgetFixture();
+for (const toolName of ["search_workspace", "semantic_search_workspace"])
+  test(`${toolName} lists matches and stops without another model call or page read`, async () => {
+    const fixture = agentFixture();
+    fixture.state = createAgentState(
+      "workspace",
+      [],
+      [{ role: "user", content: "Find pages and databases mentioning support macros" }],
+    );
+    const search = vi.fn(async () => ({
+      results: [
+        {
+          type: "page" as const,
+          id: "launch",
+          title: "Review launch checklist",
+          path: "Launch",
+          excerpt: "Support macros",
+          emoji: null,
+          entity: {},
+          updatedAt: new Date(),
+        },
+        ...(toolName === "search_workspace"
+          ? [
+              {
+                type: "database" as const,
+                id: "tasks",
+                title: "Tasks",
+                path: "Tasks",
+                excerpt: null,
+                emoji: null,
+                entity: {},
+                updatedAt: new Date(),
+              },
+            ]
+          : []),
+      ],
+    }));
+    const document = vi.fn();
+    const model = new MockLanguageModelV4({
+      doStream: async ({ prompt }) => {
+        expect(JSON.stringify(prompt)).toContain("responseMode=list");
+        return responseStream({
+          toolName,
+          input: { query: "support macros", responseMode: "list" },
+        });
+      },
+    });
+    const chunks = [];
+    for await (const chunk of generateReadAgent(context, fixture.state, fixture.signal, {
+      model,
+      dependencies: { ...fixture.dependencies, search, document } as ReadToolDependencies,
+    }))
+      chunks.push(chunk);
+    const text = chunks.map((chunk) => chunk.text ?? "").join("");
+    expect(text).toContain("[Review launch checklist](/p/launch)");
+    if (toolName === "search_workspace") expect(text).toContain("[Tasks](/d/tasks)");
+    expect(text).toContain("page contents were not read");
+    expect(model.doStreamCalls).toHaveLength(1);
+    expect(search).toHaveBeenCalledOnce();
+    expect(document).not.toHaveBeenCalled();
+    expect(fixture.state.context.manifest).toEqual([]);
+    expect(fixture.state.progress.canContinue).toBe(false);
+    expect(fixture.state.progress.stopReason).toBeUndefined();
+    expect(resumeAgentState(fixture.state)).toBe(false);
+  });
+
+test("a 50-match listing does not need to fit another model request or the read-result byte cap", async () => {
+  const fixture = agentFixture();
+  fixture.state = createAgentState("workspace", [], [{ role: "user", content: "Find 50 pages" }]);
+  const search = vi.fn(async () => ({
+    results: Array.from({ length: 50 }, (_, i) => ({
+      type: "page" as const,
+      id: `match-${i}`,
+      title: `[Page ${i}] ` + "界".repeat(200),
+      path: "界".repeat(200),
+      excerpt: "界".repeat(200),
+      emoji: null,
+      entity: {},
+      updatedAt: new Date(),
+    })),
+  }));
+  const model = new MockLanguageModelV4({
+    doStream: async () =>
+      responseStream({
+        toolName: "search_workspace",
+        input: { query: "pages", limit: 50, responseMode: "list" },
+      }),
+  });
+  for await (const _chunk of generateReadAgent(context, fixture.state, fixture.signal, {
+    model,
+    dependencies: { ...fixture.dependencies, search } as ReadToolDependencies,
+  })) {
+    /* drain */
+  }
+  expect(fixture.state.committedText).toContain("/p/match-49");
+  expect(fixture.state.committedText).toContain("\\[Page 0\\]");
+  expect(model.doStreamCalls).toHaveLength(1);
+  expect(fixture.state.progress.stopReason).toBeUndefined();
+  expect(fixture.state.progress.canContinue).toBe(false);
+});
+
+test("a recovered listing finishes from its checkpoint without searching or reading again", async () => {
+  const fixture = agentFixture();
+  fixture.state.searchListing = { matches: [{ type: "page", id: "found", title: "Found" }] };
+  const model = new MockLanguageModelV4();
+  const chunks = [];
+  for await (const chunk of generateReadAgent(context, fixture.state, fixture.signal, { model }))
+    chunks.push(chunk);
+  expect(chunks.map((chunk) => chunk.text ?? "").join("")).toContain("[Found](/p/found)");
+  expect(model.doStreamCalls).toHaveLength(0);
+  expect(fixture.state.searchListing.emitted).toBe(true);
+});
+
+test("continuation uses a fresh window and resumes the existing page cursor without rediscovery", async () => {
+  const fixture = agentFixture();
+  fixture.state.grants.push({ resource: { type: "page", id: "completed" } });
+  rememberRead(fixture.state, "read_page", { type: "page", id: "completed" }, true, 1);
+  // Obtain a real cursor through the tool so fingerprint validation remains exercised.
+  const { createReadTools, readToolSchemas } = await import("./read-tools");
+  const document = vi.fn(async (_context: unknown, input: { offset?: number }) => ({
+    title: "Page",
+    revision: "1",
+    offset: input.offset ?? 0,
+    entries: [
+      {
+        kind: "text",
+        block: input.offset ?? 0,
+        text: input.offset ? "Remaining text" : "First text",
+      },
+    ],
+    hasMore: !input.offset,
+  }));
+  const dependencies = {
+    ...fixture.dependencies,
+    document,
+    search: vi.fn(),
+  } as ReadToolDependencies;
+  const tools = createReadTools(context, fixture.state, {
+    signal: fixture.signal,
+
+    dependencies,
+  });
+  const first = (await tools.read_page.execute!(
+    readToolSchemas.read_page.parse({ pageId: "page" }),
+    {
+      toolCallId: "first",
+      messages: [],
+      context: {},
+      abortSignal: fixture.signal,
+    },
+  )) as { continuation: { nextCursor: string } };
+  fixture.state.messages.push({ role: "assistant", content: "old tool transcript ".repeat(10000) });
+  fixture.state.progress.stopReason = "context_budget";
+  expect(resumeAgentState(fixture.state)).toBe(true);
+  expect(JSON.stringify(fixture.state.messages)).not.toContain("old tool transcript");
+  let step = 0;
+  const model = new MockLanguageModelV4({
+    doStream: async ({ prompt, tools }) => {
+      expect(tools?.map((tool) => tool.name)).not.toContain("search_workspace");
+      expect(tools?.map((tool) => tool.name)).not.toContain("semantic_search_workspace");
+      expect(JSON.stringify(prompt)).toContain("completed");
+      return responseStream(
+        step++ === 0
+          ? {
+              toolName: "read_page",
+              input: { pageId: "page", cursor: first.continuation.nextCursor },
+            }
+          : undefined,
+      );
+    },
+  });
+  for await (const _chunk of generateReadAgent(context, fixture.state, fixture.signal, {
+    model,
+    dependencies,
+  })) {
+    /* drain */
+  }
+  expect(dependencies.search).not.toHaveBeenCalled();
+  expect(document).toHaveBeenCalledTimes(2);
+  expect(document.mock.calls[1][1].offset).toBe(1);
+  expect(fixture.state.pending).toEqual({});
+  expect(fixture.state.progress.canContinue).toBe(false);
+  expect(fixture.state.progress.stopReason).toBeUndefined();
+});
+
+test("a continuation that makes no progress cannot offer another continue loop", async () => {
+  const fixture = agentFixture();
+  fixture.state.progress.stopReason = "context_budget";
+  expect(resumeAgentState(fixture.state)).toBe(true);
+  const model = new MockLanguageModelV4({ doStream: async () => responseStream() });
+  for await (const _chunk of generateReadAgent(context, fixture.state, fixture.signal, {
+    model,
+    dependencies: fixture.dependencies,
+  })) {
+    /* drain */
+  }
+  expect(fixture.state.progress).toMatchObject({ canContinue: false, stopReason: "no_progress" });
+  expect(resumeAgentState(fixture.state)).toBe(false);
+});
+
+test("repeating a completed search stops retrieval without offering continuation for its unread matches", async () => {
+  const fixture = agentFixture();
+  fixture.state = createAgentState(
+    "workspace",
+    [],
+    [{ role: "user", content: "What blocks launch?" }],
+  );
+  const search = vi.fn(async () => ({
+    results: [
+      {
+        type: "page" as const,
+        id: "page",
+        title: "Launch",
+        path: "Launch",
+        excerpt: null,
+        emoji: null,
+        entity: {},
+        updatedAt: new Date(),
+      },
+    ],
+  }));
+  let step = 0;
+  const model = new MockLanguageModelV4({
+    doStream: async () =>
+      responseStream(
+        step++ < 2
+          ? {
+              toolName: "search_workspace",
+              input: { query: "launch", responseMode: "read" },
+            }
+          : undefined,
+      ),
+  });
+  for await (const _chunk of generateReadAgent(context, fixture.state, fixture.signal, {
+    model,
+    dependencies: { ...fixture.dependencies, search } as ReadToolDependencies,
+  })) {
+    /* drain */
+  }
+  expect(search).toHaveBeenCalledOnce();
+  expect(fixture.state.progress).toMatchObject({ canContinue: false, stopReason: "no_progress" });
+});
+
+test("reported token usage remains telemetry and never stops a run", async () => {
+  const fixture = agentFixture();
+  let revision = 0;
+  fixture.dependencies.document = async () => ({
+    title: "Page",
+    revision: String(++revision),
+    offset: 0,
+    entries: [],
+    hasMore: false,
+  });
   let step = 0;
   const model = new MockLanguageModelV4({
     doStream: async () =>
@@ -311,36 +497,94 @@ test("reported usage releases reservations so six small calls do not exhaust a 1
     /* drain */
   }
   expect(model.doStreamCalls).toHaveLength(8);
-  expect(fixture.state.chargedTokens).toBe(8 * 25);
-  expect(fixture.state.usage).toMatchObject({ actualInput: 160, actualOutput: 40, uncertain: 0 });
+  expect(fixture.state.inputTokens).toBe(8 * 20);
   expect(fixture.state.progress.stopReason).toBeUndefined();
 });
 
-test("the last model step receives no tools and can summarize evidence before stopping", async () => {
-  const fixture = budgetFixture();
+test("runs can exceed the former step and tool-call ceilings even when old settings are present", async () => {
+  const fixture = agentFixture();
+  fixture.state = createAgentState(
+    "workspace",
+    Array.from({ length: 35 }, (_, i) => ({ type: "page", id: `page-${i}` })),
+    [{ role: "user", content: "Read these pages" }],
+  );
   let step = 0;
   const model = new MockLanguageModelV4({
     doStream: async (options) => {
-      if (step++ === 0) return responseStream({ toolName: "read_page", input: { pageId: "page" } });
-      expect(options.toolChoice).toEqual({ type: "none" });
-      expect(options.tools ?? []).toHaveLength(0);
-      return responseStream();
+      expect(options.maxOutputTokens).toBeUndefined();
+      return responseStream(
+        step < 35 ? { toolName: "read_page", input: { pageId: `page-${step++}` } } : undefined,
+      );
     },
   });
-  const chunks = [];
-  for await (const chunk of generateReadAgent(
-    { ...fixture.context, env: { AI_MAX_STEPS: "2" } },
+  for await (const _chunk of generateReadAgent(
+    {
+      ...context,
+      env: {
+        AI_MAX_STEPS: "2",
+        AI_MAX_TOOL_CALLS: "1",
+        AI_RUN_TOKEN_BUDGET: "1",
+        AI_TOOL_RESULT_BYTES: "1",
+        AI_CONTEXT_WINDOW_TOKENS: "1000000",
+      },
+    },
     fixture.state,
     fixture.signal,
     { model, dependencies: fixture.dependencies },
-  ))
-    chunks.push(chunk);
-  expect(chunks.at(-1)?.completed).toBe(true);
-  expect(fixture.state.progress.stopReason).toBe("step_budget");
-  expect(fixture.state.debug!.events.some((event) => event.type === "run.error")).toBe(false);
+  )) {
+    /* drain */
+  }
+  expect(model.doStreamCalls).toHaveLength(36);
+  expect(fixture.state.calls).toBe(35);
+  expect(fixture.state.progress.stopReason).toBeUndefined();
 });
 
-function budgetFixture() {
+test("compaction progress streams before the summarizer completes its model call", async () => {
+  const fixture = agentFixture();
+  fixture.state.messages.unshift({
+    role: "assistant",
+    content: "Earlier launch decisions. ".repeat(2500),
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const model = new MockLanguageModelV4({
+    doGenerate: async () => {
+      await gate;
+      return {
+        content: [{ type: "text", text: "Launch was agreed for Friday." }],
+        finishReason: { unified: "stop", raw: "stop" },
+        warnings: [],
+        usage,
+      };
+    },
+    doStream: async ({ prompt }) => {
+      expect(JSON.stringify(prompt)).toContain("Launch was agreed for Friday");
+      return responseStream();
+    },
+  });
+  const stream = generateReadAgent(context, fixture.state, fixture.signal, { model });
+  await stream.next();
+  try {
+    let running = false;
+    while (!running) {
+      const event = await stream.next();
+      if (event.done) break;
+      running = event.value.progress?.compaction?.status === "running";
+    }
+    expect(running).toBe(true);
+    expect(model.doStreamCalls).toHaveLength(0);
+  } finally {
+    release();
+  }
+  for await (const _chunk of stream) {
+    /* drain */
+  }
+  expect(fixture.state.progress.compaction?.status).toBe("completed");
+});
+
+function agentFixture() {
   return {
     context,
     signal: new AbortController().signal,
@@ -451,7 +695,7 @@ test("the reported source/page confusion recovers into records and page bodies w
   expect(fixture.query).toHaveBeenCalledOnce();
   expect(fixture.document).toHaveBeenCalledOnce();
   expect(fixture.state.progress.stopReason).toBeUndefined();
-  expect(fixture.state.chargedTokens).toBe(150);
+  expect(fixture.state.inputTokens).toBe(120);
   expect(fixture.state.debug!.events.some((event) => event.type === "run.error")).toBe(false);
 });
 
@@ -485,6 +729,54 @@ test("metadata access is checked before the next provider request", async () => 
 });
 
 test.skipIf(process.env.AI_LIVE_SMOKE !== "1")(
+  "configured model lists found sources without reading their bodies",
+  async () => {
+    const fixture = agentFixture();
+    fixture.state = createAgentState(
+      "workspace",
+      [],
+      [
+        {
+          role: "user",
+          content: "Find pages and databases mentioning support macros",
+        },
+      ],
+    );
+    const search = vi.fn(async () => ({
+      results: [
+        {
+          type: "page" as const,
+          id: "launch",
+          title: "Review launch checklist",
+          path: "Launch",
+          excerpt: "Support macros",
+          emoji: null,
+          entity: {},
+          updatedAt: new Date(),
+        },
+      ],
+    }));
+    const document = vi.fn();
+    for await (const _chunk of generateReadAgent(
+      { ...context, env: { ...process.env } },
+      fixture.state,
+      AbortSignal.timeout(90_000),
+      { dependencies: { ...fixture.dependencies, search, document } },
+    )) {
+      /* drain */
+    }
+    expect(search).toHaveBeenCalledOnce();
+    expect(document).not.toHaveBeenCalled();
+    expect(fixture.state.committedText).toContain("[Review launch checklist](/p/launch)");
+    expect(fixture.state.progress.canContinue).toBe(false);
+    expect(
+      fixture.state.debug!.events.filter((event) => event.type === "model.request"),
+    ).toHaveLength(1);
+  },
+  100_000,
+);
+
+test.skipIf(process.env.AI_LIVE_SMOKE !== "1")(
   "configured model discovers records and reads the returned page body",
   async () => {
     const fixture = databaseFixture();
@@ -507,26 +799,3 @@ test.skipIf(process.env.AI_LIVE_SMOKE !== "1")(
   },
   100_000,
 );
-
-test("a small run budget preserves an affordable synthesis request with tools disabled", async () => {
-  const fixture = budgetFixture();
-  const model = new MockLanguageModelV4({
-    doStream: async (options) => {
-      expect(options.toolChoice).toEqual({ type: "none" });
-      expect(options.tools ?? []).toHaveLength(0);
-      expect(options.maxOutputTokens).toBeGreaterThanOrEqual(256);
-      return responseStream();
-    },
-  });
-  for await (const _chunk of generateReadAgent(
-    { ...context, env: { AI_RUN_TOKEN_BUDGET: "8192" } },
-    fixture.state,
-    fixture.signal,
-    { model, dependencies: fixture.dependencies },
-  )) {
-    /* drain */
-  }
-  expect(model.doStreamCalls).toHaveLength(1);
-  expect(fixture.state.progress.stopReason).toBe("token_budget");
-  expect(fixture.state.debug!.events.some((event) => event.type === "run.error")).toBe(false);
-});

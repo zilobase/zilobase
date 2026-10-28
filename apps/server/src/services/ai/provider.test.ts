@@ -62,8 +62,8 @@ test("background streamText preserves the accepted model and handles split UTF-8
       background: true,
       stream: true,
       store: false,
-      max_output_tokens: 100,
     });
+    expect(JSON.parse(String(init?.body))).not.toHaveProperty("max_output_tokens");
     return response(events(), true);
   });
   const chunks = await collect(

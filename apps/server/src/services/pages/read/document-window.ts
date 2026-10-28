@@ -127,6 +127,25 @@ export function documentEntries(document: Node, webOrigin?: string): DocumentEnt
   });
 }
 
+export async function resolveDocumentPageTitles(
+  document: Node,
+  readTitle: (id: string) => Promise<string>,
+): Promise<Node> {
+  const copy = structuredClone(document);
+  const titles = new Map<string, Promise<string>>();
+  const visit = async (node: Node): Promise<void> => {
+    const id = node.type === "pageBlock" ? node.attrs?.pageId : undefined;
+    if (typeof id === "string" && id.length > 0 && id.length <= 128) {
+      if (!titles.has(id)) titles.set(id, readTitle(id));
+      node.attrs = { ...node.attrs, title: await titles.get(id) };
+    }
+    // Keep metadata lookups ordered without loading any referenced page bodies.
+    for (const child of node.content ?? []) await visit(child);
+  };
+  await visit(copy);
+  return copy;
+}
+
 export async function readDocumentWindow(
   context: ServerOperationContext,
   input: { pageId: string; offset?: number; revision?: string; limit?: number; outline?: boolean },
@@ -144,7 +163,18 @@ export async function readDocumentWindow(
     )
     .limit(1);
   if (!saved) throw new ServerOperationError({ error: "Page is no longer accessible" }, 404);
-  const document = parsePageDocument(saved.content) as Node;
+  const document = await resolveDocumentPageTitles(
+    parsePageDocument(saved.content) as Node,
+    async (id) => {
+      try {
+        return (await readPageIdentity(context, id)).name;
+      } catch (error) {
+        if (error instanceof ServerOperationError && [403, 404].includes(error.status))
+          return "Unavailable page";
+        throw error;
+      }
+    },
+  );
   const origin = context.env.CLIENT_URL ? getCanonicalWebOrigin(context.env) : undefined;
   const revision = createHash("sha256")
     .update(JSON.stringify([saved.updatedAt, document]))

@@ -7,15 +7,65 @@ import {
 } from "@/components/ui/message-scroller";
 import type { AgentActivity } from "@/sections/ai/chat/lib/agent-activity";
 import { Button } from "@/components/ui/button";
+import type { ChatReadProgress, ChatToolActivity } from "@zilobase/features/ai";
 
 export function AiActivityMessageFixture() {
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [text, setText] = useState("");
   const [streaming, setStreaming] = useState(true);
   const [stopped, setStopped] = useState(false);
+  const [compaction, setCompaction] = useState<ChatReadProgress["compaction"]>();
+  const [toolActivities, setToolActivities] = useState<ChatToolActivity[]>([]);
   return (
     <div className="mx-auto max-w-2xl p-4">
       <div className="mb-4 flex flex-wrap gap-2">
+        <Button
+          onClick={() => {
+            setStreaming(false);
+            setToolActivities([
+              {
+                id: "semantic",
+                name: "semantic_search_workspace",
+                label: "Searching workspace by meaning",
+                status: "completed",
+                returned: 0,
+                query: "refund replies",
+                searchMetadata: {
+                  mode: "semantic",
+                  indexAvailability: "disabled",
+                  degradationReason: "workspace_disabled",
+                },
+              },
+            ]);
+          }}
+        >
+          Unavailable semantic search
+        </Button>
+        <Button
+          onClick={() => {
+            setStreaming(true);
+            setCompaction({ status: "running", count: 1, summarizedMessages: 0 });
+          }}
+        >
+          Start compaction
+        </Button>
+        <Button
+          onClick={() => {
+            setCompaction({ status: "completed", count: 1, summarizedMessages: 24 });
+            setText("The earlier decision is preserved.");
+            setStreaming(false);
+          }}
+        >
+          Complete compaction
+        </Button>
+        <Button
+          onClick={() => {
+            setCompaction({ status: "failed", count: 1, summarizedMessages: 0 });
+            setStreaming(false);
+          }}
+        >
+          Fail compaction
+        </Button>
         <Button
           onClick={() =>
             setActivities([
@@ -85,11 +135,16 @@ export function AiActivityMessageFixture() {
                     id: "assistant",
                     role: "assistant",
                     text,
+                    ...(compaction || toolActivities.length
+                      ? { progress: { activities: toolActivities, canContinue: false, compaction } }
+                      : {}),
                     status: streaming ? "streaming" : stopped ? "stopped" : "completed",
                   },
                 ]}
                 streaming={streaming}
-                activityByMessage={{ assistant: activities }}
+                activityByMessage={
+                  compaction || toolActivities.length ? undefined : { assistant: activities }
+                }
               />
             </MessageScrollerViewport>
           </MessageScroller>

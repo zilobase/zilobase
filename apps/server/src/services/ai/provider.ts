@@ -11,7 +11,7 @@ import type { ServerOperationContext } from "../operations/context";
 export type ProviderInput = {
   messages: ModelMessage[];
   agent?: AgentState;
-  maxOutputTokens: number;
+  maxOutputTokens?: number;
   instructions?: string;
   model?: string;
 };
@@ -75,7 +75,6 @@ export async function* generateChatOutput(
     model: configuredChatModel(modelContext, providerFetch),
     instructions: input.instructions ?? CHAT_INSTRUCTIONS,
     messages: input.messages,
-    maxOutputTokens: input.maxOutputTokens,
     abortSignal: signal,
     maxRetries: 0,
     ...(background ? { include: { rawChunks: true } } : {}),

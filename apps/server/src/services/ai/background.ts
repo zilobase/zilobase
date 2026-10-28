@@ -69,7 +69,9 @@ export async function processAiGeneration(
   const controller = new AbortController();
   const signal = AbortSignal.any([
     controller.signal,
-    AbortSignal.timeout(Math.min(180_000, Math.max(1, run.deadlineAt.getTime() - Date.now()))),
+    ...(run.deadlineAt
+      ? [AbortSignal.timeout(Math.max(1, run.deadlineAt.getTime() - Date.now()))]
+      : []),
     ...(input.signal ? [input.signal] : []),
   ]);
   let context: ServerOperationContext | undefined;
@@ -253,7 +255,7 @@ export async function processAiGeneration(
       !signal.aborted &&
       !stopped &&
       run.fence < 3 &&
-      run.deadlineAt > new Date()
+      (!run.deadlineAt || run.deadlineAt > new Date())
     ) {
       await scope(() =>
         db
@@ -272,7 +274,12 @@ export async function processAiGeneration(
     if (context && cursor.responseId && signal.aborted)
       await cancelProviderResponse(context, cursor.responseId).catch(() => {});
     // A saved response can be reattached by a replacement worker. Never start another provider call for this attempt.
-    if (!signal.aborted && cursor.responseId && !stopped && run.deadlineAt > new Date()) {
+    if (
+      !signal.aborted &&
+      cursor.responseId &&
+      !stopped &&
+      (!run.deadlineAt || run.deadlineAt > new Date())
+    ) {
       await scope(async () => {
         await db
           .update(askAiRun)

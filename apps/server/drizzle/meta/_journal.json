@@ -848,6 +848,13 @@
       "when": 1792800000004,
       "tag": "0123_content_confirmation_clock",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1792800000005,
+      "tag": "0124_chat_compaction",
+      "breakpoints": true
     }
   ]
 }

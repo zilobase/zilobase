@@ -9,7 +9,6 @@ import {
   pruneStaleInspections,
   forgetDatabaseKnowledge,
 } from "./agent-memory";
-import { compactAgentMessages } from "./agent";
 
 const stateFor = () =>
   createAgentState(
@@ -41,12 +40,12 @@ test("search-discovered identities survive checkpoint recovery and transcript co
   recovered.messages = [{ role: "user", content: "Continue reading the launch sources" }];
   const summary = agentKnowledgeSummary(recovered);
   expect(JSON.parse(summary).discovered).toEqual([
-    { type: "database", id: "found-db" },
+    { type: "database", id: "db" },
     { type: "page", id: "found-page" },
+    { type: "database", id: "found-db" },
   ]);
   expect(recovered.context.manifest).toEqual([]);
   expect(recovered.knowledge!.reads).toEqual([]);
-  expect(new TextEncoder().encode(summary).length).toBeLessThanOrEqual(6000);
 });
 
 test("source identities and unfinished reads survive transcript compaction", () => {
@@ -70,7 +69,7 @@ test("source identities and unfinished reads survive transcript compaction", () 
     },
     { role: "assistant", content: "Later exchange" },
   );
-  state.messages = compactAgentMessages(state.messages, 100).messages;
+  state.messages = [state.messages[0]!];
   const inventory = JSON.parse(agentKnowledgeSummary(state));
   expect(inventory.sources[0]).toMatchObject({
     databaseId: "db",
@@ -82,6 +81,21 @@ test("source identities and unfinished reads survive transcript compaction", () 
   state.progress.stopReason = "step_budget";
   updateReadCoverage(state);
   expect(state.progress.canContinue).toBe(false);
+});
+
+test("a large discovered-source inventory cannot crowd out pending cursors or completed reads", () => {
+  const state = stateFor();
+  state.grants.push(
+    ...Array.from({ length: 190 }, (_, i) => ({
+      resource: { type: "page" as const, id: `discovered-${i}-${"x".repeat(70)}` },
+    })),
+  );
+  rememberRead(state, "read_page", { type: "page", id: "completed" }, true, 1);
+  state.pending.next = { name: "read_page", input: { pageId: "unfinished", cursor: "cursor" } };
+  const summary = JSON.parse(agentKnowledgeSummary(state));
+  expect(summary.pending.next.input.cursor).toBe("cursor");
+  expect(summary.reads[0].resource.id).toBe("completed");
+  expect(summary.discovered).toHaveLength(191);
 });
 
 test("legacy v2 metadata normalizes using its originating call, without page grants", () => {
@@ -117,7 +131,7 @@ test("legacy v2 metadata normalizes using its originating call, without page gra
   expect(state.grants).toHaveLength(1);
 });
 
-test("bounded inventory reports its source limit instead of silently claiming complete recall", () => {
+test("source inventory has no per-run source ceiling", () => {
   const state = stateFor();
   rememberInspection(state, input, {
     ...sources,
@@ -126,10 +140,9 @@ test("bounded inventory reports its source limit instead of silently claiming co
       name: "x".repeat(128),
     })),
   });
-  expect(state.knowledge!.sources).toHaveLength(100);
-  expect(state.progress.stopReason).toBe("memory_budget");
-  expect(Buffer.byteLength(agentKnowledgeSummary(state))).toBeLessThanOrEqual(6000);
-  expect(JSON.parse(agentKnowledgeSummary(state)).inventoryLimited).toBe(true);
+  expect(state.knowledge!.sources).toHaveLength(101);
+  expect(state.progress.stopReason).toBeUndefined();
+  expect(JSON.parse(agentKnowledgeSummary(state)).sources).toHaveLength(101);
 });
 
 test("a properties inspection cannot imply that database source discovery is complete", () => {

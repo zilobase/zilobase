@@ -1,5 +1,19 @@
 import { expect, test } from "vitest";
-import { documentEntries, documentReferences } from "./document-window";
+import { documentEntries, documentReferences, resolveDocumentPageTitles } from "./document-window";
+
+test("nested page blocks use the live title without rewriting authored text or stored documents", async () => {
+  const document = {
+    type: "doc",
+    content: [
+      { type: "pageBlock", attrs: { pageId: "child", title: "Untitled page" } },
+      { type: "paragraph", content: [{ type: "text", text: "Untitled page" }] },
+    ],
+  };
+  const resolved = await resolveDocumentPageTitles(document, async () => "Reply Playbook");
+  expect(JSON.stringify(document)).not.toContain("Reply Playbook");
+  expect(JSON.stringify(documentEntries(resolved))).toContain("Reply Playbook");
+  expect(JSON.stringify(resolved)).toContain('"text":"Untitled page"');
+});
 
 test("reference discovery accepts document resources and relative app links", () => {
   expect(

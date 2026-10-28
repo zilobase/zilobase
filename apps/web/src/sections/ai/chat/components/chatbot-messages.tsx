@@ -113,6 +113,7 @@ function AssistantMessage({
   );
   const rendering = active || isSmoothing;
   const hasActiveActivity =
+    (active && message.progress?.compaction?.status === "running") ||
     activities?.some(
       (activity) => activity.status === "running" || activity.status === "pending",
     ) ||

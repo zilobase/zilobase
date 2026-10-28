@@ -2,6 +2,7 @@ import type { ChatMessage, ChatToolActivity } from "@zilobase/features/ai";
 import { Trace } from "@/components/ui/trace";
 import { ActivityDisclosure } from "./activity-trace";
 import { AnswerSources } from "./answer-sources";
+import { searchAvailabilityNotice } from "@zilobase/features/search";
 
 type ReadGroup = {
   id: string;
@@ -37,6 +38,14 @@ function readLabel(activity: ChatToolActivity, active: boolean) {
     const kind = activity.name === "search_workspace" ? "Keyword" : "Semantic";
     if (activity.status === "failed") return `Couldn't finish ${kind.toLowerCase()} search`;
     if (activity.status === "running") return active ? `${kind} search` : `${kind} search stopped`;
+    if (searchAvailabilityNotice(activity.searchMetadata)) {
+      if (activity.searchMetadata?.indexAvailability === "building")
+        return "Semantic search indexing";
+      if (activity.searchMetadata?.indexAvailability === "disabled")
+        return "Semantic search disabled";
+      if (activity.searchMetadata?.indexAvailability === "ready") return "Semantic search degraded";
+      return "Semantic search unavailable";
+    }
     return `${kind} search completed`;
   }
   if (activity.status === "failed") return "Couldn't read source";
@@ -67,9 +76,42 @@ function readLabel(activity: ChatToolActivity, active: boolean) {
 
 export function ReadActivity({ message, active }: { message: ChatMessage; active: boolean }) {
   const groups = groupSourceReads(message);
-  if (!groups.length) return null;
+  const compaction = message.progress?.compaction;
+  if (!groups.length && !compaction) return null;
   return (
     <div className="flex min-w-0 flex-col gap-2" aria-label="Source reading activity">
+      {compaction && (
+        <div
+          aria-label="Conversation compaction"
+          role={active ? "status" : undefined}
+          aria-live={active ? "polite" : undefined}
+        >
+          <Trace data-compaction-status={compaction.status}>
+            <ActivityDisclosure
+              title={
+                compaction.status === "running"
+                  ? active
+                    ? "Compacting conversation"
+                    : "Compaction interrupted"
+                  : compaction.status === "failed"
+                    ? "Couldn't compact conversation"
+                    : "Conversation compacted"
+              }
+              status={compaction.status === "running" && !active ? "stopped" : compaction.status}
+            >
+              <p className="text-xs text-content-secondary">
+                {compaction.status === "running"
+                  ? active
+                    ? "Summarizing earlier context so the conversation can continue. Your messages remain in the chat."
+                    : "The original conversation is preserved. Retry to resume."
+                  : compaction.status === "failed"
+                    ? "The original conversation is preserved. Retry your message to try again."
+                    : `Earlier context was summarized while retaining the task, decisions, and reading progress. ${compaction.summarizedMessages} messages summarized${compaction.count > 1 ? ` across ${compaction.count} compactions` : ""}.`}
+              </p>
+            </ActivityDisclosure>
+          </Trace>
+        </div>
+      )}
       {groups.map((group) => {
         const latest = group.calls.at(-1)!;
         const running = active && group.calls.some((call) => call.status === "running");
@@ -98,7 +140,8 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
           latest.hasMore ??
           [...group.calls].reverse().find((call) => call.status === "completed")?.hasMore;
         const detail =
-          latest.name === "search_workspace" || latest.name === "semantic_search_workspace"
+          searchAvailabilityNotice(latest.searchMetadata) ??
+          (latest.name === "search_workspace" || latest.name === "semantic_search_workspace"
             ? status === "failed"
               ? "Workspace search couldn't finish."
               : status === "stopped"
@@ -121,7 +164,7 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
                     : "More of this page is available"
                   : records !== undefined && status === "completed"
                     ? `${records} ${records === 1 ? "record" : "records"}${latest.hasMore ? " · more available" : ""}`
-                    : undefined;
+                    : undefined);
         return (
           <Trace
             key={group.id}

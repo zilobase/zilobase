@@ -1,5 +1,6 @@
 import { workspaceSearchRequestSchema } from "@zilobase/features/search";
 import { searchWorkspaceUsersOperation } from "../search/users";
+import { listTeamspacesOperation } from "../teamspaces/operations";
 import { recordDebugEvent } from "./debug";
 import { createHash, randomUUID } from "node:crypto";
 import type { AiDiagnostics } from "./diagnostics";
@@ -8,6 +9,7 @@ import { z } from "zod";
 import {
   sourceRecordQuerySchema,
   type ChatToolName,
+  type ChatToolActivity,
   type SourceReadRevision,
   type SourceRecordPosition,
 } from "@zilobase/features/runtime";
@@ -27,7 +29,7 @@ import {
 } from "../operations/context";
 import { authorizeChatWorkspace } from "./context";
 import { searchWorkspaceOperation } from "../search/operations";
-import { updateReadCoverage, type AgentState } from "./agent-state";
+import { readProgressKey, updateReadCoverage, type AgentState } from "./agent-state";
 import {
   restoreAgentKnowledge,
   rememberInspection,
@@ -40,7 +42,13 @@ import {
 
 const id = z.string().min(1).max(128);
 const cursor = z.string().max(128).nullable().default(null);
-const searchSchema = workspaceSearchRequestSchema;
+const responseMode = z
+  .enum(["list", "read"])
+  .default("read")
+  .describe(
+    'Use "list" when the user only wants to find, locate, or list pages/databases. Matches are returned as links and the turn ends without reading them. Use "read" for summaries, explanations, comparisons, or other questions about content. User lookup is an intermediate step and does not end the turn.',
+  );
+const searchSchema = workspaceSearchRequestSchema.safeExtend({ responseMode });
 const semanticSearchSchema = z
   .object({
     query: z
@@ -55,6 +63,7 @@ const semanticSearchSchema = z
       .default([])
       .describe("Semantic search indexes pages, including database row pages."),
     limit: z.number().int().min(1).max(50).default(10),
+    responseMode,
   })
   .strict();
 const describeSchema = z
@@ -104,6 +113,7 @@ const aggregateSchema = recordsSchema
     limit: true,
     recordId: true,
     sort: true,
+    sortPropertyId: true,
     direction: true,
     propertyIds: true,
     cursor: true,
@@ -132,6 +142,7 @@ export const readToolSchemaText = JSON.stringify(
 );
 
 export type ReadToolDependencies = {
+  teamspaces?: typeof listTeamspacesOperation;
   search: typeof searchWorkspaceOperation;
   users: typeof searchWorkspaceUsersOperation;
   document: typeof readDocumentWindow;
@@ -144,6 +155,7 @@ export type ReadToolDependencies = {
   metadataRevision?: typeof readDatabaseMetadataRevision;
 };
 const dependencies: ReadToolDependencies = {
+  teamspaces: listTeamspacesOperation,
   search: searchWorkspaceOperation,
   users: searchWorkspaceUsersOperation,
   document: readDocumentWindow,
@@ -155,6 +167,18 @@ const dependencies: ReadToolDependencies = {
   authorizeWorkspace: authorizeChatWorkspace,
   metadataRevision: readDatabaseMetadataRevision,
 };
+
+export async function readChatLocations(
+  context: ServerOperationContext,
+  workspaceId: string,
+  ports: ReadToolDependencies = dependencies,
+) {
+  const result = await ports.teamspaces?.(
+    { ...context, pinnedWorkspaceId: workspaceId },
+    { workspaceId },
+  );
+  return result?.teamspaces.map(({ id, name }) => ({ id, name })) ?? [];
+}
 
 /** Do not replay retained inspection metadata after access revocation or a revision change. */
 export async function revalidateReadKnowledge(
@@ -249,8 +273,6 @@ export function createReadTools(
   state: AgentState,
   options: {
     signal: AbortSignal;
-    maxCalls: number;
-    maxResultBytes: number;
     changed?: () => Promise<void>;
     dependencies?: ReadToolDependencies;
     diagnostics?: AiDiagnostics;
@@ -294,20 +316,6 @@ export function createReadTools(
   };
   const grant = (resource: ResourceRef, parent?: ResourceRef, sourceId?: string) => {
     if (state.grants.some((g) => key(g.resource) === key(resource))) return;
-    if (state.grants.length >= 200) {
-      // Keep a bounded working set, not a lifetime ceiling on paginated records.
-      // Evicted record pages can be discovered again through read_record.
-      const pinned = new Set([
-        ...state.roots.map(key),
-        ...state.grants.flatMap((g) => (g.parent ? [key(g.parent)] : [])),
-        ...Object.values(state.pending).flatMap((read) =>
-          read.name === "read_page" ? [`page:${String(read.input.pageId)}`] : [],
-        ),
-      ]);
-      const evict = state.grants.findIndex((g) => !pinned.has(key(g.resource)));
-      if (evict < 0) fail("SOURCE_LIMIT: finish pending reads or attach a more specific source");
-      state.grants.splice(evict, 1);
-    }
     state.grants.push({ resource, parent, sourceId });
   };
   const evidence = (entry: Omit<ContextManifestEntry, "provenance">, revision: unknown) => {
@@ -322,7 +330,7 @@ export function createReadTools(
     };
     const index = state.context.manifest.findIndex((e) => e.key === entry.key);
     if (index >= 0) state.context.manifest[index] = record;
-    else if (state.context.manifest.length < 1000) state.context.manifest.push(record);
+    else state.context.manifest.push(record);
   };
   const readCursor = (name: string, input: Record<string, unknown>) => {
     if (!input.cursor) return undefined;
@@ -346,7 +354,6 @@ export function createReadTools(
     let nextCursor: string | null = null;
     if (hasMore) {
       // Replace the consumed cursor; retained cursors are bounded with the source graph.
-      if (Object.keys(state.cursors).length >= 200) fail("CURSOR_LIMIT");
       nextCursor = randomUUID();
       state.cursors[nextCursor] = {
         fingerprint: hash,
@@ -359,21 +366,8 @@ export function createReadTools(
     updateReadCoverage(state);
     return nextCursor;
   };
-  const fit = <T>(items: T[], render: (items: T[]) => unknown) => {
-    const selected: T[] = [];
-    for (const item of items) {
-      if (
-        Buffer.byteLength(JSON.stringify(render([...selected, item]))) >
-        options.maxResultBytes - 1024
-      )
-        break;
-      selected.push(item);
-    }
-    if (!selected.length && items.length)
-      fail("ITEM_TOO_LARGE: select fewer properties or read a smaller section");
-    return selected;
-  };
   let active = 0;
+  let findingSources = false;
   const waiters: Array<() => void> = [];
   const execute = async (
     name: ChatToolName,
@@ -385,20 +379,6 @@ export function createReadTools(
     const startedAt = performance.now();
     const debugDetail = { tool: name, toolCallId };
     recordDebugEvent(state, "tool.call", input, debugDetail);
-    if (state.calls >= options.maxCalls) {
-      state.progress.stopReason = "tool_budget";
-      updateReadCoverage(state);
-      const result = {
-        error: {
-          code: "BUDGET_EXHAUSTED",
-          message: "Do not call more tools. Answer using available evidence and disclose coverage.",
-        },
-      };
-      recordDebugEvent(state, "tool.result", result, debugDetail);
-      updateReadCoverage(state);
-      await options.changed?.();
-      return result;
-    }
     state.calls++;
     const isSearch = name === "search_workspace" || name === "semantic_search_workspace";
     const source = isSearch
@@ -434,6 +414,7 @@ export function createReadTools(
       hasMore: undefined as boolean | undefined,
       error: undefined as string | undefined,
       cached: undefined as boolean | undefined,
+      searchMetadata: undefined as ChatToolActivity["searchMetadata"],
     };
     state.progress.activities.push(activity);
     const queuedAt = performance.now();
@@ -456,6 +437,36 @@ export function createReadTools(
           async () => {
             check();
             await ports.authorizeWorkspace(scoped, state.workspaceId);
+            if (
+              state.searchListing ||
+              ((findingSources || state.intent?.mode === "list") && !isSearch)
+            )
+              fail("SEARCH_COMPLETE: return the matching source list; no further reads are needed");
+            if (
+              ["query_records", "read_record", "aggregate_records"].includes(name) &&
+              ports.metadataRevision
+            ) {
+              const retained = state.knowledge!.operations?.find(
+                (entry) => entry.key === JSON.stringify([name, input]),
+              );
+              const revision = retained?.result.revision as SourceReadRevision | undefined;
+              if (
+                retained &&
+                (retained.result.coverage as { complete?: boolean } | undefined)?.complete &&
+                revision
+              ) {
+                const databaseId = String(input.databaseId);
+                await assertGrant({ type: "database", id: databaseId });
+                await ports.authorizeDatabase(scoped, databaseId, String(input.dataSourceId));
+                const live = await ports.metadataRevision(scoped, {
+                  databaseId,
+                  dataSourceId: String(input.dataSourceId),
+                });
+                const expected = `${revision.database}:${revision.source}`;
+                if (live === expected || live.startsWith(`${expected}:`))
+                  return { ...retained.result, cached: true };
+              }
+            }
             return run();
           },
           { onTiming: options.diagnostics?.databaseTiming("tool") },
@@ -464,15 +475,49 @@ export function createReadTools(
         ? await options.diagnostics.measure("tool_read", read, { tool: name, toolCallId })
         : await read();
       check();
-      if (!isSearch && Buffer.byteLength(JSON.stringify(result)) > options.maxResultBytes)
-        fail("RESULT_TOO_LARGE");
       activity.status = "completed";
+      if (!isSearch && result && typeof result === "object" && !("error" in result)) {
+        const object = result as Record<string, unknown>;
+        const operationKey = JSON.stringify([name, input]);
+        const { cached: _cached, continuation: _continuation, ...stable } = object;
+        const signature = JSON.stringify(stable);
+        const progress = readProgressKey(state);
+        if (state.knowledge!.stalledProgress && state.knowledge!.stalledProgress !== progress) {
+          if (state.progress.stopReason === "no_progress") delete state.progress.stopReason;
+          delete state.knowledge!.stalledProgress;
+        }
+        const operations = (state.knowledge!.operations ??= []);
+        const previous = operations.find((entry) => entry.key === operationKey);
+        const previousActivity = state.progress.activities.at(-2);
+        const duplicateInspection =
+          previousActivity?.name === name && previousActivity.status === "completed";
+        if (
+          (name !== "describe_source" || duplicateInspection) &&
+          previous?.signature === signature &&
+          previous.progress === progress
+        ) {
+          activity.cached = true;
+          state.knowledge!.stalledProgress = progress;
+          state.progress.stopReason = "no_progress";
+        }
+        state.knowledge!.operations = operations.filter((entry) => entry.key !== operationKey);
+        state.knowledge!.operations.push({
+          key: operationKey,
+          tool: name,
+          input,
+          signature,
+          progress,
+          result: object,
+        });
+      }
       if (source)
         state.knowledge!.unavailable = state.knowledge!.unavailable.filter(
           (entry) => entry !== `${source.type}:${source.id}`,
         );
       if (result && typeof result === "object" && "cached" in result)
-        activity.cached = result.cached === true;
+        activity.cached = activity.cached || result.cached === true;
+      if (result && typeof result === "object" && "searchMetadata" in result)
+        activity.searchMetadata = result.searchMetadata as typeof activity.searchMetadata;
       if (result && typeof result === "object" && "coverage" in result) {
         const coverage = result.coverage as { returned?: number; complete: boolean };
         activity.returned = coverage.returned;
@@ -530,6 +575,22 @@ export function createReadTools(
   ) => {
     const parent: ResourceRef = { type: "page", id: pageId };
     await assertGrant(parent);
+    if (state.continuation && !input.cursor) {
+      const pending = Object.values(state.pending).find(
+        (read) => read.name === name && read.input.pageId === pageId,
+      );
+      if (pending)
+        fail("READ_IN_PROGRESS: resume the existing cursor instead of restarting this page", {
+          tool: pending.name,
+          input: pending.input,
+        });
+      if (
+        state.knowledge!.reads.some(
+          (read) => read.tool === name && read.resource.id === pageId && read.complete,
+        )
+      )
+        fail("ALREADY_READ: this page is complete; continue another unfinished source");
+    }
     const previous = readCursor(name, input);
     const result = await ports.document(scoped, {
       pageId,
@@ -537,10 +598,7 @@ export function createReadTools(
       offset: previous?.position as number | undefined,
       revision: previous?.revision as string | undefined,
     });
-    const entries = fit(result.entries, (entries) => ({
-      title: result.title.slice(0, 512),
-      entries,
-    }));
+    const entries = result.entries;
     const hasMore = result.hasMore || entries.length < result.entries.length;
     const nextCursor = continuation(
       name,
@@ -593,10 +651,7 @@ export function createReadTools(
       kind: "property",
       propertyId: id,
     }));
-    const records = fit(result.records, (records) => ({
-      records: records.map(typedRecord),
-      properties,
-    }));
+    const records = result.records;
     const hasMore = result.hasMore || records.length < result.records.length;
     const nextCursor = continuation(
       name,
@@ -669,10 +724,46 @@ export function createReadTools(
     input: z.infer<typeof searchSchema> | z.infer<typeof semanticSearchSchema>,
     toolCallId: string,
     mode: "keyword" | "semantic",
-  ) =>
-    execute(name, input, toolCallId, async () => {
+  ) => {
+    if (!("queryType" in input && input.queryType === "user") && state.intent) {
+      input = { ...input, responseMode: state.intent.mode };
+      if (mode === "keyword") {
+        if (state.intent.mode === "list" && state.intent.keywordQuery !== null)
+          input = { ...input, query: state.intent.keywordQuery };
+        if (state.intent.teamspaceIds?.length)
+          input = {
+            ...input,
+            filters: {
+              ...("filters" in input ? input.filters : {}),
+              teamspaceIds: state.intent.teamspaceIds,
+            },
+          };
+      } else if (state.intent.teamspaceIds?.length) {
+        return execute(name, input, toolCallId, async () =>
+          fail(
+            "STRUCTURED_SEARCH_REQUIRED: use search_workspace for the requested teamspace constraint",
+          ),
+        );
+      }
+    }
+    if (mode === "keyword") input = searchSchema.parse(input);
+    if (input.responseMode === "list" && !("queryType" in input && input.queryType === "user"))
+      findingSources = true;
+    return execute(name, input, toolCallId, async () => {
+      if (state.continuation) {
+        state.progress.stopReason = "no_progress";
+        fail("CONTINUATION_READS_ONLY: resume retained unfinished reads; do not search again");
+      }
+      const searchKey = fingerprint(name, { ...input, requestedLimit: input.limit });
+      const searchKeys = (state.knowledge!.searchKeys ??= []);
+      if (searchKeys.includes(searchKey)) {
+        state.progress.stopReason = "no_progress";
+        fail("NO_PROGRESS: this search already completed; use its matches instead of repeating it");
+      }
       if ("queryType" in input && input.queryType === "user") {
-        const found = await ports.users(scoped, { workspaceId: state.workspaceId, request: input });
+        const { responseMode: _responseMode, ...request } = input;
+        const found = await ports.users(scoped, { workspaceId: state.workspaceId, request });
+        searchKeys.push(searchKey);
         const users = found.users.slice(0, input.limit);
         return {
           type: "user_search",
@@ -697,6 +788,7 @@ export function createReadTools(
         ...("filters" in input && input.filters ? { filters: input.filters } : {}),
         ...("sort" in input && input.sort ? { sort: input.sort } : {}),
       });
+      searchKeys.push(searchKey);
       const results = matches.results.slice(0, input.limit).map((match) => ({
         type: match.type,
         id: match.id,
@@ -722,6 +814,18 @@ export function createReadTools(
         if (result.match?.kind === "property" && result.match.databaseId)
           grant({ type: "database", id: result.match.databaseId });
       }
+      if (input.responseMode === "list")
+        state.searchListing = {
+          ...("metadata" in matches ? { searchMetadata: matches.metadata } : {}),
+          matches: [
+            ...new Map(
+              [
+                ...(state.searchListing?.matches ?? []),
+                ...results.map(({ type, id, title }) => ({ type, id, title })),
+              ].map((match) => [`${match.type}:${match.id}`, match]),
+            ).values(),
+          ].slice(0, input.limit),
+        };
       return {
         ...(mode === "keyword" ? { type: "workspace_search" } : {}),
         results,
@@ -733,9 +837,13 @@ export function createReadTools(
           returned: results.length,
           total: null,
         },
-        next: "Read important matches before relying on their content or citing them; listing search matches needs no page read. Search is bounded and not exhaustive; no matches does not prove absence. Use match locations to guide live reads. Property match references identify the record and property to read; indexed excerpts alone never establish evidence. Refine the question or types for other matches.",
+        next:
+          input.responseMode === "list"
+            ? "The source list completes this request. Stop calling tools; page bodies were not read."
+            : "Read important matches before relying on their content or citing them; listing search matches needs no page read. Search is bounded and not exhaustive; no matches does not prove absence. Use match locations to guide live reads. Property match references identify the record and property to read; indexed excerpts alone never establish evidence. Refine the question or types for other matches.",
       };
     });
+  };
   return {
     search_workspace: tool({
       description:
@@ -789,8 +897,7 @@ export function createReadTools(
                     revision,
                   );
                 cached.hits++;
-                if (++state.knowledge!.repeatedInspections >= 3)
-                  state.progress.stopReason = "no_progress";
+                state.knowledge!.repeatedInspections++;
                 return { ...cached.result, cached: true };
               }
               forgetDatabaseKnowledge(state, input.id);
@@ -808,10 +915,7 @@ export function createReadTools(
           });
           const typedEntry = (entry: (typeof result.entries)[number]) =>
             metadataEntry(input.section, input.id, input.dataSourceId, entry);
-          const entries = fit(result.entries, (entries) => ({
-            title: result.title.slice(0, 512),
-            entries: entries.map(typedEntry),
-          }));
+          const entries = result.entries;
           const hasMore = result.hasMore || entries.length < result.entries.length;
           const nextCursor = continuation(
             "describe_source",
@@ -873,7 +977,7 @@ export function createReadTools(
     }),
     query_records: tool({
       description:
-        "Read a page of source records. Choose propertyIds from describe_source; only requested properties are returned. Filters are ANDed and use stored scalar values, not view filters. Sort supports id/name/createdAt/updatedAt. Computed-property values/filters and saved-view queries are unsupported. Pass the same query with nextCursor for more records. Record page bodies require read_page.",
+        "Read a page of source records. Choose propertyIds from describe_source; only requested properties are returned. Filters are ANDed, including effective default statuses, independently of view filters. Sort supports id/name/createdAt/updatedAt, or sortPropertyId for a scalar property with direction asc/desc and missing values last. Computed-property values/filters/sorts and saved-view queries are unsupported. Pass the same query with nextCursor for more records. Record page bodies require read_page.",
       inputSchema: recordsSchema,
       execute: (input, { toolCallId }) =>
         execute("query_records", input, toolCallId, () => queryRead("query_records", input)),

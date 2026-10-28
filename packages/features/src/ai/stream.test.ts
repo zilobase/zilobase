@@ -2,6 +2,38 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { consumeChatStream } from "./stream";
 
+test("compaction progress survives stream validation without being treated as source reading", async () => {
+  const context = {
+    version: 1,
+    status: "complete",
+    markdown: "",
+    charCount: 0,
+    manifest: [],
+    omissions: [],
+    trimmedAttachmentIds: [],
+  };
+  const events: unknown[] = [];
+  const expected = ["running", "completed"].map((status) => ({
+    type: "read-progress",
+    context,
+    progress: {
+      activities: [],
+      canContinue: false,
+      compaction: { status, count: 1, summarizedMessages: status === "running" ? 0 : 24 },
+    },
+  }));
+  await consumeChatStream(
+    new Response(
+      [...expected, { type: "done", status: "completed" }]
+        .map((event) => JSON.stringify(event))
+        .join("\n"),
+    ),
+    new AbortController().signal,
+    (event) => events.push(event),
+  );
+  assert.deepEqual(events.slice(0, 2), expected);
+});
+
 for (const name of ["search_workspace", "semantic_search_workspace"] as const)
   test(`live workspace search progress preserves its query without a source association (${name})`, async () => {
     const event = {
@@ -24,6 +56,15 @@ for (const name of ["search_workspace", "semantic_search_workspace"] as const)
             query: "launch",
             status: "completed",
             returned: 2,
+            ...(name === "semantic_search_workspace"
+              ? {
+                  searchMetadata: {
+                    mode: "semantic",
+                    indexAvailability: "ready",
+                    degradationReason: "provider_timeout",
+                  },
+                }
+              : {}),
           },
         ],
         canContinue: false,

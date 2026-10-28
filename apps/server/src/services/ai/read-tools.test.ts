@@ -8,6 +8,32 @@ import { ServerOperationError } from "../operations/context";
 import { chatRequestSchema } from "@zilobase/features/runtime";
 import { createAgentState } from "./agent-state";
 import { createReadTools, readToolSchemas, type ReadToolDependencies } from "./read-tools";
+import { attachConversationHistory } from "./compaction";
+import { retainConversationSources } from "./agent-memory";
+
+test("current content intent cannot become a terminal listing even if the model selects list", async () => {
+  const { state, call } = readFixture();
+  state.intent = { mode: "read", keywordQuery: null, teamspaceNames: [] };
+  await call("search_workspace", { query: "launch", responseMode: "list" });
+  expect(state.searchListing).toBeUndefined();
+  expect(await call("read_page", { pageId: "found-page" })).toHaveProperty("entries");
+});
+
+test("named teamspace routing preserves the original keywords and forces the resolved scope", async () => {
+  const { state, call, dependencies } = readFixture();
+  state.intent = {
+    mode: "list",
+    keywordQuery: "support macros",
+    teamspaceNames: ["General"],
+    teamspaceIds: ["general-id"],
+  };
+  await call("search_workspace", { query: "General", responseMode: "read" });
+  expect(dependencies.search).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ q: "support macros", filters: { teamspaceIds: ["general-id"] } }),
+  );
+  expect(state.searchListing).toBeDefined();
+});
 
 export function readFixture() {
   const context = {
@@ -90,8 +116,7 @@ export function readFixture() {
   const signal = new AbortController().signal;
   const tools = createReadTools(context, state, {
     signal,
-    maxCalls: 24,
-    maxResultBytes: 6000,
+
     dependencies,
   });
   const call = async (name: keyof typeof tools, raw: unknown) => {
@@ -118,6 +143,83 @@ test("only read operations are registered and @mentions do not read content", ()
   expect(dependencies.search).not.toHaveBeenCalled();
 });
 
+test("repeated complete aggregates reuse current results and cannot offer a continuation loop", async () => {
+  const { call, state, dependencies } = readFixture();
+  vi.mocked(dependencies.metadataRevision!).mockResolvedValue("1:1");
+  const input = { databaseId: "db", dataSourceId: "source", operation: "count" };
+  expect(await call("aggregate_records", input)).toMatchObject({ value: 800 });
+  expect(await call("aggregate_records", input)).toMatchObject({ value: 800, cached: true });
+  expect(dependencies.aggregate).toHaveBeenCalledOnce();
+  expect(state.progress).toMatchObject({ stopReason: "no_progress", canContinue: false });
+});
+
+test("aggregate reuse rechecks access and source revisions", async () => {
+  const { call, dependencies } = readFixture();
+  const input = { databaseId: "db", dataSourceId: "source", operation: "count" };
+  await call("aggregate_records", input);
+  vi.mocked(dependencies.metadataRevision!).mockResolvedValueOnce("2:1");
+  await call("aggregate_records", input);
+  expect(dependencies.aggregate).toHaveBeenCalledTimes(2);
+  vi.mocked(dependencies.authorizeDatabase).mockRejectedValueOnce(
+    new ServerOperationError({ error: "Forbidden" }, 403),
+  );
+  expect(await call("aggregate_records", input)).toMatchObject({
+    error: { code: "SOURCE_UNAVAILABLE" },
+  });
+  expect(dependencies.aggregate).toHaveBeenCalledTimes(2);
+});
+
+test("a new successful read clears an earlier duplicate in the same tool batch", async () => {
+  const { call, state } = readFixture();
+  await call("read_page", { pageId: "page" });
+  await call("read_page", { pageId: "page" });
+  expect(state.progress.stopReason).toBe("no_progress");
+  await call("read_page", { pageId: "linked" });
+  expect(state.progress.stopReason).toBeUndefined();
+});
+
+test("follow-ups can live-read previously discovered sources without retaining bodies or bypassing access", async () => {
+  const { call, state, context, dependencies, signal } = readFixture();
+  attachConversationHistory(state, []);
+  await call("search_workspace", { query: "launch", responseMode: "read" });
+  await call("read_page", { pageId: "found-page" });
+  retainConversationSources(state);
+  expect(JSON.stringify(state.conversation!.memory)).not.toContain("Private linked content");
+  const next = createAgentState(
+    "workspace",
+    [],
+    [{ role: "user", content: "Reread that page without searching" }],
+  );
+  attachConversationHistory(next, [], state.conversation!.memory);
+  const tools = createReadTools(context, next, { dependencies, signal });
+  const execute = tools.read_page.execute! as (input: unknown, options: unknown) => Promise<any>;
+  const options = { toolCallId: "follow-up", messages: [], abortSignal: signal };
+  expect(await execute({ pageId: "found-page", cursor: null }, options)).toHaveProperty("entries");
+  expect(dependencies.search).toHaveBeenCalledOnce();
+  vi.mocked(dependencies.document).mockRejectedValueOnce(
+    new ServerOperationError({ error: "Forbidden" }, 403),
+  );
+  expect(await execute({ pageId: "found-page", cursor: null }, options)).toMatchObject({
+    error: { code: "SOURCE_UNAVAILABLE" },
+  });
+});
+
+test("page reads return source content larger than the former byte cap without trimming or rejecting it", async () => {
+  const { call, dependencies } = readFixture();
+  const text = "A detailed source passage. ".repeat(2000);
+  vi.mocked(dependencies.document).mockResolvedValueOnce({
+    title: "Long page",
+    revision: "v1",
+    offset: 0,
+    hasMore: false,
+    entries: [{ kind: "text", block: 0, text }],
+  });
+  const result = await call("read_page", { pageId: "page" });
+  expect(result.entries[0].text).toBe(text);
+  expect(Buffer.byteLength(JSON.stringify(result))).toBeGreaterThan(6000);
+  expect(result.error).toBeUndefined();
+});
+
 test("workspace search validates nonempty bounded queries without accepting a workspace override", () => {
   const schema = readToolSchemas.search_workspace;
   expect(schema.parse({ query: " launch " })).toEqual({
@@ -125,6 +227,7 @@ test("workspace search validates nonempty bounded queries without accepting a wo
     query: "launch",
     types: [],
     limit: 10,
+    responseMode: "read",
   });
   expect(schema.parse({ query: "launch", limit: 50 }).limit).toBe(50);
   expect(
@@ -187,6 +290,57 @@ test("search discovers accessible sources without mentions but grants no citatio
   expect(await call("read_page", { pageId: "not-returned" })).toMatchObject({
     error: { code: "OUT_OF_SCOPE" },
   });
+});
+
+test("listing source matches needs no content reads and cannot be turned into a read loop", async () => {
+  const { call, dependencies, state } = readFixture();
+  const result = await call("search_workspace", { query: "launch", responseMode: "list" });
+  expect(result.results).toHaveLength(2);
+  expect(state.searchListing?.matches).toHaveLength(2);
+  expect(await call("read_page", { pageId: "found-page" })).toMatchObject({
+    error: { code: "SEARCH_COMPLETE" },
+  });
+  expect(dependencies.document).not.toHaveBeenCalled();
+  expect(state.context.manifest).toEqual([]);
+  expect(state.progress.canContinue).toBe(false);
+});
+
+test("an empty listing completes without opening a speculative continuation", async () => {
+  const { call, dependencies, state } = readFixture();
+  vi.mocked(dependencies.search).mockResolvedValue({ results: [] });
+  await call("search_workspace", { query: "missing", responseMode: "list" });
+  expect(state.searchListing).toEqual({ matches: [] });
+  expect(state.progress.canContinue).toBe(false);
+});
+
+test("user lookup remains an intermediate step when finding content by a person", async () => {
+  const { call, dependencies, state } = readFixture();
+  await call("search_workspace", { queryType: "user", query: "Ada", responseMode: "list" });
+  expect(state.searchListing).toBeUndefined();
+  expect(dependencies.users).toHaveBeenCalledWith(expect.anything(), {
+    workspaceId: "workspace",
+    request: { queryType: "user", query: "Ada", types: [], limit: 10 },
+  });
+  await call("search_workspace", {
+    filters: { createdByUserIds: ["ada"] },
+    responseMode: "list",
+  });
+  expect(state.searchListing?.matches).toHaveLength(2);
+});
+
+test("continuations cannot repeat discovery or completed page reads", async () => {
+  const { call, dependencies, state } = readFixture();
+  await call("read_page", { pageId: "page" });
+  state.continuation = { initialProgress: "before" };
+  expect(await call("read_page", { pageId: "page" })).toMatchObject({
+    error: { code: "ALREADY_READ" },
+  });
+  expect(dependencies.document).toHaveBeenCalledOnce();
+  expect(await call("search_workspace", { query: "launch" })).toMatchObject({
+    error: { code: "CONTINUATION_READS_ONLY" },
+  });
+  expect(dependencies.search).not.toHaveBeenCalled();
+  expect(state.progress.canContinue).toBe(false);
 });
 
 test("semantic property discovery supplies a live record reference without establishing evidence", async () => {
@@ -279,8 +433,7 @@ test("property discovery survives run replay but revoked live reads add no citat
   );
   const tools = createReadTools(fixture.context, restored, {
     signal: fixture.signal,
-    maxCalls: 24,
-    maxResultBytes: 6000,
+
     dependencies: fixture.dependencies,
   });
   const result = await tools.read_record.execute!(
@@ -317,12 +470,11 @@ for (const name of ["search_workspace", "semantic_search_workspace"] as const)
     });
     const tools = createReadTools(fixture.context, fixture.state, {
       signal: fixture.signal,
-      maxCalls: 24,
-      maxResultBytes: 4096,
+
       dependencies: fixture.dependencies,
     });
     const result = (await tools[name].execute!(
-      { queryType: "content", query: "launch", limit: 50, types: [] },
+      { queryType: "content", query: "launch", limit: 50, types: [], responseMode: "read" },
       { toolCallId: "search", messages: [], abortSignal: fixture.signal, context: {} },
     )) as any;
     expect(Buffer.byteLength(JSON.stringify(result))).toBeGreaterThan(4096);
@@ -381,7 +533,7 @@ test("search requires current workspace access and discovered pages still rechec
   expect(state.context.manifest).toEqual([]);
 });
 
-test("search failure creates no discovered grants and shares the run's tool budget", async () => {
+test("search failure creates no discovered grants and a later retry is allowed", async () => {
   const { call, dependencies, state } = readFixture();
   const grants = structuredClone(state.grants);
   vi.mocked(dependencies.search).mockRejectedValueOnce(new Error("private database error"));
@@ -391,9 +543,9 @@ test("search failure creates no discovered grants and shares the run's tool budg
   expect(state.grants).toEqual(grants);
   state.calls = 24;
   expect(await call("search_workspace", { query: "launch" })).toMatchObject({
-    error: { code: "BUDGET_EXHAUSTED" },
+    results: expect.any(Array),
   });
-  expect(dependencies.search).toHaveBeenCalledTimes(1);
+  expect(dependencies.search).toHaveBeenCalledTimes(2);
 });
 
 test("database metadata and records have explicit resource identities", async () => {
@@ -428,8 +580,7 @@ test("progress identifies the source while running and after completion without 
   const snapshots: unknown[] = [];
   const tools = createReadTools(fixture.context, fixture.state, {
     signal: fixture.signal,
-    maxCalls: 24,
-    maxResultBytes: 6000,
+
     dependencies: fixture.dependencies,
     changed: async () => {
       snapshots.push(structuredClone(fixture.state.progress.activities));
@@ -529,12 +680,11 @@ test("expired cursors fail without a source query", async () => {
   expect(dependencies.query).not.toHaveBeenCalled();
 });
 
-test("concurrent calls cannot overrun the tool budget or three active reads", async () => {
+test("all concurrent calls complete with at most three active reads", async () => {
   const fixture = readFixture();
   const tools = createReadTools(fixture.context, fixture.state, {
     signal: fixture.signal,
-    maxCalls: 3,
-    maxResultBytes: 6000,
+
     dependencies: fixture.dependencies,
   });
   let running = 0,
@@ -555,9 +705,9 @@ test("concurrent calls cannot overrun the tool budget or three active reads", as
       ),
     ),
   );
-  expect(fixture.dependencies.document).toHaveBeenCalledTimes(3);
+  expect(fixture.dependencies.document).toHaveBeenCalledTimes(8);
   expect(maximum).toBeLessThanOrEqual(3);
-  expect(results.filter((r) => !!r && typeof r === "object" && "error" in r)).toHaveLength(5);
+  expect(results.filter((r) => !!r && typeof r === "object" && "error" in r)).toHaveLength(0);
 });
 
 test("exact counts use an aggregate operation rather than sampled record pages", async () => {
@@ -572,7 +722,7 @@ test("exact counts use an aggregate operation rather than sampled record pages",
   expect(dependencies.query).not.toHaveBeenCalled();
 });
 
-test("paging beyond 200 record references keeps a bounded working set without imposing a record ceiling", async () => {
+test("paging beyond 200 references retains discovered identities without a source ceiling", async () => {
   const { call, state, dependencies } = readFixture();
   for (let i = 0; i < 210; i++)
     state.grants.push({
@@ -584,7 +734,7 @@ test("paging beyond 200 record references keeps a bounded working set without im
   expect(state.grants).toHaveLength(200);
   const result = await call("query_records", { databaseId: "db", dataSourceId: "source" });
   expect(result).toMatchObject({ coverage: { returned: 1 } });
-  expect(state.grants).toHaveLength(200);
+  expect(state.grants).toHaveLength(201);
   expect(state.grants.some((g) => g.resource.id === "row-page")).toBe(true);
   expect(state.grants.some((g) => g.resource.id === "db")).toBe(true);
   expect(dependencies.query).toHaveBeenCalledOnce();
@@ -644,7 +794,7 @@ test("cached metadata revalidates revision, records reuse and stops inspection l
   expect(dependencies.metadataRevision).toHaveBeenCalledTimes(3);
   expect(state.progress.activities.at(-1)).toMatchObject({ cached: true });
   expect(state.progress.stopReason).toBe("no_progress");
-  expect(state.progress.canContinue).toBe(true);
+  expect(state.progress.canContinue).toBe(false);
   vi.mocked(dependencies.metadataRevision!).mockResolvedValueOnce("v2");
   vi.mocked(dependencies.describe).mockResolvedValueOnce({
     title: "Changed",
@@ -768,6 +918,7 @@ test("semantic schema accepts questions and page filters without a mode or works
     query: "What blocks the launch?",
     types: [],
     limit: 10,
+    responseMode: "read",
   });
   expect(schema.parse({ query: "launch", types: ["page"] }).types).toEqual(["page"]);
   for (const input of [
@@ -781,7 +932,7 @@ test("semantic schema accepts questions and page filters without a mode or works
 });
 
 for (const name of ["search_workspace", "semantic_search_workspace"] as const)
-  test(`${name} requires current access and shares the run tool budget`, async () => {
+  test(`${name} requires current access without a tool-call ceiling`, async () => {
     const { call, dependencies, state } = readFixture();
     const grants = structuredClone(state.grants);
     vi.mocked(dependencies.authorizeWorkspace).mockRejectedValueOnce(
@@ -794,9 +945,9 @@ for (const name of ["search_workspace", "semantic_search_workspace"] as const)
     expect(state.grants).toEqual(grants);
     state.calls = 24;
     expect(await call(name, { query: "launch" })).toMatchObject({
-      error: { code: "BUDGET_EXHAUSTED" },
+      results: expect.any(Array),
     });
-    expect(dependencies.search).not.toHaveBeenCalled();
+    expect(dependencies.search).toHaveBeenCalledOnce();
   });
 
 test("user lookup supplies filter IDs without granting resources or evidence", async () => {

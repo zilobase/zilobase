@@ -32,11 +32,7 @@ aiRoutes.post("/chat", jsonValidator(chatRequestSchema), async (c) => {
     return legacyChatRunResponse(context, await admitChatRun(context, c.req.valid("json")));
   const prepared = await prepareChat(context, c.req.valid("json"));
   const cancellation = new AbortController();
-  const signal = AbortSignal.any([
-    c.req.raw.signal,
-    cancellation.signal,
-    AbortSignal.timeout(180_000),
-  ]);
+  const signal = AbortSignal.any([c.req.raw.signal, cancellation.signal]);
   const iterator = prepared.events(signal);
   const encoder = new TextEncoder();
   return new Response(
