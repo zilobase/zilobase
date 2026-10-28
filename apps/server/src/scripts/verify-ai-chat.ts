@@ -138,10 +138,18 @@ try {
   await client.db.insert(pageProperty).values([
     { id: "amount", workspaceId: "workspace", name: "Amount", type: "number" },
     { id: "due", workspaceId: "workspace", name: "Due", type: "date" },
+    {
+      id: "status",
+      workspaceId: "workspace",
+      name: "Status",
+      type: "status",
+      config: { defaultOptionId: "queued", options: [{ id: "queued", name: "Queued" }] },
+    },
   ]);
   await client.db.insert(databaseProperty).values([
     { id: "amount-column", dataSourceId: "source", propertyId: "amount" },
     { id: "due-column", dataSourceId: "source", propertyId: "due" },
+    { id: "status-column", dataSourceId: "source", propertyId: "status" },
   ]);
   await client.db.insert(pagePropertyValue).values(
     Array.from({ length: 205 }, (_, i) => [
@@ -195,6 +203,36 @@ try {
   );
   const count = await run(() => aggregateSourceRecords(context, query, "count"));
   assert.equal(Number(count.value), 204);
+  await client.db.insert(pagePropertyValue).values([
+    { id: "status-0", pageId: "page-0", propertyId: "status", value: "Done" },
+    { id: "status-1", pageId: "page-1", propertyId: "status", value: "" },
+    { id: "status-2", pageId: "page-2", propertyId: "status", value: null },
+  ]);
+  const defaults = await run(() =>
+    querySourceRecords(context, {
+      ...query,
+      propertyIds: ["status"],
+      filters: [{ propertyId: "status", operator: "eq", value: "Queued" }],
+    }),
+  );
+  assert.ok(defaults.records.every((record) => record.values.status === "Queued"));
+  assert.ok(defaults.records.some((record) => record.pageId === "page-1"));
+  const nullStatus = await run(() =>
+    querySourceRecords(context, { ...query, recordId: "row-2", propertyIds: ["status"] }),
+  );
+  assert.equal(nullStatus.records[0]?.values.status, "Queued");
+  const defaultCount = await run(() =>
+    aggregateSourceRecords(
+      context,
+      { ...query, filters: [{ propertyId: "status", operator: "eq", value: "Queued" }] },
+      "count",
+    ),
+  );
+  assert.equal(
+    Number(defaultCount.value),
+    203,
+    "Unset status has the same effective default in filters, reads and counts",
+  );
   const filtered = await run(() =>
     aggregateSourceRecords(context, { ...query, nameContains: "Task 1" }, "count"),
   );
@@ -229,6 +267,43 @@ try {
   );
   assert.equal(numericNext.records[0]?.name, "Task 201");
   assert.equal(numericNext.hasMore, false);
+  for (const direction of ["asc", "desc"] as const) {
+    const sortedQuery = {
+      ...query,
+      sortPropertyId: "amount",
+      direction,
+      limit: 1,
+      filters: [{ propertyId: "amount", operator: "gte" as const, value: 200 }],
+    };
+    const first = await run(() => querySourceRecords(context, sortedQuery));
+    const next = await run(() =>
+      querySourceRecords(context, sortedQuery, first.positions.at(-1), first.revision),
+    );
+    assert.equal(first.records[0]?.name, direction === "asc" ? "Task 200" : "Task 203");
+    assert.equal(next.records[0]?.name, direction === "asc" ? "Task 201" : "Task 202");
+  }
+  await client.db.delete(pagePropertyValue).where(eq(pagePropertyValue.id, "amount-1"));
+  const missingLastQuery = {
+    ...query,
+    sortPropertyId: "amount",
+    direction: "desc" as const,
+    limit: 100,
+  };
+  let sortedPosition: import("@zilobase/features/runtime").SourceRecordPosition | undefined;
+  let sortedTotal = 0;
+  let sortedLast = "";
+  for (;;) {
+    const result = await run(() => querySourceRecords(context, missingLastQuery, sortedPosition));
+    sortedTotal += result.records.length;
+    sortedLast = result.records.at(-1)!.name;
+    sortedPosition = result.positions.at(-1);
+    if (!result.hasMore) break;
+  }
+  assert.equal(sortedTotal, 204);
+  assert.equal(sortedLast, "Task 1");
+  await client.db
+    .insert(pagePropertyValue)
+    .values({ id: "amount-1", pageId: "page-1", propertyId: "amount", value: 1 });
   const sum = await run(() => aggregateSourceRecords(context, query, "sum", "amount"));
   assert.equal(Number(sum.value), 20706);
   const overdue = await run(() =>
@@ -252,6 +327,7 @@ try {
         content: [
           { type: "paragraph", content: [{ type: "text", text: "Saved source content" }] },
           { type: "databaseBlock", attrs: { databaseId: "db" } },
+          { type: "pageBlock", attrs: { pageId: "page-1", title: "Untitled page" } },
         ],
       },
     })
@@ -264,6 +340,15 @@ try {
     document.entries.some(
       (entry) => entry.kind === "text" && entry.text.includes("Saved source content"),
     ),
+  );
+  await client.db.update(page).set({ name: "Renamed child" }).where(eq(page.id, "page-1"));
+  const renamed = await run(() => readDocumentWindow(context, { pageId: "page-0" }));
+  assert.ok(
+    renamed.entries.some((entry) => entry.kind === "text" && entry.text.includes("Renamed child")),
+  );
+  await assert.rejects(
+    run(() => readDocumentWindow(context, { pageId: "page-0", revision: document.revision })),
+    /SOURCE_CHANGED/,
   );
   await client.db.insert(page).values([
     {
@@ -287,8 +372,6 @@ try {
   const searchSignal = new AbortController().signal;
   const searchTools = createReadTools(context, searchState, {
     signal: searchSignal,
-    maxCalls: 24,
-    maxResultBytes: 6000,
   });
   const searchOptions = {
     toolCallId: "search",
@@ -298,7 +381,13 @@ try {
   };
   const found = (await run(async () =>
     searchTools.search_workspace.execute!(
-      { queryType: "content", query: "Saved source", types: ["page"], limit: 20 },
+      {
+        queryType: "content",
+        query: "Saved source",
+        types: ["page"],
+        limit: 20,
+        responseMode: "read",
+      },
       searchOptions,
     ),
   )) as { results: Array<{ id: string; type: string }> };
@@ -316,7 +405,13 @@ try {
   assert.ok(JSON.stringify(discovered).includes("Saved source content"));
   const foundDatabase = (await run(async () =>
     searchTools.search_workspace.execute!(
-      { queryType: "content", query: "Tasks", types: ["database"], limit: 20 },
+      {
+        queryType: "content",
+        query: "Tasks",
+        types: ["database"],
+        limit: 20,
+        responseMode: "read",
+      },
       { ...searchOptions, toolCallId: "search-db" },
     ),
   )) as { results: Array<{ id: string; type: string }> };
