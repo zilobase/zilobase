@@ -49,6 +49,18 @@ Sort values are `relevance`, `created_asc`, `created_desc`, `last_edited_asc`, `
 
 Content responses have `type: "workspace_search"` and `results`. Results include creation/latest-edit timestamps, available actor IDs, and verification state/expiry. These are discovery metadata. Read important matches before relying on their content or citing them.
 
+Ask AI distinguishes source discovery from content questions. Both AI search tools accept the AI-only `responseMode`: `list` returns matching titles and links and ends the turn without page reads; `read` (the compatibility default) allows relevant live reads for summaries and content questions. User lookup remains an intermediate step for people filters. Search listings do not become citation evidence, and the shared HTTP search API does not accept `responseMode`.
+
+The server classifies the current question separately from conversation history and enforces that response mode. A summary follow-up cannot inherit an earlier find-only request. Explicit teamspace names resolve against the actor's visible teamspaces before searching; unresolved or ambiguous names produce a clarification instead of silently dropping the location or replacing the keywords. Disabled, building and degraded semantic indexes produce availability notices rather than a false zero-match answer.
+
+“Continue reading” resumes saved cursors and relevant unread sources in a fresh model window. It does not restart search or reread completed pages. Completed listings, repeated retrievals, and continuations that make no progress do not offer another continuation.
+
+Ask AI has no app-level run-token, model-step, tool-call, output-token, result-byte, or conversation-length budgets. When a request approaches the configured model context capacity, older exchanges are summarized automatically instead of discarded. The chat shows compaction progress and completion. An encrypted rolling conversation summary survives follow-up messages; source access is still checked and summary identities do not grant access or become citation evidence. See [the server guide](../apps/server/README.md) for context capacity and deployment settings.
+
+Recent complete tool exchanges stay in context where they fit. A separate inventory retains completed operations, exact aggregate results and pending cursors through compaction. Typed source references and read coverage survive later turns even after attachment chips are removed; a fresh content question still requires authorized live reads. Equivalent completed reads stop making progress rather than offering another continuation indefinitely.
+
+Database reads use the same effective Status default as the client for missing or blank values. `query_records` accepts `sortPropertyId` and `direction` to order scalar property values on the server before pagination, with deterministic row-ID ties and missing values last. It rejects unavailable or unsupported properties; computed fields and saved-view queries remain unsupported. Semantic matches also include live authorized attribution and verification metadata without re-embedding.
+
 ### User lookup
 
 ```json
@@ -78,7 +90,7 @@ Ownership workflows, reminders, wikis, editor history, connected sources and glo
 
 ## Deployment and verification
 
-1. Apply additive migrations `0119_content_editor` through `0122_property_editor` before deploying the server/runtime changes.
+1. Apply additive migrations `0119_content_editor` through `0123_content_confirmation_clock` before deploying the server/runtime changes. Migration `0123` also repairs the page content clock on databases that applied earlier versions of `0119` or `0122`. Node and Worker development runtimes use separate databases; migrate each database in use.
 2. Deploy the shared server operations and Node/Worker adapters, then clients. Re-embedding and semantic profile changes are unnecessary.
 3. Refresh OAuth consent only for clients that need `users.read`. Existing keyword/semantic search grants remain valid.
 4. Check structured keyword requests, user lookup, verification permissions, and legacy GET search. Verification starts unverified for existing items.

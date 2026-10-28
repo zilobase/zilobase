@@ -169,6 +169,12 @@ reported explicitly, and the model can then choose keyword search.
 Search results are bounded discovery hints, not citation evidence or an
 exhaustive inventory. The model reads important matches before relying on their
 content; listing search matches does not require reading every result.
+The current user question is routed independently of earlier conversation turns.
+Find-only requests are enforced as terminal listings; summaries permit live reads.
+Named teamspaces resolve against the actor's visible directory before keyword
+search, with ambiguous names requiring clarification and all keywords preserved.
+Routing uses one schema-validated call to the configured model, with usage included
+in run telemetry. It is internal orchestration; the public tool set remains seven.
 Both search tools default to 10 matches and accept at most 50, without a result-byte
 budget. Refine the keywords or page/database types for other matches; search has
 no continuation cursor. Mentions contain resource references only.
@@ -188,39 +194,42 @@ Page reads split large individual blocks and paginate content and references.
 A changed source invalidates its cursor; results always disclose whether more
 pages remain. There is no fixed 200-record ceiling across pages.
 
-The runtime uses AI SDK's `ToolLoopAgent` and reserves model usage before each
-step. Configure these limits on both API and background workers:
+The runtime uses AI SDK's `ToolLoopAgent` without per-run token, tool-call,
+model-step, output-token, result-byte, or conversation-length budgets. Source reads
+remain paginated and at most three tools execute concurrently. The physical model
+context capacity is configured with `AI_CONTEXT_WINDOW_TOKENS` (default 32768).
+Before context fills, the same configured model summarizes older exchanges,
+preserving the task, user preferences, decisions, source identities, completed
+reads, and pending work. Large tool exchanges are summarized in model-sized
+fragments rather than rejected by a byte budget. Known model tokenizers are used
+when available; custom models may set `AI_TOKENIZER_ENCODING`.
 
-| Variable                   | Default | Meaning                                                |
-| -------------------------- | ------- | ------------------------------------------------------ |
-| `AI_CONTEXT_WINDOW_TOKENS` | 32768   | Configured model context window                        |
-| `AI_MAX_STEPS`             | 12      | Maximum model steps per run, including final synthesis |
-| `AI_MAX_TOOL_CALLS`        | 24      | Maximum read operations per run                        |
-| `AI_TOOL_RESULT_BYTES`     | 6000    | Maximum serialized result bytes per non-search tool    |
-| `AI_RUN_TOKEN_BUDGET`      | 128000  | Actual usage plus unresolved reservations per run      |
+Compaction appears live as “Compacting conversation”, then “Conversation
+compacted”, with a disclosure of how many messages were summarized. Failures keep
+the original transcript and show a retryable failure. Rolling conversation
+summaries are encrypted on the thread using `AI_RUN_PAYLOAD_ENCRYPTION_KEY`; they
+survive follow-up messages and reloads. Apply migration `0124_chat_compaction`
+before deploying. The former `AI_MAX_STEPS`, `AI_MAX_TOOL_CALLS`,
+`AI_TOOL_RESULT_BYTES`, and `AI_RUN_TOKEN_BUDGET` settings are ignored.
 
-A record page defaults to 50 records and accepts at most 100; result bytes may
-reduce the number actually returned. At most three read tools run concurrently.
-SQL reads have a ten-second statement deadline. The runtime reserves 4096 output
-tokens, includes tool definitions in context accounting, and removes whole older
-tool exchanges when necessary. Known models use their supported tokenizer. Unknown models conservatively use UTF-8 bytes; `AI_TOKENIZER_ENCODING` may explicitly select `o200k_base`, `cl100k_base`, or `utf8_bound`.
-Reported usage replaces each request reservation once. Missing usage and requests
-interrupted by worker loss remain conservatively charged. The last affordable
-step disables tools and summarizes evidence. Expected limits have precise stop
-reasons rather than generic generation failures.
-
-Bounded source identities, inspected schemas, read completion and pending cursors
-survive transcript trimming. Metadata reuse rechecks access and revision, appears
-as “Source reused” in activity, and stops repeated inspections without progress.
-Continuation is offered only for unfinished accessible reads. Omitted exchanges
-are disclosed. The HTTP request ceiling remains 2 MB.
+Source identities, inspected schemas, read completion and pending cursors survive
+compaction. Metadata reuse rechecks access and revision. Source lists stop after
+search, and repeated retrieval without progress stops independently of compaction.
+Recent complete tool exchanges remain available through compaction where they fit;
+an operation inventory preserves exact aggregate results. Typed source references
+and prior read coverage also survive attachment removal on subsequent turns.
+They permit a new authorized read and never become current citation evidence by
+themselves. Database scalar property sorting uses `sortPropertyId` before taking
+the requested record limit; unset Status values use their configured default in
+both records and aggregates.
+User cancellation, permission checks, infrastructure request validation, and the
+HTTP request ceiling of 2 MB still apply.
 
 Conversation history is private to its creator and workspace and remains until
 deleted. Source permissions are rechecked before display, model replay and reads.
 Citations resolve only against successfully read source evidence. Durable runs
 persist an encrypted working transcript and cursors for up to one hour; permanent
-history retains answer text, source metadata and tool activity, not raw tool
-payloads. Without durable mode, disconnecting stops the request-owned run.
+history retains answer text, source metadata, tool activity, and encrypted conversation summaries, not raw tool payloads. Without durable mode, disconnecting stops the request-owned run.
 
 Run `node scripts/ai/test-isolated.mjs` for temporary PostgreSQL domain-query,
 pagination, authorization and conversation checks. `npm run test:ai:durable`
@@ -236,11 +245,12 @@ that the streamed answer persists and reloads. This does not set deployment defa
 
 ### Durable Ask AI rollout
 
-Deploy migrations through `0115_ask_ai_read_tools` before using the tool runtime.
+Deploy migrations through `0124_chat_compaction` before using the tool runtime.
 Enable `AI_DURABLE_STREAMING_ENABLED=true` for background generation and continuation.
 The API and producer must use the same database, cell ID, model configuration,
 and `AI_RUN_PAYLOAD_ENCRYPTION_KEY` (32 random bytes, base64). Generate the key
 with `openssl rand -base64 32` and supply it through the deployment secret manager.
+Encrypted rolling summaries use this key in non-durable mode as well.
 Do not rotate it while admitted runs still need their encrypted input.
 
 For Node, configure `QUEUE_REDIS_URL` and run `ZILOBASE_PROCESS_ROLE=api` separately
