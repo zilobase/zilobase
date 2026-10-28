@@ -1,6 +1,38 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { normalizeWorkspaceSearch, deriveContentVerification } from "./controls";
+import { searchAvailabilityNotice } from "./contracts";
+
+test("semantic availability distinguishes disabled, building, degraded and genuine zero matches", () => {
+  assert.match(
+    searchAvailabilityNotice({
+      mode: "semantic",
+      indexAvailability: "disabled",
+      degradationReason: "workspace_disabled",
+    }) ?? "",
+    /disabled in this workspace/,
+  );
+  assert.match(
+    searchAvailabilityNotice({ mode: "semantic", indexAvailability: "building" }) ?? "",
+    /still indexing/,
+  );
+  assert.match(
+    searchAvailabilityNotice({
+      mode: "semantic",
+      indexAvailability: "ready",
+      degradationReason: "provider_timeout",
+    }) ?? "",
+    /temporarily unavailable or degraded/,
+  );
+  assert.equal(
+    searchAvailabilityNotice({ mode: "semantic", indexAvailability: "ready" }),
+    undefined,
+  );
+  assert.equal(
+    searchAvailabilityNotice({ mode: "keyword", indexAvailability: "disabled" }),
+    undefined,
+  );
+});
 
 test("structured search normalizes sets, dates and defaults", () => {
   const result = normalizeWorkspaceSearch({
