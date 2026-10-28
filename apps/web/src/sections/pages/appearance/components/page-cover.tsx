@@ -27,7 +27,7 @@ export function PageCover({
 
   return (
     <div
-      className="group/cover relative h-[280px] w-full overflow-hidden bg-surface-muted"
+      className="group/cover relative mx-3 mt-3 h-[280px] overflow-hidden rounded-xl bg-surface-muted sm:mx-5 sm:mt-4"
       contentEditable={false}
     >
       <img alt="Cover" className="size-full object-cover" src={cover} />
