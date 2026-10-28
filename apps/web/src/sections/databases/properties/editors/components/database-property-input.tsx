@@ -122,7 +122,11 @@ function DatabaseInputCell({
       }}
     >
       <PopoverTrigger asChild>
-        <button aria-label={`${label} value`} className="database-input-cell-trigger" type="button">
+        <button
+          aria-label={`${label} value: ${value.trim() || emptyLabel || "Empty"}`}
+          className="database-input-cell-trigger"
+          type="button"
+        >
           {actionHref ? (
             <a
               className="database-input-cell-link"

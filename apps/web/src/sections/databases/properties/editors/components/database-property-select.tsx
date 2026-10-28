@@ -192,7 +192,11 @@ export function DatabasePropertySelect({
   };
 
   const trigger = (
-    <button aria-label={`${label} value`} className="database-select-cell-trigger" type="button">
+    <button
+      aria-label={`${label} value: ${selectedValues.map((selected) => getSelectedOption(selected)?.name ?? selected).join(", ") || emptyLabel || "Empty"}`}
+      className="database-select-cell-trigger"
+      type="button"
+    >
       {selectedContent}
     </button>
   );

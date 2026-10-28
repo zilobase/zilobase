@@ -355,7 +355,7 @@ export function DatabasePropertyDate({
       <PopoverTrigger asChild>
         {trigger ?? (
           <button
-            aria-label={`${label} value`}
+            aria-label={`${label} value: ${value || emptyLabel || "Empty"}`}
             className="database-date-cell-trigger"
             type="button"
           >
