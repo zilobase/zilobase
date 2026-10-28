@@ -16,7 +16,10 @@ import {
   getValidDatabaseFilterOperator,
   isDatabaseFilterGroup,
 } from "../schema/filter";
-import { defaultStatusOption, getDefaultDatabasePropertyConfig } from "../schema/property-defaults";
+import {
+  getEffectiveStatusValue,
+  getDefaultDatabasePropertyConfig,
+} from "../schema/property-defaults";
 import type { DatabasePropertyValue } from "../schema/property-values";
 import { serializePropertyValue } from "../schema/property-values";
 import { getRelationLimitTrimUpdates, relationPayloadFromViewData } from "../schema/relations";
@@ -432,7 +435,10 @@ export function createDatabaseViewCommands({
       groupPropertyOverride?: DatabasePropertyListItem | null,
       parentRowId?: string | null,
     ) => {
-      const defaultStatusValue = defaultStatusOption.name;
+      const defaultStatusValue = getEffectiveStatusValue(
+        null,
+        kanbanGroupProperty?.property.config,
+      );
       const nextGroupProperty =
         groupPropertyOverride ?? (isKanbanView ? kanbanGroupProperty : null);
       const nextGroupValue =

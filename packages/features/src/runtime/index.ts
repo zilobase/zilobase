@@ -172,6 +172,7 @@ export type {
 } from "../ai/runs";
 
 export { sourceRecordQuerySchema, recordFilterSchema } from "../databases/records/read-contracts";
+export { getEffectiveStatusValue } from "../databases/schema/property-defaults";
 export type {
   SourceRecordQuery,
   SourceRecordPosition,

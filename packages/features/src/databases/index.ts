@@ -214,6 +214,7 @@ export type {
 } from "./schema/property-config";
 export {
   defaultStatusOption,
+  getEffectiveStatusValue,
   defaultStatusOptions,
   getDefaultDatabasePropertyConfig,
 } from "./schema/property-defaults";

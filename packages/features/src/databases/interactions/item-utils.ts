@@ -11,7 +11,7 @@ import {
   type DatabasePredicateContext,
 } from "../schema/filter";
 import { getReadOnlyTimePropertyRawValue } from "../schema/read-only-time";
-import { defaultStatusOption } from "../schema/property-defaults";
+import { getEffectiveStatusValue } from "../schema/property-defaults";
 import type {
   DatabaseFilterItemConfig,
   DatabaseSortConfig,
@@ -37,6 +37,7 @@ type SortableDatabaseProperty = {
   property: {
     id: string;
     type: string;
+    config?: unknown;
   };
 };
 
@@ -126,6 +127,8 @@ function getComparablePropertyValue(
       return getComparableNumberValue(propertyValue);
     case "person":
       return getComparablePersonValue(propertyValue, personOptionsById);
+    case "status":
+      return getEffectiveStatusValue(propertyValue, property.property.config);
     default:
       return Array.isArray(propertyValue) ? propertyValue.join(", ") : propertyValue;
   }
@@ -141,7 +144,9 @@ function getFilterPropertyValue(
   }
 
   const value = propertyValuesByKey[`${item.pageId}:${property.property.id}`] ?? "";
-  return property.property.type === "status" && value === "" ? defaultStatusOption.name : value;
+  return property.property.type === "status"
+    ? getEffectiveStatusValue(value, property.property.config)
+    : value;
 }
 
 function createDatabasePredicateContext({

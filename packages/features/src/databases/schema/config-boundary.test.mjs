@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getStatusOptions, reorderStatusGroupOptions } from "./status-options.ts";
-import { defaultStatusOptions } from "./property-defaults.ts";
+import { defaultStatusOptions, getEffectiveStatusValue } from "./property-defaults.ts";
 import { getSelectOptions, getSelectConfigWithOptions } from "../views/grouping.ts";
 import { getDateConfigWithFormat } from "./date-config.ts";
 import { getRelationPageSummary } from "./relation-settings.ts";
 import { getPlainConditionalColorSettings } from "../views/configuration.ts";
+
+test("effective status uses configured defaults for unset values and preserves explicit statuses", () => {
+  const config = { defaultOptionId: "queued", options: [{ id: "queued", name: "Queued" }] };
+  for (const value of [null, undefined, "", "   "])
+    assert.equal(getEffectiveStatusValue(value, config), "Queued");
+  assert.equal(getEffectiveStatusValue("Done", config), "Done");
+  assert.equal(getEffectiveStatusValue(null, { defaultOptionId: "missing" }), "Not started");
+});
 
 test("invalid option configuration falls back without discarding valid option metadata", () => {
   assert.equal(getStatusOptions({ options: [{ id: 2, name: "Invalid" }] }), defaultStatusOptions);

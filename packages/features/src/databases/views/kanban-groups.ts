@@ -1,4 +1,4 @@
-import { defaultStatusOption } from "../schema/property-defaults";
+import { getEffectiveStatusValue } from "../schema/property-defaults";
 import {
   toStringArray,
   type DatabasePropertyValue as DatabaseCellValue,
@@ -67,7 +67,9 @@ export function getKanbanGroupValues({
     .map((item) => item.trim())
     .filter(Boolean);
   if (groupValues.length > 0) return groupValues;
-  return property.property.type === "status" ? [defaultStatusOption.name] : [];
+  return property.property.type === "status"
+    ? [getEffectiveStatusValue(null, property.property.config)]
+    : [];
 }
 
 export function getKanbanGroupLabel({

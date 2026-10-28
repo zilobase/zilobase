@@ -5,6 +5,7 @@ import {
   type SourceRecordQuery,
   type SourceRecordPosition,
   type SourceReadRevision,
+  getEffectiveStatusValue,
 } from "@zilobase/features/runtime";
 import { db } from "../../../infrastructure/database";
 import {
@@ -18,7 +19,7 @@ import {
 } from "../../../infrastructure/database/schema";
 import { ServerOperationError, type ServerOperationContext } from "../../operations/context";
 import { readableDatabase } from "./operations";
-import { getAuthorizedDatabaseSourceIds } from "./service";
+import { getAuthorizedDatabaseSourceIds, getDatabaseTitleSourcesService } from "./service";
 import { withDatabaseReadSnapshot } from "./snapshot";
 
 const deny = (error: string, status = 422): never => {
@@ -29,6 +30,34 @@ const boundedSnapshot = <T>(read: () => Promise<T>) =>
     await db.execute(sql`set local statement_timeout = '10000ms'`);
     return read();
   });
+
+const scalarTypes = [
+  "text",
+  "number",
+  "checkbox",
+  "date",
+  "select",
+  "status",
+  "url",
+  "email",
+  "phone",
+];
+function propertyScalar(property: { id: string; type: string; config: unknown }) {
+  const raw = sql`(select v.value from page_property_value v where v.page_id = ${page.id} and v.property_id = ${property.id})`;
+  const scalar =
+    property.type === "date"
+      ? sql`coalesce(${raw}->>'start', ${raw}->>'date', ${raw} #>> '{}')`
+      : sql`(${raw} #>> '{}')`;
+  const text =
+    property.type === "status"
+      ? sql`coalesce(nullif(btrim(${scalar}), ''), ${getEffectiveStatusValue(null, property.config)})`
+      : scalar;
+  const value =
+    property.type === "number"
+      ? sql`case when ${text} ~ '^-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$' then (${text})::numeric end`
+      : text;
+  return { text, value };
+}
 
 export async function authorizeSourceRead(
   context: ServerOperationContext,
@@ -144,11 +173,12 @@ export async function describeDatabaseSource(
               .orderBy(asc(databaseView.id))
               .limit(limit + 1);
     }
+    const titleSources = await getDatabaseTitleSourcesService([access.record], access.user!.id);
     return {
       ...({ verification: deriveContentVerification(access.record) } as {
         verification?: ContentVerification;
       }),
-      title: access.record.name,
+      title: titleSources.get(input.databaseId)?.name ?? access.record.name,
       revision,
       section: input.section,
       entries: entries.slice(0, limit),
@@ -172,10 +202,21 @@ async function queryScope(
   const revision = { database: access.record.version, source: source!.version };
   if (expected && (expected.database !== revision.database || expected.source !== revision.source))
     deny("SOURCE_CHANGED", 409);
-  const ids = [...new Set([...query.propertyIds, ...query.filters.map((f) => f.propertyId)])];
+  const ids = [
+    ...new Set([
+      ...query.propertyIds,
+      ...query.filters.map((f) => f.propertyId),
+      ...(query.sortPropertyId ? [query.sortPropertyId] : []),
+    ]),
+  ];
   const properties = ids.length
     ? await db
-        .select({ id: pageProperty.id, name: pageProperty.name, type: pageProperty.type })
+        .select({
+          id: pageProperty.id,
+          name: pageProperty.name,
+          type: pageProperty.type,
+          config: pageProperty.config,
+        })
         .from(databaseProperty)
         .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
         .where(
@@ -206,22 +247,9 @@ async function queryScope(
     conditions.push(sql`strpos(lower(${page.name}), lower(${query.nameContains})) > 0`);
   for (const filter of query.filters) {
     const property = properties.find((p) => p.id === filter.propertyId)!;
-    if (
-      !["text", "number", "checkbox", "date", "select", "status", "url", "email", "phone"].includes(
-        property.type,
-      )
-    )
+    if (!scalarTypes.includes(property.type))
       deny(`UNSUPPORTED_QUERY: filtering ${property.type} is not supported`);
-    // Correlated, parameterized scalar expressions preserve missing values. No raw model SQL.
-    const raw = sql`(select v.value from page_property_value v where v.page_id = ${page.id} and v.property_id = ${filter.propertyId})`;
-    const text =
-      property.type === "date"
-        ? sql`coalesce(${raw}->>'start', ${raw}->>'date', ${raw} #>> '{}')`
-        : sql`(${raw} #>> '{}')`;
-    const value =
-      property.type === "number"
-        ? sql`case when ${text} ~ '^-?[0-9]+([.][0-9]+)?([eE][+-]?[0-9]+)?$' then (${text})::numeric end`
-        : text;
+    const { text, value } = propertyScalar(property);
     if (filter.operator === "is_empty") {
       conditions.push(sql`(${text} is null or ${text} = '')`);
       continue;
@@ -274,21 +302,35 @@ export async function querySourceRecords(
   const query = sourceRecordQuerySchema.parse(input);
   return boundedSnapshot(async () => {
     const scope = await queryScope(context, query, expected);
-    const column = {
-      id: databaseRow.id,
-      name: page.name,
-      createdAt: databaseRow.createdAt,
-      updatedAt: databaseRow.updatedAt,
-    }[query.sort];
+    const sortedProperty = scope.properties.find(
+      (property) => property.id === query.sortPropertyId,
+    );
+    if (sortedProperty && !scalarTypes.includes(sortedProperty.type))
+      deny(`UNSUPPORTED_QUERY: sorting ${sortedProperty.type} is not supported`);
+    const column = sortedProperty
+      ? propertyScalar(sortedProperty).value
+      : {
+          id: databaseRow.id,
+          name: page.name,
+          createdAt: databaseRow.createdAt,
+          updatedAt: databaseRow.updatedAt,
+        }[query.sort];
     const sort = query.direction === "asc" ? asc : desc;
     if (position) {
-      const value = ["createdAt", "updatedAt"].includes(query.sort)
-        ? new Date(position.value)
-        : position.value;
-      scope.conditions.push(
+      const value =
+        !sortedProperty && ["createdAt", "updatedAt"].includes(query.sort)
+          ? new Date(position.value!)
+          : position.value;
+      const idAfter =
         query.direction === "asc"
-          ? sql`(${column}, ${databaseRow.id}) > (${value}, ${position.id})`
-          : sql`(${column}, ${databaseRow.id}) < (${value}, ${position.id})`,
+          ? sql`${databaseRow.id} > ${position.id}`
+          : sql`${databaseRow.id} < ${position.id}`;
+      const valueAfter =
+        query.direction === "asc" ? sql`${column} > ${value}` : sql`${column} < ${value}`;
+      scope.conditions.push(
+        position.value === null
+          ? sql`(${column} is null and ${idAfter})`
+          : sql`(${column} is null or ${valueAfter} or (${column} = ${value} and ${idAfter}))`,
       );
     }
     const found = await db
@@ -299,11 +341,15 @@ export async function querySourceRecords(
         parentRowId: databaseRow.parentRowId,
         createdAt: databaseRow.createdAt,
         updatedAt: databaseRow.updatedAt,
+        sortValue: sql<string | null>`(${column})::text`,
       })
       .from(databaseRow)
       .innerJoin(page, eq(databaseRow.pageId, page.id))
       .where(and(...scope.conditions))
-      .orderBy(sort(column), sort(databaseRow.id))
+      .orderBy(
+        query.direction === "asc" ? sql`${column} asc nulls last` : sql`${column} desc nulls last`,
+        sort(databaseRow.id),
+      )
       .limit(query.limit + 1);
     const records = found.slice(0, query.limit);
     const values =
@@ -327,17 +373,31 @@ export async function querySourceRecords(
         : [];
     return {
       revision: scope.revision,
-      properties: scope.properties.filter((p) => query.propertyIds.includes(p.id)),
-      records: records.map((r) => ({
+      properties: scope.properties
+        .filter((p) => query.propertyIds.includes(p.id))
+        .map(({ config: _config, ...p }) => p),
+      records: records.map(({ sortValue: _sortValue, ...r }) => ({
         ...r,
         values: Object.fromEntries(
-          values.filter((v) => v.pageId === r.pageId).map((v) => [v.propertyId, v.value]),
+          scope.properties
+            .filter((p) => query.propertyIds.includes(p.id))
+            .flatMap((property) => {
+              const stored = values.find(
+                (v) => v.pageId === r.pageId && v.propertyId === property.id,
+              );
+              return property.type === "status"
+                ? [[property.id, getEffectiveStatusValue(stored?.value, property.config)]]
+                : stored
+                  ? [[property.id, stored.value]]
+                  : [];
+            }),
         ),
       })),
       positions: records.map((r) => ({
         id: r.id,
-        value:
-          query.sort === "name"
+        value: sortedProperty
+          ? r.sortValue
+          : query.sort === "name"
             ? r.name
             : query.sort === "createdAt"
               ? r.createdAt.toISOString()

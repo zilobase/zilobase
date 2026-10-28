@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { DatabasePropertyDate } from "../../../properties/editors/components/database-property-date";
 import { DatabasePropertySelect } from "../../../properties/editors/components/database-property-select";
 import {
-  defaultStatusOption,
+  getEffectiveStatusValue,
   defaultStatusOptions,
   getPersonLimit,
   type DatabasePropertyValue,
@@ -57,7 +57,9 @@ export function DatabaseSelectionPropertyAction({
         propertyConfig={pageProperty.config}
         showStatusDot={pageProperty.type === "status"}
         value={
-          pageProperty.type === "status" && !mixed && !value ? defaultStatusOption.name : value
+          pageProperty.type === "status" && !mixed
+            ? getEffectiveStatusValue(value, pageProperty.config)
+            : value
         }
         valueKey={cellKind === "person" ? "id" : "name"}
       />
