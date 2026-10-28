@@ -55,6 +55,10 @@ target
 # Machine-local development and verification artifacts
 /.dev/
 
+# Local Ask AI QA evidence
+docs/operations-evidence/2026-10-24-ask-ai/
+docs/operations-evidence/2026-10-24-ask-ai-browser-qa.md
+
 # structure guardrails (RESTRUCTURE_PLAN Pass 0)
 .wrangler/
 .wrangler.deploy-*.json
