@@ -5,6 +5,7 @@ import {
 import { clientMutation, runClientMutation } from "../../shared/operation-mutation";
 import type { DatabaseViewEntity } from "../core/entities";
 import type { ConfigurationChange } from "../interactions/configuration";
+import { buildViewCreate, buildViewDelete, buildViewUpdate } from "./command-builders";
 export type UpdateDatabaseViewInput = {
   configuration?: ConfigurationChange[];
   databaseId: string;
@@ -33,15 +34,8 @@ export function updateDatabaseView(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({ databaseId, databaseViewId, ...patch }: UpdateDatabaseViewInput) => {
-        const ack = await controller.execute({
-          command: {
-            patch,
-            type: "view.update",
-            viewId: databaseViewId,
-          },
-          databaseId,
-        });
+      mutationFn: async (input: UpdateDatabaseViewInput) => {
+        const ack = await controller.execute(buildViewUpdate(input));
         return ack.result as DatabaseViewEntity;
       },
     });
@@ -56,30 +50,10 @@ export function addDatabaseView(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({
-        onOptimistic,
-        config,
-        databaseId,
-        dataSourceId,
-        name,
-        type,
-      }: AddDatabaseViewInput) => {
+      mutationFn: async ({ onOptimistic, ...input }: AddDatabaseViewInput) => {
+        const { databaseId } = input;
         const commandId = crypto.randomUUID();
-        const saving = controller.execute(
-          {
-            command: {
-              afterViewId: null,
-              beforeViewId: null,
-              config: config ?? null,
-              dataSourceId,
-              name: name?.trim() || "Table",
-              type: "view.create",
-              viewType: type?.trim() || "table",
-            },
-            databaseId,
-          },
-          { commandId },
-        );
+        const saving = controller.execute(buildViewCreate(input), { commandId });
         const preview = controller
           .bootstrap(databaseId)
           ?.views.find((view) => view.id === commandId);
@@ -101,11 +75,8 @@ export function deleteDatabaseView(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({ databaseId, databaseViewId }: DeleteDatabaseViewInput) => {
-        const ack = await controller.execute({
-          command: { type: "view.delete", viewId: databaseViewId },
-          databaseId,
-        });
+      mutationFn: async (input: DeleteDatabaseViewInput) => {
+        const ack = await controller.execute(buildViewDelete(input));
         return ack.result as {
           viewId: string;
         };

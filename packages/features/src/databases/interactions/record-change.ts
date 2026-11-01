@@ -1,4 +1,5 @@
 import type { ChangeRowCommand } from "../core/entities";
+import { buildRowChange } from "../mutations/command-builders";
 import { changeRecordHierarchy } from "./hierarchy";
 import type { RecordEffect } from "./model";
 import type { DatabaseController } from "./store";
@@ -56,7 +57,7 @@ export function submitRecordChange(store: DatabaseController, input: ChangeDatab
     }
   }
   return store.submit(
-    { databaseId, dataSourceId, command: { ...change, type: "row.change" } },
+    buildRowChange({ hostDatabaseId: databaseId, dataSourceId }, change),
     effects,
   );
 }

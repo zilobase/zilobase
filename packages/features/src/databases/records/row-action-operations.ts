@@ -9,6 +9,7 @@ import {
 } from "../../shared/operation-context";
 import type { DatabaseRecordEntity } from "../core/entities";
 import type { SortableDatabaseItem } from "../interactions/item-utils";
+import { buildRowDuplicate, buildRowMoveToPage } from "../mutations/command-builders";
 import { DatabaseCommandUnconfirmedError } from "../mutations/execute";
 import { addDatabaseRow } from "../mutations/rows-operations";
 export type DatabaseRowAction =
@@ -121,19 +122,11 @@ export async function runDatabaseRecordActions(
             !parent
           )
             throw new Error("The selected parent could not be duplicated");
+          const scope = { hostDatabaseId: hostDatabaseId ?? databaseId, dataSourceId: databaseId };
           const ack = await store.submit(
-            {
-              databaseId: hostDatabaseId ?? databaseId,
-              dataSourceId: databaseId,
-              command:
-                action.type === "duplicate"
-                  ? {
-                      type: "row.duplicate",
-                      rowId: row.id,
-                      ...(parent ? { parentRowId: parent } : {}),
-                    }
-                  : { type: "row.moveToPage", rowId: row.id, pageId: action.pageId },
-            },
+            action.type === "duplicate"
+              ? buildRowDuplicate(scope, { rowId: row.id, parentRowId: parent })
+              : buildRowMoveToPage(scope, { rowId: row.id, pageId: action.pageId }),
             action.type === "movePage"
               ? [{ dataSourceId: databaseId, rowId: row.id, remove: true }]
               : [],

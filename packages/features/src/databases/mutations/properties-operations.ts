@@ -5,6 +5,13 @@ import {
 import { clientMutation, runClientMutation } from "../../shared/operation-mutation";
 import type { DatabasePropertyEntity } from "../core/entities";
 import type { ConfigurationChange } from "../interactions/configuration";
+import {
+  buildPropertyCreate,
+  buildPropertyDuplicate,
+  buildPropertyState,
+  buildPropertyUpdate,
+  buildTemplateApply,
+} from "./command-builders";
 import { resolveDataSourceCommandScope } from "./scope";
 export type AddPropertyInput = {
   onOptimistic?: (property: DatabasePropertyEntity) => void;
@@ -72,24 +79,14 @@ export function addDatabaseProperty(
         onOptimistic,
       }: AddDatabasePropertyInput) => {
         const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
-        const anchors = resolvePropertyCreateAnchors(
-          controller.bootstrap(scope.hostDatabaseId)?.properties ?? [],
-          scope.dataSourceId,
-          position,
-        );
         const commandId = crypto.randomUUID();
         const saving = controller.execute(
-          {
-            command: {
-              ...anchors,
-              config: config ?? null,
-              name: name?.trim() || "Property",
-              propertyType: type?.trim() || "text",
-              type: "property.create",
-            },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          },
+          buildPropertyCreate(scope, controller.bootstrap(scope.hostDatabaseId)?.properties ?? [], {
+            config,
+            name,
+            position,
+            type,
+          }),
           { commandId },
         );
         const preview = controller
@@ -122,11 +119,7 @@ export function applyDatabaseTemplate(
           databaseId,
           hostDatabaseId,
         );
-        const ack = await controller.execute({
-          command: { ...input, type: "template.apply" },
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
-        });
+        const ack = await controller.execute(buildTemplateApply(scope, input));
         const result = ack.result as {
           dataSource: import("../core/entities").DataSourceEntity;
         };
@@ -152,15 +145,9 @@ export function updateDatabaseProperty(
         ...patch
       }: UpdateDatabasePropertyInput) => {
         const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
-        const ack = await controller.execute({
-          command: {
-            patch,
-            propertyId: databasePropertyId,
-            type: "property.update",
-          },
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
-        });
+        const ack = await controller.execute(
+          buildPropertyUpdate(scope, { databasePropertyId, ...patch }),
+        );
         return ack.result as DatabasePropertyEntity;
       },
     });
@@ -179,14 +166,9 @@ export function deleteDatabaseProperty(
     return clientMutation({
       mutationFn: async ({ databaseId, databasePropertyId }: DeleteDatabasePropertyInput) => {
         const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
-        const ack = await controller.execute({
-          command: {
-            propertyId: databasePropertyId,
-            type: "property.archive",
-          },
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
-        });
+        const ack = await controller.execute(
+          buildPropertyState(scope, databasePropertyId, "property.archive"),
+        );
         return ack.result as DatabasePropertyEntity;
       },
     });
@@ -209,34 +191,11 @@ export function duplicateDatabaseProperty(
         includeValues = false,
       }: DuplicateDatabasePropertyInput) => {
         const scope = resolveDataSourceCommandScope(queryClient, controller.sessionId, databaseId);
-        const ack = await controller.execute({
-          command: {
-            includeValues,
-            propertyId: databasePropertyId,
-            type: "property.duplicate",
-          },
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
-        });
+        const ack = await controller.execute(
+          buildPropertyDuplicate(scope, { databasePropertyId, includeValues }),
+        );
         return ack.result as DatabasePropertyEntity;
       },
     });
   });
-}
-
-function resolvePropertyCreateAnchors(
-  properties: DatabasePropertyEntity[],
-  dataSourceId: string,
-  requestedPosition?: number,
-) {
-  const ids = properties
-    .filter((property) => property.dataSourceId === dataSourceId)
-    .slice()
-    .sort((left, right) => left.position - right.position)
-    .map(({ id }) => id);
-  const position = Math.max(0, Math.min(requestedPosition ?? ids.length, ids.length));
-  return {
-    afterPropertyId: ids[position - 1] ?? null,
-    beforePropertyId: ids[position] ?? null,
-  };
 }
