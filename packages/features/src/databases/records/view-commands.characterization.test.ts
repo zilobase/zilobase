@@ -148,10 +148,23 @@ async function settle() {
   for (let index = 0; index < 10; index += 1) await new Promise((resolve) => setTimeout(resolve));
 }
 
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => [key, sortKeys(item)]),
+  );
+}
+
+/** Key order is irrelevant to command receipts and servers; random filter IDs are masked. */
 function normalize(value: unknown) {
-  return JSON.parse(
-    JSON.stringify(value).replace(/filter-[0-9a-f]{8}-[0-9a-f-]{27}/g, "filter-<random>"),
-  ) as unknown;
+  return sortKeys(
+    JSON.parse(
+      JSON.stringify(value).replace(/filter-[0-9a-f]{8}-[0-9a-f-]{27}/g, "filter-<random>"),
+    ),
+  );
 }
 
 async function capture(

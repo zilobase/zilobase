@@ -1,49 +1,16 @@
-import { diffConfiguration } from "../interactions/configuration";
-import { getConvertedViewConfig, removeDatabaseGroupProperty } from "../views/type-transition";
-import { observeDatabaseViewCreation, observeOperation } from "./mutation-bindings";
-
+import { isPlanRejection, runPlan } from "../../actions/plan";
 import type { DatabasePropertyEntity, DatabaseViewEntity } from "../core/entities";
 import type { DatabaseRow } from "../core/export-payload";
-import type { DatabaseViewData } from "../views/source-state";
-
-import {
-  areSerializedPropertyValuesEqual,
-  hasViewHiddenPropertyIds,
-} from "../interactions/item-utils";
 import type { DatabasePropertyFilterConfig } from "../schema/filter";
-import {
-  getDatabaseFilterOperatorsForType,
-  getValidDatabaseFilterOperator,
-  isDatabaseFilterGroup,
-} from "../schema/filter";
-import {
-  getEffectiveStatusValue,
-  getDefaultDatabasePropertyConfig,
-} from "../schema/property-defaults";
 import type { DatabasePropertyValue } from "../schema/property-values";
-import { serializePropertyValue } from "../schema/property-values";
-import { getRelationLimitTrimUpdates, relationPayloadFromViewData } from "../schema/relations";
+import type { DatabaseCalendarMode, DatabaseCalendarSchedule } from "../views/calendar";
 import type { DatabaseChartSettings } from "../views/chart-config";
-import { defaultDatabaseChartSettings, getDatabaseChartSettings } from "../views/chart-config";
 import type {
   DatabaseConditionalColorConfig,
   DatabaseLayoutSettings,
   DatabaseNameColumnConfig,
-  DatabasePropertyConfig,
   DatabaseSortConfig,
   DatabaseSubItemsSettings,
-} from "../views/configuration";
-import {
-  getDatabaseFilters,
-  getDatabaseLayoutSettings,
-  getDatabaseSorts,
-  getDatabaseSubItemsSettings,
-  getMergedDatabaseConfig,
-  getMergedNameColumnConfig,
-  getMergedPropertyConfig,
-  getPropertyHidden,
-  getShowPropertyTitles,
-  getViewHiddenPropertyIds,
 } from "../views/configuration";
 import type { DatabaseFilterUpdatePatch } from "../views/contracts";
 import type {
@@ -51,33 +18,72 @@ import type {
   DatabaseFormQuestionSettingsPatch,
   DatabaseFormShareSettings,
 } from "../views/form";
-import {
-  getDatabaseFormHeaderSettings,
-  getDatabaseFormQuestionSettingsById,
-  getDatabaseFormShareSettings,
-} from "../views/form";
 import type { DatabasePropertyListItem } from "../views/grouping";
-import { getGroupPropertyId, getKanbanGroupProperty } from "../views/grouping";
-import { getDefaultKanbanHiddenPropertyIds } from "../views/kanban-group-settings";
-import { ganttMoveToDateValue, getTimelineDateProperty } from "../views/timeline-date";
-import type { DatabasePageDragPayload } from "./page-drop";
-
+import type { DatabaseViewData } from "../views/source-state";
+import type { DatabaseIntentState, DatabasePlan } from "../planners/state";
 import {
-  calendarScheduleToValue,
-  getCalendarDateProperty,
-  type DatabaseCalendarMode,
-  type DatabaseCalendarSchedule,
-} from "../views/calendar";
+  planAddCalendarRow,
+  planAddDatabaseRow,
+  planAddProperty,
+  planAddTimelineRow,
+  planRenameProperty,
+  planSaveDatabaseEmoji,
+  planSaveDatabaseTitle,
+  planSavePropertyValue,
+  planUpdateNameColumn,
+  planUpdatePropertyConfig,
+} from "../planners/records";
+import {
+  planAddCalendarView,
+  planAddChartView,
+  planAddFormView,
+  planAddGalleryView,
+  planAddKanbanView,
+  planAddListView,
+  planAddTableView,
+  planAddTimelineView,
+  planCreateDatabaseFilter,
+  planRemoveDatabaseFilter,
+  planRenameView,
+  planReorderDatabaseFilters,
+  planSaveDatabaseConditionalColors,
+  planSaveDatabaseFilters,
+  planSaveDatabasePropertyOrder,
+  planSaveDatabaseSorts,
+  planSetCalendarMode,
+  planSetupRequiredViewProperties,
+  planSetupTimelineDateProperty,
+  planSetViewDateProperty,
+  planSetViewGroupProperty,
+  planSetViewType,
+  planTogglePropertyTitles,
+  planTogglePropertyVisibility,
+  planUpdateChartSettings,
+  planUpdateDatabaseFilter,
+  planUpdateFormHeaderSettings,
+  planUpdateFormQuestionSettings,
+  planUpdateFormShareSettings,
+  planUpdateLayoutSettings,
+  planUpdateSubItemsSettings,
+  sortsWithAdded,
+  sortsWithRemoved,
+  sortsWithUpdated,
+  type DatabaseViewType,
+} from "../planners/views";
 import type { DatabaseMutations } from "./mutation-bindings";
-import { createAddDatabaseRowMutation } from "./row-mutations";
-import {
-  getDraggedRowGroupSetup,
-  getNewRowGroupSetup,
-  getTimelineGroupPropertyId,
-} from "./row-plans";
+import { observeOperation } from "./mutation-bindings";
+import type { DatabasePageDragPayload } from "./page-drop";
+import { getDraggedRowGroupSetup } from "./row-plans";
 
 export type DatabaseViewCommands = ReturnType<typeof createDatabaseViewCommands>;
 
+type PendingOperations = Partial<Record<keyof DatabaseMutations, boolean>>;
+
+/**
+ * Binds database planners to the client's mutations. Planners own the
+ * decisions shared with server executors; this module keeps UI guards,
+ * optimistic admission, selection and notifications.
+ */
 export function createDatabaseViewCommands({
   pending = {},
   activeDatabaseFilters,
@@ -100,7 +106,7 @@ export function createDatabaseViewCommands({
   getSourcePropertyMode,
   isCurrent = () => true,
 }: {
-  pending?: Partial<Record<keyof DatabaseMutations, boolean>>;
+  pending?: PendingOperations;
   activeDatabaseFilters: DatabasePropertyFilterConfig[];
   activeDatabaseSorts: DatabaseSortConfig[];
   activeView: DatabaseViewEntity | null;
@@ -127,362 +133,89 @@ export function createDatabaseViewCommands({
     dragPayload: DatabasePageDragPayload,
   ) => Promise<"duplicate" | "match" | null>;
 }) {
-  const {
-    addDatabaseView,
-    addProperty,
-    addRow,
-    changeRow,
-    updateDatabase,
-    updateDatabaseView,
-    updateProperty,
-    updateValue,
-  } = mutations;
-  const databaseConfig = viewData?.bootstrap.database.config;
-  const databasePageId = viewData?.bootstrap.database.pageId;
-  const databaseName = viewData?.activeDataSource?.name;
-  const viewProperties = viewData
-    ? viewData.bootstrap.properties.filter(
-        (property) => property.dataSourceId === viewData.dataSourceId,
-      )
-    : null;
-  const ensureTimelineDatePropertyId = createTimelineDateResolver({
-    pending,
-    addProperty,
-    databaseId,
-    editable,
-    viewData,
-    properties,
-    timelineDateProperty,
-    config: activeView?.config,
-    isCurrent,
-    notify,
-  });
-
-  let resolvingKanbanProperty = false;
-  const ensureKanbanGroupProperty = (
-    onResolved: (
-      property: DatabasePropertyEntity,
-      currentProperties: DatabasePropertyEntity[],
-    ) => void,
-    optimistic = false,
-  ) => {
-    const currentProperties = viewProperties ?? properties;
-    const existing = getKanbanGroupProperty(
-      currentProperties,
-      activeView?.type === "kanban" ? latestConfig() : null,
-    );
-    if (existing) {
-      onResolved(existing, currentProperties);
-      return;
-    }
-    if (!editable || !databaseId || pending.addProperty || resolvingKanbanProperty) return;
-    resolvingKanbanProperty = true;
-    let resolved = false;
-    const resolve = (created: DatabasePropertyEntity) => {
-      if (resolved || !isCurrent()) return;
-      resolved = true;
-      onResolved(created, [...currentProperties, created]);
-    };
-    observeOperation(
-      addProperty,
-      {
-        databaseId,
-        name: "Status",
-        type: "status",
-        config: getDefaultDatabasePropertyConfig("status"),
-        ...(optimistic ? { onOptimistic: resolve } : {}),
-      },
-      {
-        onSuccess: (created) => {
-          resolvingKanbanProperty = false;
-          resolve(created);
-        },
-        onError: () => {
-          resolvingKanbanProperty = false;
-          if (isCurrent()) notify.error("Couldn't add status property");
-        },
-      },
-    );
-  };
-
-  const addRowWithValues = createAddDatabaseRowMutation({
-    addRow,
-    databaseId,
-    editable,
+  const { addRow, changeRow } = mutations;
+  const state: DatabaseIntentState = {
+    dataSourceId: databaseId,
     hostDatabaseId: viewDatabaseId,
-  });
+    editable,
+    activeView,
+    activeDatabaseFilters,
+    activeDatabaseSorts,
+    properties,
+    items,
+    isKanbanView,
+    kanbanGroupProperty,
+    timelineDateProperty,
+    viewData,
+    ...(getLatestViewConfig && activeView && databaseId
+      ? {
+          latestViewConfig: () =>
+            getLatestViewConfig(viewDatabaseId ?? databaseId, activeView.id, activeView.config),
+        }
+      : {}),
+  };
+  const databasePageId = viewData?.bootstrap.database.pageId;
+  // Prerequisite properties are created once even if an intent repeats quickly.
+  const runningKeys = new Set<string>();
 
+  const run = (outcome: DatabasePlan, busy?: (keyof DatabaseMutations)[]) => {
+    if (isPlanRejection(outcome)) {
+      if (outcome.message) notify.error(outcome.message);
+      return null;
+    }
+    if (busy?.some((operation) => pending[operation])) return null;
+    const keys = outcome.steps.flatMap((step) => (step.key ? [step.key] : []));
+    if (keys.length && (pending.addProperty || keys.some((key) => runningKeys.has(key))))
+      return null;
+    return runPlan(outcome, mutations, {
+      isCurrent,
+      onFailure: (message) => notify.error(message),
+      onSelect: (view) => onViewCreated((view as DatabaseViewEntity).id),
+      onStepStart: ({ key }) => key && runningKeys.add(key),
+      onStepSettled: ({ key }) => key && runningKeys.delete(key),
+    });
+  };
+  /** Settles like the final operation: resolves with its result or rejects with its error. */
+  const settle = async (outcome: DatabasePlan) => {
+    const result = await run(outcome);
+    if (!result) return undefined;
+    if (result.error !== undefined) throw result.error;
+    return result.last;
+  };
+  const filterId = (index: number) => activeDatabaseFilters[index]?.id;
+  const sortColumn = (index: number) => activeDatabaseSorts[index]?.column;
   const saveDatabaseSorts = (nextSorts: DatabaseSortConfig[]) => {
-    if (!databaseId || !activeView?.id) {
-      return Promise.resolve();
-    }
-
+    const outcome = planSaveDatabaseSorts(state, nextSorts);
+    if (isPlanRejection(outcome)) return Promise.resolve();
     onSortsChanged(nextSorts.length > 0);
-    const currentConfig = latestConfig();
-
-    return updateDatabaseView({
-      configuration: diffConfiguration(
-        currentConfig,
-        getMergedDatabaseConfig(currentConfig, {
-          sorts: nextSorts.length > 0 ? nextSorts : undefined,
-        }),
-      ),
-      databaseId: viewDatabaseId ?? databaseId,
-      databaseViewId: activeView.id,
-    });
+    return settle(outcome);
   };
-
   const saveDatabaseFilters = (nextFilters: DatabasePropertyFilterConfig[]) => {
-    if (!databaseId || !activeView?.id) {
-      return;
-    }
-
-    const currentConfig = latestConfig();
-    observeOperation(updateDatabaseView, {
-      configuration: diffConfiguration(
-        currentConfig,
-        getMergedDatabaseConfig(currentConfig, {
-          filters: nextFilters.length > 0 ? nextFilters : undefined,
-        }),
-      ),
-      databaseId: viewDatabaseId ?? databaseId,
-      databaseViewId: activeView.id,
-    });
-  };
-
-  const saveDatabaseConditionalColors = (
-    nextConditionalColors: DatabaseConditionalColorConfig[],
-  ) => {
-    if (!databaseId || !activeView?.id) {
-      return;
-    }
-
-    observeOperation(updateDatabaseView, {
-      configuration: diffConfiguration(
-        activeView.config,
-        getMergedDatabaseConfig(activeView.config, {
-          conditionalColors: nextConditionalColors.length > 0 ? nextConditionalColors : undefined,
-        }),
-      ),
-      databaseId: viewDatabaseId ?? databaseId,
-      databaseViewId: activeView.id,
-    });
-  };
-
-  const getFilterPropertyType = (propertyId: DatabasePropertyFilterConfig["propertyId"]) => {
-    if (propertyId === "name") {
-      return "text";
-    }
-
-    return properties.find((property) => property.id === propertyId)?.property.type ?? "text";
-  };
-
-  const createDatabaseFilter = (
-    propertyId: DatabasePropertyFilterConfig["propertyId"],
-  ): DatabasePropertyFilterConfig => {
-    const propertyType = getFilterPropertyType(propertyId);
-
-    return {
-      id: createDatabaseFilterId(),
-      operator: getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
-      propertyId,
-      values: [],
-    };
-  };
-
-  const latestConfig = () =>
-    activeView && databaseId && getLatestViewConfig
-      ? getLatestViewConfig(viewDatabaseId ?? databaseId, activeView.id, activeView.config)
-      : activeView?.config;
-  const latestSorts = () =>
-    getLatestViewConfig ? getDatabaseSorts(latestConfig()) : activeDatabaseSorts;
-  const getPlainDatabaseFilters = () =>
-    (getLatestViewConfig
-      ? getDatabaseFilters(latestConfig()).filter(
-          (filter): filter is DatabasePropertyFilterConfig => !isDatabaseFilterGroup(filter),
-        )
-      : activeDatabaseFilters
-    ).map(({ id, operator, propertyId, values }) => ({
-      id,
-      operator: getValidDatabaseFilterOperator(operator, getFilterPropertyType(propertyId)),
-      propertyId,
-      values,
-    }));
-
-  const updateTimelineDateProperty = (datePropertyId: string | null) => {
-    if (!databaseId || !activeView?.id) {
-      return;
-    }
-
-    observeOperation(updateDatabaseView, {
-      configuration: diffConfiguration(
-        activeView.config,
-        getMergedDatabaseConfig(activeView.config, {
-          datePropertyId: datePropertyId ?? undefined,
-        }),
-      ),
-      databaseId: viewDatabaseId ?? databaseId,
-      databaseViewId: activeView.id,
-    });
-  };
-
-  const updateDatabaseChartSettings = (settings: Partial<DatabaseChartSettings>) => {
-    if (!databaseId || !activeView?.id) {
-      return;
-    }
-
-    const currentConfig =
-      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-    const nextConfig = getMergedDatabaseConfig(currentConfig, {
-      chart: {
-        ...getDatabaseChartSettings(currentConfig),
-        ...settings,
-      },
-    });
-
-    observeOperation(updateDatabaseView, {
-      configuration: diffConfiguration(currentConfig, nextConfig),
-      databaseId: viewDatabaseId ?? databaseId,
-      databaseViewId: activeView.id,
-    });
-  };
-
-  const updateDatabaseLayoutSettings = (settings: Partial<DatabaseLayoutSettings>) => {
-    if (!databaseId || !activeView?.id) {
-      return;
-    }
-
-    const currentConfig =
-      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-    const nextConfig = getMergedDatabaseConfig(currentConfig, {
-      layout: {
-        ...getDatabaseLayoutSettings(currentConfig),
-        ...settings,
-      },
-    });
-
-    observeOperation(updateDatabaseView, {
-      configuration: diffConfiguration(currentConfig, nextConfig),
-      databaseId: viewDatabaseId ?? databaseId,
-      databaseViewId: activeView.id,
-    });
+    run(planSaveDatabaseFilters(state, nextFilters));
   };
 
   return {
     addCalendarRow: async (schedule: DatabaseCalendarSchedule) => {
-      const dateProperty = getCalendarDateProperty(
-        viewProperties ?? properties,
-        activeView?.config,
-      );
-      if (!editable || !databaseId || !dateProperty)
-        throw new Error("Calendar is not editable or has no date property");
-      const row = await addRow({
-        databaseId,
-        ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
-        title: "",
-        initialValues: [
-          {
-            propertyId: dateProperty.property.id,
-            value: serializePropertyValue("date", calendarScheduleToValue(schedule)),
-          },
-        ],
-      });
+      const outcome = planAddCalendarRow(state, schedule);
+      if (isPlanRejection(outcome)) throw new Error(outcome.message ?? outcome.rejected);
+      const row = (await settle(outcome)) as { id: string; pageId: string };
       return { rowId: row.id, pageId: row.pageId };
     },
     addCalendarView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView || pending.addProperty) return;
-      ensureTimelineDatePropertyId((datePropertyId) => {
-        observeDatabaseViewCreation(
-          addDatabaseView,
-          {
-            config: { datePropertyId, calendarView: "month" },
-            databaseId: viewDatabaseId ?? databaseId,
-            dataSourceId: databaseId,
-            name: "Calendar",
-            type: "calendar",
-          },
-          {
-            onSuccess: (view) => onViewCreated(view.id),
-            onError: () => notify.error("Couldn't add calendar view"),
-          },
-        );
-      }, true);
+      run(planAddCalendarView(state), ["addDatabaseView", "addProperty"]);
     },
     setCalendarMode: (calendarView: DatabaseCalendarMode) => {
-      if (!editable || !databaseId || !activeView) return;
-      const config = latestConfig();
-      observeOperation(updateDatabaseView, {
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-        configuration: diffConfiguration(config, getMergedDatabaseConfig(config, { calendarView })),
-      });
+      run(planSetCalendarMode(state, calendarView));
     },
     addDatabaseProperty: (type = "text", label = "Property", position?: number) => {
-      if (!editable || !databaseId) {
-        return;
-      }
-
-      observeOperation(addProperty, {
-        config: getDefaultDatabasePropertyConfig(type),
-        databaseId,
-        name: label,
-        position,
-        type,
-      });
+      run(planAddProperty(state, type, label, position));
     },
     addDatabaseRow: (
       groupValue?: string,
       groupPropertyOverride?: DatabasePropertyListItem | null,
       parentRowId?: string | null,
     ) => {
-      const defaultStatusValue = getEffectiveStatusValue(
-        null,
-        kanbanGroupProperty?.property.config,
-      );
-      const nextGroupProperty =
-        groupPropertyOverride ?? (isKanbanView ? kanbanGroupProperty : null);
-      const nextGroupValue =
-        groupValue ??
-        (isKanbanView && kanbanGroupProperty?.property.type === "status"
-          ? defaultStatusValue
-          : null);
-      const groupSetup = getNewRowGroupSetup(nextGroupValue, nextGroupProperty);
-      const subItemsSettings = getDatabaseSubItemsSettings(activeView?.config ?? databaseConfig);
-      if (
-        parentRowId &&
-        (!subItemsSettings.parentPropertyId || !subItemsSettings.subItemPropertyId)
-      ) {
-        notify.error("Sub-items are still being set up. Try again shortly.");
-        return;
-      }
-      const parentRow = parentRowId ? items.find((row) => row.id === parentRowId) : undefined;
-      if (parentRowId && !parentRow) {
-        notify.error("Parent item is no longer available.");
-        return;
-      }
-      const parentRelation =
-        parentRow && subItemsSettings.parentPropertyId && subItemsSettings.subItemPropertyId
-          ? {
-              parentPropertyId: subItemsSettings.parentPropertyId,
-              parentRow,
-              subItemPropertyId: subItemsSettings.subItemPropertyId,
-            }
-          : undefined;
-      addRowWithValues({
-        ...(parentRelation ? { parentRelation } : {}),
-        ...groupSetup,
-        ...(parentRelation
-          ? {
-              propertyValues: [
-                ...groupSetup.propertyValues,
-                {
-                  propertyId: parentRelation.parentPropertyId,
-                  value: parentRelation.parentRow.pageId,
-                },
-              ],
-            }
-          : {}),
-      });
+      run(planAddDatabaseRow(state, groupValue, groupPropertyOverride, parentRowId));
     },
     addDraggedPageRow: async (
       dragPayload: DatabasePageDragPayload,
@@ -581,129 +314,19 @@ export function createDatabaseViewCommands({
       );
     },
     addChartView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView) {
-        return;
-      }
-
-      observeDatabaseViewCreation(
-        addDatabaseView,
-        {
-          config: {
-            chart: {
-              ...defaultDatabaseChartSettings,
-              valueColors: {},
-            },
-          },
-          databaseId: viewDatabaseId ?? databaseId,
-          dataSourceId: databaseId ?? undefined,
-          name: "Chart",
-          type: "chart",
-        },
-        {
-          onSuccess: (view) => {
-            onViewCreated(view.id);
-          },
-          onError: () => {
-            notify.error("Couldn't add chart view");
-          },
-        },
-      );
+      run(planAddChartView(state), ["addDatabaseView"]);
     },
     addGalleryView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView) {
-        return;
-      }
-
-      observeDatabaseViewCreation(
-        addDatabaseView,
-        {
-          databaseId: viewDatabaseId ?? databaseId,
-          dataSourceId: databaseId ?? undefined,
-          name: "Gallery",
-          type: "gallery",
-        },
-        {
-          onSuccess: (view) => {
-            onViewCreated(view.id);
-          },
-          onError: () => {
-            notify.error("Couldn't add gallery view");
-          },
-        },
-      );
+      run(planAddGalleryView(state), ["addDatabaseView"]);
     },
     addFormView: (hiddenPropertyIds: string[]) => {
-      if (!editable || !databaseId || pending.addDatabaseView) {
-        return;
-      }
-
-      observeDatabaseViewCreation(
-        addDatabaseView,
-        {
-          config: { hiddenPropertyIds },
-          databaseId: viewDatabaseId ?? databaseId,
-          dataSourceId: databaseId ?? undefined,
-          name: "Form",
-          type: "form",
-        },
-        {
-          onSuccess: (view) => {
-            onViewCreated(view.id);
-          },
-          onError: () => {
-            notify.error("Couldn't add form view");
-          },
-        },
-      );
+      run(planAddFormView(state, hiddenPropertyIds), ["addDatabaseView"]);
     },
     addKanbanView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView || pending.addProperty) return;
-      ensureKanbanGroupProperty((groupProperty, currentProperties) => {
-        const groupPropertyId = groupProperty.property.id;
-        observeDatabaseViewCreation(
-          addDatabaseView,
-          {
-            config: {
-              groupPropertyId,
-              hiddenPropertyIds: getDefaultKanbanHiddenPropertyIds(
-                currentProperties,
-                groupPropertyId,
-              ),
-            },
-            databaseId: viewDatabaseId ?? databaseId,
-            dataSourceId: databaseId,
-            name: "Kanban",
-            type: "kanban",
-          },
-          {
-            onSuccess: (view) => onViewCreated(view.id),
-            onError: () => notify.error("Couldn't add kanban view"),
-          },
-        );
-      }, true);
+      run(planAddKanbanView(state), ["addDatabaseView", "addProperty"]);
     },
     addListView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView) {
-        return;
-      }
-
-      observeDatabaseViewCreation(
-        addDatabaseView,
-        {
-          databaseId: viewDatabaseId ?? databaseId,
-          dataSourceId: databaseId ?? undefined,
-          name: "List",
-          type: "list",
-        },
-        {
-          onSuccess: (view) => {
-            onViewCreated(view.id);
-          },
-          onError: () => {
-            notify.error("Couldn't add list view");
-          },
-        },
-      );
+      run(planAddListView(state), ["addDatabaseView"]);
     },
     addTimelineRow: (
       startAt: Date,
@@ -711,487 +334,94 @@ export function createDatabaseViewCommands({
       groupValue?: string,
       groupProperty?: DatabasePropertyListItem | null,
     ) => {
-      if (!timelineDateProperty) {
-        return;
-      }
-
-      const groupSetup = getNewRowGroupSetup(groupValue, groupProperty);
-      addRowWithValues({
-        propertyValues: [
-          {
-            propertyId: timelineDateProperty.property.id,
-            value: ganttMoveToDateValue(startAt, endAt),
-          },
-          ...groupSetup.propertyValues,
-        ],
-        title: groupSetup.title,
-      });
+      run(planAddTimelineRow(state, startAt, endAt, groupValue, groupProperty));
     },
     addTimelineView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView || pending.addProperty) {
-        return;
-      }
-
-      ensureTimelineDatePropertyId((datePropertyId) => {
-        const currentProperties = viewProperties ?? properties;
-        const groupPropertyId = getTimelineGroupPropertyId(currentProperties);
-
-        observeDatabaseViewCreation(
-          addDatabaseView,
-          {
-            config: {
-              datePropertyId,
-              ...(groupPropertyId ? { groupPropertyId } : {}),
-            },
-            databaseId: viewDatabaseId ?? databaseId,
-            dataSourceId: databaseId ?? undefined,
-            name: "Timeline",
-            type: "timeline",
-          },
-          {
-            onSuccess: (view) => {
-              onViewCreated(view.id);
-            },
-            onError: () => {
-              notify.error("Couldn't add timeline view");
-            },
-          },
-        );
-      }, true);
+      run(planAddTimelineView(state), ["addDatabaseView", "addProperty"]);
     },
     addTableView: () => {
-      if (!editable || !databaseId || pending.addDatabaseView) {
-        return;
-      }
-
-      observeDatabaseViewCreation(
-        addDatabaseView,
-        {
-          databaseId: viewDatabaseId ?? databaseId,
-          dataSourceId: databaseId ?? undefined,
-          name: "Table",
-          type: "table",
-        },
-        {
-          onSuccess: (view) => {
-            onViewCreated(view.id);
-          },
-          onError: () => {
-            notify.error("Couldn't add table view");
-          },
-        },
-      );
+      run(planAddTableView(state), ["addDatabaseView"]);
     },
     clearDatabaseSort: () => {
-      saveDatabaseSorts([]);
+      void saveDatabaseSorts([]).catch(() => undefined);
     },
     clearDatabaseFilter: () => {
       saveDatabaseFilters([]);
     },
     setViewGroupProperty: (groupPropertyId: string | null) => {
-      if (!databaseId || !activeView?.id) {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      let nextConfig = getMergedDatabaseConfig(currentConfig, {
-        groupPropertyId: groupPropertyId ?? undefined,
-      });
-
-      if (groupPropertyId === null) {
-        nextConfig = removeDatabaseGroupProperty(nextConfig);
-      }
-
-      if (isKanbanView) {
-        const currentGroupPropertyId =
-          getGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null;
-        const hiddenPropertyIds = new Set(
-          hasViewHiddenPropertyIds(currentConfig)
-            ? getViewHiddenPropertyIds(currentConfig)
-            : getDefaultKanbanHiddenPropertyIds(properties, currentGroupPropertyId),
-        );
-        const previousGroupProperty = properties.find(
-          (property) => property.property.id === currentGroupPropertyId,
-        );
-        const nextGroupProperty = properties.find(
-          (property) => property.property.id === groupPropertyId,
-        );
-
-        if (previousGroupProperty) {
-          hiddenPropertyIds.delete(previousGroupProperty.id);
-        }
-        if (nextGroupProperty) {
-          hiddenPropertyIds.add(nextGroupProperty.id);
-        }
-
-        nextConfig = getMergedDatabaseConfig(nextConfig, {
-          hiddenPropertyIds: [...hiddenPropertyIds],
-        });
-      }
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planSetViewGroupProperty(state, groupPropertyId));
     },
     setViewDateProperty: (datePropertyId: string | null) => {
-      updateTimelineDateProperty(datePropertyId);
+      run(planSetViewDateProperty(state, datePropertyId));
     },
     setupRequiredViewProperties: () => {
-      if (!editable || !databaseId || !activeView || !isCurrent() || pending.updateDatabaseView)
-        return;
-      if (activeView.type === "kanban") {
-        ensureKanbanGroupProperty((groupProperty, currentProperties) => {
-          if (!isCurrent()) return;
-          const currentConfig = latestConfig();
-          observeOperation(
-            updateDatabaseView,
-            {
-              databaseId: viewDatabaseId ?? databaseId,
-              databaseViewId: activeView.id,
-              configuration: diffConfiguration(
-                currentConfig,
-                getConvertedViewConfig({
-                  currentConfig,
-                  type: "kanban",
-                  previousType: "kanban",
-                  kanbanGroupProperty: groupProperty,
-                  properties: currentProperties,
-                }),
-              ),
-            },
-            {
-              onError: () => {
-                if (isCurrent()) notify.error("Couldn't configure view grouping");
-              },
-            },
-          );
-        });
-      } else if (activeView.type === "timeline" || activeView.type === "calendar") {
-        ensureTimelineDatePropertyId(updateTimelineDateProperty);
-      }
+      if (!isCurrent()) return;
+      run(planSetupRequiredViewProperties(state), ["updateDatabaseView"]);
     },
     setupTimelineDateProperty: () => {
-      if (!databaseId || !activeView?.id) {
-        return;
-      }
-
-      ensureTimelineDatePropertyId((datePropertyId) => {
-        updateTimelineDateProperty(datePropertyId);
-      });
+      run(planSetupTimelineDateProperty(state));
     },
     createDatabaseSort: (field: string) => {
-      saveDatabaseSorts([
-        ...latestSorts().map(({ column, direction }) => ({
-          column,
-          direction,
-        })),
-        {
-          column: field,
-          direction: "ascending",
-        },
-      ]);
+      void saveDatabaseSorts(sortsWithAdded(state, field)).catch(() => undefined);
     },
     createDatabaseFilter: (field: string) => {
-      if (getPlainDatabaseFilters().some((filter) => filter.propertyId === field)) {
-        return;
-      }
-
-      saveDatabaseFilters([...getPlainDatabaseFilters(), createDatabaseFilter(field)]);
+      run(planCreateDatabaseFilter(state, field));
     },
     removeDatabaseFilter: (index: number) => {
-      saveDatabaseFilters(
-        getPlainDatabaseFilters().filter(
-          (filter) => filter.id !== activeDatabaseFilters[index]?.id,
-        ),
-      );
+      run(planRemoveDatabaseFilter(state, filterId(index)));
     },
     reorderDatabaseFilters: (filterIds: string[]) => {
-      const filters = getPlainDatabaseFilters();
-      const filtersById = new Map(filters.map((filter) => [filter.id, filter]));
-      const reorderedFilters = filterIds.flatMap((filterId) => {
-        const filter = filtersById.get(filterId);
-
-        return filter ? [filter] : [];
-      });
-      const remainingFilters = filters.filter((filter) => !filterIds.includes(filter.id));
-
-      saveDatabaseFilters([...reorderedFilters, ...remainingFilters]);
+      run(planReorderDatabaseFilters(state, filterIds));
     },
     removeDatabaseSort: (index: number) => {
-      saveDatabaseSorts(
-        latestSorts().flatMap(({ column, direction }) =>
-          column === activeDatabaseSorts[index]?.column ? [] : [{ column, direction }],
-        ),
-      );
+      void saveDatabaseSorts(sortsWithRemoved(state, sortColumn(index))).catch(() => undefined);
     },
     renameDatabaseProperty: (databasePropertyId: string, name: string) => {
-      if (!databaseId) {
-        return;
-      }
-
-      observeOperation(updateProperty, {
-        databaseId,
-        databasePropertyId,
-        name,
-      });
+      run(planRenameProperty(state, databasePropertyId, name));
     },
     saveDatabaseFilters,
-    saveDatabaseConditionalColors,
+    saveDatabaseConditionalColors: (nextConditionalColors: DatabaseConditionalColorConfig[]) => {
+      run(planSaveDatabaseConditionalColors(state, nextConditionalColors));
+    },
     saveDatabasePropertyOrder: (propertyIds: string[]) => {
-      if (!editable || !databaseId || !activeView?.id) {
-        return;
-      }
-
-      const validPropertyIds = new Set(["name", ...properties.map((property) => property.id)]);
-      const seenPropertyIds = new Set<string>();
-      const orderedPropertyIds = propertyIds.filter((propertyId) => {
-        if (!validPropertyIds.has(propertyId) || seenPropertyIds.has(propertyId)) {
-          return false;
-        }
-
-        seenPropertyIds.add(propertyId);
-        return true;
-      });
-      const propertyOrder = [
-        ...orderedPropertyIds,
-        ...properties
-          .map((property) => property.id)
-          .filter((propertyId) => !seenPropertyIds.has(propertyId)),
-      ];
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        propertyOrder,
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planSaveDatabasePropertyOrder(state, propertyIds));
     },
     saveDatabaseSorts,
     saveDatabaseEmoji: (nextEmoji: string) => {
-      if (!editable || !databaseId) {
-        return;
-      }
-
-      observeOperation(updateDatabase, {
-        configuration: diffConfiguration(
-          databaseConfig,
-          getMergedDatabaseConfig(databaseConfig, {
-            emoji: nextEmoji,
-          }),
-        ),
-        databaseId,
-      });
+      run(planSaveDatabaseEmoji(state, nextEmoji));
     },
     saveDatabaseTitle: (nextTitle: string) => {
-      if (!databaseId || nextTitle === databaseName) {
-        return;
-      }
-
-      observeOperation(updateDatabase, {
-        databaseId,
-        name: nextTitle,
-      });
+      run(planSaveDatabaseTitle(state, nextTitle));
     },
     saveDatabaseViewTitle: (nextTitle: string) => {
-      if (!databaseId || !activeView?.id || nextTitle === activeView.name) {
-        return;
-      }
-
-      observeOperation(updateDatabaseView, {
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-        name: nextTitle,
-      });
+      run(planRenameView(state, nextTitle));
     },
-    setViewType: (
-      type: "table" | "kanban" | "timeline" | "calendar" | "chart" | "gallery" | "list" | "form",
-    ) => {
-      if (
-        !editable ||
-        !databaseId ||
-        !activeView?.id ||
-        type === activeView.type ||
-        pending.updateDatabaseView
-      ) {
-        return;
-      }
-
-      const changeType = (nextConfig: unknown, currentConfig = latestConfig()) => {
-        if (!isCurrent()) return;
-        observeOperation(
-          updateDatabaseView,
-          {
-            configuration: diffConfiguration(currentConfig, nextConfig),
-            databaseId: viewDatabaseId ?? databaseId,
-            databaseViewId: activeView.id,
-            type,
-          },
-          { onError: () => notify.error("Couldn't change view layout") },
-        );
-      };
-
-      if (type === "kanban") {
-        ensureKanbanGroupProperty((groupProperty, currentProperties) => {
-          const currentConfig = latestConfig();
-          changeType(
-            getConvertedViewConfig({
-              currentConfig,
-              type,
-              previousType: activeView.type,
-              kanbanGroupProperty: groupProperty,
-              properties: currentProperties,
-            }),
-            currentConfig,
-          );
-        });
-        return;
-      }
-
-      if (type === "timeline" || type === "calendar") {
-        ensureTimelineDatePropertyId((datePropertyId) => {
-          const currentConfig = latestConfig();
-          const groupPropertyId =
-            type === "calendar"
-              ? undefined
-              : (getGroupPropertyId(currentConfig) ??
-                getTimelineGroupPropertyId(viewProperties ?? properties) ??
-                undefined);
-          changeType(
-            getMergedDatabaseConfig(currentConfig, {
-              datePropertyId,
-              ...(groupPropertyId ? { groupPropertyId } : {}),
-            }),
-            currentConfig,
-          );
-        });
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const nextConfig = getConvertedViewConfig({
-        currentConfig,
-        type,
-        previousType: activeView.type,
-        kanbanGroupProperty,
-        properties,
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-        type,
-      });
+    setViewType: (type: DatabaseViewType) => {
+      run(planSetViewType(state, type), ["updateDatabaseView"]);
     },
-    updateDatabaseChartSettings,
-    updateDatabaseLayoutSettings,
+    updateDatabaseChartSettings: (settings: Partial<DatabaseChartSettings>) => {
+      run(planUpdateChartSettings(state, settings));
+    },
+    updateDatabaseLayoutSettings: (settings: Partial<DatabaseLayoutSettings>) => {
+      run(planUpdateLayoutSettings(state, settings));
+    },
     updateDatabaseFormHeaderSettings: (settings: Partial<DatabaseFormHeaderSettings>) => {
-      if (!editable || !databaseId || !activeView?.id || activeView.type !== "form") {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        formHeader: {
-          ...getDatabaseFormHeaderSettings(currentConfig),
-          ...settings,
-        },
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planUpdateFormHeaderSettings(state, settings));
     },
     updateDatabaseFormQuestionSettings: (
       propertyId: string,
       settings: DatabaseFormQuestionSettingsPatch,
     ) => {
-      if (!editable || !databaseId || !activeView?.id || activeView.type !== "form") {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const currentQuestions = getDatabaseFormQuestionSettingsById(currentConfig);
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        formQuestions: {
-          ...currentQuestions,
-          [propertyId]: {
-            ...currentQuestions[propertyId],
-            ...settings,
-          },
-        },
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planUpdateFormQuestionSettings(state, propertyId, settings));
     },
     updateDatabaseFormShareSettings: (settings: Partial<DatabaseFormShareSettings>) => {
-      if (!databaseId || !activeView?.id || activeView.type !== "form") {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        formShare: {
-          ...getDatabaseFormShareSettings(currentConfig),
-          ...settings,
-        },
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planUpdateFormShareSettings(state, settings));
     },
     updateDatabaseSubItemsSettings: (settings: Partial<DatabaseSubItemsSettings>) => {
-      if (!databaseId || !activeView?.id) {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        subItems: {
-          ...getDatabaseSubItemsSettings(currentConfig),
-          ...settings,
-        },
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planUpdateSubItemsSettings(state, settings));
     },
     updateNameColumnConfig: (config: DatabaseNameColumnConfig) => {
-      if (!editable || !databaseId) {
-        return;
-      }
-
-      observeOperation(updateDatabase, {
-        configuration: diffConfiguration(
-          databaseConfig,
-          getMergedNameColumnConfig(databaseConfig, config),
-        ),
-        databaseId,
-      });
+      run(planUpdateNameColumn(state, config));
     },
     savePropertyValue: (
       rowId: string,
@@ -1200,232 +430,27 @@ export function createDatabaseViewCommands({
       currentValue: DatabasePropertyValue,
       nextValue: DatabasePropertyValue,
     ) => {
-      if (!editable || !databaseId) {
-        return;
-      }
-
-      if (areSerializedPropertyValuesEqual(propertyType, currentValue, nextValue)) {
-        return;
-      }
-
-      observeOperation(updateValue, {
-        databaseId,
-        ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
-        propertyId,
-        rowId,
-        value: serializePropertyValue(propertyType, nextValue),
-      });
+      run(
+        planSavePropertyValue(state, { rowId, propertyId, propertyType, currentValue, nextValue }),
+      );
     },
     togglePropertyVisibility: (propertyId: string) => {
-      if (!databaseId || !activeView?.id) {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const hiddenPropertyIds = new Set(
-        hasViewHiddenPropertyIds(currentConfig)
-          ? getViewHiddenPropertyIds(currentConfig)
-          : activeView.type === "calendar"
-            ? properties.map((property) => property.id)
-            : isKanbanView
-              ? getDefaultKanbanHiddenPropertyIds(
-                  properties,
-                  getGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null,
-                )
-              : properties
-                  .filter((property) => getPropertyHidden(property.property.config))
-                  .map((property) => property.id),
-      );
-
-      if (hiddenPropertyIds.has(propertyId)) {
-        hiddenPropertyIds.delete(propertyId);
-      } else {
-        hiddenPropertyIds.add(propertyId);
-      }
-
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        hiddenPropertyIds: [...hiddenPropertyIds],
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planTogglePropertyVisibility(state, propertyId));
     },
     togglePropertyTitles: () => {
-      if (!databaseId || !activeView?.id) {
-        return;
-      }
-
-      const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
-      const nextConfig = getMergedDatabaseConfig(currentConfig, {
-        showPropertyTitles: !getShowPropertyTitles(currentConfig),
-      });
-
-      observeOperation(updateDatabaseView, {
-        configuration: diffConfiguration(currentConfig, nextConfig),
-        databaseId: viewDatabaseId ?? databaseId,
-        databaseViewId: activeView.id,
-      });
+      run(planTogglePropertyTitles(state));
     },
     updateDatabasePropertyConfig: (databasePropertyId: string, config: unknown) => {
-      if (!databaseId) {
-        return Promise.resolve();
-      }
-      const currentPropertyConfig = viewProperties?.find(
-        (property) => property.id === databasePropertyId,
-      )?.property.config;
-      const nextConfig = getMergedPropertyConfig(
-        currentPropertyConfig,
-        config as DatabasePropertyConfig,
-      );
-
-      const trimUpdates = getRelationLimitTrimUpdates({
-        databasePropertyId,
-        payload: relationPayloadFromViewData(viewData),
-        propertyConfig: nextConfig,
-      });
-
-      for (const update of trimUpdates) {
-        observeOperation(updateValue, {
-          databaseId,
-          ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
-          propertyId: update.propertyId,
-          rowId: update.rowId,
-          value: update.value,
-        });
-      }
-
-      return updateProperty({
-        configuration: diffConfiguration(currentPropertyConfig, nextConfig),
-        databaseId,
-        databasePropertyId,
-      });
+      const outcome = planUpdatePropertyConfig(state, databasePropertyId, config);
+      return isPlanRejection(outcome) ? Promise.resolve() : settle(outcome);
     },
     updateDatabaseSort: (index: number, patch: Partial<DatabaseSortConfig>) => {
-      saveDatabaseSorts(
-        latestSorts().map(({ column, direction }) =>
-          column === activeDatabaseSorts[index]?.column
-            ? { column, direction, ...patch }
-            : { column, direction },
-        ),
+      void saveDatabaseSorts(sortsWithUpdated(state, sortColumn(index), patch)).catch(
+        () => undefined,
       );
     },
     updateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => {
-      saveDatabaseFilters(
-        getPlainDatabaseFilters().map((filter) => {
-          if (filter.id !== activeDatabaseFilters[index]?.id) {
-            return filter;
-          }
-
-          if (patch.propertyId && patch.propertyId !== filter.propertyId) {
-            const propertyType = getFilterPropertyType(patch.propertyId);
-            const operator = getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is";
-
-            return {
-              ...filter,
-              operator,
-              propertyId: patch.propertyId,
-              values: patch.values ?? [],
-            };
-          }
-
-          const propertyType = getFilterPropertyType(filter.propertyId);
-          const operator = patch.operator
-            ? getValidDatabaseFilterOperator(patch.operator, propertyType)
-            : filter.operator;
-
-          return {
-            ...filter,
-            operator,
-            values: patch.values ?? filter.values,
-          };
-        }),
-      );
+      run(planUpdateDatabaseFilter(state, filterId(index), patch));
     },
   };
-}
-
-function createTimelineDateResolver({
-  pending = {},
-  addProperty,
-  databaseId,
-  editable,
-  viewData,
-  properties,
-  timelineDateProperty,
-  config,
-  isCurrent,
-  notify,
-}: {
-  pending?: Partial<Record<keyof DatabaseMutations, boolean>>;
-  addProperty: DatabaseMutations["addProperty"];
-  databaseId: string | null | undefined;
-  editable: boolean;
-  viewData: DatabaseViewData | null | undefined;
-  properties: DatabasePropertyEntity[];
-  timelineDateProperty: DatabasePropertyListItem | null;
-  config?: unknown;
-  isCurrent: () => boolean;
-  notify: { error: (message: string) => void };
-}) {
-  let resolving = false;
-  return (onResolved: (datePropertyId: string) => void, optimistic = false) => {
-    const viewProperties = viewData
-      ? viewData.bootstrap.properties.filter(
-          (property) => property.dataSourceId === viewData.dataSourceId,
-        )
-      : null;
-    const currentProperties = viewProperties ?? properties;
-    const existingDateProperty =
-      (timelineDateProperty?.property.type === "date" ? timelineDateProperty : null) ??
-      getTimelineDateProperty(currentProperties, config);
-
-    if (existingDateProperty) {
-      onResolved(existingDateProperty.property.id);
-      return;
-    }
-
-    if (!editable || !databaseId || pending.addProperty || resolving) {
-      return;
-    }
-
-    resolving = true;
-    let resolved = false;
-    const resolve = (created: DatabasePropertyEntity) => {
-      if (resolved || !isCurrent()) return;
-      resolved = true;
-      onResolved(created.property.id);
-    };
-    observeOperation(
-      addProperty,
-      {
-        databaseId,
-        name: "Date",
-        type: "date",
-        ...(optimistic ? { onOptimistic: resolve } : {}),
-      },
-      {
-        onSuccess: (createdDateProperty) => {
-          resolving = false;
-          resolve(createdDateProperty);
-        },
-        onError: () => {
-          resolving = false;
-          if (isCurrent()) notify.error("Couldn't add date property");
-        },
-      },
-    );
-  };
-}
-
-function createDatabaseFilterId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `filter-${crypto.randomUUID()}`;
-  }
-
-  return `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
