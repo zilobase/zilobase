@@ -3,6 +3,12 @@ import {
   type ClientOperationContext,
 } from "../../shared/operation-context";
 import { clientMutation, runClientMutation } from "../../shared/operation-mutation";
+import {
+  buildTemplateCreate,
+  buildTemplateState,
+  buildTemplateUpdate,
+  type DataSourceCommandScope,
+} from "./command-builders";
 import { resolveDataSourceCommandScope } from "./scope";
 export type DatabaseStoredTemplate = {
   archivedAt: string | null;
@@ -25,11 +31,9 @@ export function createDatabaseTemplate(
   input: CreateDatabaseTemplateInput,
 ): Promise<CreateDatabaseTemplateResult> {
   return runClientMutation(context, input, (context) =>
-    databaseTemplateMutation(context, (input: CreateDatabaseTemplateInput) => ({
-      name: input.name,
-      template: input.template,
-      type: "template.create" as const,
-    })),
+    databaseTemplateMutation(context, (scope, input: CreateDatabaseTemplateInput) =>
+      buildTemplateCreate(scope, input),
+    ),
   );
 }
 
@@ -43,11 +47,9 @@ export function updateDatabaseTemplate(
   input: UpdateDatabaseTemplateInput,
 ): Promise<UpdateDatabaseTemplateResult> {
   return runClientMutation(context, input, (context) =>
-    databaseTemplateMutation(context, (input: UpdateDatabaseTemplateInput) => ({
-      patch: input.patch,
-      templateId: input.templateId,
-      type: "template.update" as const,
-    })),
+    databaseTemplateMutation(context, (scope, input: UpdateDatabaseTemplateInput) =>
+      buildTemplateUpdate(scope, input),
+    ),
   );
 }
 
@@ -60,10 +62,9 @@ export function archiveDatabaseTemplate(
   input: ArchiveDatabaseTemplateInput,
 ): Promise<ArchiveDatabaseTemplateResult> {
   return runClientMutation(context, input, (context) =>
-    databaseTemplateMutation(context, (input: ArchiveDatabaseTemplateInput) => ({
-      templateId: input.templateId,
-      type: "template.archive" as const,
-    })),
+    databaseTemplateMutation(context, (scope, input: ArchiveDatabaseTemplateInput) =>
+      buildTemplateState(scope, input.templateId, "template.archive"),
+    ),
   );
 }
 
@@ -76,31 +77,19 @@ export function restoreDatabaseTemplate(
   input: RestoreDatabaseTemplateInput,
 ): Promise<RestoreDatabaseTemplateResult> {
   return runClientMutation(context, input, (context) =>
-    databaseTemplateMutation(context, (input: RestoreDatabaseTemplateInput) => ({
-      templateId: input.templateId,
-      type: "template.restore" as const,
-    })),
+    databaseTemplateMutation(context, (scope, input: RestoreDatabaseTemplateInput) =>
+      buildTemplateState(scope, input.templateId, "template.restore"),
+    ),
   );
 }
 
-function databaseTemplateMutation<
-  TInput extends DatabaseTemplateScope,
-  TCommand extends
-    | {
-        name: string;
-        template: unknown;
-        type: "template.create";
-      }
-    | {
-        patch: unknown;
-        templateId: string;
-        type: "template.update";
-      }
-    | {
-        templateId: string;
-        type: "template.archive" | "template.restore";
-      },
->(context: ClientOperationContext, command: (input: TInput) => TCommand) {
+function databaseTemplateMutation<TInput extends DatabaseTemplateScope>(
+  context: ClientOperationContext,
+  build: (
+    scope: DataSourceCommandScope,
+    input: TInput,
+  ) => Parameters<ReturnType<typeof clientDatabaseController>["execute"]>[0],
+) {
   const controller = clientDatabaseController(context);
   const { queryClient } = context;
   return clientMutation({
@@ -111,11 +100,7 @@ function databaseTemplateMutation<
         input.databaseId,
         input.hostDatabaseId,
       );
-      const ack = await controller.execute({
-        command: command(input),
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      });
+      const ack = await controller.execute(build(scope, input));
       return ack.result as DatabaseStoredTemplate;
     },
   });

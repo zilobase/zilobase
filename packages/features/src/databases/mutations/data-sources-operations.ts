@@ -4,6 +4,13 @@ import {
 } from "../../shared/operation-context";
 import { clientMutation, runClientMutation } from "../../shared/operation-mutation";
 import type { DatabaseViewEntity, DataSourceEntity } from "../core/entities";
+import {
+  buildDataSourceCreate,
+  buildDataSourceLink,
+  buildDataSourceUnlink,
+  buildDataSourceUpdate,
+  buildViewSetDataSource,
+} from "./command-builders";
 import { type UpdateDatabaseInput } from "./databases-operations";
 import { resolveDataSourceCommandScope } from "./scope";
 export type LinkDatabaseDataSourceInput = {
@@ -42,11 +49,7 @@ export function updateDataSource(
           controller.sessionId,
           dataSourceId,
         );
-        const ack = await controller.execute({
-          command: { patch, type: "dataSource.update" },
-          databaseId: scope.hostDatabaseId,
-          dataSourceId: scope.dataSourceId,
-        });
+        const ack = await controller.execute(buildDataSourceUpdate(scope, patch));
         return ack.result as DataSourceEntity;
       },
     });
@@ -64,31 +67,11 @@ export function linkDatabaseDataSource(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({
-        config,
-        databaseId,
-        dataSourceId,
-        name,
-        type,
-      }: LinkDatabaseDataSourceInput) => {
-        const result = (
-          await controller.execute({
-            databaseId,
-            command: {
-              type: "dataSource.link",
-              dataSourceId,
-              afterId: null,
-              beforeId: null,
-              view: {
-                name: name?.trim() || "",
-                type: type?.trim() || "table",
-                config: config ?? null,
-              },
-            },
-          })
-        ).result as { dataSource: DataSourceEntity; view: DatabaseViewEntity };
-        return result;
-      },
+      mutationFn: async (input: LinkDatabaseDataSourceInput) =>
+        (await controller.execute(buildDataSourceLink(input))).result as {
+          dataSource: DataSourceEntity;
+          view: DatabaseViewEntity;
+        },
     });
   });
 }
@@ -104,17 +87,8 @@ export function createDatabaseDataSource(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({ databaseId, ...input }: CreateDatabaseDataSourceInput) => {
-        const ack = await controller.execute({
-          command: {
-            config: input.config ?? {},
-            name: input.name?.trim() || "New data source",
-            type: "dataSource.create",
-            viewName: input.viewName?.trim() || "Table",
-            viewType: input.viewType?.trim() || "table",
-          },
-          databaseId,
-        });
+      mutationFn: async (input: CreateDatabaseDataSourceInput) => {
+        const ack = await controller.execute(buildDataSourceCreate(input));
         return ack.result as {
           dataSource: DataSourceEntity;
           view: DatabaseViewEntity;
@@ -132,19 +106,8 @@ export function replaceDatabaseViewDataSource(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({
-        databaseId,
-        databaseViewId,
-        dataSourceId,
-      }: ReplaceDatabaseViewDataSourceInput) => {
-        const ack = await controller.execute({
-          command: {
-            dataSourceId,
-            type: "view.setDataSource",
-            viewId: databaseViewId,
-          },
-          databaseId,
-        });
+      mutationFn: async (input: ReplaceDatabaseViewDataSourceInput) => {
+        const ack = await controller.execute(buildViewSetDataSource(input));
         return ack.result as DatabaseViewEntity;
       },
     });
@@ -163,11 +126,8 @@ export function unlinkDatabaseDataSource(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({ databaseId, dataSourceId }: UnlinkDatabaseDataSourceInput) => {
-        const ack = await controller.execute({
-          command: { dataSourceId, type: "dataSource.unlink" },
-          databaseId,
-        });
+      mutationFn: async (input: UnlinkDatabaseDataSourceInput) => {
+        const ack = await controller.execute(buildDataSourceUnlink(input));
         return ack.result as DataSourceEntity;
       },
     });

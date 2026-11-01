@@ -7,6 +7,12 @@ import {
 import { clientMutation, runClientMutation } from "../../shared/operation-mutation";
 import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
 import type { ConfigurationChange } from "../interactions/configuration";
+import {
+  buildDatabaseCreate,
+  buildDatabaseFavorite,
+  buildDatabaseState,
+  buildDatabaseUpdate,
+} from "./command-builders";
 export type CreateDatabaseInput = {
   name?: string;
   onOptimistic?: (database: DatabaseHostEntity) => void;
@@ -48,18 +54,7 @@ export function createDatabase(
       mutationFn: async (input: CreateDatabaseInput) => {
         const { onOptimistic, ...command } = input;
         const commandId = crypto.randomUUID();
-        const saving = controller.execute(
-          {
-            databaseId: input.workspaceId,
-            command: {
-              ...command,
-              type: "database.create",
-              name: input.name ?? "New database",
-              standalone: input.standalone ?? false,
-            },
-          },
-          { commandId },
-        );
+        const saving = controller.execute(buildDatabaseCreate(command), { commandId });
         const preview = controller.creation(commandId)?.creation;
         if (preview) onOptimistic?.(preview.database);
         const ack = await saving;
@@ -78,11 +73,8 @@ export function updateDatabase(
     const controller = clientDatabaseController(context);
     const { queryClient } = context;
     return clientMutation({
-      mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) => {
-        const ack = await controller.execute({
-          command: { patch, type: "database.update" },
-          databaseId,
-        });
+      mutationFn: async (input: UpdateDatabaseInput) => {
+        const ack = await controller.execute(buildDatabaseUpdate(input));
         return ack.result as DatabaseHostEntity;
       },
       onSuccess: async (result, input) => {
@@ -117,7 +109,7 @@ export function deleteDatabase(
     const controller = clientDatabaseController(context);
     return clientMutation({
       mutationFn: async (databaseId: DeleteDatabaseInput) =>
-        (await controller.execute({ databaseId, command: { type: "database.archive" } }))
+        (await controller.execute(buildDatabaseState(databaseId, "database.archive")))
           .result as DeleteDatabaseResult,
     });
   });
@@ -132,7 +124,7 @@ export function restoreDatabase(
     const controller = clientDatabaseController(context);
     return clientMutation({
       mutationFn: async (databaseId: RestoreDatabaseInput) =>
-        (await controller.execute({ databaseId, command: { type: "database.restore" } }))
+        (await controller.execute(buildDatabaseState(databaseId, "database.restore")))
           .result as RestoreDatabaseResult,
     });
   });
@@ -146,13 +138,9 @@ export function setDatabaseFavorite(
   return runClientMutation(context, input, (context: ClientOperationContext) => {
     const controller = clientDatabaseController(context);
     return clientMutation({
-      mutationFn: async ({ databaseId, isFavorite }: SetDatabaseFavoriteInput) =>
-        (
-          await controller.execute({
-            databaseId,
-            command: { type: "database.favorite", favorite: isFavorite },
-          })
-        ).result as SetDatabaseFavoriteResponse,
+      mutationFn: async (input: SetDatabaseFavoriteInput) =>
+        (await controller.execute(buildDatabaseFavorite(input)))
+          .result as SetDatabaseFavoriteResponse,
     });
   });
 }

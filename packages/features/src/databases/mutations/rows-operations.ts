@@ -9,6 +9,7 @@ import { changeRecordHierarchy } from "../interactions/hierarchy";
 import type { RecordEffect } from "../interactions/model";
 import { submitRecordChange } from "../interactions/record-change";
 import { previewTransferredValues } from "../interactions/transfer";
+import { buildRowPlace, buildRowState } from "./command-builders";
 import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
 
 export type AddRowInput = {
@@ -56,10 +57,6 @@ export function addDatabaseRow(
           variables.databaseId,
           variables.hostDatabaseId,
         );
-        const anchors = resolveCreateAnchors(store.records(scope.dataSourceId), {
-          ...variables,
-          databaseId: scope.dataSourceId,
-        });
         const sourceScope =
           variables.sourceDataSourceId && variables.sourceRowId
             ? resolveDataSourceCommandScope(
@@ -80,11 +77,21 @@ export function addDatabaseRow(
         const sourceBootstrap = sourceScope
           ? findDataSourceBootstrap(queryClient, store.sessionId, sourceScope.dataSourceId)
           : null;
-        const valuesByPropertyId = variables.initialValues
-          ? Object.fromEntries(
-              variables.initialValues.map(({ propertyId, value }) => [propertyId, value]),
-            )
-          : undefined;
+        const source =
+          sourceScope && sourceScope.dataSourceId !== scope.dataSourceId
+            ? {
+                databaseId: sourceScope.hostDatabaseId,
+                dataSourceId: sourceScope.dataSourceId,
+                rowId: variables.sourceRowId!,
+                propertyMode: variables.sourcePropertyMode ?? ("match" as const),
+              }
+            : undefined;
+        const {
+          anchors,
+          input: command,
+          parentRowId,
+          valuesByPropertyId,
+        } = buildRowPlace(scope, store.records(scope.dataSourceId), { ...variables, source });
         const previewValues = {
           ...(sourceRecord
             ? previewTransferredValues({
@@ -100,7 +107,6 @@ export function addDatabaseRow(
             : {}),
           ...valuesByPropertyId,
         };
-        const parentRowId = variables.hierarchy?.parentRowId ?? variables.parentRowId ?? null;
         const temporaryId = "pending:" + crypto.randomUUID();
         const pageId = variables.pageId ?? "pending-page:" + crypto.randomUUID();
         const now = new Date().toISOString();
@@ -151,15 +157,6 @@ export function addDatabaseRow(
               values: { [change.propertyId]: change.value },
             });
         }
-        const source =
-          sourceScope && sourceScope.dataSourceId !== scope.dataSourceId
-            ? {
-                databaseId: sourceScope.hostDatabaseId,
-                dataSourceId: sourceScope.dataSourceId,
-                rowId: variables.sourceRowId!,
-                propertyMode: variables.sourcePropertyMode ?? ("match" as const),
-              }
-            : undefined;
         if (source)
           effects.push({
             dataSourceId: source.dataSourceId,
@@ -167,25 +164,7 @@ export function addDatabaseRow(
             remove: true,
             record: sourceRecord,
           });
-        const ack = await store.submit(
-          {
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-            command: {
-              type: "row.place",
-              ...(variables.clearSortViewId ? { clearSortViewId: variables.clearSortViewId } : {}),
-              ...anchors,
-              pageId: variables.pageId,
-              parentRowId,
-              title: variables.title,
-              hierarchy: variables.hierarchy,
-              valuesByPropertyId,
-              ...(source ? { source } : {}),
-            },
-          },
-          effects,
-          temporaryId,
-        );
+        const ack = await store.submit(command, effects, temporaryId);
 
         return ack.result as DatabaseRecordEntity;
       },
@@ -265,29 +244,15 @@ function databaseRowStateMutation(
       const record = store
         .records(scope.dataSourceId, { includeDeleted: type === "row.restore" })
         .find(({ id }) => id === input.rowId);
-      const ack = await store.submit(
+      const ack = await store.submit(buildRowState(scope, input.rowId, type), [
         {
-          databaseId: scope.hostDatabaseId,
           dataSourceId: scope.dataSourceId,
-          command: { type, rowId: input.rowId },
+          rowId: input.rowId,
+          record,
+          remove: type === "row.archive",
         },
-        [
-          {
-            dataSourceId: scope.dataSourceId,
-            rowId: input.rowId,
-            record,
-            remove: type === "row.archive",
-          },
-        ],
-      );
+      ]);
       return ack.result as DatabaseRecordEntity;
     },
   });
-}
-
-function resolveCreateAnchors(records: DatabaseRecordEntity[], input: AddRowInput) {
-  if (input.beforeRowId !== undefined || input.afterRowId !== undefined)
-    return { afterRowId: input.afterRowId ?? null, beforeRowId: input.beforeRowId ?? null };
-  const index = Math.max(0, Math.min(input.position ?? records.length, records.length));
-  return { afterRowId: records[index - 1]?.id ?? null, beforeRowId: records[index]?.id ?? null };
 }
