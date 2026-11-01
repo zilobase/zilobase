@@ -1,0 +1,1729 @@
+exports[`database and property intents 1`] = `
+{
+  "addProperty": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Score",
+          "position": 1,
+          "type": "number"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "addPropertyDefault": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Property",
+          "type": "text"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "addPropertyReadOnly": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  },
+  "renameProperty": {
+    "calls": [
+      {
+        "op": "updateProperty",
+        "input": {
+          "databaseId": "source",
+          "databasePropertyId": "column-notes",
+          "name": "Details"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "propertyConfig": {
+    "calls": [
+      {
+        "op": "updateProperty",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "options"
+              ],
+              "value": [
+                {
+                  "id": "a",
+                  "name": "A"
+                }
+              ]
+            }
+          ],
+          "databaseId": "source",
+          "databasePropertyId": "column-status"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "relationLimit": {
+    "calls": [
+      {
+        "op": "updateProperty",
+        "input": {
+          "configuration": [
+            {
+              "operation": "remove",
+              "path": [
+                "relation",
+                "relatedDatabaseId"
+              ]
+            },
+            {
+              "operation": "set",
+              "path": [
+                "relation",
+                "limit"
+              ],
+              "value": "one_page"
+            }
+          ],
+          "databaseId": "source",
+          "databasePropertyId": "column-related"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "databaseEmoji": {
+    "calls": [
+      {
+        "op": "updateDatabase",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "emoji"
+              ],
+              "value": "y"
+            }
+          ],
+          "databaseId": "source"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "databaseTitle": {
+    "calls": [
+      {
+        "op": "updateDatabase",
+        "input": {
+          "databaseId": "source",
+          "name": "Roadmap"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "databaseTitleUnchanged": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  },
+  "nameColumn": {
+    "calls": [
+      {
+        "op": "updateDatabase",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "nameColumn"
+              ],
+              "value": {
+                "label": "Task"
+              }
+            }
+          ],
+          "databaseId": "source"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  }
+}
+`;
+
+exports[`row intents 1`] = `
+{
+  "addRowTable": {
+    "calls": [
+      {
+        "op": "addRow",
+        "input": {
+          "databaseId": "source",
+          "hostDatabaseId": "host",
+          "title": "Untitled"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "addRowKanbanDefault": {
+    "calls": [
+      {
+        "op": "addRow",
+        "input": {
+          "databaseId": "source",
+          "hostDatabaseId": "host",
+          "initialValues": [
+            {
+              "propertyId": "status",
+              "value": "Not started"
+            }
+          ],
+          "title": "Untitled"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "addRowKanbanGroup": {
+    "calls": [
+      {
+        "op": "addRow",
+        "input": {
+          "databaseId": "source",
+          "hostDatabaseId": "host",
+          "initialValues": [
+            {
+              "propertyId": "status",
+              "value": "Done"
+            }
+          ],
+          "title": "Untitled"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "addRowMissingParent": {
+    "calls": [],
+    "errors": [
+      "Sub-items are still being set up. Try again shortly."
+    ],
+    "selected": []
+  },
+  "addTimelineRow": {
+    "calls": [
+      {
+        "op": "addRow",
+        "input": {
+          "databaseId": "source",
+          "hostDatabaseId": "host",
+          "initialValues": [
+            {
+              "propertyId": "due",
+              "value": {
+                "end": "2026-09-03",
+                "start": "2026-09-01"
+              }
+            }
+          ],
+          "title": "Untitled"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "addCalendarRow": {
+    "calls": [
+      {
+        "op": "addRow",
+        "input": {
+          "databaseId": "source",
+          "hostDatabaseId": "host",
+          "title": "",
+          "initialValues": [
+            {
+              "propertyId": "due",
+              "value": "2026-09-01"
+            }
+          ]
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "savePropertyValue": {
+    "calls": [
+      {
+        "op": "updateValue",
+        "input": {
+          "databaseId": "source",
+          "hostDatabaseId": "host",
+          "propertyId": "status",
+          "rowId": "row-1",
+          "value": "Done"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "savePropertyValueUnchanged": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  }
+}
+`;
+
+exports[`view creation intents 1`] = `
+{
+  "table": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Table",
+          "type": "table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "list": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "List",
+          "type": "list"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "gallery": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Gallery",
+          "type": "gallery"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "chart": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "chart": {
+              "color": "auto",
+              "omitZeroValues": false,
+              "type": "bar",
+              "valueColors": {}
+            }
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Chart",
+          "type": "chart"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "form": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "hiddenPropertyIds": [
+              "column-notes"
+            ]
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Form",
+          "type": "form"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "kanbanExisting": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "groupPropertyId": "status",
+            "hiddenPropertyIds": [
+              "column-status"
+            ]
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Kanban",
+          "type": "kanban"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "kanbanCreatesStatus": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "optimistic": true,
+        "input": {
+          "databaseId": "source",
+          "name": "Status",
+          "type": "status",
+          "config": {
+            "defaultOptionId": "not-started",
+            "options": [
+              {
+                "color": "gray",
+                "group": "To-do",
+                "id": "not-started",
+                "name": "Not started"
+              },
+              {
+                "color": "blue",
+                "group": "In progress",
+                "id": "in-progress",
+                "name": "In progress"
+              },
+              {
+                "color": "green",
+                "group": "Complete",
+                "id": "done",
+                "name": "Done"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "groupPropertyId": "created-1",
+            "hiddenPropertyIds": [
+              "column-created-1"
+            ]
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Kanban",
+          "type": "kanban"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "timelineExisting": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "datePropertyId": "due",
+            "groupPropertyId": "status"
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Timeline",
+          "type": "timeline"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "timelineCreatesDate": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "optimistic": true,
+        "input": {
+          "databaseId": "source",
+          "name": "Date",
+          "type": "date"
+        }
+      },
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "datePropertyId": "created-1",
+            "groupPropertyId": "status"
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Timeline",
+          "type": "timeline"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "calendarExisting": {
+    "calls": [
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "datePropertyId": "due",
+            "calendarView": "month"
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Calendar",
+          "type": "calendar"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "calendarCreatesDate": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "optimistic": true,
+        "input": {
+          "databaseId": "source",
+          "name": "Date",
+          "type": "date"
+        }
+      },
+      {
+        "op": "addDatabaseView",
+        "optimistic": true,
+        "input": {
+          "config": {
+            "datePropertyId": "created-1",
+            "calendarView": "month"
+          },
+          "databaseId": "host",
+          "dataSourceId": "source",
+          "name": "Calendar",
+          "type": "calendar"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "readOnly": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  }
+}
+`;
+
+exports[`view filter and sort intents 1`] = `
+{
+  "createSort": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "sorts"
+              ],
+              "value": [
+                {
+                  "column": "status",
+                  "direction": "ascending"
+                },
+                {
+                  "column": "notes",
+                  "direction": "descending"
+                },
+                {
+                  "column": "due",
+                  "direction": "ascending"
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "updateSort": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "sorts"
+              ],
+              "value": [
+                {
+                  "column": "status",
+                  "direction": "ascending"
+                },
+                {
+                  "column": "notes",
+                  "direction": "ascending"
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "removeSort": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "sorts"
+              ],
+              "value": [
+                {
+                  "column": "notes",
+                  "direction": "descending"
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "clearSort": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "saveSorts": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "sorts"
+              ],
+              "value": [
+                {
+                  "column": "due",
+                  "direction": "descending"
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "createFilter": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "filters"
+              ],
+              "value": [
+                {
+                  "id": "filter-a",
+                  "operator": "is",
+                  "propertyId": "status",
+                  "values": [
+                    "Done"
+                  ]
+                },
+                {
+                  "id": "filter-b",
+                  "operator": "contains",
+                  "propertyId": "notes",
+                  "values": [
+                    "x"
+                  ]
+                },
+                {
+                  "id": "filter-<random>",
+                  "operator": "is",
+                  "propertyId": "due",
+                  "values": []
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "createDuplicateFilter": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  },
+  "updateFilterValues": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "filters"
+              ],
+              "value": [
+                {
+                  "id": "filter-a",
+                  "operator": "is",
+                  "propertyId": "status",
+                  "values": [
+                    "Todo"
+                  ]
+                },
+                {
+                  "id": "filter-b",
+                  "operator": "contains",
+                  "propertyId": "notes",
+                  "values": [
+                    "x"
+                  ]
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "updateFilterProperty": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "filters"
+              ],
+              "value": [
+                {
+                  "id": "filter-a",
+                  "operator": "is",
+                  "propertyId": "status",
+                  "values": [
+                    "Done"
+                  ]
+                },
+                {
+                  "id": "filter-b",
+                  "operator": "is",
+                  "propertyId": "due",
+                  "values": []
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "updateFilterOperator": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "filters"
+              ],
+              "value": [
+                {
+                  "id": "filter-a",
+                  "operator": "is",
+                  "propertyId": "status",
+                  "values": [
+                    "Done"
+                  ]
+                },
+                {
+                  "id": "filter-b",
+                  "operator": "does_not_contain",
+                  "propertyId": "notes",
+                  "values": [
+                    "x"
+                  ]
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "removeFilter": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "filters"
+              ],
+              "value": [
+                {
+                  "id": "filter-b",
+                  "operator": "contains",
+                  "propertyId": "notes",
+                  "values": [
+                    "x"
+                  ]
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "reorderFilters": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "filters"
+              ],
+              "value": [
+                {
+                  "id": "filter-b",
+                  "operator": "contains",
+                  "propertyId": "notes",
+                  "values": [
+                    "x"
+                  ]
+                },
+                {
+                  "id": "filter-a",
+                  "operator": "is",
+                  "propertyId": "status",
+                  "values": [
+                    "Done"
+                  ]
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "clearFilter": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "conditionalColors": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "conditionalColors"
+              ],
+              "value": [
+                {
+                  "id": "color-1",
+                  "color": "red",
+                  "filters": [],
+                  "applyTo": "entire-row"
+                }
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  }
+}
+`;
+
+exports[`view layout and grouping intents 1`] = `
+{
+  "tableToKanban": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "groupPropertyId"
+              ],
+              "value": "status"
+            },
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": [
+                "column-status"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table",
+          "type": "kanban"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "tableToKanbanCreatesStatus": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Status",
+          "type": "status",
+          "config": {
+            "defaultOptionId": "not-started",
+            "options": [
+              {
+                "color": "gray",
+                "group": "To-do",
+                "id": "not-started",
+                "name": "Not started"
+              },
+              {
+                "color": "blue",
+                "group": "In progress",
+                "id": "in-progress",
+                "name": "In progress"
+              },
+              {
+                "color": "green",
+                "group": "Complete",
+                "id": "done",
+                "name": "Done"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "groupPropertyId"
+              ],
+              "value": "created-1"
+            },
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": [
+                "column-created-1"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table",
+          "type": "kanban"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "tableToTimeline": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "datePropertyId"
+              ],
+              "value": "due"
+            },
+            {
+              "operation": "set",
+              "path": [
+                "groupPropertyId"
+              ],
+              "value": "status"
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table",
+          "type": "timeline"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "tableToCalendarCreatesDate": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Date",
+          "type": "date"
+        }
+      },
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "datePropertyId"
+              ],
+              "value": "created-1"
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table",
+          "type": "calendar"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "tableToList": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [],
+          "databaseId": "host",
+          "databaseViewId": "view-table",
+          "type": "list"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "kanbanToTable": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "remove",
+              "path": [
+                "groupPropertyId"
+              ]
+            },
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": []
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-kanban",
+          "type": "table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "sameType": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  },
+  "groupByNotesOnKanban": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "groupPropertyId"
+              ],
+              "value": "notes"
+            },
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": [
+                "column-notes"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-kanban"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "ungroupTable": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "remove",
+              "path": [
+                "groupPropertyId"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "datePropertyTimeline": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [],
+          "databaseId": "host",
+          "databaseViewId": "view-timeline"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "calendarMode": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-calendar",
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "calendarView"
+              ],
+              "value": "week"
+            }
+          ]
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "setupKanbanRequired": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Status",
+          "type": "status",
+          "config": {
+            "defaultOptionId": "not-started",
+            "options": [
+              {
+                "color": "gray",
+                "group": "To-do",
+                "id": "not-started",
+                "name": "Not started"
+              },
+              {
+                "color": "blue",
+                "group": "In progress",
+                "id": "in-progress",
+                "name": "In progress"
+              },
+              {
+                "color": "green",
+                "group": "Complete",
+                "id": "done",
+                "name": "Done"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-kanban",
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "groupPropertyId"
+              ],
+              "value": "created-1"
+            },
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": [
+                "column-created-1"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "setupTimelineRequired": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Date",
+          "type": "date"
+        }
+      },
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "datePropertyId"
+              ],
+              "value": "created-1"
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-timeline"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "setupTimelineDate": {
+    "calls": [
+      {
+        "op": "addProperty",
+        "input": {
+          "databaseId": "source",
+          "name": "Date",
+          "type": "date"
+        }
+      },
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "datePropertyId"
+              ],
+              "value": "created-1"
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-timeline"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  }
+}
+`;
+
+exports[`view presentation intents 1`] = `
+{
+  "propertyOrder": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "propertyOrder"
+              ],
+              "value": [
+                "column-due",
+                "name",
+                "column-status",
+                "column-notes"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "toggleVisibility": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": [
+                "column-notes"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "toggleVisibilityKanban": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "hiddenPropertyIds"
+              ],
+              "value": [
+                "column-status",
+                "column-notes"
+              ]
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-kanban"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "togglePropertyTitles": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "showPropertyTitles"
+              ],
+              "value": true
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "chartSettings": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "chart"
+              ],
+              "value": {
+                "color": "auto",
+                "omitZeroValues": false,
+                "type": "bar",
+                "valueColors": {}
+              }
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-chart"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "layoutSettings": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "layout"
+              ],
+              "value": {
+                "cardLayout": "compact",
+                "cardPreview": "page-cover",
+                "cardSize": "medium",
+                "fullLinePropertyIds": [],
+                "showVerticalLines": true,
+                "wrapAllContent": false,
+                "wrapCells": true
+              }
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "subItems": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "subItems"
+              ],
+              "value": {
+                "display": "nested",
+                "enabled": true,
+                "filter": "parents-only",
+                "property": "sub-item"
+              }
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-table"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "formHeader": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "formHeader"
+              ],
+              "value": {
+                "cover": "",
+                "description": "",
+                "icon": "",
+                "iconPosition": "inline",
+                "title": "Apply"
+              }
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-form"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "formQuestion": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "formQuestions"
+              ],
+              "value": {
+                "column-notes": {
+                  "required": true
+                }
+              }
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-form"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "formShare": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "formShare"
+              ],
+              "value": {
+                "anonymousResponses": true,
+                "fillAccess": "workspace",
+                "submissionAccess": "none",
+                "enabled": true
+              }
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-form"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "formHeaderOnTable": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  },
+  "viewTitle": {
+    "calls": [
+      {
+        "op": "updateDatabaseView",
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-table",
+          "name": "Roadmap"
+        }
+      }
+    ],
+    "errors": [],
+    "selected": []
+  },
+  "viewTitleUnchanged": {
+    "calls": [],
+    "errors": [],
+    "selected": []
+  }
+}
+`;
