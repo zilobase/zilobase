@@ -3,13 +3,13 @@ exports[`database and property intents 1`] = `
   "addProperty": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
           "databaseId": "source",
           "name": "Score",
           "position": 1,
           "type": "number"
-        }
+        },
+        "op": "addProperty"
       }
     ],
     "errors": [],
@@ -18,12 +18,12 @@ exports[`database and property intents 1`] = `
   "addPropertyDefault": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
           "databaseId": "source",
           "name": "Property",
           "type": "text"
-        }
+        },
+        "op": "addProperty"
       }
     ],
     "errors": [],
@@ -37,12 +37,12 @@ exports[`database and property intents 1`] = `
   "renameProperty": {
     "calls": [
       {
-        "op": "updateProperty",
         "input": {
           "databaseId": "source",
           "databasePropertyId": "column-notes",
           "name": "Details"
-        }
+        },
+        "op": "updateProperty"
       }
     ],
     "errors": [],
@@ -51,7 +51,6 @@ exports[`database and property intents 1`] = `
   "propertyConfig": {
     "calls": [
       {
-        "op": "updateProperty",
         "input": {
           "configuration": [
             {
@@ -69,7 +68,8 @@ exports[`database and property intents 1`] = `
           ],
           "databaseId": "source",
           "databasePropertyId": "column-status"
-        }
+        },
+        "op": "updateProperty"
       }
     ],
     "errors": [],
@@ -78,7 +78,6 @@ exports[`database and property intents 1`] = `
   "relationLimit": {
     "calls": [
       {
-        "op": "updateProperty",
         "input": {
           "configuration": [
             {
@@ -99,7 +98,8 @@ exports[`database and property intents 1`] = `
           ],
           "databaseId": "source",
           "databasePropertyId": "column-related"
-        }
+        },
+        "op": "updateProperty"
       }
     ],
     "errors": [],
@@ -108,7 +108,6 @@ exports[`database and property intents 1`] = `
   "databaseEmoji": {
     "calls": [
       {
-        "op": "updateDatabase",
         "input": {
           "configuration": [
             {
@@ -120,7 +119,8 @@ exports[`database and property intents 1`] = `
             }
           ],
           "databaseId": "source"
-        }
+        },
+        "op": "updateDatabase"
       }
     ],
     "errors": [],
@@ -129,11 +129,11 @@ exports[`database and property intents 1`] = `
   "databaseTitle": {
     "calls": [
       {
-        "op": "updateDatabase",
         "input": {
           "databaseId": "source",
           "name": "Roadmap"
-        }
+        },
+        "op": "updateDatabase"
       }
     ],
     "errors": [],
@@ -147,7 +147,6 @@ exports[`database and property intents 1`] = `
   "nameColumn": {
     "calls": [
       {
-        "op": "updateDatabase",
         "input": {
           "configuration": [
             {
@@ -161,7 +160,8 @@ exports[`database and property intents 1`] = `
             }
           ],
           "databaseId": "source"
-        }
+        },
+        "op": "updateDatabase"
       }
     ],
     "errors": [],
@@ -175,12 +175,12 @@ exports[`row intents 1`] = `
   "addRowTable": {
     "calls": [
       {
-        "op": "addRow",
         "input": {
           "databaseId": "source",
           "hostDatabaseId": "host",
           "title": "Untitled"
-        }
+        },
+        "op": "addRow"
       }
     ],
     "errors": [],
@@ -189,7 +189,6 @@ exports[`row intents 1`] = `
   "addRowKanbanDefault": {
     "calls": [
       {
-        "op": "addRow",
         "input": {
           "databaseId": "source",
           "hostDatabaseId": "host",
@@ -200,7 +199,8 @@ exports[`row intents 1`] = `
             }
           ],
           "title": "Untitled"
-        }
+        },
+        "op": "addRow"
       }
     ],
     "errors": [],
@@ -209,7 +209,6 @@ exports[`row intents 1`] = `
   "addRowKanbanGroup": {
     "calls": [
       {
-        "op": "addRow",
         "input": {
           "databaseId": "source",
           "hostDatabaseId": "host",
@@ -220,7 +219,8 @@ exports[`row intents 1`] = `
             }
           ],
           "title": "Untitled"
-        }
+        },
+        "op": "addRow"
       }
     ],
     "errors": [],
@@ -236,7 +236,6 @@ exports[`row intents 1`] = `
   "addTimelineRow": {
     "calls": [
       {
-        "op": "addRow",
         "input": {
           "databaseId": "source",
           "hostDatabaseId": "host",
@@ -250,7 +249,8 @@ exports[`row intents 1`] = `
             }
           ],
           "title": "Untitled"
-        }
+        },
+        "op": "addRow"
       }
     ],
     "errors": [],
@@ -259,18 +259,18 @@ exports[`row intents 1`] = `
   "addCalendarRow": {
     "calls": [
       {
-        "op": "addRow",
         "input": {
           "databaseId": "source",
           "hostDatabaseId": "host",
-          "title": "",
           "initialValues": [
             {
               "propertyId": "due",
               "value": "2026-09-01"
             }
-          ]
-        }
+          ],
+          "title": ""
+        },
+        "op": "addRow"
       }
     ],
     "errors": [],
@@ -279,14 +279,14 @@ exports[`row intents 1`] = `
   "savePropertyValue": {
     "calls": [
       {
-        "op": "updateValue",
         "input": {
           "databaseId": "source",
           "hostDatabaseId": "host",
           "propertyId": "status",
           "rowId": "row-1",
           "value": "Done"
-        }
+        },
+        "op": "updateValue"
       }
     ],
     "errors": [],
@@ -305,14 +305,14 @@ exports[`view creation intents 1`] = `
   "table": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "databaseId": "host",
           "dataSourceId": "source",
           "name": "Table",
           "type": "table"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -323,14 +323,14 @@ exports[`view creation intents 1`] = `
   "list": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "databaseId": "host",
           "dataSourceId": "source",
           "name": "List",
           "type": "list"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -341,14 +341,14 @@ exports[`view creation intents 1`] = `
   "gallery": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "databaseId": "host",
           "dataSourceId": "source",
           "name": "Gallery",
           "type": "gallery"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -359,8 +359,6 @@ exports[`view creation intents 1`] = `
   "chart": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
             "chart": {
@@ -374,7 +372,9 @@ exports[`view creation intents 1`] = `
           "dataSourceId": "source",
           "name": "Chart",
           "type": "chart"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -385,8 +385,6 @@ exports[`view creation intents 1`] = `
   "form": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
             "hiddenPropertyIds": [
@@ -397,7 +395,9 @@ exports[`view creation intents 1`] = `
           "dataSourceId": "source",
           "name": "Form",
           "type": "form"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -408,8 +408,6 @@ exports[`view creation intents 1`] = `
   "kanbanExisting": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
             "groupPropertyId": "status",
@@ -421,7 +419,9 @@ exports[`view creation intents 1`] = `
           "dataSourceId": "source",
           "name": "Kanban",
           "type": "kanban"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -432,12 +432,7 @@ exports[`view creation intents 1`] = `
   "kanbanCreatesStatus": {
     "calls": [
       {
-        "op": "addProperty",
-        "optimistic": true,
         "input": {
-          "databaseId": "source",
-          "name": "Status",
-          "type": "status",
           "config": {
             "defaultOptionId": "not-started",
             "options": [
@@ -460,12 +455,15 @@ exports[`view creation intents 1`] = `
                 "name": "Done"
               }
             ]
-          }
-        }
+          },
+          "databaseId": "source",
+          "name": "Status",
+          "type": "status"
+        },
+        "op": "addProperty",
+        "optimistic": true
       },
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
             "groupPropertyId": "created-1",
@@ -477,7 +475,9 @@ exports[`view creation intents 1`] = `
           "dataSourceId": "source",
           "name": "Kanban",
           "type": "kanban"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -488,8 +488,6 @@ exports[`view creation intents 1`] = `
   "timelineExisting": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
             "datePropertyId": "due",
@@ -499,7 +497,9 @@ exports[`view creation intents 1`] = `
           "dataSourceId": "source",
           "name": "Timeline",
           "type": "timeline"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -510,17 +510,15 @@ exports[`view creation intents 1`] = `
   "timelineCreatesDate": {
     "calls": [
       {
-        "op": "addProperty",
-        "optimistic": true,
         "input": {
           "databaseId": "source",
           "name": "Date",
           "type": "date"
-        }
+        },
+        "op": "addProperty",
+        "optimistic": true
       },
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
             "datePropertyId": "created-1",
@@ -530,7 +528,9 @@ exports[`view creation intents 1`] = `
           "dataSourceId": "source",
           "name": "Timeline",
           "type": "timeline"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -541,18 +541,18 @@ exports[`view creation intents 1`] = `
   "calendarExisting": {
     "calls": [
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
-            "datePropertyId": "due",
-            "calendarView": "month"
+            "calendarView": "month",
+            "datePropertyId": "due"
           },
           "databaseId": "host",
           "dataSourceId": "source",
           "name": "Calendar",
           "type": "calendar"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -563,27 +563,27 @@ exports[`view creation intents 1`] = `
   "calendarCreatesDate": {
     "calls": [
       {
-        "op": "addProperty",
-        "optimistic": true,
         "input": {
           "databaseId": "source",
           "name": "Date",
           "type": "date"
-        }
+        },
+        "op": "addProperty",
+        "optimistic": true
       },
       {
-        "op": "addDatabaseView",
-        "optimistic": true,
         "input": {
           "config": {
-            "datePropertyId": "created-1",
-            "calendarView": "month"
+            "calendarView": "month",
+            "datePropertyId": "created-1"
           },
           "databaseId": "host",
           "dataSourceId": "source",
           "name": "Calendar",
           "type": "calendar"
-        }
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
       }
     ],
     "errors": [],
@@ -604,7 +604,6 @@ exports[`view filter and sort intents 1`] = `
   "createSort": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -630,7 +629,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -639,7 +639,6 @@ exports[`view filter and sort intents 1`] = `
   "updateSort": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -661,7 +660,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -670,7 +670,6 @@ exports[`view filter and sort intents 1`] = `
   "removeSort": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -688,7 +687,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -697,12 +697,12 @@ exports[`view filter and sort intents 1`] = `
   "clearSort": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -711,7 +711,6 @@ exports[`view filter and sort intents 1`] = `
   "saveSorts": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -729,7 +728,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -738,7 +738,6 @@ exports[`view filter and sort intents 1`] = `
   "createFilter": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -774,7 +773,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -788,7 +788,6 @@ exports[`view filter and sort intents 1`] = `
   "updateFilterValues": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -818,7 +817,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -827,7 +827,6 @@ exports[`view filter and sort intents 1`] = `
   "updateFilterProperty": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -855,7 +854,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -864,7 +864,6 @@ exports[`view filter and sort intents 1`] = `
   "updateFilterOperator": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -894,7 +893,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -903,7 +903,6 @@ exports[`view filter and sort intents 1`] = `
   "removeFilter": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -925,7 +924,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -934,7 +934,6 @@ exports[`view filter and sort intents 1`] = `
   "reorderFilters": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -964,7 +963,8 @@ exports[`view filter and sort intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -973,12 +973,12 @@ exports[`view filter and sort intents 1`] = `
   "clearFilter": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -987,7 +987,6 @@ exports[`view filter and sort intents 1`] = `
   "conditionalColors": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -997,17 +996,18 @@ exports[`view filter and sort intents 1`] = `
               ],
               "value": [
                 {
-                  "id": "color-1",
+                  "applyTo": "entire-row",
                   "color": "red",
                   "filters": [],
-                  "applyTo": "entire-row"
+                  "id": "color-1"
                 }
               ]
             }
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1021,7 +1021,6 @@ exports[`view layout and grouping intents 1`] = `
   "tableToKanban": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1044,7 +1043,8 @@ exports[`view layout and grouping intents 1`] = `
           "databaseId": "host",
           "databaseViewId": "view-table",
           "type": "kanban"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1053,11 +1053,7 @@ exports[`view layout and grouping intents 1`] = `
   "tableToKanbanCreatesStatus": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
-          "databaseId": "source",
-          "name": "Status",
-          "type": "status",
           "config": {
             "defaultOptionId": "not-started",
             "options": [
@@ -1080,11 +1076,14 @@ exports[`view layout and grouping intents 1`] = `
                 "name": "Done"
               }
             ]
-          }
-        }
+          },
+          "databaseId": "source",
+          "name": "Status",
+          "type": "status"
+        },
+        "op": "addProperty"
       },
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1107,7 +1106,8 @@ exports[`view layout and grouping intents 1`] = `
           "databaseId": "host",
           "databaseViewId": "view-table",
           "type": "kanban"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1116,7 +1116,6 @@ exports[`view layout and grouping intents 1`] = `
   "tableToTimeline": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1137,7 +1136,8 @@ exports[`view layout and grouping intents 1`] = `
           "databaseId": "host",
           "databaseViewId": "view-table",
           "type": "timeline"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1146,15 +1146,14 @@ exports[`view layout and grouping intents 1`] = `
   "tableToCalendarCreatesDate": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
           "databaseId": "source",
           "name": "Date",
           "type": "date"
-        }
+        },
+        "op": "addProperty"
       },
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1168,7 +1167,8 @@ exports[`view layout and grouping intents 1`] = `
           "databaseId": "host",
           "databaseViewId": "view-table",
           "type": "calendar"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1177,13 +1177,13 @@ exports[`view layout and grouping intents 1`] = `
   "tableToList": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [],
           "databaseId": "host",
           "databaseViewId": "view-table",
           "type": "list"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1192,7 +1192,6 @@ exports[`view layout and grouping intents 1`] = `
   "kanbanToTable": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1212,7 +1211,8 @@ exports[`view layout and grouping intents 1`] = `
           "databaseId": "host",
           "databaseViewId": "view-kanban",
           "type": "table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1226,7 +1226,6 @@ exports[`view layout and grouping intents 1`] = `
   "groupByNotesOnKanban": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1248,7 +1247,8 @@ exports[`view layout and grouping intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-kanban"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1257,7 +1257,6 @@ exports[`view layout and grouping intents 1`] = `
   "ungroupTable": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1269,7 +1268,8 @@ exports[`view layout and grouping intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1278,12 +1278,12 @@ exports[`view layout and grouping intents 1`] = `
   "datePropertyTimeline": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [],
           "databaseId": "host",
           "databaseViewId": "view-timeline"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1292,10 +1292,7 @@ exports[`view layout and grouping intents 1`] = `
   "calendarMode": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
-          "databaseId": "host",
-          "databaseViewId": "view-calendar",
           "configuration": [
             {
               "operation": "set",
@@ -1304,8 +1301,11 @@ exports[`view layout and grouping intents 1`] = `
               ],
               "value": "week"
             }
-          ]
-        }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-calendar"
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1314,11 +1314,7 @@ exports[`view layout and grouping intents 1`] = `
   "setupKanbanRequired": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
-          "databaseId": "source",
-          "name": "Status",
-          "type": "status",
           "config": {
             "defaultOptionId": "not-started",
             "options": [
@@ -1341,14 +1337,15 @@ exports[`view layout and grouping intents 1`] = `
                 "name": "Done"
               }
             ]
-          }
-        }
+          },
+          "databaseId": "source",
+          "name": "Status",
+          "type": "status"
+        },
+        "op": "addProperty"
       },
       {
-        "op": "updateDatabaseView",
         "input": {
-          "databaseId": "host",
-          "databaseViewId": "view-kanban",
           "configuration": [
             {
               "operation": "set",
@@ -1366,8 +1363,11 @@ exports[`view layout and grouping intents 1`] = `
                 "column-created-1"
               ]
             }
-          ]
-        }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-kanban"
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1376,15 +1376,14 @@ exports[`view layout and grouping intents 1`] = `
   "setupTimelineRequired": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
           "databaseId": "source",
           "name": "Date",
           "type": "date"
-        }
+        },
+        "op": "addProperty"
       },
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1397,7 +1396,8 @@ exports[`view layout and grouping intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-timeline"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1406,15 +1406,14 @@ exports[`view layout and grouping intents 1`] = `
   "setupTimelineDate": {
     "calls": [
       {
-        "op": "addProperty",
         "input": {
           "databaseId": "source",
           "name": "Date",
           "type": "date"
-        }
+        },
+        "op": "addProperty"
       },
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1427,7 +1426,8 @@ exports[`view layout and grouping intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-timeline"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1441,7 +1441,6 @@ exports[`view presentation intents 1`] = `
   "propertyOrder": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1459,7 +1458,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1468,7 +1468,6 @@ exports[`view presentation intents 1`] = `
   "toggleVisibility": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1483,7 +1482,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1492,7 +1492,6 @@ exports[`view presentation intents 1`] = `
   "toggleVisibilityKanban": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1508,7 +1507,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-kanban"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1517,7 +1517,6 @@ exports[`view presentation intents 1`] = `
   "togglePropertyTitles": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1530,7 +1529,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1539,7 +1539,6 @@ exports[`view presentation intents 1`] = `
   "chartSettings": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1557,7 +1556,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-chart"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1566,7 +1566,6 @@ exports[`view presentation intents 1`] = `
   "layoutSettings": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1587,7 +1586,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1596,7 +1596,6 @@ exports[`view presentation intents 1`] = `
   "subItems": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1614,7 +1613,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-table"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1623,7 +1623,6 @@ exports[`view presentation intents 1`] = `
   "formHeader": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1642,7 +1641,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-form"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1651,7 +1651,6 @@ exports[`view presentation intents 1`] = `
   "formQuestion": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1668,7 +1667,8 @@ exports[`view presentation intents 1`] = `
           ],
           "databaseId": "host",
           "databaseViewId": "view-form"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1677,7 +1677,6 @@ exports[`view presentation intents 1`] = `
   "formShare": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "configuration": [
             {
@@ -1687,15 +1686,16 @@ exports[`view presentation intents 1`] = `
               ],
               "value": {
                 "anonymousResponses": true,
+                "enabled": true,
                 "fillAccess": "workspace",
-                "submissionAccess": "none",
-                "enabled": true
+                "submissionAccess": "none"
               }
             }
           ],
           "databaseId": "host",
           "databaseViewId": "view-form"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
@@ -1709,12 +1709,12 @@ exports[`view presentation intents 1`] = `
   "viewTitle": {
     "calls": [
       {
-        "op": "updateDatabaseView",
         "input": {
           "databaseId": "host",
           "databaseViewId": "view-table",
           "name": "Roadmap"
-        }
+        },
+        "op": "updateDatabaseView"
       }
     ],
     "errors": [],
