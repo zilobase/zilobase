@@ -1,0 +1,472 @@
+exports[`data source intents 1`] = `
+{
+  "link": {
+    "calls": [
+      {
+        "input": {
+          "config": {
+            "groupPropertyId": "status"
+          },
+          "databaseId": "host",
+          "dataSourceId": "linked",
+          "name": "Board",
+          "type": "kanban"
+        },
+        "op": "linkDatabaseDataSource"
+      }
+    ],
+    "messages": [
+      "success: Data source linked."
+    ],
+    "selected": [
+      "view-new"
+    ]
+  },
+  "unlinkLinked": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-linked"
+        },
+        "op": "deleteDatabaseView"
+      },
+      {
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "linked"
+        },
+        "op": "unlinkDatabaseDataSource"
+      }
+    ],
+    "messages": [
+      "success: Linked data source removed."
+    ],
+    "selected": [
+      "view-own"
+    ]
+  },
+  "unlinkOwnIgnored": {
+    "calls": [],
+    "messages": [],
+    "selected": []
+  },
+  "unlinkReadOnly": {
+    "calls": [],
+    "messages": [],
+    "selected": []
+  },
+  "unlinkFails": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-linked"
+        },
+        "op": "deleteDatabaseView"
+      },
+      {
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "linked"
+        },
+        "op": "unlinkDatabaseDataSource"
+      }
+    ],
+    "messages": [
+      "error: unlinkDatabaseDataSource failed"
+    ],
+    "selected": []
+  },
+  "replace": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-own",
+          "dataSourceId": "linked"
+        },
+        "op": "replaceDatabaseViewDataSource"
+      }
+    ],
+    "messages": [
+      "success: View source replaced."
+    ],
+    "selected": [
+      "view-own"
+    ]
+  },
+  "addView": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "linked",
+          "name": "Board",
+          "type": "kanban"
+        },
+        "op": "linkDatabaseDataSource"
+      }
+    ],
+    "messages": [
+      "success: Board view added."
+    ],
+    "selected": [
+      "view-new"
+    ]
+  },
+  "addViewReplace": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-own",
+          "dataSourceId": "linked"
+        },
+        "op": "replaceDatabaseViewDataSource"
+      }
+    ],
+    "messages": [
+      "success: View source replaced."
+    ],
+    "selected": []
+  },
+  "addViewFails": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "dataSourceId": "linked",
+          "name": "List",
+          "type": "list"
+        },
+        "op": "linkDatabaseDataSource"
+      }
+    ],
+    "messages": [
+      "error: linkDatabaseDataSource failed"
+    ],
+    "selected": []
+  }
+}
+`;
+
+exports[`data source setup workflow 1`] = `
+{
+  "blank": {
+    "commands": [
+      {
+        "command": {
+          "config": {},
+          "name": "Inbox",
+          "type": "dataSource.create",
+          "viewName": "Table",
+          "viewType": "table"
+        },
+        "path": "/databases/database-1/commands"
+      }
+    ],
+    "messages": [
+      "success: Data source added."
+    ],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "template": {
+    "commands": [
+      {
+        "command": {
+          "config": {},
+          "name": "Tasks Tracker",
+          "type": "dataSource.create",
+          "viewName": "Table",
+          "viewType": "table"
+        },
+        "path": "/databases/database-1/commands"
+      },
+      {
+        "command": {
+          "config": {
+            "emoji": "✅",
+            "setupDismissed": true
+          },
+          "name": "Tasks Tracker",
+          "properties": [
+            {
+              "config": {
+                "defaultOptionId": "not-started",
+                "options": [
+                  {
+                    "color": "gray",
+                    "group": "To-do",
+                    "id": "not-started",
+                    "name": "Not started"
+                  },
+                  {
+                    "color": "blue",
+                    "group": "In progress",
+                    "id": "in-progress",
+                    "name": "In progress"
+                  },
+                  {
+                    "color": "green",
+                    "group": "Complete",
+                    "id": "done",
+                    "name": "Done"
+                  }
+                ]
+              },
+              "name": "Status",
+              "type": "status"
+            },
+            {
+              "name": "Date",
+              "type": "date"
+            },
+            {
+              "name": "Person",
+              "type": "person"
+            }
+          ],
+          "rows": [
+            {
+              "content": {
+                "markdown": "# Draft project brief\\n\\n## Summary\\nCreate a one-page brief that explains the project direction, why it matters, and what decisions are needed before work begins.\\n\\n## Goals\\n- Align stakeholders on the problem statement and success criteria\\n- Define the initial scope, assumptions, and measurable outcomes\\n- Capture non-goals so the team can avoid scope drift\\n\\n## Draft outline\\n- Background and current pain points\\n- Target users and primary use cases\\n- Proposed approach and alternatives considered\\n- Timeline, owners, and dependencies\\n\\n## Open questions\\n- Who is the final approver for scope changes?\\n- Which metrics will determine whether the project is successful?\\n- What risks should be escalated before planning starts?\\n\\n## Next steps\\n- [x] Collect initial context\\n- [ ] Add success metrics\\n- [ ] Share with reviewers\\n- [ ] Convert feedback into implementation tasks",
+                "type": "doc"
+              },
+              "metadata": {
+                "emoji": "📝"
+              },
+              "title": "Draft project brief",
+              "values": [
+                {
+                  "propertyName": "Date",
+                  "value": "2026-07-03"
+                },
+                {
+                  "propertyName": "Status",
+                  "value": "In progress"
+                }
+              ]
+            },
+            {
+              "content": {
+                "markdown": "# Review launch checklist\\n\\n## Launch goal\\nConfirm that the product, communications, analytics, and support paths are ready before the release is announced.\\n\\n## Readiness areas\\n- Product QA and regression testing\\n- Website, email, and in-app announcement copy\\n- Support macros and help center updates\\n- Analytics events and launch dashboard\\n- Rollback and escalation plan\\n\\n## Known blockers\\n- Final screenshots need design approval\\n- Help article needs one more technical review\\n- Analytics dashboard needs owner confirmation\\n\\n## Launch checklist\\n- [ ] Confirm final build is deployed to production\\n- [ ] Verify announcement links and UTM tags\\n- [ ] Send support team release notes\\n- [ ] Run smoke test on the production path\\n- [ ] Record launch decision in this page\\n\\n> Use this row page as the handoff record for everyone involved in launch day.",
+                "type": "doc"
+              },
+              "metadata": {
+                "emoji": "🚦"
+              },
+              "title": "Review launch checklist",
+              "values": [
+                {
+                  "propertyName": "Date",
+                  "value": "2026-07-05"
+                },
+                {
+                  "propertyName": "Status",
+                  "value": "Not started"
+                }
+              ]
+            },
+            {
+              "content": {
+                "markdown": "# Publish release notes\\n\\n## What shipped\\nWrite a concise summary of the release, the customer problem it solves, and the parts of the app that changed.\\n\\n## Audience\\n- Existing customers who need to understand what changed\\n- Internal teams who need implementation and support context\\n- Prospects who may benefit from the new workflow\\n\\n## Release note draft\\n- Headline: Improved database templates with richer starter content\\n- Summary: Users can create useful databases faster because templates now include rows, properties, and page content\\n- Impact: Reduces setup time and gives each row a useful starting page\\n\\n## Links\\n- Announcement draft\\n- Changelog entry\\n- Support documentation\\n- Internal rollout notes\\n\\n## Publishing checklist\\n- [x] Confirm feature scope\\n- [ ] Add final screenshots\\n- [ ] Review copy with product marketing\\n- [ ] Publish changelog\\n- [ ] Notify customer-facing teams",
+                "type": "doc"
+              },
+              "metadata": {
+                "emoji": "📣"
+              },
+              "title": "Publish release notes",
+              "values": [
+                {
+                  "propertyName": "Date",
+                  "value": "2026-07-08"
+                },
+                {
+                  "propertyName": "Status",
+                  "value": "Done"
+                }
+              ]
+            }
+          ],
+          "type": "template.apply"
+        },
+        "path": "/databases/database-1/data-sources/created/commands"
+      }
+    ],
+    "messages": [
+      "success: Data source added."
+    ],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "csv": {
+    "commands": [
+      {
+        "command": {
+          "config": {},
+          "name": "People",
+          "type": "dataSource.create",
+          "viewName": "Table",
+          "viewType": "table"
+        },
+        "path": "/databases/database-1/commands"
+      },
+      {
+        "command": {
+          "config": {
+            "setupDismissed": true
+          },
+          "name": "People",
+          "properties": [
+            {
+              "name": "Owner",
+              "type": "text"
+            }
+          ],
+          "rows": [
+            {
+              "title": "Ada",
+              "values": [
+                {
+                  "propertyName": "Owner",
+                  "value": "A"
+                }
+              ]
+            },
+            {
+              "title": "Row 2",
+              "values": [
+                {
+                  "propertyName": "Owner",
+                  "value": ""
+                }
+              ]
+            }
+          ],
+          "type": "template.apply"
+        },
+        "path": "/databases/database-1/data-sources/created/commands"
+      }
+    ],
+    "messages": [
+      "success: Data source added."
+    ],
+    "selected": [
+      "view-created"
+    ]
+  },
+  "linkExisting": {
+    "commands": [
+      {
+        "command": {
+          "afterId": null,
+          "beforeId": null,
+          "dataSourceId": "linked",
+          "type": "dataSource.link",
+          "view": {
+            "config": {
+              "groupPropertyId": "status"
+            },
+            "name": "Board",
+            "type": "kanban"
+          }
+        },
+        "path": "/databases/database-1/commands"
+      }
+    ],
+    "messages": [
+      "success: Data source added."
+    ],
+    "selected": [
+      "view-created"
+    ]
+  }
+}
+`;
+
+exports[`view tab intents 1`] = `
+{
+  "icon": {
+    "calls": [
+      {
+        "input": {
+          "configuration": [
+            {
+              "operation": "set",
+              "path": [
+                "icon"
+              ],
+              "value": "b"
+            }
+          ],
+          "databaseId": "host",
+          "databaseViewId": "view-own"
+        },
+        "op": "updateDatabaseView"
+      }
+    ],
+    "messages": [],
+    "selected": []
+  },
+  "iconMissing": {
+    "calls": [],
+    "messages": [],
+    "selected": []
+  },
+  "duplicate": {
+    "calls": [
+      {
+        "input": {
+          "config": {
+            "icon": "a"
+          },
+          "databaseId": "host",
+          "dataSourceId": "linked",
+          "name": "view-linked copy",
+          "type": "kanban"
+        },
+        "op": "addDatabaseView",
+        "optimistic": true
+      }
+    ],
+    "messages": [],
+    "selected": [
+      "view-copy"
+    ]
+  },
+  "deleteActive": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-own"
+        },
+        "op": "deleteDatabaseView"
+      }
+    ],
+    "messages": [],
+    "selected": [
+      "view-linked"
+    ]
+  },
+  "deleteOther": {
+    "calls": [
+      {
+        "input": {
+          "databaseId": "host",
+          "databaseViewId": "view-linked"
+        },
+        "op": "deleteDatabaseView"
+      }
+    ],
+    "messages": [],
+    "selected": [
+      "view-own"
+    ]
+  }
+}
+`;
