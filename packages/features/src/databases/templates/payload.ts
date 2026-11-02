@@ -1,5 +1,5 @@
 import { serializePropertyValue } from "../schema/property-values";
-import type { ApplyDatabaseTemplateInput } from "../mutations/properties";
+import type { ApplyDatabaseTemplateInput } from "../mutations/properties-operations";
 import type { DatabaseSetupTemplate } from "./definitions";
 
 export function databaseCsvPayload(csv: { headers: string[]; rows: string[][] }) {

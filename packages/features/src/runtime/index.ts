@@ -187,7 +187,7 @@ export type { ChatDebugEvent, ChatDebugLog, ChatRunDebug } from "../ai/debug";
 export { chatReferences, chatReferenceMarker, resolveChatReferences } from "../ai/references";
 
 export { runPlan, isPlanRejection, rejectPlan, PlanResults } from "../actions/plan";
-export type { ActionPlan, PlanOutcome, PlanRun, PlanStep } from "../actions/plan";
+export type { ActionPlan, PlanOps, PlanOutcome, PlanRun, PlanStep } from "../actions/plan";
 export { exposedActions } from "../actions/types";
 export type {
   ActionEffect,
