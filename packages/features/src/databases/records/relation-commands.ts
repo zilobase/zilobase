@@ -10,6 +10,7 @@ import {
 import type { DatabaseViewData } from "../views/source-state";
 import type { DatabasePropertyValue } from "../schema/property-values";
 import type { DatabasePropertyConfig } from "../views/configuration";
+import { planRelationSave, type RelationSaveInput } from "../planners/relations";
 
 export function createDatabaseRelationCommands(mutations: {
   addProperty: Pick<ReturnType<typeof useAddDatabaseProperty>, "mutate">;
@@ -32,64 +33,17 @@ export function createDatabaseRelationCommands(mutations: {
       plan.configUpdates.forEach((update) => updateProperty.mutate(update));
       return true;
     },
-    save(
-      input: {
-        selectedDatabase: { value: string; label: string; pageName: string } | null | undefined;
-        relationConfig: ReturnType<typeof getRelationConfig>;
-        relatedPropertyName: string;
-        twoWayRelation: boolean;
-        limit: string;
-        sourceDatabaseId: string;
-        sourceDatabaseName?: string;
-        sourcePropertyId?: string;
-      },
-      onUpdateConfig: (config: DatabasePropertyConfig) => void,
-    ) {
-      const {
-        selectedDatabase,
-        relationConfig,
-        relatedPropertyName,
-        twoWayRelation,
-        limit,
-        sourceDatabaseId,
-        sourceDatabaseName,
-        sourcePropertyId,
-      } = input;
-      if (!selectedDatabase) return;
-      const nextRelation = {
-        ...relationConfig,
-        relatedDatabaseId: selectedDatabase.value,
-        relatedDatabaseName: selectedDatabase.label,
-        relatedPageName: selectedDatabase.pageName,
-        relatedPropertyName: relatedPropertyName.trim() || undefined,
-        twoWayRelation,
-      };
-      if (!twoWayRelation || !relatedPropertyName.trim() || !sourcePropertyId) {
-        onUpdateConfig({ relation: nextRelation });
+    save(input: RelationSaveInput, onUpdateConfig: (config: DatabasePropertyConfig) => void) {
+      const plan = planRelationSave(input);
+      if (!plan) return;
+      if (!plan.reciprocal) {
+        onUpdateConfig(plan.config());
         return;
       }
-      addProperty.mutate(
-        {
-          config: {
-            relation: {
-              limit,
-              relatedDatabaseId: sourceDatabaseId,
-              relatedDatabaseName: sourceDatabaseName,
-              relatedPropertyId: sourcePropertyId,
-              twoWayRelation: true,
-            },
-          },
-          databaseId: selectedDatabase.value,
-          name: relatedPropertyName.trim(),
-          type: "relation",
-        },
-        {
-          onSuccess: (reciprocalProperty) =>
-            onUpdateConfig({
-              relation: { ...nextRelation, relatedPropertyId: reciprocalProperty.property.id },
-            }),
-        },
-      );
+      addProperty.mutate(plan.reciprocal, {
+        onSuccess: (reciprocalProperty) =>
+          onUpdateConfig(plan.config(reciprocalProperty.property.id)),
+      });
     },
     setTwoWay(
       input: Parameters<typeof getRelationTwoWayConfigUpdate>[0] & {
