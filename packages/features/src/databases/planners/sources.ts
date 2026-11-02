@@ -25,7 +25,7 @@ import type {
 } from "../mutations/views-operations";
 import { getDatabaseSetupTemplate, type DatabaseSetupTemplateId } from "../templates/definitions";
 import { databaseCsvPayload, databaseTemplateRows } from "../templates/payload";
-import { getMergedDatabaseConfig } from "../views/configuration";
+import { getDatabaseSetupDismissed, getMergedDatabaseConfig } from "../views/configuration";
 
 /** Host-level source and view-tab operations, named like the UI's mutation callbacks. */
 export type DatabaseSourceOps = {
@@ -146,6 +146,120 @@ export function planSetupDataSource(
       }),
     });
   }
+  return { steps };
+}
+
+export type DatabaseSetupCompletionOps = Pick<
+  DatabaseSourceOps,
+  "applyDataSourceTemplate" | "linkDatabaseDataSource"
+> & {
+  updateDatabase: (input: {
+    configuration?: ReturnType<typeof diffConfiguration>;
+    databaseId: string;
+    name?: string;
+  }) => Promise<unknown>;
+};
+
+/**
+ * Completes setup of a new database's active data source: link a source view,
+ * import CSV rows, apply a template, or rename, then dismiss setup.
+ */
+export function planCompleteDatabaseSetup(
+  input: {
+    databaseId: string;
+    activeDataSource: { config?: unknown; id: string; name: string } | null | undefined;
+    displayName?: string;
+    existingProperties?: Array<{ dataSourceId: string; property: { name: string; type: string } }>;
+    createSampleRowContent: (markdown: string) => unknown;
+    rowMetadata: (emoji: string) => unknown;
+  },
+  selection: DatabaseSetupSelection,
+): PlanOutcome<DatabaseSetupCompletionOps> {
+  const source = input.activeDataSource;
+  if (!source) return rejectPlan("no_active_source", "Database has no active data source.");
+  const dismissed = () =>
+    diffConfiguration(
+      source.config,
+      getMergedDatabaseConfig(source.config, { setupDismissed: true }),
+    );
+  const dismiss = {
+    op: "updateDatabase" as const,
+    input: () => ({ configuration: dismissed(), databaseId: source.id }),
+  };
+  if (selection.sourceView) {
+    const view = selection.sourceView;
+    return {
+      steps: [
+        {
+          op: "linkDatabaseDataSource",
+          input: () => ({
+            databaseId: input.databaseId,
+            config: view.viewConfig,
+            dataSourceId: view.dataSourceId,
+            name: view.viewName,
+            type: view.viewType,
+          }),
+        },
+        dismiss,
+      ],
+    };
+  }
+  if (selection.csvImport) {
+    const csv = selection.csvImport;
+    return {
+      steps: [
+        {
+          op: "applyDataSourceTemplate",
+          input: () => ({
+            config: getMergedDatabaseConfig(source.config, { setupDismissed: true }),
+            databaseId: source.id,
+            name: csv.name,
+            ...databaseCsvPayload(csv),
+          }),
+        },
+      ],
+    };
+  }
+  const template = selection.templateId ? getDatabaseSetupTemplate(selection.templateId) : null;
+  if (template) {
+    const types = new Map(
+      (input.existingProperties ?? [])
+        .filter((property) => property.dataSourceId === source.id)
+        .map((property) => [property.property.name.toLowerCase(), property.property.type]),
+    );
+    for (const property of template.properties)
+      if (!types.has(property.name.toLowerCase()))
+        types.set(property.name.toLowerCase(), property.type);
+    return {
+      steps: [
+        {
+          op: "applyDataSourceTemplate",
+          input: () => ({
+            config: getMergedDatabaseConfig(source.config, {
+              emoji: template.emoji,
+              setupDismissed: true,
+            }),
+            databaseId: source.id,
+            name: template.name,
+            properties: template.properties,
+            rows: databaseTemplateRows(
+              template,
+              types,
+              input.createSampleRowContent,
+              input.rowMetadata,
+            ),
+          }),
+        },
+      ],
+    };
+  }
+  const steps: PlanStep<DatabaseSetupCompletionOps>[] = [];
+  if (!selection.templateId && selection.databaseName && selection.databaseName !== source.name)
+    steps.push({
+      op: "updateDatabase",
+      input: () => ({ databaseId: source.id, name: selection.databaseName }),
+    });
+  if (!getDatabaseSetupDismissed(source.config)) steps.push(dismiss);
   return { steps };
 }
 
