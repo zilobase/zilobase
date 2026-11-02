@@ -10,7 +10,8 @@ import type {
   DataSourceEntity,
 } from "../core/entities";
 import { createTestDatabasePayload, setTestDatabaseClientState } from "../mutations/test-helpers";
-import { createDatabaseSourceCommands, type DatabaseSetupSelection } from "./source-commands";
+import type { DatabaseSetupSelection } from "../planners/sources";
+import { createDatabaseSourceCommands } from "./source-commands";
 
 /*
  * Characterizes data source and view-tab intents, including the multi-step

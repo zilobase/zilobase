@@ -8,7 +8,6 @@
 // oxlint-disable-next-line typescript/no-explicit-any -- operation inputs are contravariant
 export type PlanOps = Record<string, (input: any) => Promise<unknown>>;
 type OpInput<F> = F extends (input: infer Input) => Promise<unknown> ? Input : never;
-type OpResult<F> = F extends (input: never) => Promise<infer Result> ? Result : never;
 
 /** "ack" awaits confirmation, "optimistic" continues once previewed, "dispatch" never waits. */
 export type PlanAdmission = "ack" | "optimistic" | "dispatch";

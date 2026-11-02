@@ -1,7 +1,7 @@
 import type { DatabaseExportPayload } from "../databases/core/export-payload";
 import { createDatabase } from "../databases/mutations/databases-operations";
 import { applyDatabaseTemplate } from "../databases/mutations/properties-operations";
-import type { DatabaseSetupSelection } from "../databases/records/source-commands";
+import type { DatabaseSetupSelection } from "../databases/planners/sources";
 import { defaultStatusOptions } from "../databases/schema/property-defaults";
 import type { DatabasePropertyValue } from "../databases/schema/property-values";
 import { serializePropertyValue } from "../databases/schema/property-values";

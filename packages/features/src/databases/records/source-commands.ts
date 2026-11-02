@@ -1,39 +1,28 @@
+import { isPlanRejection, runPlan } from "../../actions/plan";
 import type { ClientOperationContext } from "../../shared/operation-context";
-import type { DatabaseBootstrapResponse } from "../core/entities";
-import { diffConfiguration } from "../interactions/configuration";
-import { type DatabaseSetupTemplateId } from "../templates/definitions";
-import { getMergedDatabaseConfig } from "../views/configuration";
-import { observeDatabaseViewCreation, observeOperation } from "./mutation-bindings";
+import type { DatabaseBootstrapResponse, DatabaseViewEntity } from "../core/entities";
+import {
+  planAddDataSourceView,
+  planDeleteView,
+  planDuplicateView,
+  planLinkDataSourceView,
+  planReplaceViewSource,
+  planSaveViewIcon,
+  planUnlinkDataSource,
+  type DatabaseSetupSelection,
+  type DatabaseSourceOps,
+  type DatabaseSourcePlan,
+  type DatabaseSourceState,
+  type DatabaseSourceViewSelection,
+} from "../planners/sources";
+import type { DatabaseViewType } from "../planners/views";
 import { setupDatabaseSource } from "./source-workflows";
 type SourceOperations = typeof import("../mutations/data-sources-operations");
 type ViewOperations = typeof import("../mutations/views-operations");
 type PropertyOperations = typeof import("../mutations/properties-operations");
 type Callback<T extends (...args: never[]) => unknown> = (input: Parameters<T>[1]) => ReturnType<T>;
-export type DatabaseViewType =
-  | "table"
-  | "kanban"
-  | "timeline"
-  | "calendar"
-  | "list"
-  | "gallery"
-  | "chart"
-  | "form";
-export type DatabaseSourceViewSelection = {
-  dataSourceId: string;
-  dataSourceName: string;
-  parentDatabaseId: string;
-  viewConfig?: unknown;
-  viewIcon?: string;
-  viewId: string;
-  viewName: string;
-  viewType: string;
-};
-export type DatabaseSetupSelection = {
-  csvImport?: { headers: string[]; name: string; rows: string[][] };
-  databaseName?: string;
-  sourceView?: DatabaseSourceViewSelection;
-  templateId?: DatabaseSetupTemplateId | null;
-};
+
+/** Binds data source and view-tab planners to the client's mutation callbacks. */
 export function createDatabaseSourceCommands({
   context,
   pending = {},
@@ -87,69 +76,67 @@ export function createDatabaseSourceCommands({
   notify: { success: (message: string) => void; error: (message: string) => void };
   createSampleRowContent: (markdown: string) => unknown;
 }) {
+  const state: DatabaseSourceState = {
+    databaseId,
+    editable,
+    bootstrap,
+    activeViewId: resolvedActiveViewId,
+  };
+  const ops = {
+    addDatabaseView,
+    deleteDatabaseView,
+    linkDatabaseDataSource,
+    replaceDatabaseViewDataSource,
+    unlinkDatabaseDataSource,
+    updateDatabaseView,
+  } as Partial<DatabaseSourceOps> as DatabaseSourceOps;
+  const run = (outcome: DatabaseSourcePlan, sequential = false) => {
+    if (isPlanRejection(outcome)) {
+      if (outcome.message) notify.error(outcome.message);
+      return null;
+    }
+    return runPlan(outcome, ops, {
+      sequential,
+      onSelect: (view) => onViewSelected((view as DatabaseViewEntity).id),
+    });
+  };
+  /** Runs a plan to completion and reports the first failure like the previous workflows. */
+  const attempt = async (
+    outcome: DatabaseSourcePlan,
+    fallbackMessage: string,
+    onCompleted: (last: unknown) => void,
+  ) => {
+    const result = await run(outcome, true);
+    if (!result) return;
+    if (result.status === "completed") return onCompleted(result.last);
+    notify.error(result.error instanceof Error ? result.error.message : fallbackMessage);
+  };
+
   const linkDataSourceView = (selection: DatabaseSourceViewSelection) => {
-    if (!databaseId || pending.linkDatabaseDataSource) return;
-    observeOperation(
-      linkDatabaseDataSource,
-      {
-        databaseId,
-        config: selection.viewConfig,
-        dataSourceId: selection.dataSourceId,
-        name: selection.viewName,
-        type: selection.viewType,
-      },
-      {
-        onSuccess: ({ view }) => {
-          onViewSelected(view.id);
-          notify.success("Data source linked.");
-        },
-      },
-    );
+    if (pending.linkDatabaseDataSource) return;
+    void run(planLinkDataSourceView(state, selection))?.then((result) => {
+      if (result.status !== "completed") return;
+      const { view } = result.last as { view: DatabaseViewEntity };
+      onViewSelected(view.id);
+      notify.success("Data source linked.");
+    });
   };
 
   const unlinkDataSource = async (dataSourceId: string) => {
-    if (
-      !databaseId ||
-      !editable ||
-      pending.unlinkDatabaseDataSource ||
-      pending.deleteDatabaseView
-    ) {
-      return;
-    }
-
-    const source = bootstrap?.dataSources.find((candidate) => candidate.id === dataSourceId);
-    if (!source || source.parentDatabaseId === databaseId) return;
-
-    const sourceViewIds =
-      bootstrap?.views
-        .filter((view) => view.dataSourceId === dataSourceId)
-        .map((view) => view.id) ?? [];
-    const fallbackViewId =
-      bootstrap?.views.find((view) => view.dataSourceId !== dataSourceId)?.id ?? null;
-
-    try {
-      for (const databaseViewId of sourceViewIds) {
-        await deleteDatabaseView({ databaseId, databaseViewId });
-      }
-      await unlinkDatabaseDataSource({ databaseId, dataSourceId });
-      onViewSelected(fallbackViewId);
+    if (pending.unlinkDatabaseDataSource || pending.deleteDatabaseView) return;
+    const outcome = planUnlinkDataSource(state, dataSourceId);
+    await attempt(outcome, "Could not remove the linked data source.", () => {
+      onViewSelected(("fallbackViewId" in outcome ? outcome.fallbackViewId : null) ?? null);
       notify.success("Linked data source removed.");
-    } catch (error) {
-      notify.error(
-        error instanceof Error ? error.message : "Could not remove the linked data source.",
-      );
-    }
+    });
   };
 
   const replaceActiveViewSource = async (selection: DatabaseSourceViewSelection) => {
-    if (!databaseId || !resolvedActiveViewId || !editable || pending.replaceDatabaseViewDataSource)
-      return;
-
-    await replaceDatabaseViewDataSource({
-      databaseId,
-      databaseViewId: resolvedActiveViewId,
-      dataSourceId: selection.dataSourceId,
-    });
+    if (pending.replaceDatabaseViewDataSource) return;
+    const outcome = planReplaceViewSource(state, selection.dataSourceId);
+    if (isPlanRejection(outcome)) return;
+    const result = await runPlan(outcome, ops, { sequential: true });
+    if (result.error !== undefined) throw result.error;
     onViewSelected(resolvedActiveViewId);
     notify.success("View source replaced.");
   };
@@ -160,37 +147,16 @@ export function createDatabaseSourceCommands({
     viewName: string,
     mode: "add" | "replace" = "add",
   ) => {
-    if (
-      !databaseId ||
-      !editable ||
-      pending.linkDatabaseDataSource ||
-      pending.replaceDatabaseViewDataSource
-    ) {
-      return;
-    }
-
-    try {
-      if (mode === "replace") {
-        if (!resolvedActiveViewId) return;
-        await replaceDatabaseViewDataSource({
-          databaseId,
-          databaseViewId: resolvedActiveViewId,
-          dataSourceId,
-        });
-        notify.success("View source replaced.");
-        return;
-      }
-      const { view } = await linkDatabaseDataSource({
-        databaseId,
-        dataSourceId,
-        name: viewName,
-        type,
-      });
-      onViewSelected(view.id);
-      notify.success(`${viewName} view added.`);
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : "Could not add the view.");
-    }
+    if (pending.linkDatabaseDataSource || pending.replaceDatabaseViewDataSource) return;
+    await attempt(
+      planAddDataSourceView(state, { dataSourceId, type, viewName, mode }),
+      "Could not add the view.",
+      (last) => {
+        if (mode === "replace") return notify.success("View source replaced.");
+        onViewSelected((last as { view: DatabaseViewEntity }).view.id);
+        notify.success(`${viewName} view added.`);
+      },
+    );
   };
 
   const handleDataSourceSetupSelection = async (selection: DatabaseSetupSelection) => {
@@ -215,79 +181,23 @@ export function createDatabaseSourceCommands({
     view,
     nextIcon,
   ) => {
-    if (!editable || !databaseId) {
-      return;
-    }
-
-    const sourceView = bootstrap?.views.find((candidate) => candidate.id === view.id);
-
-    if (!sourceView) {
-      return;
-    }
-
-    observeOperation(updateDatabaseView, {
-      configuration: diffConfiguration(
-        sourceView.config,
-        getMergedDatabaseConfig(sourceView.config, { icon: nextIcon }),
-      ),
-      databaseId,
-      databaseViewId: sourceView.id,
-    });
+    void run(planSaveViewIcon(state, view.id, nextIcon));
   };
 
   const duplicateDatabaseView = (view: { id: string }) => {
-    if (!databaseId || pending.addDatabaseView || pending.updateDatabase) {
-      return;
-    }
-
-    const sourceView = (bootstrap?.views ?? []).find((databaseView) => databaseView.id === view.id);
-
-    if (!sourceView) {
-      return;
-    }
-
-    observeDatabaseViewCreation(
-      addDatabaseView,
-      {
-        config: sourceView.config,
-        databaseId,
-        dataSourceId: sourceView.dataSourceId,
-        name: `${sourceView.name} copy`,
-        type: sourceView.type,
-      },
-      {
-        onSuccess: (view) => {
-          onViewSelected(view.id);
-        },
-      },
-    );
+    if (pending.addDatabaseView || pending.updateDatabase) return;
+    void run(planDuplicateView(state, view.id));
   };
 
   const deleteDatabaseViewByTab = (view: { id: string }) => {
-    if (!databaseId || pending.deleteDatabaseView) {
-      return;
-    }
-
-    if (viewTabs.length <= 1) {
-      notify.error("A database must always have at least one view.");
-      return;
-    }
-
+    if (!databaseId || pending.deleteDatabaseView) return;
     const nextActiveViewId =
       activeViewTabId === view.id
         ? (viewTabs.find((viewTab) => viewTab.id !== view.id)?.id ?? null)
         : activeViewTabId;
-
-    observeOperation(
-      deleteDatabaseView,
-      {
-        databaseId,
-        databaseViewId: view.id,
-      },
-      {
-        onSuccess: () => onViewSelected(nextActiveViewId),
-      },
-    );
+    void run(planDeleteView({ ...state, viewCount: viewTabs.length }, view.id))?.then((result) => {
+      if (result.status === "completed") onViewSelected(nextActiveViewId);
+    });
   };
 
   return {
