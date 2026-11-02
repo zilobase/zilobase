@@ -185,3 +185,25 @@ export type { ChatToolName, ChatToolActivity, ChatReadProgress } from "../ai/too
 export type { ChatDebugEvent, ChatDebugLog, ChatRunDebug } from "../ai/debug";
 
 export { chatReferences, chatReferenceMarker, resolveChatReferences } from "../ai/references";
+
+export { runPlan, isPlanRejection, rejectPlan, PlanResults } from "../actions/plan";
+export type { ActionPlan, PlanOutcome, PlanRun, PlanStep } from "../actions/plan";
+export { exposedActions } from "../actions/types";
+export type {
+  ActionEffect,
+  ActionGroup,
+  ActionMilestone,
+  ActionScope,
+  ActionStateNeeds,
+  ReadAction,
+  WriteAction,
+} from "../actions/types";
+export { workspaceActions, findWorkspaceAction } from "../actions/registry";
+export type { WorkspaceActionName } from "../actions/registry";
+export type { DatabaseActionOps, DatabaseActionState } from "../databases/actions/catalog";
+export { databaseCommandActionPolicies } from "../databases/actions/policies";
+export { ActionInputError } from "../databases/actions/resolve";
+export * as databaseCommandBuilders from "../databases/mutations/command-builders";
+export { composeDatabaseViewData } from "../databases/views/source-state";
+export { deriveDatabaseViewModel } from "../databases/views/model";
+export { isDatabaseLocked } from "../databases/views/appearance";
