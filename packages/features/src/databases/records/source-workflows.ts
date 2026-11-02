@@ -1,5 +1,7 @@
+import { isPlanRejection, runPlan } from "../../actions/plan";
 import {
   captureClientOperation,
+  ExpiredClientOperationError,
   type ClientOperationContext,
 } from "../../shared/operation-context";
 import {
@@ -8,10 +10,11 @@ import {
   replaceDatabaseViewDataSource,
 } from "../mutations/data-sources-operations";
 import { applyDatabaseTemplate } from "../mutations/properties-operations";
-import { getDatabaseSetupTemplate } from "../templates/definitions";
-import { databaseCsvPayload, databaseTemplateRows } from "../templates/payload";
-import { getMergedDatabaseConfig } from "../views/configuration";
-import type { DatabaseSetupSelection } from "./source-commands";
+import {
+  planSetupDataSource,
+  type DatabaseSetupSelection,
+  type DatabaseSourceOps,
+} from "../planners/sources";
 
 export type DatabaseSourceSetupInput = {
   databaseId: string;
@@ -37,50 +40,27 @@ export async function setupDatabaseSource(
   input: DatabaseSourceSetupInput,
 ): Promise<DatabaseSourceSetupResult> {
   const scope = captureClientOperation(context);
-  const { selection, databaseId } = input;
-  if (selection.sourceView)
-    return linkDatabaseDataSource(context, {
-      databaseId,
-      config: selection.sourceView.viewConfig,
-      dataSourceId: selection.sourceView.dataSourceId,
-      name: selection.sourceView.viewName,
-      type: selection.sourceView.viewType,
-    });
-  const template = selection.templateId ? getDatabaseSetupTemplate(selection.templateId) : null;
-  const name =
-    selection.databaseName || selection.csvImport?.name || template?.name || "New data source";
-  const created = await createDatabaseDataSource(context, { databaseId, name });
-  try {
-    scope.assertCurrent();
-    if (selection.csvImport)
-      await applyDatabaseTemplate(context, {
-        config: getMergedDatabaseConfig(created.dataSource.config, { setupDismissed: true }),
-        databaseId: created.dataSource.id,
-        hostDatabaseId: databaseId,
-        name,
-        ...databaseCsvPayload(selection.csvImport),
-      });
-    else if (template)
-      await applyDatabaseTemplate(context, {
-        config: getMergedDatabaseConfig(created.dataSource.config, {
-          emoji: template.emoji,
-          setupDismissed: true,
-        }),
-        databaseId: created.dataSource.id,
-        hostDatabaseId: databaseId,
-        name,
-        properties: template.properties,
-        rows: databaseTemplateRows(
-          template,
-          new Map(template.properties.map((p) => [p.name.toLowerCase(), p.type])),
-          input.createSampleRowContent,
-          (emoji) => ({ emoji }),
-        ),
-      });
-    return created;
-  } catch (cause) {
-    throw new DatabaseSourceSetupError(cause, created);
-  }
+  const plan = planSetupDataSource(input.databaseId, input.selection, input.createSampleRowContent);
+  if (isPlanRejection(plan)) throw new Error(plan.message ?? plan.rejected);
+  const ops: Pick<
+    DatabaseSourceOps,
+    "applyDataSourceTemplate" | "createDataSource" | "linkDatabaseDataSource"
+  > = {
+    createDataSource: (value) => createDatabaseDataSource(context, value),
+    applyDataSourceTemplate: (value) => applyDatabaseTemplate(context, value),
+    linkDatabaseDataSource: (value) => linkDatabaseDataSource(context, value),
+  };
+  // The setup plan only uses these operations.
+  const run = await runPlan(plan, ops as DatabaseSourceOps, {
+    sequential: true,
+    isCurrent: scope.isCurrent,
+  });
+  const created = run.results.has("source")
+    ? run.results.get<DatabaseSourceSetupResult>("source")
+    : undefined;
+  if (run.status === "completed") return created!;
+  if (!created) throw run.error ?? new ExpiredClientOperationError();
+  throw new DatabaseSourceSetupError(run.error ?? new ExpiredClientOperationError(), created);
 }
 
 export async function replaceDatabaseSource(

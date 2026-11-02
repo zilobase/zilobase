@@ -80,6 +80,7 @@ export function register({ readSource, assert, loadModule, test }) {
         ),
         readSource("/packages/features/src/databases/records/source-commands.ts"),
         readSource("/packages/features/src/databases/records/source-workflows.ts"),
+        readSource("/packages/features/src/databases/planners/sources.ts"),
       ]).then((parts) => parts.join("\n")),
       readSource("/packages/features/src/databases/views/source-state.ts"),
       readSource("/src/sections/databases/views/shared/components/database-view.tsx"),
@@ -89,10 +90,14 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(controller, /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/);
     assert.match(controller, /useCreateDatabaseDataSource/);
     assert.match(controllerModel, /parentDatabaseId: source\.parentDatabaseId/);
-    assert.match(controller, /createDatabaseDataSource\(context, \{ databaseId, name \}/);
+    assert.match(controller, /op: "createDataSource", input: \(\) => \(\{ databaseId, name \}\)/);
+    assert.match(
+      controller,
+      /createDataSource: \(value\) => createDatabaseDataSource\(context, value\)/,
+    );
     assert.doesNotMatch(controller, /standalone: true/);
     assert.match(controller, /const unlinkDataSource = async/);
-    assert.match(controller, /unlinkDatabaseDataSource\(/);
+    assert.match(controller, /op: "unlinkDatabaseDataSource"/);
     assert.match(databaseView, /<DatabaseSetupCard[\s\S]*?onSelectDataSource/);
     assert.match(setupCard, /if \(onSelectDataSource\)/);
     assert.match(setupCard, /New empty data source/);
@@ -123,20 +128,20 @@ export function register({ readSource, assert, loadModule, test }) {
         ),
         readSource("/packages/features/src/databases/records/source-commands.ts"),
         readSource("/packages/features/src/databases/records/source-workflows.ts"),
+        readSource("/packages/features/src/databases/planners/sources.ts"),
       ]).then((parts) => parts.join("\n")),
       readSource("/src/sections/databases/views/settings/components/data-source-items.tsx"),
     ]);
 
-    assert.match(
-      controller,
-      /viewTabs\.length <= 1[\s\S]*?A database must always have at least one view/,
-    );
+    assert.match(controller, /viewCount <= 1[\s\S]*?A database must always have at least one view/);
+    assert.match(controller, /viewCount: viewTabs\.length/);
     assert.match(controller, /addDataSourceView/);
     assert.match(controller, /linkDatabaseDataSource\(/);
     assert.match(controller, /const replaceActiveViewSource = async/);
+    assert.match(controller, /activeViewId: resolvedActiveViewId/);
     assert.match(
       controller,
-      /replaceDatabaseViewDataSource\([\s\S]*?databaseViewId: resolvedActiveViewId/,
+      /op: "replaceDatabaseViewDataSource",[\s\S]*?databaseViewId, dataSourceId/,
     );
     assert.match(controller, /mode: "add" \| "replace" = "add"/);
     assert.match(controller, /mode === "replace"[\s\S]*?replaceDatabaseViewDataSource/);
@@ -152,11 +157,13 @@ export function register({ readSource, assert, loadModule, test }) {
         ),
         readSource("/packages/features/src/databases/records/source-commands.ts"),
         readSource("/packages/features/src/databases/records/source-workflows.ts"),
+        readSource("/packages/features/src/databases/planners/sources.ts"),
       ]).then((parts) => parts.join("\n")),
       readToolbarSource(),
     ]);
 
-    assert.match(controller, /observeOperation\(\s*deleteDatabaseView/);
+    assert.match(controller, /planDeleteView\(/);
+    assert.match(controller, /steps: \[\{ op: "deleteDatabaseView", input:/);
     assert.match(toolbar, /Its data source remains linked/);
     assert.doesNotMatch(toolbar, /Delete data source and view/);
     assert.doesNotMatch(controller, /deleteDataSource\.mutateAsync/);

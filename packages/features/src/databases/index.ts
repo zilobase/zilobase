@@ -125,11 +125,8 @@ export {
   getReorderedRowIds,
 } from "./records/row-reorder";
 export { createDatabaseSourceCommands } from "./records/source-commands";
-export type {
-  DatabaseSetupSelection,
-  DatabaseSourceViewSelection,
-  DatabaseViewType,
-} from "./records/source-commands";
+export type { DatabaseSetupSelection, DatabaseSourceViewSelection } from "./planners/sources";
+export type { DatabaseViewType } from "./planners/views";
 export {
   createDatabaseSpreadsheetHistoryAction,
   formatDatabaseSpreadsheetValue,
