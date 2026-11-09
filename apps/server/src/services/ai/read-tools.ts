@@ -342,7 +342,7 @@ export function createReadTools(
     return value;
   };
   const continuation = (
-    name: ChatToolName,
+    name: Exclude<ChatToolName, "workspace_action">,
     input: Record<string, unknown>,
     revision: unknown,
     position: unknown,
@@ -370,7 +370,7 @@ export function createReadTools(
   let findingSources = false;
   const waiters: Array<() => void> = [];
   const execute = async (
-    name: ChatToolName,
+    name: Exclude<ChatToolName, "workspace_action">,
     input: Record<string, unknown>,
     toolCallId: string,
     run: () => Promise<unknown>,

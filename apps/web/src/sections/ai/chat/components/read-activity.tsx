@@ -34,6 +34,11 @@ export function groupSourceReads(message: ChatMessage) {
 }
 
 function readLabel(activity: ChatToolActivity, active: boolean) {
+  if (activity.name === "workspace_action") {
+    if (activity.status === "failed") return `Couldn't finish: ${activity.label}`;
+    if (activity.status === "running") return active ? activity.label : `${activity.label} stopped`;
+    return `${activity.label} done`;
+  }
   if (activity.name === "search_workspace" || activity.name === "semantic_search_workspace") {
     const kind = activity.name === "search_workspace" ? "Keyword" : "Semantic";
     if (activity.status === "failed") return `Couldn't finish ${kind.toLowerCase()} search`;

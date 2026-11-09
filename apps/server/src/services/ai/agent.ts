@@ -136,6 +136,8 @@ export async function* generateReadAgent(
   const actionTools = createActionTools(context, {
     workspaceId: state.workspaceId,
     invocationId: context.requestId,
+    progress: state.progress,
+    changed,
   });
   const tools = {
     ...createReadTools(context, state, {
