@@ -26,6 +26,11 @@ import type { ProviderChunk } from "./provider";
 import { createAiDiagnostics, type AiDiagnostics } from "./diagnostics";
 import { routeSearchIntent, resolveIntentTeamspaces } from "./intent";
 import { searchAvailabilityNotice } from "@zilobase/features/search";
+import { createActionTools } from "./action-tools";
+
+/** Write guidance added when workspace actions are enabled for this deployment. */
+const ACTION_INSTRUCTIONS =
+  "You can create and change databases with the databases_* tools, which act as the user with the user's permissions. Do what the user asks; do not change content they did not ask about. Inspect a database with describe_source before editing it, and find row IDs with query_records before updating rows. Refer to properties by their names or IDs exactly as returned. Batch up to 100 rows per call. If a tool returns an error, fix the input or explain the problem; never invent IDs. Deleting or archiving content is not available yet. After changing content, briefly summarize what changed with links.";
 
 export type AgentPersistence = {
   checkpoint: (state: AgentState) => Promise<void>;
@@ -128,15 +133,25 @@ export async function* generateReadAgent(
     );
     await changed();
   }
-  const tools = createReadTools(context, state, {
-    signal,
-    changed,
-    dependencies: options.dependencies,
-    diagnostics,
+  const actionTools = createActionTools(context, {
+    workspaceId: state.workspaceId,
+    invocationId: context.requestId,
   });
+  const tools = {
+    ...createReadTools(context, state, {
+      signal,
+      changed,
+      dependencies: options.dependencies,
+      diagnostics,
+    }),
+    ...actionTools,
+  };
+  const baseInstructions = Object.keys(actionTools).length
+    ? `${CHAT_INSTRUCTIONS.replace("a read-only workspace assistant", "a workspace assistant").replace(" Never create, edit or delete workspace content.", "")} ${ACTION_INSTRUCTIONS}`
+    : CHAT_INSTRUCTIONS;
   const agent = new ToolLoopAgent({
     model,
-    instructions: CHAT_INSTRUCTIONS,
+    instructions: baseInstructions,
     tools,
     stopWhen: () => !!state.searchListing,
     maxRetries: 0,
@@ -199,7 +214,7 @@ export async function* generateReadAgent(
       messages = validated.messages;
       state.omittedResults += validated.omitted;
       const instructions =
-        CHAT_INSTRUCTIONS +
+        baseInstructions +
         `\nCurrent request routing: ${JSON.stringify(state.intent)}. Follow this current request even when earlier messages requested a different response. Preserve every requested constraint. Named teamspaces have already been resolved; use those exact IDs. For a source-list request, do not read content. For a content question, search with responseMode=read and then read only the relevant sources.` +
         `\nCurrent UTC time: ${new Date().toISOString()}. Runtime coverage: ${state.context.omissions.join(" ")}`;
       answerOnly = !!state.progress.stopReason;
