@@ -99,3 +99,4 @@ export {
 export { askAiThread, askAiTurn } from "./schema/ai";
 
 export { askAiRun, askAiRunEvent, askAiRunInput } from "./schema/ai";
+export { workspaceActionChange, workspaceActionReceipt } from "./schema/actions";
