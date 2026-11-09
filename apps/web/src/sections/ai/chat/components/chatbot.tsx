@@ -1,6 +1,11 @@
 import { ChatEmptyState } from "./chat-empty-state";
 import { ChatError, ChatLoading } from "./chat-feedback";
-import { terminalChatRun, type ChatRunReceipt } from "@zilobase/features/ai";
+import {
+  refreshAfterWorkspaceActions,
+  terminalChatRun,
+  type ChatRunReceipt,
+} from "@zilobase/features/ai";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   chatReferenceMarker,
   resolveChatReferences,
@@ -44,6 +49,19 @@ export default function Chatbot({
   const { data: session } = useSession();
   const [text, setText] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const queryClient = useQueryClient();
+  const appliedActions = useRef(new Set<string>());
+  useEffect(() => {
+    if (!workspaceId) return;
+    for (const message of messages)
+      if (message.role === "assistant")
+        void refreshAfterWorkspaceActions(
+          queryClient,
+          workspaceId,
+          message.progress,
+          appliedActions.current,
+        );
+  }, [messages, queryClient, workspaceId]);
   const [pendingTurn, setPendingTurn] = useState<{ messages: ChatMessage[]; label: string } | null>(
     null,
   );

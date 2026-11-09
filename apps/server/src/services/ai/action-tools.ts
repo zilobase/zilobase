@@ -1,5 +1,10 @@
 import { tool, type ToolSet } from "ai";
-import { exposedActions, workspaceActions, type ActionMilestone } from "@zilobase/features/runtime";
+import {
+  exposedActions,
+  workspaceActions,
+  type ActionMilestone,
+  type ChatToolActivity,
+} from "@zilobase/features/runtime";
 import { getStringEnv } from "../../shared/config/config";
 import { executeWorkspaceAction, personalScopes } from "../actions/execute";
 import { databaseReceiptStore, recordActionChanges } from "../actions/stores";
@@ -24,7 +29,13 @@ export function actionToolName(name: string) {
  */
 export function createActionTools(
   context: ServerOperationContext,
-  input: { workspaceId: string; invocationId: string },
+  input: {
+    workspaceId: string;
+    invocationId: string;
+    /** Run progress shown to the user; action calls are recorded as activities. */
+    progress?: { activities: ChatToolActivity[] };
+    changed?: () => Promise<void>;
+  },
 ): ToolSet {
   const milestones = enabledActionMilestones(context.env);
   const user = context.authentication?.user;
@@ -36,6 +47,15 @@ export function createActionTools(
       description: `${action.title}. ${action.description}`,
       inputSchema: action.input as never,
       execute: async (value: unknown, { toolCallId }) => {
+        const activity: ChatToolActivity = {
+          id: toolCallId,
+          name: "workspace_action",
+          action: action.name,
+          status: "running",
+          label: action.title,
+        };
+        input.progress?.activities.push(activity);
+        await input.changed?.();
         const outcome = await runServerOperation(context, () =>
           executeWorkspaceAction({
             context,
@@ -65,6 +85,10 @@ export function createActionTools(
           databaseId,
           id: (ack.result as { id?: string } | null)?.id,
         }));
+        activity.status = outcome.status === "completed" ? "completed" : "failed";
+        activity.changes = changed;
+        if (outcome.status !== "completed") activity.error = outcome.message.slice(0, 512);
+        await input.changed?.();
         return outcome.status === "completed"
           ? { status: "completed", changes: changed, result: summarize(outcome.result) }
           : { status: outcome.status, error: outcome.message, changes: changed };

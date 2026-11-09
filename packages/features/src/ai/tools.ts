@@ -9,6 +9,7 @@ export const chatToolNameSchema = z.enum([
   "query_records",
   "read_record",
   "aggregate_records",
+  "workspace_action",
 ]);
 export type ChatToolName = z.infer<typeof chatToolNameSchema>;
 export const chatToolActivitySchema = z.object({
@@ -28,6 +29,18 @@ export const chatToolActivitySchema = z.object({
   hasMore: z.boolean().optional(),
   error: z.string().max(512).optional(),
   cached: z.boolean().optional(),
+  /** Workspace action name and the resources it changed. */
+  action: z.string().max(128).optional(),
+  changes: z
+    .array(
+      z.object({
+        command: z.string().max(64),
+        databaseId: z.string().max(128).nullable().optional(),
+        id: z.string().max(128).optional(),
+      }),
+    )
+    .max(200)
+    .optional(),
   searchMetadata: z
     .object({
       mode: z.enum(["keyword", "semantic"]),
