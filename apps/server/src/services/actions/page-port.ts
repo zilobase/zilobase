@@ -2,6 +2,7 @@ import type { PageActionOps } from "@zilobase/features/runtime";
 import type { ServerOperationContext } from "../operations/context";
 import { createPageOperation } from "../pages/hierarchy/operations";
 import { appendPageCommentOperation } from "../pages/content/comment-operation";
+import { editPageContentOperation } from "../pages/content/edit-operation";
 import { updatePageOperation } from "../pages/content/operations";
 import { restorePageOperation } from "../pages/lifecycle/operations";
 import { favoritePageOperation, unfavoritePageOperation } from "../pages/navigation/operations";
@@ -22,7 +23,8 @@ type PageRequest =
   | { op: "page.update"; pageId: string; body: Record<string, unknown> }
   | { op: "page.favorite"; pageId: string; favorite: boolean }
   | { op: "page.comment"; pageId: string; body: string; threadId: string; messageId: string }
-  | { op: "page.restore"; pageId: string };
+  | { op: "page.restore"; pageId: string }
+  | { op: "page.edit"; pageId: string; edits: unknown[]; editId: string };
 
 /**
  * Runs page operations for workspace actions through the services the page
@@ -92,6 +94,12 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         });
       case "page.restore":
         return restorePageOperation(context, { pageId: request.pageId });
+      case "page.edit":
+        return editPageContentOperation(context, {
+          pageId: request.pageId,
+          edits: request.edits as never,
+          editId: request.editId,
+        });
     }
   }
 
@@ -141,6 +149,21 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         }),
         null,
         (result) => result as { threadId: string; messageId: string },
+      ),
+    editPageContent: ({ pageId, edits }) =>
+      run(
+        async (opIndex) => ({
+          op: "page.edit",
+          pageId,
+          edits,
+          editId: await deterministicActionId(
+            options.invocationId,
+            options.callId,
+            `edit:${opIndex}`,
+          ),
+        }),
+        null,
+        (result) => result as { status: "applied" | "replayed"; blocks: number },
       ),
     restorePage: ({ pageId }) =>
       run({ op: "page.restore", pageId }, { op: "page.delete", input: { pageId } }),

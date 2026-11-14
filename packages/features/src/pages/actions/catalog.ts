@@ -1,4 +1,8 @@
-import { createDatabaseBlockNodes, markdownToPageDocument } from "@zilobase/page-context";
+import {
+  createDatabaseBlockNodes,
+  markdownToPageDocument,
+  type PageEdit,
+} from "@zilobase/page-context";
 import { z } from "zod";
 import type { PlanOutcome, PlanResults, PlanStep } from "../../actions/plan";
 import type { WriteAction } from "../../actions/types";
@@ -33,6 +37,10 @@ export type PageActionOps = {
     body: string;
   }) => Promise<{ threadId: string; messageId: string }>;
   restorePage: (input: { pageId: string }) => Promise<Page>;
+  editPageContent: (input: {
+    pageId: string;
+    edits: PageEdit[];
+  }) => Promise<{ status: "applied" | "replayed"; blocks: number }>;
 };
 
 type Ops = PageActionOps & DatabaseActionOps;
@@ -95,6 +103,39 @@ const commentInput = z
   })
   .strict();
 const restoreInput = z.object({ pageId: id.describe("A page in the trash.") }).strict();
+const anchor = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .describe(
+    "Text of an existing top-level block from read_page: a heading or the start of a paragraph.",
+  );
+const markdown = z
+  .string()
+  .max(100_000)
+  .describe("New blocks in the same Markdown as pages.create.");
+const pageEditSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("append"), markdown }).strict(),
+  z.object({ type: z.literal("prepend"), markdown }).strict(),
+  z.object({ type: z.literal("insert_after"), anchor, markdown }).strict(),
+  z.object({ type: z.literal("insert_before"), anchor, markdown }).strict(),
+  z.object({ type: z.literal("replace_block"), anchor, markdown }).strict(),
+  z
+    .object({ type: z.literal("replace_section"), heading: anchor, markdown })
+    .strict()
+    .describe("Replace everything under a heading, keeping the heading."),
+  z
+    .object({
+      type: z.literal("replace_text"),
+      find: z.string().min(1).max(2_000),
+      replace: z.string().max(10_000),
+      all: z.boolean().optional(),
+    })
+    .strict()
+    .describe("Fix wording inside blocks while keeping their formatting."),
+]);
+const editInput = z.object({ pageId: id, edits: z.array(pageEditSchema).min(1).max(50) }).strict();
 
 const same = (left: string, right: string) =>
   left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
@@ -264,6 +305,18 @@ export const pageActions = [
     covers: ["page.comment"],
     plan: (_, input) => ({ steps: [{ op: "addPageComment", input: () => input }] }),
   }),
+  {
+    ...pageAction({
+      name: "pages.edit",
+      title: "Edit page",
+      description:
+        "Change an existing page's content: append, prepend, insert or replace blocks, rewrite a section under a heading, or fix wording. Read the page with read_page first and anchor edits to its text. Edits apply to the live page; other blocks and comments are kept.",
+      input: editInput,
+      covers: ["page.edit"],
+      plan: (_, input) => ({ steps: [{ op: "editPageContent", input: () => input }] }),
+    }),
+    milestone: "C" as const,
+  },
   pageAction({
     name: "pages.restore",
     title: "Restore page",

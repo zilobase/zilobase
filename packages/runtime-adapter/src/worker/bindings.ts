@@ -5,6 +5,7 @@ import type {
   MeetingRecorderRuntimeState,
   MeetingTranscriptYjsSegment,
 } from "@zilobase/server/adapter-api";
+import type { PageContentEdit, PageContentEditOutcome } from "@zilobase/runtime-ports";
 import type { WorkerR2Bucket } from "./image-storage";
 
 export type WorkerHyperdriveBinding = { connectionString: string };
@@ -33,6 +34,7 @@ export type WorkerEnvBindings = Record<string, unknown> & {
         threadId?: string;
         messageId?: string;
       }): Promise<{ messageId: string; threadId: string }>;
+      editPageContent(input: PageContentEdit): Promise<PageContentEditOutcome>;
       fetch(request: Request): Promise<Response>;
       replacePageContent(content: unknown, pageId: string, userId: string): Promise<void>;
     };

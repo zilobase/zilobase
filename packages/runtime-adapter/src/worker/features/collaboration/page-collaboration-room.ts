@@ -5,6 +5,7 @@ import {
   pageIdFromDocumentName,
   replacePageContentInHocuspocus,
   appendPageCommentInHocuspocus,
+  editPageContentInHocuspocus,
   type AppBindings,
   type CollaborationContext,
   type CollaborationDocumentPersistence,
@@ -338,6 +339,13 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   ) {
     await this.restoreConnections();
     return appendPageCommentInHocuspocus(this.hocuspocus, input);
+  }
+
+  async editPageContent(input: Parameters<typeof editPageContentInHocuspocus>[1]) {
+    return this.runWithRoomRuntime(async () => {
+      await this.restoreConnections();
+      return editPageContentInHocuspocus(this.hocuspocus, input);
+    });
   }
 
   protected runWithRoomRuntime<T>(run: () => T): T {

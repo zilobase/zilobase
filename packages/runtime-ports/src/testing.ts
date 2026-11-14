@@ -186,7 +186,10 @@ export function createFakePorts<Database = unknown>(
     blobs,
     context: { run: async (_scope, operation) => operation() },
     db,
-    documents: { appendPageComment: unavailable("documents.appendPageComment") },
+    documents: {
+      appendPageComment: unavailable("documents.appendPageComment"),
+      editPageContent: unavailable("documents.editPageContent"),
+    },
     dispatched,
     env: {
       get: (key) => (typeof env[key] === "string" ? (env[key] as string) : undefined),

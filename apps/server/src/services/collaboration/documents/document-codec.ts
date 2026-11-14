@@ -14,6 +14,17 @@ export function materializePageContentFromYjs(state: Uint8Array) {
   return materializePageDocument(document);
 }
 
+/** Top-level Yjs blocks for page nodes, detached so they can be inserted into a live document. */
+export function pageNodesAsYjsBlocks(nodes: unknown[]) {
+  const scratch = toYDoc({ type: "doc", content: nodes });
+  return scratch
+    .getXmlFragment(FIELD_NAME)
+    .toArray()
+    .map((block) => (block instanceof Y.AbstractType ? block.clone() : block)) as Array<
+    Y.XmlElement | Y.XmlText
+  >;
+}
+
 function toYDoc(content: unknown) {
   const normalized = normalizeDocument(content);
   return ProsemirrorTransformer.toYdoc(normalized, FIELD_NAME, createSchemaForDocument(normalized));

@@ -35,3 +35,11 @@ export {
   type BlockTemplateContent,
   type BlockTemplateNode,
 } from "./blocks/block-templates";
+export {
+  blockText,
+  planPageEdits,
+  type PageEdit,
+  type PageEditAnchor,
+  type PageEditPlan,
+  type PageSplice,
+} from "./document/page-edits";

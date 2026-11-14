@@ -240,7 +240,14 @@ export interface Documents {
     threadId?: string;
     messageId?: string;
   }): Promise<{ messageId: string; threadId: string }>;
+  /** Applies block-level edits to the live page; see `planPageEdits` in page-context. */
+  editPageContent(input: PageContentEdit): Promise<PageContentEditOutcome>;
 }
+
+export type PageContentEdit = { pageId: string; userId: string; edits: unknown[]; editId: string };
+export type PageContentEditOutcome =
+  | { status: "applied" | "replayed"; blocks: number }
+  | { status: "rejected"; error: string };
 
 export type TelemetryProperties = Record<string, boolean | number | string | null | undefined>;
 

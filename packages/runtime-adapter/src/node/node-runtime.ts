@@ -206,6 +206,8 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   ports.documents = {
     appendPageComment: async (input) =>
       (await ensureStarted()).collaboration.appendPageComment(input),
+    editPageContent: async (input) =>
+      (await ensureStarted()).collaboration.editPageContent(input as never),
   };
 
   async function ensureStarted(): Promise<StartedRuntime> {

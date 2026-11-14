@@ -30,6 +30,7 @@ describe("worker FanoutBus", () => {
     const replacePageContent = vi.fn(async () => undefined);
     const getByName = vi.fn(() => ({
       appendPageComment: vi.fn(),
+      editPageContent: vi.fn(),
       fetch: vi.fn(),
       replacePageContent,
     }));

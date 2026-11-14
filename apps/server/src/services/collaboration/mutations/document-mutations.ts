@@ -3,10 +3,14 @@ import type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capa
 import { getRuntimePorts, requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 import * as Y from "yjs";
 import type { RuntimeEnv } from "../../../shared/config/config";
+import { planPageEdits, type PageEdit } from "@zilobase/page-context";
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import {
   encodeContentAsYjs,
   encodePageContentAsYjs,
   FIELD_NAME,
+  materializePageDocument,
+  pageNodesAsYjsBlocks,
 } from "../documents/document-codec";
 import { documentNameForMeeting, documentNameForPage } from "../documents/documents";
 import { COMMENT_THREADS_FIELD } from "../persistence/document-persistence";
@@ -24,6 +28,23 @@ export async function replacePageContent(input: {
     pageId: input.pageId,
     userId: input.userId,
   });
+}
+
+export type PageContentEditInput = {
+  pageId: string;
+  userId: string;
+  edits: PageEdit[];
+  /** Applied edit IDs are kept in the document, so a redelivered edit is a no-op. */
+  editId: string;
+};
+export type PageContentEditResult =
+  | { status: "applied" | "replayed"; blocks: number }
+  | { status: "rejected"; error: string };
+
+export async function editPageContent(input: PageContentEditInput) {
+  const result = await requireRuntimePort("documents").editPageContent(input);
+  if (result.status === "rejected") throw new ServiceMutationError(result.error, 409);
+  return result;
 }
 
 export async function appendPageComment(input: {
@@ -250,4 +271,62 @@ export function transcriptTimestampSeconds(serializedNode: string) {
   const match = serializedNode.match(/>\[(\d+):([0-5]\d)\]\s/);
   if (!match) return null;
   return Number(match[1]) * 60 + Number(match[2]);
+}
+
+const APPLIED_EDITS_FIELD = "zilobase:applied-edits";
+const APPLIED_EDIT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Applies planned block splices to the live page in one transaction. Edits
+ * resolve against the live document, not the saved snapshot, and only the
+ * spliced top-level blocks change, so comments and concurrent edits in other
+ * blocks are kept.
+ */
+export async function editPageContentInHocuspocus(
+  hocuspocus: Hocuspocus<CollaborationContext>,
+  input: PageContentEditInput,
+): Promise<PageContentEditResult> {
+  const direct = await hocuspocus.openDirectConnection(documentNameForPage(input.pageId), {
+    exp: Date.now() + TICKET_TTL_MS,
+    pageId: input.pageId,
+    scope: "read-write",
+    userId: input.userId,
+    workspaceId: "server",
+  });
+  let result: PageContentEditResult = {
+    status: "rejected",
+    error: "The page could not be edited.",
+  };
+  try {
+    await direct.transact((document) => {
+      const applied = document.getMap<number>(APPLIED_EDITS_FIELD);
+      const fragment = document.getXmlFragment(FIELD_NAME);
+      if (applied.has(input.editId)) {
+        result = { status: "replayed", blocks: fragment.length };
+        return;
+      }
+      const current = materializePageDocument(document) as { content?: unknown[] };
+      if ((current.content?.length ?? 0) !== fragment.length) {
+        result = { status: "rejected", error: "The page has content that cannot be edited yet." };
+        return;
+      }
+      const plan = planPageEdits(current as never, input.edits);
+      if ("error" in plan) {
+        result = { status: "rejected", error: plan.error };
+        return;
+      }
+      for (const splice of plan.splices) {
+        if (splice.deleteCount) fragment.delete(splice.index, splice.deleteCount);
+        if (splice.nodes.length) fragment.insert(splice.index, pageNodesAsYjsBlocks(splice.nodes));
+      }
+      const now = Date.now();
+      for (const [id, at] of applied.entries())
+        if (now - at > APPLIED_EDIT_RETENTION_MS) applied.delete(id);
+      applied.set(input.editId, now);
+      result = { status: "applied", blocks: fragment.length };
+    });
+  } finally {
+    await direct.disconnect();
+  }
+  return result;
 }
