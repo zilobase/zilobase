@@ -126,7 +126,7 @@ function parseBlocks(lines: string[], resolvers: MarkdownResolvers): Node[] {
       const quoted: string[] = [];
       while (index < lines.length && lines[index]!.trim().startsWith(">"))
         quoted.push(lines[index++]!.trim().replace(/^>\s?/, ""));
-      nodes.push({ type: "blockquote", content: nonEmpty(parseBlocks(quoted, resolvers)) });
+      nodes.push(quote(quoted, resolvers));
       continue;
     }
 
@@ -152,6 +152,32 @@ function parseBlocks(lines: string[], resolvers: MarkdownResolvers): Node[] {
     nodes.push(paragraphNode(paragraph));
   }
   return nodes;
+}
+
+const ALERT_ICONS: Record<string, string> = {
+  note: "ℹ️",
+  tip: "💡",
+  important: "❗",
+  warning: "⚠️",
+  caution: "🛑",
+};
+const LEADING_EMOJI = /^(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s+/u;
+
+/** Quotes, except GitHub alerts (`> [!TIP]`) and emoji-led quotes, which models write for callouts. */
+function quote(lines: string[], resolvers: MarkdownResolvers): Node {
+  const alert = lines[0]?.trim().match(/^\[!(note|tip|important|warning|caution)\]\s*(.*)$/i);
+  if (alert) {
+    const body = alert[2] ? [alert[2], ...lines.slice(1)] : lines.slice(1);
+    return callout(ALERT_ICONS[alert[1]!.toLowerCase()]!, body, resolvers);
+  }
+  const emoji = lines[0]?.match(LEADING_EMOJI);
+  if (emoji)
+    return callout(emoji[1]!, [lines[0]!.slice(emoji[0].length), ...lines.slice(1)], resolvers);
+  return { type: "blockquote", content: nonEmpty(parseBlocks(lines, resolvers)) };
+}
+
+function callout(icon: string, lines: string[], resolvers: MarkdownResolvers): Node {
+  return { type: "callout", attrs: { icon }, content: nonEmpty(parseBlocks(lines, resolvers)) };
 }
 
 function closesFence(line: string, fence: string) {
@@ -207,13 +233,7 @@ function containerBlock(
 ): Node[] {
   switch (name) {
     case "callout":
-      return [
-        {
-          type: "callout",
-          attrs: { icon: argument || "💡" },
-          content: nonEmpty(parseBlocks(inner, resolvers)),
-        },
-      ];
+      return [callout(argument || "💡", inner, resolvers)];
     case "toggle":
     case "details":
       return [

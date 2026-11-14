@@ -214,3 +214,23 @@ test("unresolved references stay readable text and empty input is an empty page"
   expect(markdownToPageDocument("").content).toEqual([{ type: "paragraph" }]);
   expect(markdownToPageDocument("##### Deep").content![0]!.attrs).toEqual({ level: 4 });
 });
+
+test("GitHub alerts and emoji-led quotes become callouts; other quotes stay quotes", () => {
+  const nodes = markdownToPageDocument(
+    [
+      "> [!WARNING]",
+      "> Freeze on **Friday**",
+      "",
+      "> 📅 Launch: September 30",
+      "",
+      "> Just a quote",
+    ].join("\n"),
+  ).content!;
+  expect(nodes.map((node) => [node.type, node.attrs?.icon ?? null])).toEqual([
+    ["callout", "⚠️"],
+    ["callout", "📅"],
+    ["blockquote", null],
+  ]);
+  expect(nodes[1]!.content).toEqual([paragraph(text("Launch: September 30"))]);
+  expect(nodes[0]!.content![0]!.content).toEqual([text("Freeze on "), text("Friday", "bold")]);
+});

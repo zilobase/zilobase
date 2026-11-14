@@ -41,7 +41,7 @@ const content = z
   .max(100_000)
   .optional()
   .describe(
-    "Page body in Markdown: headings, lists, task lists (- [ ]), tables, quotes, code, $$ math, links. Containers use directives closed by ':::' — ':::callout 💡', ':::toggle Summary', ':::tabs' with ':::tab Title' inside, ':::columns' with ':::column' inside. Standalone lines: '[Table of contents]', '![alt](url)', '[Embed: title](url)', '[Bookmark: title](url)', '[Page: Title]' and '[Database: Name]' to place a subpage or inline database of this call.",
+    "Page body in Markdown: headings, lists, task lists (- [ ]), tables, quotes, code, $$ math, links. Containers use directives closed by ':::' — ':::callout 💡' for callouts or highlighted notes ('>' is only a plain quote), ':::toggle Summary', ':::tabs' with ':::tab Title' inside, ':::columns' with ':::column' inside. Standalone lines: '[Table of contents]', '![alt](url)', '[Embed: title](url)', '[Bookmark: title](url)', '[Page: Title]' and '[Database: Name]' to place a subpage or inline database of this call.",
   );
 const pageFields = {
   title: z.string().trim().max(200),
