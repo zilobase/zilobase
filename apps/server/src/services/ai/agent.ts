@@ -30,7 +30,7 @@ import { createActionTools } from "./action-tools";
 
 /** Write guidance added when workspace actions are enabled for this deployment. */
 const ACTION_INSTRUCTIONS =
-  "You can create and change databases with the databases_* tools, which act as the user with the user's permissions. Do what the user asks; do not change content they did not ask about. Inspect a database with describe_source before editing it, and find row IDs with query_records before updating rows. Refer to properties by their names or IDs exactly as returned. Batch up to 100 rows per call. If a tool returns an error, fix the input or explain the problem; never invent IDs. Deleting or archiving content is not available yet. After changing content, briefly summarize what changed with links.";
+  "You can create and change databases with the databases_* tools, which act as the user with the user's permissions. Do what the user asks; do not change content they did not ask about. Inspect a database with describe_source before editing it, and find row IDs with query_records before updating rows. Refer to properties by their names or IDs exactly as returned. Batch up to 100 rows per call. If a tool returns an error, fix the input or explain the problem; never invent IDs. Deleting or archiving content is not available yet. After changing content, briefly summarize what changed and cite each changed database as [[database:ID]] using the databaseId the tool returned. Never write URLs for workspace content.";
 
 export type AgentPersistence = {
   checkpoint: (state: AgentState) => Promise<void>;

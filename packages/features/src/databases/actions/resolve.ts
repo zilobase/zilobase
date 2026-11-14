@@ -113,7 +113,7 @@ export function resolvePropertyConfig(
       const kept = existing.find((current) => normalized(current.name) === normalized(option.name));
       return {
         ...kept,
-        id: kept?.id ?? option.name,
+        id: kept?.id ?? crypto.randomUUID(),
         name: option.name,
         ...(option.color ? { color: option.color } : {}),
       };
