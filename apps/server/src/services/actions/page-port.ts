@@ -1,7 +1,9 @@
 import type { PageActionOps } from "@zilobase/features/runtime";
 import type { ServerOperationContext } from "../operations/context";
 import { createPageOperation } from "../pages/hierarchy/operations";
+import { appendPageCommentOperation } from "../pages/content/comment-operation";
 import { updatePageOperation } from "../pages/content/operations";
+import { restorePageOperation } from "../pages/lifecycle/operations";
 import { favoritePageOperation, unfavoritePageOperation } from "../pages/navigation/operations";
 import { actionSequence, type ActionChange, type ActionSequence } from "./database-port";
 import { deterministicActionId, type ActionReceiptStore } from "./receipts";
@@ -18,7 +20,9 @@ export type PagePortOptions = {
 type PageRequest =
   | { op: "page.create"; pageId: string; body: Record<string, unknown> }
   | { op: "page.update"; pageId: string; body: Record<string, unknown> }
-  | { op: "page.favorite"; pageId: string; favorite: boolean };
+  | { op: "page.favorite"; pageId: string; favorite: boolean }
+  | { op: "page.comment"; pageId: string; body: string; threadId: string; messageId: string }
+  | { op: "page.restore"; pageId: string };
 
 /**
  * Runs page operations for workspace actions through the services the page
@@ -31,14 +35,20 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
   const sequence = options.sequence ?? actionSequence();
   const { context, receipts } = options;
 
-  async function run<T>(request: PageRequest, inverse: ActionChange["inverse"]) {
+  async function run<T>(
+    request: PageRequest | ((opIndex: number) => Promise<PageRequest>),
+    inverse: ActionChange["inverse"],
+    pick: (result: unknown) => T = (result) => (result as { page: T }).page,
+  ) {
     const key = {
       invocationId: options.invocationId,
       callId: options.callId,
       opIndex: sequence.next(),
     };
     const stored = await receipts.get(key);
-    const replayed = (stored?.request as PageRequest | undefined) ?? request;
+    const replayed =
+      (stored?.request as PageRequest | undefined) ??
+      (typeof request === "function" ? await request(key.opIndex) : request);
     let result: unknown;
     if (stored?.status === "completed") result = stored.result;
     else {
@@ -57,7 +67,7 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
       ack: { commandId: `${key.opIndex}`, event: null, result, sourceVersions: {} } as never,
       inverse,
     });
-    return (result as { page: T }).page;
+    return pick(result);
   }
 
   function execute(request: PageRequest): Promise<unknown> {
@@ -73,6 +83,15 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         return (request.favorite ? favoritePageOperation : unfavoritePageOperation)(context, {
           pageId: request.pageId,
         });
+      case "page.comment":
+        return appendPageCommentOperation(context, {
+          pageId: request.pageId,
+          body: request.body,
+          threadId: request.threadId,
+          messageId: request.messageId,
+        });
+      case "page.restore":
+        return restorePageOperation(context, { pageId: request.pageId });
     }
   }
 
@@ -103,6 +122,28 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         { op: "page.delete", input: { pageId } },
       ),
     updatePage: ({ pageId, ...patch }) => run({ op: "page.update", pageId, body: patch }, null),
+    addPageComment: ({ pageId, body }) =>
+      run(
+        async (opIndex) => ({
+          op: "page.comment",
+          pageId,
+          body,
+          threadId: await deterministicActionId(
+            options.invocationId,
+            options.callId,
+            `thread:${opIndex}`,
+          ),
+          messageId: await deterministicActionId(
+            options.invocationId,
+            options.callId,
+            `message:${opIndex}`,
+          ),
+        }),
+        null,
+        (result) => result as { threadId: string; messageId: string },
+      ),
+    restorePage: ({ pageId }) =>
+      run({ op: "page.restore", pageId }, { op: "page.delete", input: { pageId } }),
     setPageFavorite: ({ pageId, favorite }) =>
       run(
         { op: "page.favorite", pageId, favorite },

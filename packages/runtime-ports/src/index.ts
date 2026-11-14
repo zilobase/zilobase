@@ -237,6 +237,8 @@ export interface Documents {
     author: { email: string | null; id: string; image: string | null; name: string | null };
     body: string;
     pageId: string;
+    threadId?: string;
+    messageId?: string;
   }): Promise<{ messageId: string; threadId: string }>;
 }
 

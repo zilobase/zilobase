@@ -30,6 +30,8 @@ export type WorkerEnvBindings = Record<string, unknown> & {
         author: { email: string | null; id: string; image: string | null; name: string | null };
         body: string;
         pageId: string;
+        threadId?: string;
+        messageId?: string;
       }): Promise<{ messageId: string; threadId: string }>;
       fetch(request: Request): Promise<Response>;
       replacePageContent(content: unknown, pageId: string, userId: string): Promise<void>;

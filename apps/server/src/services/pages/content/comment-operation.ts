@@ -5,7 +5,8 @@ import { authorizePageOperation, requirePageOperationWorkspace } from "../access
 
 export async function appendPageCommentOperation(
   context: ServerOperationContext,
-  input: { pageId: string; body: string },
+  /** `threadId`/`messageId` are trusted service arguments; routes never pass them. */
+  input: { pageId: string; body: string; threadId?: string; messageId?: string },
 ) {
   requireOperationPolicy(context, { write: true, oauthScope: "pages.write" });
   await requirePageOperationWorkspace(context, input.pageId);
@@ -15,6 +16,8 @@ export async function appendPageCommentOperation(
     pageId: input.pageId,
     body: input.body,
     env: context.env,
+    threadId: input.threadId,
+    messageId: input.messageId,
     author: { id: user.id, email: user.email, image: user.image ?? null, name: user.name },
   });
 }

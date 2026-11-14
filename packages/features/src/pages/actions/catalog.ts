@@ -28,6 +28,11 @@ export type PageActionOps = {
     metadata?: { emoji?: string };
   }) => Promise<Page>;
   setPageFavorite: (input: { pageId: string; favorite: boolean }) => Promise<unknown>;
+  addPageComment: (input: {
+    pageId: string;
+    body: string;
+  }) => Promise<{ threadId: string; messageId: string }>;
+  restorePage: (input: { pageId: string }) => Promise<Page>;
 };
 
 type Ops = PageActionOps & DatabaseActionOps;
@@ -83,6 +88,13 @@ const updatePageInput = z
   .strict();
 
 const favoritePageInput = z.object({ pageId: id, favorite: z.boolean() }).strict();
+const commentInput = z
+  .object({
+    pageId: id,
+    body: z.string().trim().min(1).max(10_000).describe("Plain-text comment."),
+  })
+  .strict();
+const restoreInput = z.object({ pageId: id.describe("A page in the trash.") }).strict();
 
 const same = (left: string, right: string) =>
   left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
@@ -243,5 +255,21 @@ export const pageActions = [
     input: favoritePageInput,
     covers: ["page.favorite"],
     plan: (_, input) => ({ steps: [{ op: "setPageFavorite", input: () => input }] }),
+  }),
+  pageAction({
+    name: "pages.comment",
+    title: "Comment on page",
+    description: "Add a page-level comment as the user, for example a review note or summary.",
+    input: commentInput,
+    covers: ["page.comment"],
+    plan: (_, input) => ({ steps: [{ op: "addPageComment", input: () => input }] }),
+  }),
+  pageAction({
+    name: "pages.restore",
+    title: "Restore page",
+    description: "Restore a page from the trash.",
+    input: restoreInput,
+    covers: ["page.restore"],
+    plan: (_, input) => ({ steps: [{ op: "restorePage", input: () => input }] }),
   }),
 ];

@@ -31,9 +31,13 @@ export async function appendPageComment(input: {
   body: string;
   env: RuntimeEnv;
   pageId: string;
+  /** Caller-reserved IDs make a redelivered comment a no-op. */
+  threadId?: string;
+  messageId?: string;
 }) {
-  const documents = requireRuntimePort("documents");
-  return documents.appendPageComment(input);
+  const { env: _env, ...comment } = input;
+  // Worker documents are Durable Object RPCs; the runtime env cannot be serialized.
+  return requireRuntimePort("documents").appendPageComment(comment);
 }
 
 export async function replaceMeetingSummary(input: {
@@ -183,6 +187,8 @@ export async function appendPageCommentInHocuspocus(
     author: { email: string | null; id: string; image: string | null; name: string | null };
     body: string;
     pageId: string;
+    threadId?: string;
+    messageId?: string;
   },
 ) {
   const direct = await hocuspocus.openDirectConnection(documentNameForPage(input.pageId), {
@@ -192,12 +198,13 @@ export async function appendPageCommentInHocuspocus(
     userId: input.author.id,
     workspaceId: "server",
   });
-  const threadId = crypto.randomUUID();
-  const messageId = crypto.randomUUID();
+  const threadId = input.threadId ?? crypto.randomUUID();
+  const messageId = input.messageId ?? crypto.randomUUID();
   const now = new Date().toISOString();
   try {
     await direct.transact((document) => {
       const threads = document.getMap<Y.Map<unknown>>(COMMENT_THREADS_FIELD);
+      if (threads.has(threadId)) return;
       const thread = new Y.Map<unknown>();
       const messages = new Y.Map<Y.Map<unknown>>();
       const message = new Y.Map<unknown>();
