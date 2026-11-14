@@ -6,7 +6,7 @@ import {
   type ChatToolActivity,
 } from "@zilobase/features/runtime";
 import { getStringEnv } from "../../shared/config/config";
-import { executeWorkspaceAction, personalScopes } from "../actions/execute";
+import { executeWorkspaceAction, personalScopes, type ActionOutcome } from "../actions/execute";
 import { databaseReceiptStore, recordActionChanges } from "../actions/stores";
 import { runServerOperation, type ServerOperationContext } from "../operations/context";
 
@@ -35,65 +35,82 @@ export function createActionTools(
     /** Run progress shown to the user; action calls are recorded as activities. */
     progress?: { activities: ChatToolActivity[] };
     changed?: () => Promise<void>;
+    /** Databases the run changed become readable without another search. */
+    granted?: (databaseId: string) => void;
   },
 ): ToolSet {
   const milestones = enabledActionMilestones(context.env);
   const user = context.authentication?.user;
   if (!milestones.length || !user) return {};
   const tools: ToolSet = {};
+  // Models call tools in parallel, but writes run one at a time per run like
+  // the UI's ordered command queue; a run's database connection is not shared.
+  let queue: Promise<unknown> = Promise.resolve();
   for (const action of exposedActions(workspaceActions, milestones)) {
     if (action.kind !== "write") continue;
     tools[actionToolName(action.name)] = tool({
       description: `${action.title}. ${action.description}`,
       inputSchema: action.input as never,
-      execute: async (value: unknown, { toolCallId }) => {
-        const activity: ChatToolActivity = {
-          id: toolCallId,
-          name: "workspace_action",
-          action: action.name,
-          status: "running",
-          label: action.title,
-        };
-        input.progress?.activities.push(activity);
-        await input.changed?.();
-        const outcome = await runServerOperation(context, () =>
-          executeWorkspaceAction({
-            context,
-            principal: {
-              kind: "user",
-              userId: user.id,
-              workspaceId: input.workspaceId,
-              scopes: personalScopes,
-            },
-            invocationId: input.invocationId,
-            callId: toolCallId,
-            name: action.name,
-            input: value,
-            receipts: databaseReceiptStore,
-          }),
-        );
-        await runServerOperation(context, () =>
-          recordActionChanges({
-            invocationId: input.invocationId,
-            workspaceId: input.workspaceId,
-            userId: user.id,
-            changes: outcome.changes,
-          }),
-        );
-        const changed = outcome.changes.map(({ commandType, databaseId, ack }) => ({
-          command: commandType,
-          databaseId,
-          id: (ack.result as { id?: string } | null)?.id,
-        }));
-        activity.status = outcome.status === "completed" ? "completed" : "failed";
-        activity.changes = changed;
-        if (outcome.status !== "completed") activity.error = outcome.message.slice(0, 512);
-        await input.changed?.();
-        return outcome.status === "completed"
-          ? { status: "completed", changes: changed, result: summarize(outcome.result) }
-          : { status: outcome.status, error: outcome.message, changes: changed };
+      execute: (value: unknown, { toolCallId }) => {
+        const result = queue.then(() => execute(value, toolCallId));
+        queue = result.catch(() => undefined);
+        return result;
       },
     });
+    const execute = async (value: unknown, toolCallId: string) => {
+      const activity: ChatToolActivity = {
+        id: toolCallId,
+        name: "workspace_action",
+        action: action.name,
+        status: "running",
+        label: action.title,
+      };
+      input.progress?.activities.push(activity);
+      await input.changed?.();
+      const outcome: ActionOutcome = await runServerOperation(context, () =>
+        executeWorkspaceAction({
+          context,
+          principal: {
+            kind: "user",
+            userId: user.id,
+            workspaceId: input.workspaceId,
+            scopes: personalScopes,
+          },
+          invocationId: input.invocationId,
+          callId: toolCallId,
+          name: action.name,
+          input: value,
+          receipts: databaseReceiptStore,
+        }),
+      ).catch((error: unknown) => ({
+        status: "failed" as const,
+        message: error instanceof Error ? error.message : "The action could not be completed.",
+        changes: [],
+      }));
+      await runServerOperation(context, () =>
+        recordActionChanges({
+          invocationId: input.invocationId,
+          workspaceId: input.workspaceId,
+          userId: user.id,
+          changes: outcome.changes,
+        }),
+      );
+      const changed = outcome.changes.map(({ commandType, databaseId, ack }) => ({
+        command: commandType,
+        databaseId,
+        id: (ack.result as { id?: string } | null)?.id,
+      }));
+      if (outcome.status === "completed")
+        for (const databaseId of new Set(changed.map((change) => change.databaseId)))
+          if (databaseId) input.granted?.(databaseId);
+      activity.status = outcome.status === "completed" ? "completed" : "failed";
+      activity.changes = changed;
+      if (outcome.status !== "completed") activity.error = outcome.message.slice(0, 512);
+      await input.changed?.();
+      return outcome.status === "completed"
+        ? { status: "completed", changes: changed, result: summarize(outcome.result) }
+        : { status: outcome.status, error: outcome.message, changes: changed };
+    };
   }
   return tools;
 }

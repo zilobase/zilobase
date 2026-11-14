@@ -134,7 +134,10 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
       opIndex: key.opIndex,
       kind: "database",
       commandType: request.command.type,
-      databaseId: request.command.type === "database.create" ? null : input.databaseId,
+      databaseId:
+        request.command.type === "database.create"
+          ? ((ack.result as { database?: { id: string } } | null)?.database?.id ?? null)
+          : input.databaseId,
       dataSourceId: input.dataSourceId ?? null,
       ack,
       inverse: inverseOf(input, ack),

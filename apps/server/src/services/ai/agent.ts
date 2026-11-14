@@ -138,6 +138,10 @@ export async function* generateReadAgent(
     invocationId: context.requestId,
     progress: state.progress,
     changed,
+    granted: (id) => {
+      if (!state.grants.some(({ resource }) => resource.type === "database" && resource.id === id))
+        state.grants.push({ resource: { type: "database", id } });
+    },
   });
   const tools = {
     ...createReadTools(context, state, {
