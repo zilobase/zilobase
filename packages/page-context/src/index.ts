@@ -43,3 +43,4 @@ export {
   type PageEditPlan,
   type PageSplice,
 } from "./document/page-edits";
+export { assignBlockIds, BLOCK_ID_ATTRIBUTE, BLOCK_ID_TYPES, blockId } from "./document/block-ids";

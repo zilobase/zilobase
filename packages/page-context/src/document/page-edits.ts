@@ -2,6 +2,7 @@ import {
   markdownToPageDocument,
   type MarkdownResolvers,
 } from "../markdown/markdown-to-page-document";
+import { blockId } from "./block-ids";
 import type { PageDocumentNode } from "./page-document";
 
 /*
@@ -11,7 +12,7 @@ import type { PageDocumentNode } from "./page-document";
  * untouched blocks, comments and concurrent edits elsewhere are preserved.
  */
 
-/** Text identifying a top-level block: a heading's text or the start of a paragraph. */
+/** A block ID from read_page, or text identifying a top-level block (a heading or a paragraph's start). */
 export type PageEditAnchor = string;
 
 export type PageEdit =
@@ -48,6 +49,9 @@ export function blockText(node: PageDocumentNode): string {
  * since it was read can never cause the wrong block to be replaced.
  */
 function findBlock(blocks: PageDocumentNode[], anchor: string, numbered: boolean): number | string {
+  // Block IDs from read_page identify a block exactly, even after it moved or changed.
+  const byId = blocks.findIndex((block) => blockId(block) === anchor.trim());
+  if (byId >= 0) return byId;
   const target = normalize(anchor);
   if (!target) return "The anchor is empty.";
   const number = target.match(/^(?:block\s*:?\s*)?(\d+)$/)?.[1];

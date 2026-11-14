@@ -93,3 +93,18 @@ test("writing into an empty page replaces its placeholder paragraph", () => {
   ]);
   expect(plan).toMatchObject({ splices: [{ index: 0, deleteCount: 1 }] });
 });
+
+test("block IDs anchor any edit exactly, including replacements", () => {
+  const document = {
+    type: "doc",
+    content: [
+      { type: "paragraph", attrs: { blockId: "b-1" }, content: [{ type: "text", text: "Same" }] },
+      { type: "paragraph", attrs: { blockId: "b-2" }, content: [{ type: "text", text: "Same" }] },
+    ],
+  };
+  expect(
+    planPageEdits(document, [{ type: "replace_block", anchor: "b-2", markdown: "New" }]),
+  ).toMatchObject({
+    splices: [{ index: 1, deleteCount: 1 }],
+  });
+});

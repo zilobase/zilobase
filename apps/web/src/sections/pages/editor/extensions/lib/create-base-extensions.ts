@@ -19,7 +19,9 @@ import { BackgroundColor, Color, TextStyle } from "@tiptap/extension-text-style"
 import Typography from "@tiptap/extension-typography";
 import type { Extensions } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import Collaboration from "@tiptap/extension-collaboration";
+import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
+import UniqueID from "@tiptap/extension-unique-id";
+import { BLOCK_ID_ATTRIBUTE, BLOCK_ID_TYPES } from "@zilobase/page-context";
 import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import { AskAiBlock } from "../components/ask-ai-block";
 import { BookmarkBlock } from "../components/bookmark-block";
@@ -46,6 +48,44 @@ import { SlashCommand } from "../components/slash-command";
 import { VideoBlock } from "../components/video-block";
 import type { OpenPageOptions } from "@/sections/pages/navigation/hooks/page-navigation";
 import type { StructuralInsertionPendingChange } from "../../commands/lib/block-insert";
+
+/**
+ * With collaboration, IDs are created on the first Yjs sync so they are added
+ * to the synced document rather than the empty initial one. The stock
+ * extension waits for a provider "synced" event, but the caret extension's
+ * provider here only carries awareness.
+ */
+const BlockIds = UniqueID.extend({
+  addStorage() {
+    return { needsInitialIdGeneration: false };
+  },
+  onCreate() {
+    const collaboration = this.editor.extensionManager.extensions.find(
+      ({ name }) => name === "collaboration",
+    )?.options as { document?: import("yjs").Doc; field?: string } | undefined;
+    if (!collaboration) {
+      (this as unknown as { parent?: () => void }).parent?.();
+      return;
+    }
+    if (!this.options.updateDocument) return;
+    // A later first sync is handled by the plugin. Content is only stamped now if the
+    // shared document already has it: stamping the empty placeholder would write a
+    // stray paragraph into every page.
+    this.storage.needsInitialIdGeneration = true;
+    if (!collaboration.document?.getXmlFragment(collaboration.field ?? "default").length) return;
+    const { state, view } = this.editor;
+    const types = new Set(this.options.types === "all" ? [] : this.options.types);
+    const { tr } = state;
+    state.doc.descendants((node, pos) => {
+      if (types.has(node.type.name) && node.attrs[this.options.attributeName] === null)
+        tr.setNodeMarkup(pos, undefined, {
+          ...node.attrs,
+          [this.options.attributeName]: this.options.generateID({ node, pos }),
+        });
+    });
+    if (tr.steps.length) view.dispatch(tr.setMeta("addToHistory", false));
+  },
+});
 
 export type BaseExtensionsOptions = {
   workspace: EditorWorkspace;
@@ -187,6 +227,13 @@ export const createBaseExtensions = ({
   BlockSelection,
   MeetingTranscriptPreview,
   AskAiBlock.configure({ workspaceId }),
+  // Stable block IDs for AI anchors and citations; remote collaboration changes keep their IDs.
+  BlockIds.configure({
+    attributeName: BLOCK_ID_ATTRIBUTE,
+    types: [...BLOCK_ID_TYPES],
+    filterTransaction: (transaction) => !isChangeOrigin(transaction),
+    updateDocument: editable,
+  }),
   ...(structuralEditingEnabled
     ? [
         SlashCommand.configure({

@@ -1,4 +1,5 @@
 import type { PageActionOps } from "@zilobase/features/runtime";
+import { assignBlockIds } from "@zilobase/page-context";
 import type { ServerOperationContext } from "../operations/context";
 import { createPageOperation, embedPageOperation } from "../pages/hierarchy/operations";
 import { appendPageCommentOperation } from "../pages/content/comment-operation";
@@ -126,6 +127,7 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
           pageId,
           body: {
             ...input,
+            content: withBlockIds(input.content),
             type: "pageblock",
             url: "#",
             metadata: input.metadata ?? {},
@@ -188,4 +190,15 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         { op: "page.favorite", input: { pageId, favorite: !favorite } },
       ),
   };
+}
+
+/** AI-created pages start with block IDs, so they don't wait for the editor to add them. */
+function withBlockIds(content: unknown) {
+  const document = content as { type?: string; content?: unknown[] } | null;
+  return document?.type === "doc" && Array.isArray(document.content)
+    ? {
+        ...document,
+        content: assignBlockIds(document.content as never[], () => crypto.randomUUID()),
+      }
+    : content;
 }

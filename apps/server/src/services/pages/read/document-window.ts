@@ -1,7 +1,7 @@
 import { deriveContentVerification, type ContentVerification } from "@zilobase/features/search";
 import { createHash } from "node:crypto";
 import { parsePageDocument } from "@zilobase/features/runtime";
-import { prosemirrorToMarkdown, type ResourceRef } from "@zilobase/page-context";
+import { blockId, prosemirrorToMarkdown, type ResourceRef } from "@zilobase/page-context";
 import { ServerOperationError, type ServerOperationContext } from "../../operations/context";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
@@ -55,7 +55,7 @@ type Node = {
   marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
 };
 export type DocumentEntry =
-  | { kind: "text"; block: number; text: string }
+  | { kind: "text"; block: number; blockId?: string; text: string }
   | { kind: "reference"; resource: ResourceRef };
 
 /** Only app document references and relative app links are traversable, never arbitrary URLs. */
@@ -103,6 +103,8 @@ export function documentReferences(node: Node, webOrigin?: string): ResourceRef[
 export function documentEntries(document: Node, webOrigin?: string): DocumentEntry[] {
   return (document.content ?? []).flatMap((node, block) => {
     const markdown = prosemirrorToMarkdown({ type: "doc", content: [node] });
+    const id = blockId(node);
+    const at = id ? { block, blockId: id } : { block };
     // Code point boundaries preserve split UTF-8 and very large individual blocks.
     const chunks: DocumentEntry[] = [];
     let text = "";
@@ -110,14 +112,14 @@ export function documentEntries(document: Node, webOrigin?: string): DocumentEnt
     for (const char of markdown) {
       const size = Buffer.byteLength(char);
       if (bytes + size > 1500) {
-        chunks.push({ kind: "text", block, text });
+        chunks.push({ kind: "text", ...at, text });
         text = "";
         bytes = 0;
       }
       text += char;
       bytes += size;
     }
-    if (text) chunks.push({ kind: "text", block, text });
+    if (text) chunks.push({ kind: "text", ...at, text });
     return [
       ...chunks,
       ...documentReferences(node, webOrigin).map((resource) => ({

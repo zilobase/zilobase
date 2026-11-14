@@ -114,7 +114,7 @@ const anchor = z
   .min(1)
   .max(500)
   .describe(
-    'Text of an existing top-level block from read_page, such as a heading\'s text or the start of a paragraph — e.g. "Links" for a "## Links" heading. Inserts also accept a block number from read_page; replacements need the text.',
+    'A blockId from read_page (preferred; exact even if the page changed), or the text of an existing top-level block such as a heading\'s text or the start of a paragraph — e.g. "Links" for a "## Links" heading. Inserts also accept a block number from read_page.',
   );
 const markdown = z
   .string()
@@ -148,7 +148,7 @@ const embedInput = z
     after: anchor
       .optional()
       .describe(
-        'Text of the block to place it after, e.g. "Links" to place it under a "## Links" heading, or its block number from read_page; omit to add it at the end.',
+        'The blockId from read_page of the block to place it after, or its text, e.g. "Links" to place it under a "## Links" heading; omit to add it at the end.',
       ),
   })
   .strict();

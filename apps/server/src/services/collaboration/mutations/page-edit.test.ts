@@ -54,6 +54,10 @@ test("edits splice only the targeted blocks of the live page and replay as no-op
     blocks: 8,
   });
   expect(markdownOf(document).match(/## Owners/g)).toHaveLength(1);
+  const blocks = (
+    materializePageDocument(document) as { content: Array<{ attrs?: { blockId?: string } }> }
+  ).content;
+  expect(blocks.slice(-2).every((block) => typeof block.attrs?.blockId === "string")).toBe(true);
 });
 
 test("edits that cannot be resolved leave the page unchanged", async () => {

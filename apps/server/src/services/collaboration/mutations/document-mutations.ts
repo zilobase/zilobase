@@ -3,7 +3,7 @@ import type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capa
 import { getRuntimePorts, requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 import * as Y from "yjs";
 import type { RuntimeEnv } from "../../../shared/config/config";
-import { planPageEdits, type PageEdit } from "@zilobase/page-context";
+import { assignBlockIds, planPageEdits, type PageEdit } from "@zilobase/page-context";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import {
   encodeContentAsYjs,
@@ -322,7 +322,11 @@ export async function editPageContentInHocuspocus(
       }
       for (const splice of plan.splices) {
         if (splice.deleteCount) fragment.delete(splice.index, splice.deleteCount);
-        if (splice.nodes.length) fragment.insert(splice.index, pageNodesAsYjsBlocks(splice.nodes));
+        if (splice.nodes.length)
+          fragment.insert(
+            splice.index,
+            pageNodesAsYjsBlocks(assignBlockIds(splice.nodes, () => crypto.randomUUID())),
+          );
       }
       const now = Date.now();
       for (const [id, at] of applied.entries())
