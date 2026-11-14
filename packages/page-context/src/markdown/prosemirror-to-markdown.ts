@@ -177,7 +177,11 @@ const BLOCK_SERIALIZERS: Record<string, BlockSerializer> = {
   imageBlock: serializeImageBlock,
   linkMention: serializeLinkMention,
   meetingBlock: serializeMeetingBlock,
-  orderedList: (node) => serializeOrderedList(node.content ?? []),
+  orderedList: (node) =>
+    serializeOrderedList(
+      node.content ?? [],
+      typeof node.attrs?.start === "number" ? node.attrs.start : 1,
+    ),
   pageBlock: serializePageBlock,
   paragraph: serializeParagraph,
   table: (node) => serializeTable(node.content ?? []),
@@ -205,7 +209,7 @@ function serializeList(nodes: PageDocumentNode[], marker: string) {
     .join("\n");
 }
 
-function serializeOrderedList(nodes: PageDocumentNode[]) {
+function serializeOrderedList(nodes: PageDocumentNode[], start: number) {
   return nodes
     .map((node, index) => {
       if (node.type !== "listItem") {
@@ -213,7 +217,8 @@ function serializeOrderedList(nodes: PageDocumentNode[]) {
       }
 
       const content = serializeBlocks(node.content ?? []);
-      return `${index + 1}. ${content.replace(/\n/g, "\n   ")}`;
+      const marker = `${start + index}. `;
+      return `${marker}${content.replace(/\n/g, `\n${" ".repeat(marker.length)}`)}`;
     })
     .join("\n");
 }

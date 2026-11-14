@@ -108,3 +108,88 @@ test("code fences, multiline tables, callouts and unsupported blocks retain cont
   expect(result).toContain("one<br><br>two");
   expect(result).toContain("[Unsupported block: futureBlock]");
 });
+
+for (const start of [0, 4, 9]) {
+  test(`ordered lists preserve start ${start} and align continuation blocks`, () => {
+    const paragraph = (text: string) => ({
+      type: "paragraph",
+      content: [{ type: "text", text }],
+    });
+    const markdown = prosemirrorToMarkdown({
+      type: "doc",
+      content: [
+        {
+          type: "orderedList",
+          attrs: { start },
+          content: [
+            {
+              type: "listItem",
+              content: [paragraph("Install"), paragraph("Keep the existing configuration.")],
+            },
+            {
+              type: "listItem",
+              content: [
+                paragraph("Run"),
+                {
+                  type: "bulletList",
+                  content: [{ type: "listItem", content: [paragraph("Check output")] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const firstPadding = " ".repeat(String(start).length + 2);
+    const secondPadding = " ".repeat(String(start + 1).length + 2);
+    expect(markdown).toBe(
+      `${start}. Install\n${firstPadding}\n${firstPadding}Keep the existing configuration.\n` +
+        `${start + 1}. Run\n${secondPadding}\n${secondPadding}- Check output`,
+    );
+  });
+}
+
+test("default ordered lists retain numbering and align item ten continuation", () => {
+  const content = Array.from({ length: 10 }, (_, index) => ({
+    type: "listItem",
+    content: [
+      { type: "paragraph", content: [{ type: "text", text: `Step ${index + 1}` }] },
+      { type: "paragraph", content: [{ type: "text", text: "Details" }] },
+    ],
+  }));
+  const absentStart = prosemirrorToMarkdown({ type: "orderedList", content });
+  const explicitStart = prosemirrorToMarkdown({
+    type: "orderedList",
+    attrs: { start: 1 },
+    content,
+  });
+  expect(absentStart).toBe(explicitStart);
+  expect(absentStart).toContain("9. Step 9\n   \n   Details\n10. Step 10\n    \n    Details");
+});
+
+test("ordered list numbering is local to each nested list", () => {
+  expect(
+    prosemirrorToMarkdown({
+      type: "orderedList",
+      attrs: { start: 10 },
+      content: [
+        {
+          type: "listItem",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: "Outer" }] },
+            {
+              type: "orderedList",
+              attrs: { start: 3 },
+              content: [
+                {
+                  type: "listItem",
+                  content: [{ type: "paragraph", content: [{ type: "text", text: "Inner" }] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  ).toBe("10. Outer\n    \n    3. Inner");
+});
