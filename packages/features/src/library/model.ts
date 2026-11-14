@@ -104,9 +104,16 @@ export function buildHomepageRows(
     databases.map(({ database, page }) => [database.id, { database, page }]),
   );
   const hierarchy = buildHomepageHierarchy(placements);
-  const parentKeys = new Set(
-    placements.map((placement) => `${placement.parentKind}:${placement.parentId}`),
-  );
+  const parentKeys = new Set<string>();
+  const sourcePlacements = new Map<string, PageItemPlacement>();
+  for (const placement of placements) {
+    parentKeys.add(`${placement.parentKind}:${placement.parentId}`);
+    if (placement.placementKind !== "primary" && placement.placementKind !== "database_row") {
+      continue;
+    }
+    const key = `${placement.itemKind}:${placement.itemId}`;
+    if (!sourcePlacements.has(key)) sourcePlacements.set(key, placement);
+  }
 
   const contentRows: HomepageRow[] = [
     ...pages
@@ -114,7 +121,7 @@ export function buildHomepageRows(
       .map((page) => {
         const sourcePage = parentKeys.has(`page:${page.id}`)
           ? null
-          : resolveSourcePage(placements, pagesById, databasesById, "page", page.id);
+          : resolveSourcePage(sourcePlacements.get(`page:${page.id}`), pagesById, databasesById);
 
         return {
           ...getLibraryRowDates(page),
@@ -140,8 +147,11 @@ export function buildHomepageRows(
       .map(({ database, page }) => {
         const sourcePage = parentKeys.has(`database:${database.id}`)
           ? null
-          : (resolveSourcePage(placements, pagesById, databasesById, "database", database.id) ??
-            (page ? getPageSourcePage(page) : null));
+          : (resolveSourcePage(
+              sourcePlacements.get(`database:${database.id}`),
+              pagesById,
+              databasesById,
+            ) ?? (page ? getPageSourcePage(page) : null));
 
         return {
           ...getLibraryRowDates(database, page),
@@ -243,19 +253,10 @@ export function isHomepageView(value: unknown): value is HomepageView {
 }
 
 function resolveSourcePage(
-  placements: PageItemPlacement[],
+  placement: PageItemPlacement | undefined,
   pagesById: Map<string, Page>,
   databasesById: Map<string, { database: PageDatabase; page: Page | null }>,
-  itemKind: "database" | "page",
-  itemId: string,
 ): HomepageSourcePage | null {
-  const placement = placements.find(
-    (candidate) =>
-      candidate.itemKind === itemKind &&
-      candidate.itemId === itemId &&
-      (candidate.placementKind === "primary" || candidate.placementKind === "database_row"),
-  );
-
   if (!placement) {
     return null;
   }
