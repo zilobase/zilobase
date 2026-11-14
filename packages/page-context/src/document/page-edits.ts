@@ -50,8 +50,9 @@ export function blockText(node: PageDocumentNode): string {
 function findBlock(blocks: PageDocumentNode[], anchor: string, numbered: boolean): number | string {
   const target = normalize(anchor);
   if (!target) return "The anchor is empty.";
-  if (/^\d+$/.test(target) && !blocks.some((block) => normalize(blockText(block)) === target)) {
-    const index = Number(target);
+  const number = target.match(/^(?:block\s*:?\s*)?(\d+)$/)?.[1];
+  if (number && !blocks.some((block) => normalize(blockText(block)) === target)) {
+    const index = Number(number);
     if (numbered && index < blocks.length) return index;
     return `"${anchor}" looks like a block number; anchor edits with the block's text, such as a heading.`;
   }

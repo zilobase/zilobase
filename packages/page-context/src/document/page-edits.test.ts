@@ -66,6 +66,10 @@ test("ambiguous, missing and non-heading anchors are rejected", () => {
       splices: [{ index: 1, deleteCount: 0 }],
     },
   );
+  for (const anchor of ["block:0", "Block 0", "#0"])
+    expect(planPageEdits(page, [{ type: "insert_after", anchor, markdown: "x" }])).toMatchObject({
+      splices: [{ index: 1 }],
+    });
   expect(
     "error" in planPageEdits(page, [{ type: "insert_after", anchor: "99", markdown: "x" }]),
   ).toBe(true);
