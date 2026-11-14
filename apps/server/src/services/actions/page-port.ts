@@ -1,6 +1,6 @@
 import type { PageActionOps } from "@zilobase/features/runtime";
 import type { ServerOperationContext } from "../operations/context";
-import { createPageOperation } from "../pages/hierarchy/operations";
+import { createPageOperation, embedPageOperation } from "../pages/hierarchy/operations";
 import { appendPageCommentOperation } from "../pages/content/comment-operation";
 import { editPageContentOperation } from "../pages/content/edit-operation";
 import { updatePageOperation } from "../pages/content/operations";
@@ -24,7 +24,8 @@ type PageRequest =
   | { op: "page.favorite"; pageId: string; favorite: boolean }
   | { op: "page.comment"; pageId: string; body: string; threadId: string; messageId: string }
   | { op: "page.restore"; pageId: string }
-  | { op: "page.edit"; pageId: string; edits: unknown[]; editId: string };
+  | { op: "page.edit"; pageId: string; edits: unknown[]; editId: string }
+  | { op: "page.embed"; pageId: string; itemId: string; kind: "page" | "database" };
 
 /**
  * Runs page operations for workspace actions through the services the page
@@ -94,6 +95,11 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         });
       case "page.restore":
         return restorePageOperation(context, { pageId: request.pageId });
+      case "page.embed":
+        return embedPageOperation(context, {
+          pageId: request.pageId,
+          body: { itemId: request.itemId, kind: request.kind },
+        });
       case "page.edit":
         return editPageContentOperation(context, {
           pageId: request.pageId,
@@ -164,6 +170,15 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         }),
         null,
         (result) => result as { status: "applied" | "replayed"; blocks: number },
+      ),
+    embedItem: ({ hostPageId, itemId, kind }) =>
+      run(
+        { op: "page.embed", pageId: hostPageId, itemId, kind },
+        { op: "page.unembed", input: { pageId: hostPageId, itemId, kind } },
+        (result) => {
+          const { action, placementId } = result as { action: string; placementId: string | null };
+          return { action, placementId };
+        },
       ),
     restorePage: ({ pageId }) =>
       run({ op: "page.restore", pageId }, { op: "page.delete", input: { pageId } }),

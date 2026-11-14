@@ -45,6 +45,8 @@ export function blockText(node: PageDocumentNode): string {
 function findBlock(blocks: PageDocumentNode[], anchor: string): number | string {
   const target = normalize(anchor);
   if (!target) return "The anchor is empty.";
+  if (/^\d+$/.test(target) && !blocks.some((block) => normalize(blockText(block)) === target))
+    return `"${anchor}" looks like a block number; anchor edits with the block's text, such as a heading.`;
   const texts = blocks.map((block) => normalize(blockText(block)));
   for (const matches of [
     (text: string) => text === target,

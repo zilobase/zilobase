@@ -37,6 +37,11 @@ export type PageActionOps = {
     body: string;
   }) => Promise<{ threadId: string; messageId: string }>;
   restorePage: (input: { pageId: string }) => Promise<Page>;
+  embedItem: (input: {
+    hostPageId: string;
+    itemId: string;
+    kind: "page" | "database";
+  }) => Promise<{ action: string; placementId: string | null }>;
   editPageContent: (input: {
     pageId: string;
     edits: PageEdit[];
@@ -109,7 +114,7 @@ const anchor = z
   .min(1)
   .max(500)
   .describe(
-    "Text of an existing top-level block from read_page: a heading or the start of a paragraph.",
+    'Text of an existing top-level block from read_page, such as a heading\'s text or the start of a paragraph — e.g. "Links" for a "## Links" heading. Never a block number.',
   );
 const markdown = z
   .string()
@@ -135,6 +140,18 @@ const pageEditSchema = z.discriminatedUnion("type", [
     .strict()
     .describe("Fix wording inside blocks while keeping their formatting."),
 ]);
+const embedInput = z
+  .object({
+    pageId: id.describe("The page to embed into."),
+    itemId: id.describe("The page or database to embed."),
+    kind: z.enum(["page", "database"]),
+    after: anchor
+      .optional()
+      .describe(
+        'Text of the block to place it after, e.g. "Links" to place it under a "## Links" heading. Never a block number; omit to add it at the end.',
+      ),
+  })
+  .strict();
 const editInput = z.object({ pageId: id, edits: z.array(pageEditSchema).min(1).max(50) }).strict();
 
 const same = (left: string, right: string) =>
@@ -314,6 +331,41 @@ export const pageActions = [
       input: editInput,
       covers: ["page.edit"],
       plan: (_, input) => ({ steps: [{ op: "editPageContent", input: () => input }] }),
+    }),
+    milestone: "C" as const,
+  },
+  {
+    ...pageAction({
+      name: "pages.embed",
+      title: "Embed in page",
+      description:
+        "Show an existing page or database inside another page as a block, like dragging it in. A top-level page becomes a subpage; others are linked.",
+      input: embedInput,
+      covers: ["page.edit", "page.embed"],
+      plan: (_, input) => {
+        const markdown =
+          input.kind === "page" ? `[Page: Page (${input.itemId})]` : `[Database (${input.itemId})]`;
+        return {
+          // The embed service checks the item first, so a refused embed leaves no block behind.
+          steps: [
+            {
+              op: "embedItem",
+              input: () => ({ hostPageId: input.pageId, itemId: input.itemId, kind: input.kind }),
+            },
+            {
+              op: "editPageContent",
+              input: () => ({
+                pageId: input.pageId,
+                edits: [
+                  input.after
+                    ? { type: "insert_after" as const, anchor: input.after, markdown }
+                    : { type: "append" as const, markdown },
+                ],
+              }),
+            },
+          ],
+        };
+      },
     }),
     milestone: "C" as const,
   },

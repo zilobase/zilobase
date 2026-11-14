@@ -58,6 +58,9 @@ test("text replacements keep formatting and report missing text", () => {
 });
 
 test("ambiguous, missing and non-heading anchors are rejected", () => {
+  expect(planPageEdits(page, [{ type: "insert_after", anchor: "0", markdown: "x" }])).toEqual({
+    error: '"0" looks like a block number; anchor edits with the block\'s text, such as a heading.',
+  });
   const twice = markdownToPageDocument("Note one\n\nNote two");
   expect(planPageEdits(twice, [{ type: "insert_after", anchor: "Note", markdown: "x" }])).toEqual({
     error: '"Note" matches 2 blocks; quote more of the block\'s text.',
