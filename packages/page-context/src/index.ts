@@ -11,6 +11,11 @@ export { type DatabasePropertyValue, parsePropertyValue } from "./database/forma
 export { parsePageDocument } from "./document/parse-page-document";
 export { prosemirrorToMarkdown } from "./markdown/prosemirror-to-markdown";
 export {
+  inlineContent as markdownInlineContent,
+  markdownToPageDocument,
+  type MarkdownResolvers,
+} from "./markdown/markdown-to-page-document";
+export {
   isStructuralBlockMarkerLine,
   preprocessStructuralBlockMarkdown,
   restoreStructuralBlocksInMarkdownContent,

@@ -107,9 +107,10 @@ function serializeVideoBlock(node: PageDocumentNode) {
 }
 
 function serializeEmbedBlock(node: PageDocumentNode) {
-  const url = stringAttr(node.attrs, "url");
-  const title = trimmedStringAttr(node.attrs, "title", "Embed");
-  return url ? `[${title}](${url})` : `[${title}]`;
+  const src = stringAttr(node.attrs, "src") || stringAttr(node.attrs, "url");
+  const title = stringAttr(node.attrs, "title").trim();
+  const label = title ? `Embed: ${title}` : "Embed";
+  return src ? `[${label}](${src})` : `[${label}]`;
 }
 
 function serializeFileBlock(node: PageDocumentNode) {
@@ -123,9 +124,10 @@ function serializeFileBlock(node: PageDocumentNode) {
 }
 
 function serializeBookmarkBlock(node: PageDocumentNode) {
-  const url = stringAttr(node.attrs, "url");
-  const title = trimmedStringAttr(node.attrs, "title", url || "Bookmark");
-  return url ? `[${title}](${url})` : `[${title}]`;
+  const href = stringAttr(node.attrs, "href") || stringAttr(node.attrs, "url");
+  const title = stringAttr(node.attrs, "title").trim();
+  const label = title ? `Bookmark: ${title}` : "Bookmark";
+  return href ? `[${label}](${href})` : `[${label}]`;
 }
 
 function serializeLinkMention(node: PageDocumentNode) {
@@ -143,6 +145,21 @@ function serializeNestedBlocks(node: PageDocumentNode) {
   return serializeBlocks(node.content ?? []);
 }
 
+/** Container blocks use `:::name argument` … `:::` directives (ZFM). */
+function directive(name: string, argument: string, body: string) {
+  return [`:::${name}${argument ? ` ${argument}` : ""}`, body, ":::"].filter(Boolean).join("\n");
+}
+
+function serializeDetails(node: PageDocumentNode) {
+  const summary = node.content?.find((child) => child.type === "detailsSummary");
+  const body = node.content?.find((child) => child.type === "detailsContent");
+  return directive(
+    "toggle",
+    serializeInline(summary?.content ?? []).replace(/\n/g, " "),
+    serializeNestedBlocks(body ?? {}),
+  );
+}
+
 function serializeDefaultBlock(node: PageDocumentNode) {
   if (node.content?.length) {
     return `[Unsupported block: ${node.type ?? "unknown"}]\n${serializeBlocks(node.content)}`;
@@ -152,10 +169,11 @@ function serializeDefaultBlock(node: PageDocumentNode) {
 }
 
 const BLOCK_SERIALIZERS: Record<string, BlockSerializer> = {
-  callout: serializeBlockquote,
-  tabsBlock: serializeNestedBlocks,
+  callout: (node) =>
+    directive("callout", stringAttr(node.attrs, "icon").trim(), serializeNestedBlocks(node)),
+  tabsBlock: (node) => directive("tabs", "", serializeNestedBlocks(node)),
   tabPanel: (node) =>
-    `${stringAttr(node.attrs, "title") || "Tab"}\n\n${serializeNestedBlocks(node)}`,
+    directive("tab", stringAttr(node.attrs, "title").trim() || "Tab", serializeNestedBlocks(node)),
   askAiBlock: (node) => `[Ask AI: ${stringAttr(node.attrs, "prompt")}]`,
   inlineMath: (node) => `$${stringAttr(node.attrs, "latex")}$`,
   blockMath: (node) => `$$\n${stringAttr(node.attrs, "latex")}\n$$`,
@@ -163,11 +181,11 @@ const BLOCK_SERIALIZERS: Record<string, BlockSerializer> = {
   bookmarkBlock: serializeBookmarkBlock,
   bulletList: (node) => serializeList(node.content ?? [], "- "),
   codeBlock: serializeCodeBlock,
-  column: serializeNestedBlocks,
-  columnBlock: serializeNestedBlocks,
+  column: (node) => directive("column", "", serializeNestedBlocks(node)),
+  columnBlock: (node) => directive("columns", "", serializeNestedBlocks(node)),
   columnsExtension: serializeNestedBlocks,
   databaseBlock: serializeDatabaseBlock,
-  details: serializeNestedBlocks,
+  details: serializeDetails,
   detailsContent: serializeNestedBlocks,
   detailsSummary: serializeDetailsSummary,
   embedBlock: serializeEmbedBlock,
@@ -287,6 +305,8 @@ function applyMarks(text: string, marks: Array<{ attrs?: Record<string, unknown>
         return `*${current}*`;
       case "strike":
         return `~~${current}~~`;
+      case "underline":
+        return `<u>${current}</u>`;
       case "code":
         return `\`${current}\``;
       case "link": {

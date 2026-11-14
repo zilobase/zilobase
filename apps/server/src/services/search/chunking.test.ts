@@ -74,7 +74,7 @@ describe("search Markdown chunking", () => {
       .join("\n");
     expect(text).toContain("Tab");
     expect(text).toContain("Nested");
-    expect(text).toContain("> Notice");
+    expect(text).toContain(":::callout\nNotice\n:::");
     expect(text).toContain("File: Report");
   });
   it("strips binary payloads and signed URL credentials", () => {

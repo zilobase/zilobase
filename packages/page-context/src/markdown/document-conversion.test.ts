@@ -104,7 +104,7 @@ test("code fences, multiline tables, callouts and unsupported blocks retain cont
     ],
   });
   expect(result).toContain("````\n```\ncode\n````");
-  expect(result).toContain("> Remember");
+  expect(result).toContain(":::callout\nRemember\n:::");
   expect(result).toContain("one<br><br>two");
   expect(result).toContain("[Unsupported block: futureBlock]");
 });
