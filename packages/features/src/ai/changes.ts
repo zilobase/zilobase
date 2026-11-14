@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { pagesQueryKey } from "../pages/queries";
+import { pageQueryKey, pagesQueryKey } from "../pages/queries";
 import type { ChatReadProgress } from "./tools";
 
 /**
@@ -28,6 +28,11 @@ export async function refreshAfterWorkspaceActions(
       (activity.changes ?? []).flatMap((change) => (change.databaseId ? [change.databaseId] : [])),
     ),
   );
+  const pageIds = new Set(
+    fresh.flatMap((activity) =>
+      (activity.changes ?? []).flatMap((change) => (change.pageId ? [change.pageId] : [])),
+    ),
+  );
   const createsDatabase = fresh.some((activity) =>
     activity.changes?.some((change) => change.command === "database.create"),
   );
@@ -38,5 +43,8 @@ export async function refreshAfterWorkspaceActions(
         (createsDatabase || query.queryKey.some((part) => databaseIds.has(part as string))),
     }),
     queryClient.invalidateQueries({ queryKey: pagesQueryKey(workspaceId) }),
+    ...[...pageIds].map((pageId) =>
+      queryClient.invalidateQueries({ queryKey: pageQueryKey(pageId) }),
+    ),
   ]).catch(() => undefined);
 }

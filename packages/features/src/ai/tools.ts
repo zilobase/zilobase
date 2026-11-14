@@ -36,6 +36,7 @@ export const chatToolActivitySchema = z.object({
       z.object({
         command: z.string().max(64),
         databaseId: z.string().max(128).nullable().optional(),
+        pageId: z.string().max(128).nullable().optional(),
         id: z.string().max(128).optional(),
       }),
     )

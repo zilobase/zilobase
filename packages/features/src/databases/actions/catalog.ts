@@ -275,7 +275,7 @@ export const databaseReadActions = [
 
 // Database and schema
 
-const createDatabaseInput = z
+export const createDatabaseInput = z
   .object({
     name: z.string().trim().min(1).max(200),
     parentPageId: z
@@ -313,12 +313,22 @@ const createDatabaseInput = z
     rows: z.array(rowInputSchema).max(100).optional(),
   })
   .strict();
-type CreateDatabaseActionInput = z.infer<typeof createDatabaseInput>;
+export type CreateDatabaseActionInput = z.infer<typeof createDatabaseInput>;
 
-function planCreateDatabase(
+/**
+ * Plans a database with its properties and rows. Page trees embed several, so
+ * step IDs are prefixed and the host page and reserved ID may come from earlier steps.
+ */
+export function planCreateDatabase(
   state: { workspaceId: string; createSampleRowContent?: (markdown: string) => unknown },
   input: CreateDatabaseActionInput,
+  options: {
+    stepId?: string;
+    databaseId?: (done: PlanResults) => string;
+    pageId?: (done: PlanResults) => string;
+  } = {},
 ): Plan {
+  const stepId = options.stepId ?? "database";
   return withResolution(() => {
     const template = input.template
       ? getDatabaseSetupTemplate(input.template as DatabaseSetupTemplateId)
@@ -348,7 +358,7 @@ function planCreateDatabase(
         return { propertyName: property.property.name, value: resolveCellValue(property, value) };
       }),
     }));
-    const created = (done: PlanResults) => done.get<CreateDatabaseResponse>("database");
+    const created = (done: PlanResults) => done.get<CreateDatabaseResponse>(stepId);
     const source = (done: PlanResults) => {
       const active = created(done).activeDataSource;
       if (!active) throw new Error("The created database has no data source");
@@ -356,15 +366,19 @@ function planCreateDatabase(
     };
     const steps: Step[] = [
       {
-        id: "database",
+        id: stepId,
         op: "createDatabase",
-        input: () => ({
-          workspaceId: state.workspaceId,
-          name: input.name,
-          ...(input.parentPageId ? { pageId: input.parentPageId } : {}),
-          standalone: !input.parentPageId,
-          ...(input.teamspaceId ? { teamspaceId: input.teamspaceId } : {}),
-        }),
+        input: (done) => {
+          const pageId = options.pageId?.(done) ?? input.parentPageId;
+          return {
+            ...(options.databaseId ? { databaseId: options.databaseId(done) } : {}),
+            workspaceId: state.workspaceId,
+            name: input.name,
+            ...(pageId ? { pageId } : {}),
+            standalone: !pageId,
+            ...(input.teamspaceId ? { teamspaceId: input.teamspaceId } : {}),
+          };
+        },
       },
     ];
     if (template)

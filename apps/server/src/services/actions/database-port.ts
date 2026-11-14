@@ -18,13 +18,14 @@ type CommandInput = {
 export type ActionChange = {
   callId: string;
   opIndex: number;
-  kind: "database";
+  kind: "database" | "page";
   commandType: string;
   databaseId: string | null;
+  pageId?: string | null;
   dataSourceId: string | null;
   ack: DatabaseCommandAck;
   /** A command that reverses this change, when it needs no pre-image. */
-  inverse: CommandInput | null;
+  inverse: CommandInput | { op: string; input: Record<string, unknown> } | null;
 };
 
 export type DatabasePortCache = {
@@ -41,6 +42,14 @@ export type DatabasePortOptions = {
   cache: DatabasePortCache;
   onChange?: (change: ActionChange) => void;
   execute?: typeof executeDatabaseApplicationCommand;
+  /** Operation positions shared by every port of one call, keying its receipts. */
+  sequence?: ActionSequence;
+};
+
+export type ActionSequence = { next(): number };
+export const actionSequence = (): ActionSequence => {
+  let index = 0;
+  return { next: () => index++ };
 };
 
 function inverseOf(input: CommandInput, ack: DatabaseCommandAck): CommandInput | null {
@@ -98,7 +107,7 @@ function inverseOf(input: CommandInput, ack: DatabaseCommandAck): CommandInput |
 export function createDatabaseActionPort(options: DatabasePortOptions): DatabaseActionOps {
   const { cache, receipts } = options;
   const execute = options.execute ?? executeDatabaseApplicationCommand;
-  let opIndex = 0;
+  const sequence = options.sequence ?? actionSequence();
 
   const host = (dataSourceId: string, explicit?: string) => {
     if (explicit) return { dataSourceId, hostDatabaseId: explicit };
@@ -108,17 +117,19 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
   };
   const properties = () => cache.bootstrap?.properties ?? [];
 
-  async function command(input: CommandInput) {
-    const key = { invocationId: options.invocationId, callId: options.callId, opIndex: opIndex++ };
+  async function command(input: CommandInput, commandId?: string) {
+    const key = {
+      invocationId: options.invocationId,
+      callId: options.callId,
+      opIndex: sequence.next(),
+    };
     const stored = await receipts.get(key);
     if (stored?.status === "completed") return stored.result as DatabaseCommandAck;
     const request = (stored?.request as DatabaseCommandRequest | undefined) ?? {
       command: input.command,
-      commandId: await deterministicActionId(
-        options.invocationId,
-        options.callId,
-        String(key.opIndex),
-      ),
+      commandId:
+        commandId ??
+        (await deterministicActionId(options.invocationId, options.callId, String(key.opIndex))),
       protocolVersion: 2 as const,
     };
     if (!stored) await receipts.savePending(key, { kind: "database", request });
@@ -144,7 +155,8 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
     });
     return ack;
   }
-  const run = async <T>(input: CommandInput) => (await command(input)).result as T;
+  const run = async <T>(input: CommandInput, commandId?: string) =>
+    (await command(input, commandId)).result as T;
   const rememberView = <T extends { id?: string; config?: unknown }>(view: T) => {
     if (view?.id) cache.viewConfigs.set(view.id, view.config);
     return view;
@@ -253,7 +265,8 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
     linkDatabaseDataSource: (input) => run(build.buildDataSourceLink(input)),
     unlinkDatabaseDataSource: (input) => run(build.buildDataSourceUnlink(input)),
     replaceDatabaseViewDataSource: (input) => run(build.buildViewSetDataSource(input)),
-    createDatabase: (input) => run(build.buildDatabaseCreate(input)),
+    // A reserved database ID is the database.create command ID, as in the client.
+    createDatabase: ({ databaseId, ...input }) => run(build.buildDatabaseCreate(input), databaseId),
     setDatabaseFavorite: (input) => run(build.buildDatabaseFavorite(input)),
     restoreDatabase: (input) => run(build.buildDatabaseState(input.databaseId, "database.restore")),
     deleteDatabase: (input) => run(build.buildDatabaseState(input.databaseId, "database.archive")),

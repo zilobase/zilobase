@@ -129,7 +129,10 @@ test("actions issue the same command bodies as the UI with deterministic IDs", a
   expect(sent[0]).toMatchObject({ databaseId: "host", dataSourceId: "source" });
   expect(sent[0]!.request.commandId).toBe(await deterministicActionId("run-1", "call-1", "0"));
   expect(
-    outcome.changes.map(({ commandType, inverse }) => [commandType, inverse?.command.type]),
+    outcome.changes.map(({ commandType, inverse }) => [
+      commandType,
+      inverse && "command" in inverse ? inverse.command.type : undefined,
+    ]),
   ).toEqual([
     ["property.create", "property.archive"],
     ["view.create", "view.delete"],

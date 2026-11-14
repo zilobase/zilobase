@@ -14,6 +14,8 @@ import {
   buildDatabaseUpdate,
 } from "./command-builders";
 export type CreateDatabaseInput = {
+  /** Reserved ID; the database.create command ID becomes the database ID. */
+  databaseId?: string;
   name?: string;
   onOptimistic?: (database: DatabaseHostEntity) => void;
   workspaceId: string;
@@ -52,8 +54,8 @@ export function createDatabase(
     const controller = clientDatabaseController(context);
     return clientMutation({
       mutationFn: async (input: CreateDatabaseInput) => {
-        const { onOptimistic, ...command } = input;
-        const commandId = crypto.randomUUID();
+        const { onOptimistic, databaseId, ...command } = input;
+        const commandId = databaseId ?? crypto.randomUUID();
         const saving = controller.execute(buildDatabaseCreate(command), { commandId });
         const preview = controller.creation(commandId)?.creation;
         if (preview) onOptimistic?.(preview.database);

@@ -14,7 +14,9 @@ import {
 } from "@zilobase/features/runtime";
 import { readDatabaseBootstrap } from "../databases/read/operations";
 import type { ServerOperationContext } from "../operations/context";
+import { createPageActionPort } from "./page-port";
 import {
+  actionSequence,
   createDatabaseActionPort,
   type ActionChange,
   type DatabasePortCache,
@@ -155,17 +157,25 @@ export async function executeWorkspaceAction(input: {
     parsed.data,
   );
   if (isPlanRejection(plan)) return reject(plan.rejected, plan.message ?? plan.rejected);
-  const ops = createDatabaseActionPort({
+  const port = {
     context: input.context,
     invocationId: input.invocationId,
     callId: input.callId,
     receipts: input.receipts,
-    cache,
-    onChange: (change) => changes.push(change),
-    execute: input.executeCommand,
-  });
+    sequence: actionSequence(),
+    onChange: (change: ActionChange) => changes.push(change),
+  };
+  const ops = {
+    ...createDatabaseActionPort({ ...port, cache, execute: input.executeCommand }),
+    ...createPageActionPort(port),
+  };
   const run = await runPlan(plan, ops as unknown as PlanOps, { sequential: true });
-  if (run.status === "completed") return { status: "completed", result: run.last, changes };
+  if (run.status === "completed")
+    return {
+      status: "completed",
+      result: plan.select && run.results.has(plan.select) ? run.results.get(plan.select) : run.last,
+      changes,
+    };
   const error = run.error;
   return {
     status: "failed",

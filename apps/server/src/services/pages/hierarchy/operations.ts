@@ -22,7 +22,8 @@ import {
 import { TeamspaceManagementService } from "../../teamspaces/management";
 import { requireActivePageWorkspace, requirePageOperationWorkspace } from "../access";
 
-export type CreatePageInput = { body: unknown };
+/** `requestedPageId` is a trusted service argument; HTTP routes never pass it. */
+export type CreatePageInput = { body: unknown; requestedPageId?: string };
 export async function createPageOperation(
   context: ServerOperationContext,
   input: CreatePageInput,
@@ -89,8 +90,28 @@ export async function createPageOperation(
     return deny({ error: "Forbidden" }, 403);
   }
 
+  if (input.requestedPageId) {
+    const existing = await getPage(input.requestedPageId);
+    if (existing) {
+      if (existing.workspaceId !== workspaceId || existing.createdById !== user.id)
+        return deny({ error: "Page ID is already in use" }, 409);
+      // A redelivered create returns the page it already made.
+      return { navDelta: { upsertPlacements: [], upsertPages: [existing] }, page: existing };
+    }
+  }
+
   return await createHierarchicalPage(
-    { workspaceId, type, name, url, content, metadata, parentItemId, teamspaceId },
+    {
+      workspaceId,
+      type,
+      name,
+      url,
+      content,
+      metadata,
+      parentItemId,
+      teamspaceId,
+      requestedPageId: input.requestedPageId,
+    },
     user,
   );
 }

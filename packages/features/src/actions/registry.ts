@@ -1,7 +1,8 @@
 import { databaseActions } from "../databases/actions/catalog";
+import { pageActions } from "../pages/actions/catalog";
 
 /** The workspace action catalog. Domains own their definitions; this list composes them. */
-export const workspaceActions = [...databaseActions] as const;
+export const workspaceActions = [...databaseActions, ...pageActions] as const;
 
 export type WorkspaceActionName = (typeof workspaceActions)[number]["name"];
 

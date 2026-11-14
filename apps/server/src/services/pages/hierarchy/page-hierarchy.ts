@@ -36,6 +36,8 @@ export async function createHierarchicalPage(
     metadata: unknown;
     parentItemId: string | null;
     teamspaceId: string | null;
+    /** Trusted callers (workspace actions) reserve IDs so retries stay idempotent. */
+    requestedPageId?: string;
   },
   user: { id: string },
 ) {
@@ -70,7 +72,7 @@ export async function createHierarchicalPage(
     throw new ServiceMutationError("Forbidden", 403);
   }
 
-  const pageId = crypto.randomUUID();
+  const pageId = input.requestedPageId ?? crypto.randomUUID();
   const [parentFavorite] = parentItemId
     ? await db
         .select({ id: favorite.id })

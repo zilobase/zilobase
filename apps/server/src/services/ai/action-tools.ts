@@ -95,9 +95,10 @@ export function createActionTools(
           changes: outcome.changes,
         }),
       );
-      const changed = outcome.changes.map(({ commandType, databaseId, ack }) => ({
+      const changed = outcome.changes.map(({ commandType, databaseId, pageId, ack }) => ({
         command: commandType,
         databaseId,
+        ...(pageId ? { pageId } : {}),
         id: (ack.result as { id?: string } | null)?.id,
       }));
       if (outcome.status === "completed")

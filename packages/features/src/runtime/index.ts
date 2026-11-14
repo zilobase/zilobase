@@ -201,6 +201,7 @@ export type {
 export { workspaceActions, findWorkspaceAction } from "../actions/registry";
 export type { WorkspaceActionName } from "../actions/registry";
 export type { DatabaseActionOps, DatabaseActionState } from "../databases/actions/catalog";
+export type { PageActionOps } from "../pages/actions/catalog";
 export { databaseCommandActionPolicies } from "../databases/actions/policies";
 export { ActionInputError } from "../databases/actions/resolve";
 export * as databaseCommandBuilders from "../databases/mutations/command-builders";
