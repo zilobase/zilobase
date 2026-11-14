@@ -128,8 +128,16 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
         const entry = message.context?.manifest.find(
           (entry) => entry.type === source?.type && entry.id === source.id,
         );
+        const changedDatabaseId = latest.changes?.find((change) => change.databaseId)?.databaseId;
         const link =
           entry ??
+          (latest.name === "workspace_action" && changedDatabaseId
+            ? {
+                key: `database:${changedDatabaseId}`,
+                title: "Database",
+                databaseId: changedDatabaseId,
+              }
+            : undefined) ??
           (source
             ? {
                 key: `${source.type}:${source.id}`,
@@ -144,36 +152,46 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
         const morePageContent =
           latest.hasMore ??
           [...group.calls].reverse().find((call) => call.status === "completed")?.hasMore;
+        const changeCount = latest.changes?.length ?? 0;
         const detail =
-          searchAvailabilityNotice(latest.searchMetadata) ??
-          (latest.name === "search_workspace" || latest.name === "semantic_search_workspace"
+          latest.name === "workspace_action"
             ? status === "failed"
-              ? "Workspace search couldn't finish."
+              ? (latest.error ?? "The change couldn't be completed.")
               : status === "stopped"
-                ? "The search didn't finish."
-                : [
-                    latest.query ? `“${latest.query}”` : undefined,
-                    status === "completed"
-                      ? `${latest.returned ?? 0} matching sources${latest.hasMore ? " · refine the search for other matches" : ""}`
-                      : undefined,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-            : status === "failed"
-              ? "This source couldn't be read."
-              : status === "stopped"
-                ? "The read didn't finish."
-                : latest.name === "read_page" && morePageContent
-                  ? running
-                    ? "Reading more of this page"
-                    : "More of this page is available"
-                  : records !== undefined && status === "completed"
-                    ? `${records} ${records === 1 ? "record" : "records"}${latest.hasMore ? " · more available" : ""}`
-                    : undefined);
+                ? "The change didn't finish."
+                : status === "completed"
+                  ? `${changeCount} ${changeCount === 1 ? "change" : "changes"} saved`
+                  : undefined
+            : (searchAvailabilityNotice(latest.searchMetadata) ??
+              (latest.name === "search_workspace" || latest.name === "semantic_search_workspace"
+                ? status === "failed"
+                  ? "Workspace search couldn't finish."
+                  : status === "stopped"
+                    ? "The search didn't finish."
+                    : [
+                        latest.query ? `“${latest.query}”` : undefined,
+                        status === "completed"
+                          ? `${latest.returned ?? 0} matching sources${latest.hasMore ? " · refine the search for other matches" : ""}`
+                          : undefined,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                : status === "failed"
+                  ? "This source couldn't be read."
+                  : status === "stopped"
+                    ? "The read didn't finish."
+                    : latest.name === "read_page" && morePageContent
+                      ? running
+                        ? "Reading more of this page"
+                        : "More of this page is available"
+                      : records !== undefined && status === "completed"
+                        ? `${records} ${records === 1 ? "record" : "records"}${latest.hasMore ? " · more available" : ""}`
+                        : undefined));
         return (
           <Trace
             key={group.id}
             data-ai-read-source={source ? `${source.type}:${source.id}` : undefined}
+            data-ai-action={latest.name === "workspace_action" ? latest.action : undefined}
             data-read-status={status}
           >
             <ActivityDisclosure title={readLabel(activity, active)} status={status}>
