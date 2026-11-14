@@ -392,6 +392,16 @@ sync, reconnect, and teardown coverage. Changes to package exports or dependenci
 also need affected workspace tests and builds. Scale checks to the change; a
 documentation-only edit needs formatting and link validation.
 
+Changes to Ask AI workspace actions (the action registry, planners, action
+ports, ZFM conversion, or AI instructions) also need the live action evals
+against a running stack with a model key and `AI_ACTION_MILESTONES=A,B`. They
+write real content as the given user:
+
+```sh
+npm run test:ai:actions -- --credentials .dev/local/node-owner.json
+npm run test:ai:actions -- --api http://127.0.0.1:3010 --origin http://localhost:1422 --credentials <worker-user.json>
+```
+
 ## Existing migration gaps
 
 The current implementation is a foundation, not proof that every boundary is

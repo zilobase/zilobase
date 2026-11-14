@@ -96,6 +96,23 @@ function parseBlocks(lines: string[], resolvers: MarkdownResolvers): Node[] {
       continue;
     }
 
+    if (/^<details>/i.test(trimmed)) {
+      const end = detailsEnd(lines, index);
+      const inner = lines.slice(index, end + 1).join("\n");
+      const body = inner.replace(/^\s*<details>\s*/i, "").replace(/\s*<\/details>\s*$/i, "");
+      const summary = body.match(/^\s*<summary>([\s\S]*?)<\/summary>/i);
+      nodes.push(
+        ...containerBlock(
+          "toggle",
+          summary?.[1]?.trim() ?? "",
+          (summary ? body.slice(summary[0].length) : body).split("\n"),
+          resolvers,
+        ),
+      );
+      index = end + 1;
+      continue;
+    }
+
     const heading = trimmed.match(HEADING);
     if (heading) {
       nodes.push({
@@ -180,6 +197,16 @@ function callout(icon: string, lines: string[], resolvers: MarkdownResolvers): N
   return { type: "callout", attrs: { icon }, content: nonEmpty(parseBlocks(lines, resolvers)) };
 }
 
+function detailsEnd(lines: string[], start: number) {
+  let depth = 0;
+  for (let index = start; index < lines.length; index += 1) {
+    depth += (lines[index]!.match(/<details>/gi) ?? []).length;
+    depth -= (lines[index]!.match(/<\/details>/gi) ?? []).length;
+    if (depth <= 0) return index;
+  }
+  return lines.length - 1;
+}
+
 function closesFence(line: string, fence: string) {
   const trimmed = line.trim();
   return trimmed.length >= fence.length && trimmed === fence[0]!.repeat(trimmed.length);
@@ -203,6 +230,7 @@ function startsBlock(lines: string[], index: number) {
     trimmed === "$$" ||
     DIRECTIVE.test(trimmed) ||
     DIRECTIVE_END.test(trimmed) ||
+    /^<details>/i.test(trimmed) ||
     HEADING.test(trimmed) ||
     RULE.test(trimmed) ||
     trimmed.startsWith(">") ||
@@ -406,7 +434,7 @@ function structuralBlock(line: string, resolvers: MarkdownResolvers): Node[] | n
   }
   match = line.match(new RegExp(`^\\[Meeting\\s*\\((${UUID})\\)\\]$`, "i"));
   if (match) return [{ type: "meetingBlock", attrs: { meetingId: match[1]! } }];
-  if (/^\[Table of contents\]$/i.test(line))
+  if (/^(?:\[Table of contents\]|\[TOC\]|\[\[_?TOC_?\]\]|\$\{toc\})$/i.test(line))
     return [blockTemplate({ id: "tableOfContentsBlock" }) as Node];
   match = line.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
   if (match) return [{ type: "imageBlock", attrs: { src: match[2]!, alt: match[1] || null } }];

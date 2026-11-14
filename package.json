@@ -85,6 +85,7 @@
     "test:calendar:browser": "playwright test --config scripts/calendar/e2e/playwright.config.mjs",
     "test:data:browser": "node scripts/data/test-cache-browser.mjs",
     "test:ai:durable": "node scripts/ai/test-durable.mjs",
+    "test:ai:actions": "node scripts/ai/action-evals.mjs",
     "test:ai:ui": "node --import tsx --test scripts/editor/e2e/ai-runtime-fixture.test.ts && playwright test --config scripts/editor/e2e/ai-ui.playwright.config.mjs",
     "test:background:isolated": "node scripts/background/test-isolated.mjs",
     "background:ops": "npm exec --workspace @zilobase/server -- tsx src/scripts/background-ops.ts",

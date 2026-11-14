@@ -234,3 +234,22 @@ test("GitHub alerts and emoji-led quotes become callouts; other quotes stay quot
   expect(nodes[1]!.content).toEqual([paragraph(text("Launch: September 30"))]);
   expect(nodes[0]!.content![0]!.content).toEqual([text("Freeze on "), text("Friday", "bold")]);
 });
+
+test("HTML toggles and common table-of-contents markers become blocks", () => {
+  const nodes = markdownToPageDocument(
+    [
+      "[TOC]",
+      "",
+      "<details>",
+      "<summary>FAQ</summary>",
+      "",
+      "- Where is help?",
+      "</details>",
+      "",
+      "After",
+    ].join("\n"),
+  ).content!;
+  expect(nodes.map((node) => node.type)).toEqual(["tableOfContentsBlock", "details", "paragraph"]);
+  expect(nodes[1]!.content![0]).toEqual({ type: "detailsSummary", content: [text("FAQ")] });
+  expect(nodes[1]!.content![1]!.content![0]!.type).toBe("bulletList");
+});

@@ -208,7 +208,7 @@ export const pageActions = [
     name: "pages.create",
     title: "Create page",
     description:
-      "Create a page with rich content, optionally with subpages and inline databases (properties, rows). Add database views afterwards with databases.add_view.",
+      "Create a page with rich content, optionally with subpages and inline databases (properties, rows). Add database views afterwards with databases.add_view. Write real blocks, not imitations: '[Table of contents]' for a table of contents, ':::toggle Title' … ':::' for toggles, ':::columns' with ':::column' … ':::' sections for side-by-side columns, ':::callout 💡' … ':::' for callouts.",
     input: createPageInput,
     covers: ["page.create", "database.create", "template.apply"],
     plan: planCreatePageTree,
