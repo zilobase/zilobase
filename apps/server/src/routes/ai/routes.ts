@@ -11,6 +11,7 @@ import { listChatThreads, getChatThread, deleteChatThread } from "../../services
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import {
+  actionDecisionRequestSchema,
   actionUndoRequestSchema,
   aiWriteRequestSchema,
   chatRequestSchema,
@@ -20,6 +21,7 @@ import { prepareChat } from "../../services/ai/chat";
 import { chatSourceIdentity } from "../../services/ai/context";
 import { writeWithAi } from "../../services/ai/writing";
 import { undoWorkspaceAction } from "../../services/actions/undo";
+import { decideWorkspaceAction } from "../../services/actions/confirm";
 import { jsonValidator } from "../http/json";
 import { serverOperationContext } from "../http/operation-context";
 import { attachServiceErrorHandler } from "../http/route-error";
@@ -158,6 +160,10 @@ aiRoutes.post("/write", jsonValidator(aiWriteRequestSchema), async (c) =>
 
 aiRoutes.post("/actions/undo", jsonValidator(actionUndoRequestSchema), async (c) =>
   c.json(await undoWorkspaceAction(serverOperationContext(c), c.req.valid("json"))),
+);
+
+aiRoutes.post("/actions/decide", jsonValidator(actionDecisionRequestSchema), async (c) =>
+  c.json(await decideWorkspaceAction(serverOperationContext(c), c.req.valid("json"))),
 );
 
 aiRoutes.get("/capabilities", (c) =>

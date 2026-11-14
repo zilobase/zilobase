@@ -9,7 +9,7 @@
  *     --credentials worker-user.json --only page-tree --repeat 3
  *
  * Credentials files hold { "email", "password" }. The stack needs a model key
- * and AI_ACTION_MILESTONES=A,B,C (C for the edit scenarios). Every run writes real content to the workspace.
+ * and AI_ACTION_MILESTONES=A,B,C,D (C for edits, D for confirmations and undo of deletions). Every run writes real content to the workspace.
  */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -426,6 +426,58 @@ const scenarios = [
         restored.name === `Draft ${tag}`,
         `undo restores the title (found "${restored.name}")`,
       );
+    },
+  },
+  {
+    name: "confirm-delete-page",
+    setup: (tag) => `Create a page called "Old notes ${tag}" with one paragraph.`,
+    prompt: (tag) => `Move the "Old notes ${tag}" page to the trash.`,
+    async check(run, check, tag, setup) {
+      const [id] = createdPages(setup);
+      if (!check.that(id, "the setup creates a page")) return;
+      const proposal = actions(run).find((a) => a.action === "pages.delete");
+      if (!check.that(proposal?.confirmation === "pending", "proposes the deletion")) return;
+      check.that(!(await readPage(id)).deletedAt, "nothing is deleted before confirmation");
+      const decided = await call("POST", "/ai/actions/decide", {
+        workspaceId,
+        invocationId: proposal.invocationId,
+        callId: proposal.id,
+        decision: "confirm",
+      });
+      check.that(decided.status === "completed", "confirming runs it");
+      const after = await readPage(id).catch(() => null);
+      check.that(!after || after.deletedAt, "the page is in the trash after confirming");
+      await call("POST", "/ai/actions/undo", {
+        workspaceId,
+        invocationId: proposal.invocationId,
+        callId: proposal.id,
+      });
+      check.that(!(await readPage(id)).deletedAt, "undo restores the page");
+    },
+  },
+  {
+    name: "cancel-archive-rows",
+    setup: (tag) => `Create a "Inbox ${tag}" database with three rows: "One", "Two", "Three".`,
+    prompt: (tag) => `Archive the row "Two" in the "Inbox ${tag}" database.`,
+    async check(run, check, tag, setup) {
+      const [databaseId] = createdDatabases(setup);
+      if (!check.that(databaseId, "the setup creates a database")) return;
+      const proposal = actions(run).find((a) => a.confirmation === "pending");
+      if (
+        !check.that(
+          proposal,
+          `proposes the archive (activities: ${(run.progress?.activities ?? []).map((a) => `${a.action ?? a.name}:${a.status}${a.error ? `:${a.error.slice(0, 120)}` : ""}`).join(", ")}; answer: ${run.text?.slice(0, 200)})`,
+        )
+      )
+        return;
+      const decided = await call("POST", "/ai/actions/decide", {
+        workspaceId,
+        invocationId: proposal.invocationId,
+        callId: proposal.id,
+        decision: "cancel",
+      });
+      check.that(decided.status === "cancelled", "cancelling is recorded");
+      check.that((await readDatabase(databaseId)).rows.length === 3, "all three rows remain");
     },
   },
   {

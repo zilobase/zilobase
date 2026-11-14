@@ -9,9 +9,13 @@ export const workspaceActionReceipt = pgTable(
     invocationId: text("invocation_id").notNull(),
     callId: text("call_id").notNull(),
     opIndex: integer("op_index").notNull(),
-    kind: text("kind").$type<"database" | "page">().notNull(),
+    /** "proposal" rows hold a destructive action awaiting the user's decision. */
+    kind: text("kind").$type<"database" | "page" | "proposal">().notNull(),
     request: jsonb("request").notNull(),
-    status: text("status").$type<"pending" | "completed">().notNull().default("pending"),
+    status: text("status")
+      .$type<"pending" | "completed" | "proposed" | "confirmed" | "cancelled">()
+      .notNull()
+      .default("pending"),
     result: jsonb("result"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),

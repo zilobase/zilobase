@@ -120,7 +120,7 @@ export function useChatRunDebug(workspaceId: string, runId: string, enabled: boo
 import type { AiWriteRequest } from "./contracts";
 import { refreshAfterWorkspaceActions } from "./changes";
 import type { ChatToolActivity } from "./tools";
-import { requestAiWriting, undoAiAction } from "./writing";
+import { decideAiAction, requestAiWriting, undoAiAction } from "./writing";
 /** Generates Markdown for the editor's inline AI; the caller previews and applies it. */
 export function useAiWriting() {
   const context = useZilobaseFeatures();
@@ -145,6 +145,41 @@ export function useUndoAiAction(workspaceId: string) {
         new Set(),
       );
       return result;
+    },
+  });
+}
+
+/** Confirms or cancels a proposed destructive AI action and refreshes what it changed. */
+export function useDecideAiAction(workspaceId: string) {
+  const context = useZilobaseFeatures();
+  return useMutation({
+    mutationFn: async ({
+      activity,
+      decision,
+    }: {
+      activity: ChatToolActivity;
+      decision: "confirm" | "cancel";
+    }) => {
+      if (!activity.invocationId) throw new Error("This action can't be confirmed.");
+      const result = await decideAiAction(context, {
+        workspaceId,
+        invocationId: activity.invocationId,
+        callId: activity.id,
+        decision,
+      });
+      const decided: ChatToolActivity = {
+        ...activity,
+        confirmation: undefined,
+        changes: result.changes,
+      };
+      if (result.changes.length)
+        await refreshAfterWorkspaceActions(
+          context.queryClient,
+          workspaceId,
+          { canContinue: false, activities: [decided] },
+          new Set(),
+        );
+      return { ...result, activity: decided };
     },
   });
 }

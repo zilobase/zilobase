@@ -33,6 +33,8 @@ export const chatToolActivitySchema = z.object({
   action: z.string().max(128).optional(),
   /** The run's invocation ID, with the activity ID (the tool call ID) identifying the call to undo. */
   invocationId: z.string().max(128).optional(),
+  /** A destructive action waits for the user's Confirm or Cancel in the chat. */
+  confirmation: z.literal("pending").optional(),
   changes: z
     .array(
       z.object({

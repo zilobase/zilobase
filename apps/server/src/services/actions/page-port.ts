@@ -6,7 +6,7 @@ import { createPageOperation, embedPageOperation } from "../pages/hierarchy/oper
 import { appendPageCommentOperation } from "../pages/content/comment-operation";
 import { editPageContentOperation } from "../pages/content/edit-operation";
 import { updatePageOperation } from "../pages/content/operations";
-import { restorePageOperation } from "../pages/lifecycle/operations";
+import { deletePageOperation, restorePageOperation } from "../pages/lifecycle/operations";
 import { favoritePageOperation, unfavoritePageOperation } from "../pages/navigation/operations";
 import { actionSequence, type ActionChange, type ActionSequence } from "./database-port";
 import { deterministicActionId, type ActionReceiptStore } from "./receipts";
@@ -32,6 +32,7 @@ type PageRequest =
   | { op: "page.favorite"; pageId: string; favorite: boolean }
   | { op: "page.comment"; pageId: string; body: string; threadId: string; messageId: string }
   | { op: "page.restore"; pageId: string }
+  | { op: "page.delete"; pageId: string }
   | { op: "page.edit"; pageId: string; edits: unknown[]; editId: string }
   | { op: "page.embed"; pageId: string; itemId: string; kind: "page" | "database" };
 
@@ -105,6 +106,8 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         });
       case "page.restore":
         return restorePageOperation(context, { pageId: request.pageId });
+      case "page.delete":
+        return deletePageOperation(context, { pageId: request.pageId });
       case "page.embed":
         return embedPageOperation(context, {
           pageId: request.pageId,
@@ -217,6 +220,12 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
           const { action, placementId } = result as { action: string; placementId: string | null };
           return { action, placementId };
         },
+      ),
+    deletePage: ({ pageId }) =>
+      run(
+        { op: "page.delete", pageId },
+        { op: "page.restore", input: { pageId } },
+        (result) => result,
       ),
     restorePage: ({ pageId }) =>
       run({ op: "page.restore", pageId }, { op: "page.delete", input: { pageId } }),

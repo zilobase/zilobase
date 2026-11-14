@@ -1,12 +1,14 @@
 import { tool, type ToolSet } from "ai";
 import {
   exposedActions,
+  requiresConfirmation,
   workspaceActions,
   type ActionMilestone,
   type ChatToolActivity,
 } from "@zilobase/features/runtime";
 import { getStringEnv } from "../../shared/config/config";
 import { executeWorkspaceAction, personalScopes, type ActionOutcome } from "../actions/execute";
+import { proposeWorkspaceAction } from "../actions/confirm";
 import { databaseReceiptStore, recordActionChanges } from "../actions/stores";
 import { runServerOperation, type ServerOperationContext } from "../operations/context";
 
@@ -68,6 +70,36 @@ export function createActionTools(
       };
       input.progress?.activities.push(activity);
       await input.changed?.();
+      if (requiresConfirmation(action)) {
+        // Destructive actions only become proposals; the user confirms them in the chat.
+        const parsed = action.input.safeParse(value);
+        if (!parsed.success) {
+          activity.status = "failed";
+          activity.error = parsed.error.message.slice(0, 512);
+          await input.changed?.();
+          return { status: "rejected", error: parsed.error.message };
+        }
+        await runServerOperation(context, () =>
+          proposeWorkspaceAction(
+            { invocationId: input.invocationId, callId: toolCallId },
+            {
+              name: action.name,
+              input: parsed.data,
+              workspaceId: input.workspaceId,
+              userId: user.id,
+            },
+          ),
+        );
+        activity.status = "completed";
+        activity.confirmation = "pending";
+        activity.changes = [];
+        await input.changed?.();
+        return {
+          status: "awaiting_confirmation",
+          message:
+            "Nothing has changed yet. The user must press Confirm in the chat. Tell them exactly what will happen; do not call this tool again or claim it is done.",
+        };
+      }
       const outcome: ActionOutcome = await runServerOperation(context, () =>
         executeWorkspaceAction({
           context,

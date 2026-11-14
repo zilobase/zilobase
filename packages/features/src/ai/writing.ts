@@ -1,6 +1,9 @@
 import { captureClientOperation, type ClientOperationContext } from "../shared/operation-context";
+import type { ChatToolActivity } from "./tools";
 import {
+  actionDecisionRequestSchema,
   actionUndoRequestSchema,
+  type ActionDecisionRequest,
   aiWriteRequestSchema,
   type ActionUndoRequest,
   type AiWriteRequest,
@@ -59,5 +62,17 @@ export function undoAiAction(context: ClientOperationContext, input: ActionUndoR
   return scope.context.apiFetch<{ undone: number }>("/ai/actions/undo", {
     method: "POST",
     body: JSON.stringify(actionUndoRequestSchema.parse(input)),
+  });
+}
+
+/** Confirms or cancels a destructive action the AI proposed; only the user can decide. */
+export function decideAiAction(context: ClientOperationContext, input: ActionDecisionRequest) {
+  const scope = captureClientOperation(context);
+  return scope.context.apiFetch<{
+    status: "completed" | "cancelled";
+    changes: NonNullable<ChatToolActivity["changes"]>;
+  }>("/ai/actions/decide", {
+    method: "POST",
+    body: JSON.stringify(actionDecisionRequestSchema.parse(input)),
   });
 }

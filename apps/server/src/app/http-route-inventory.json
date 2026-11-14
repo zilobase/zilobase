@@ -184,6 +184,8 @@
   "POST /ai/write",
   "POST /ai/actions/undo",
   "POST /ai/actions/undo",
+  "POST /ai/actions/decide",
+  "POST /ai/actions/decide",
   "GET /ai/capabilities",
   "GET /session",
   "GET /user-settings",

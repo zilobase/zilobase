@@ -8,9 +8,9 @@
 
 export type ActionReceiptKey = { invocationId: string; callId: string; opIndex: number };
 export type ActionReceipt = {
-  kind: "database" | "page";
+  kind: "database" | "page" | "proposal";
   request: unknown;
-  status: "pending" | "completed";
+  status: "pending" | "completed" | "proposed" | "confirmed" | "cancelled";
   result?: unknown;
 };
 

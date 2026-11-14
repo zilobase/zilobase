@@ -161,7 +161,11 @@ export { timedLayout } from "../calendar/context";
 
 export { parsePageDocument } from "@zilobase/page-context";
 export { chatRequestSchema } from "../ai/contracts";
-export { actionUndoRequestSchema, aiWriteRequestSchema } from "../ai/contracts";
+export {
+  actionDecisionRequestSchema,
+  actionUndoRequestSchema,
+  aiWriteRequestSchema,
+} from "../ai/contracts";
 export { chatDisplayText } from "../ai/citations";
 export type { ChatRequest, ChatRequestInput, ChatEvent, ChatMessage } from "../ai/contracts";
 
@@ -192,7 +196,7 @@ export { chatReferences, chatReferenceMarker, resolveChatReferences } from "../a
 
 export { runPlan, isPlanRejection, rejectPlan, PlanResults } from "../actions/plan";
 export type { ActionPlan, PlanOps, PlanOutcome, PlanRun, PlanStep } from "../actions/plan";
-export { exposedActions } from "../actions/types";
+export { exposedActions, requiresConfirmation } from "../actions/types";
 export type {
   ActionEffect,
   ActionGroup,

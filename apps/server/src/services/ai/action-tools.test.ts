@@ -24,15 +24,21 @@ test("workspace action tools are disabled unless milestones are configured", () 
   expect(enabledActionMilestones(context(" a, b ,x").env)).toEqual(["A", "B"]);
 });
 
-test("enabled milestones expose write actions but never destructive ones", () => {
-  const names = Object.keys(
-    createActionTools(context("A,D"), { workspaceId: "org", invocationId: "run" }),
+test("destructive actions are exposed only with milestone D, as proposals", () => {
+  const names = (milestones: string) =>
+    Object.keys(
+      createActionTools(context(milestones), { workspaceId: "org", invocationId: "run" }),
+    );
+  const ab = names("A,B");
+  expect(ab).toContain(actionToolName("databases.add_view"));
+  expect(ab).toContain("databases_update_rows");
+  expect(ab).not.toContain("databases_archive_rows");
+  expect(ab).not.toContain("pages_delete");
+  expect(ab).not.toContain("databases_describe");
+  expect(ab.every((name) => /^[a-zA-Z0-9_-]+$/.test(name))).toBe(true);
+  expect(names("A,B,D")).toEqual(
+    expect.arrayContaining(["databases_archive_rows", "pages_delete"]),
   );
-  expect(names).toContain(actionToolName("databases.add_view"));
-  expect(names).toContain("databases_update_rows");
-  expect(names).not.toContain("databases_archive_rows");
-  expect(names).not.toContain("databases_describe");
-  expect(names.every((name) => /^[a-zA-Z0-9_-]+$/.test(name))).toBe(true);
 });
 
 test("signed-out contexts get no write tools", () => {

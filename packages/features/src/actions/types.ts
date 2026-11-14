@@ -65,7 +65,15 @@ export function exposedActions<T extends { effect: ActionEffect; milestone: Acti
   actions: readonly T[],
   milestones: readonly ActionMilestone[],
 ) {
+  // Destructive actions are exposed with D, where they always wait for the user's confirmation.
   return actions.filter(
-    (action) => action.effect !== "destructive" && milestones.includes(action.milestone),
+    (action) =>
+      milestones.includes(action.milestone) &&
+      (action.effect !== "destructive" || milestones.includes("D")),
   );
+}
+
+/** Actions a principal proposes and the user confirms before anything runs. */
+export function requiresConfirmation(action: { effect: ActionEffect }) {
+  return action.effect === "destructive";
 }

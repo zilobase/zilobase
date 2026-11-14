@@ -1,7 +1,7 @@
 import type { ChatMessage, ChatToolActivity } from "@zilobase/features/ai";
 import { Trace } from "@/components/ui/trace";
 import { ActivityDisclosure } from "./activity-trace";
-import { useUndoAiAction } from "@zilobase/features/ai/react";
+import { useDecideAiAction, useUndoAiAction } from "@zilobase/features/ai/react";
 import { useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { AnswerSources, ChatSourceContext } from "./answer-sources";
@@ -221,7 +221,11 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
               {latest.name === "workspace_action" &&
                 status === "completed" &&
                 latest.invocationId &&
-                (latest.changes?.length ?? 0) > 0 && <UndoAction activity={latest} />}
+                (latest.confirmation === "pending" ? (
+                  <ConfirmAction activity={latest} />
+                ) : (
+                  (latest.changes?.length ?? 0) > 0 && <UndoAction activity={latest} />
+                ))}
               {!links.length && !detail && (
                 <p className="text-xs">Source details are unavailable.</p>
               )}
@@ -251,6 +255,45 @@ function UndoAction({ activity }: { activity: ChatToolActivity }) {
       >
         {undo.isPending ? "Undoing…" : "Undo"}
       </Button>
+      {message && <p className="text-xs text-feedback-danger-text">{message}</p>}
+    </div>
+  );
+}
+
+/** A destructive action the AI proposed runs only when the user confirms it here. */
+function ConfirmAction({ activity }: { activity: ChatToolActivity }) {
+  const { workspaceId } = useContext(ChatSourceContext);
+  const decide = useDecideAiAction(workspaceId ?? "");
+  if (!workspaceId) return null;
+  if (decide.data?.status === "cancelled")
+    return <p className="mt-1.5 text-xs text-content-secondary">Cancelled. Nothing changed.</p>;
+  if (decide.data) return <UndoAction activity={decide.data.activity} />;
+  const message = decide.error instanceof Error ? decide.error.message : null;
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      <p className="text-xs text-content-secondary">
+        Waiting for your confirmation. Nothing has changed yet.
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          disabled={decide.isPending}
+          onClick={() => decide.mutate({ activity, decision: "confirm" })}
+          size="sm"
+          type="button"
+          variant="destructive"
+        >
+          {decide.isPending ? "Working…" : "Confirm"}
+        </Button>
+        <Button
+          disabled={decide.isPending}
+          onClick={() => decide.mutate({ activity, decision: "cancel" })}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          Cancel
+        </Button>
+      </div>
       {message && <p className="text-xs text-feedback-danger-text">{message}</p>}
     </div>
   );

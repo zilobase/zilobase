@@ -14,7 +14,7 @@ import {
 import { editPageContentOperation } from "../pages/content/edit-operation";
 import { updatePageOperation } from "../pages/content/operations";
 import { removeEmbedPageOperation } from "../pages/hierarchy/operations";
-import { deletePageOperation } from "../pages/lifecycle/operations";
+import { deletePageOperation, restorePageOperation } from "../pages/lifecycle/operations";
 import { favoritePageOperation, unfavoritePageOperation } from "../pages/navigation/operations";
 import { deterministicActionId } from "./receipts";
 
@@ -116,6 +116,9 @@ async function applyInverse(
   switch (inverse.op) {
     case "page.delete":
       await deletePageOperation(context, { pageId });
+      return;
+    case "page.restore":
+      await restorePageOperation(context, { pageId });
       return;
     case "page.favorite":
       await (inverse.input.favorite ? favoritePageOperation : unfavoritePageOperation)(context, {

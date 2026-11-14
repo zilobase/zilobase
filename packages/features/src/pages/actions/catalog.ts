@@ -37,6 +37,7 @@ export type PageActionOps = {
     body: string;
   }) => Promise<{ threadId: string; messageId: string }>;
   restorePage: (input: { pageId: string }) => Promise<Page>;
+  deletePage: (input: { pageId: string }) => Promise<unknown>;
   embedItem: (input: {
     hostPageId: string;
     itemId: string;
@@ -368,6 +369,19 @@ export const pageActions = [
       },
     }),
     milestone: "C" as const,
+  },
+  {
+    ...pageAction({
+      name: "pages.delete",
+      title: "Move page to trash",
+      description:
+        "Move a page (and its subpages) to the trash. The user must confirm it in the chat before it happens.",
+      input: z.object({ pageId: id }).strict(),
+      covers: ["page.delete"],
+      plan: (_, input) => ({ steps: [{ op: "deletePage", input: () => input }] }),
+    }),
+    effect: "destructive" as const,
+    milestone: "D" as const,
   },
   pageAction({
     name: "pages.restore",

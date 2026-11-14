@@ -124,3 +124,9 @@ export const actionUndoRequestSchema = z
   })
   .strict();
 export type ActionUndoRequest = z.infer<typeof actionUndoRequestSchema>;
+
+/** The user's Confirm or Cancel for a proposed destructive action (POST /ai/actions/decide). */
+export const actionDecisionRequestSchema = actionUndoRequestSchema
+  .extend({ decision: z.enum(["confirm", "cancel"]) })
+  .strict();
+export type ActionDecisionRequest = z.infer<typeof actionDecisionRequestSchema>;
