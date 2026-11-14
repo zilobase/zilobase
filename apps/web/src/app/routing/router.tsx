@@ -29,7 +29,7 @@ import {
   validateDatabaseSearch,
   validateLibrarySearch,
   validateLoginSearch,
-  validateMeetingSearch,
+  validatePageSearch,
   validateOAuthConsentSearch,
   validateSignupSearch,
   validateTeamSettingsSearch,
@@ -279,7 +279,7 @@ const contentRoutes = [
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/p/$pageId",
-    validateSearch: validateMeetingSearch,
+    validateSearch: validatePageSearch,
     beforeLoad: ({ params }) =>
       Effect.runPromise(
         applyPageShareAccess(params.pageId).pipe(

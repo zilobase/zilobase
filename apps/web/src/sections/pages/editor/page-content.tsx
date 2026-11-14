@@ -13,7 +13,10 @@ import { setPageConnectionIndicator } from "@/sections/pages/editor/collaboratio
 import { usePageCommentsRegistry } from "@/sections/pages/editor/comments/components/comments-context";
 import { createPageCommentController } from "@/sections/pages/editor/comments/lib/yjs-comments";
 import { Editor } from "@/sections/pages/editor/editor";
-import { scrollToMeetingBlock } from "@/sections/pages/editor/extensions/meeting/lib/meeting-block-navigation";
+import {
+  scrollToBlock,
+  scrollToMeetingBlock,
+} from "@/sections/pages/editor/extensions/meeting/lib/meeting-block-navigation";
 import type {
   PageLayoutPanelMode,
   StructuralBlockDeleteRequest,
@@ -71,6 +74,8 @@ type PageEditorPaneProps = {
   databaseId?: string | null;
   enableComments?: boolean;
   focusMeetingId?: string;
+  /** A block to reveal, from an AI citation. */
+  focusBlockId?: string;
   hideChrome?: boolean;
   hideEditorContent?: boolean;
   layoutPanelMode?: PageLayoutPanelMode;
@@ -90,6 +95,7 @@ export function PageContent({
   databaseId,
   enableComments = true,
   focusMeetingId,
+  focusBlockId,
   hideChrome = false,
   hideEditorContent = false,
   layoutPanelMode = "auto",
@@ -481,12 +487,15 @@ export function PageContent({
   }, [collaboration.synced, isLoading, liveEditingReady, page, pageEditable, pageId]);
 
   useEffect(() => {
-    if (!focusMeetingId || isLoading) return;
+    if ((!focusMeetingId && !focusBlockId) || isLoading) return;
 
     const root = paneRef.current;
     if (!root) return;
 
-    const revealMeeting = () => scrollToMeetingBlock(root, focusMeetingId);
+    const revealMeeting = () =>
+      focusMeetingId
+        ? scrollToMeetingBlock(root, focusMeetingId)
+        : scrollToBlock(root, focusBlockId!);
 
     if (revealMeeting()) return;
 
@@ -500,7 +509,7 @@ export function PageContent({
       window.clearTimeout(timeout);
       observer.disconnect();
     };
-  }, [focusMeetingId, isLoading, page?.id]);
+  }, [focusBlockId, focusMeetingId, isLoading, page?.id]);
   const databaseEditingReady = pageEditable && onlineActionsReady;
 
   const restoreTrashedPage = () => {

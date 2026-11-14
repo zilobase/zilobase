@@ -97,3 +97,19 @@ test("citations stay inline, repeat in place, and only resolve successfully read
   ]);
   assert.equal(chatDisplayText(literal), literal.trimEnd());
 });
+
+test("page citations may point at one block of a read page", () => {
+  const entry = {
+    key: "page:allowed",
+    id: "allowed",
+    type: "page" as const,
+    title: "Plan",
+    pageId: "allowed",
+    provenance: { capturedAt: "now", origin: "saved" as const },
+  };
+  assert.deepEqual(chatCitationParts("Risks [[page:allowed#block-7]] [[page:unread#b]]", [entry]), [
+    { type: "text", text: "Risks " },
+    { type: "citation", entry, blockId: "block-7" },
+    { type: "text", text: "" },
+  ]);
+});

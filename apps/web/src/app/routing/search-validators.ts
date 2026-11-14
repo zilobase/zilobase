@@ -59,12 +59,16 @@ export function validateLibrarySearch(search: Record<string, unknown>): {
     : {};
 }
 
-export function validateMeetingSearch(search: Record<string, unknown>): {
+/** Page links may focus a meeting block or, from AI citations, any block by its ID. */
+export function validatePageSearch(search: Record<string, unknown>): {
   meeting?: string;
+  block?: string;
 } {
-  return typeof search.meeting === "string" && search.meeting.trim()
-    ? { meeting: search.meeting.trim() }
-    : {};
+  const value = (key: string) =>
+    typeof search[key] === "string" && search[key].trim() ? search[key].trim() : undefined;
+  const meeting = value("meeting");
+  const block = value("block");
+  return { ...(meeting ? { meeting } : {}), ...(block ? { block } : {}) };
 }
 
 export function validateDatabaseSearch(search: Record<string, unknown>) {

@@ -42,7 +42,8 @@ function withoutPendingMarker(text: string) {
 
 export type ChatCitationPart =
   | { type: "text"; text: string }
-  | { type: "citation"; entry: ContextManifestEntry };
+  /** `blockId` comes from `[[page:ID#BLOCK_ID]]`, citing one block of a read page. */
+  | { type: "citation"; entry: ContextManifestEntry; blockId?: string };
 
 export function chatCitationParts(
   text: string,
@@ -53,10 +54,14 @@ export function chatCitationParts(
   const parts: ChatCitationPart[] = [];
   let position = 0;
   for (const marker of chatMarkers(content)) {
-    let key = `${marker.type}:${marker.id}`;
+    const [markerId, blockId] =
+      marker.type === "page" && marker.id.includes("#")
+        ? (marker.id.split("#", 2) as [string, string])
+        : [marker.id, undefined];
+    let key = `${marker.type}:${markerId}`;
     if (!entries.has(key)) {
       try {
-        key = `${marker.type}:${decodeURIComponent(marker.id)}`;
+        key = `${marker.type}:${decodeURIComponent(markerId)}`;
       } catch {
         /* Invalid markers cannot cite evidence. */
       }
@@ -65,7 +70,8 @@ export function chatCitationParts(
     const preceding = content.slice(position, marker.from);
     if (preceding)
       parts.push({ type: "text", text: entry ? preceding : preceding.replace(/[ \t]+$/, "") });
-    if (entry) parts.push({ type: "citation", entry });
+    if (entry)
+      parts.push(blockId ? { type: "citation", entry, blockId } : { type: "citation", entry });
     position = marker.to;
   }
   if (position < content.length) parts.push({ type: "text", text: content.slice(position) });

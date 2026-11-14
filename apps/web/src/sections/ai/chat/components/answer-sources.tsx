@@ -17,7 +17,8 @@ export const ChatSourceContext = createContext<{
   openIn: "sidepanel" | "main";
 }>({ workspaceId: null, openIn: "main" });
 
-export function SourcePill({ entry }: { entry: SourceLink }) {
+/** `blockId` opens the page at one cited block. */
+export function SourcePill({ entry, blockId }: { entry: SourceLink; blockId?: string }) {
   const { workspaceId, openIn } = useContext(ChatSourceContext);
   const source = entry.pageId
     ? { type: "page" as const, id: entry.pageId }
@@ -38,9 +39,12 @@ export function SourcePill({ entry }: { entry: SourceLink }) {
               ? { pageId: encodeURIComponent(entry.pageId) }
               : { databaseId: encodeURIComponent(entry.databaseId!) },
           )}
+          search={entry.pageId && blockId ? { block: blockId } : undefined}
           onClick={(event) => {
+            // The side pane has no block focus; block citations open the page itself.
             if (
               openIn !== "sidepanel" ||
+              (entry.pageId && blockId) ||
               event.button !== 0 ||
               event.metaKey ||
               event.ctrlKey ||

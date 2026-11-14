@@ -19,7 +19,10 @@ export function MessageSources({
   isAnimating?: boolean;
 }) {
   const { markdown, components } = useMemo(() => {
-    const sources = new Map<string, { source: ResourceRef; entry?: ContextManifestEntry }>();
+    const sources = new Map<
+      string,
+      { source: ResourceRef; entry?: ContextManifestEntry; blockId?: string }
+    >();
     const parts = manifest ? chatCitationParts(text, manifest) : chatMentionParts(text, roots);
     const markdown = parts
       .map((part, index) => {
@@ -34,7 +37,11 @@ export function MessageSources({
                 : null;
         if (!source) return "";
         const key = String(index);
-        sources.set(key, { source, entry: part.type === "citation" ? part.entry : undefined });
+        sources.set(key, {
+          source,
+          entry: part.type === "citation" ? part.entry : undefined,
+          blockId: part.type === "citation" ? part.blockId : undefined,
+        });
         return `<ai-source index="${key}"></ai-source>`;
       })
       .join("");
@@ -42,7 +49,9 @@ export function MessageSources({
     const components: Components = {
       "ai-source": (props) => {
         const source = sources.get(String(props.index ?? ""));
-        return source ? <InlineMention source={source.source} entry={source.entry} /> : null;
+        return source ? (
+          <InlineMention source={source.source} entry={source.entry} blockId={source.blockId} />
+        ) : null;
       },
     };
     return { markdown, components };
@@ -54,13 +63,22 @@ export function MessageSources({
   );
 }
 
-function InlineMention({ source, entry }: { source: ResourceRef; entry?: ContextManifestEntry }) {
+function InlineMention({
+  source,
+  entry,
+  blockId,
+}: {
+  source: ResourceRef;
+  entry?: ContextManifestEntry;
+  blockId?: string;
+}) {
   return (
     <span
       data-ai-message-mention={`${source.type}:${source.id}`}
       className="mx-0.5 inline-flex max-w-full align-middle"
     >
       <SourcePill
+        blockId={blockId}
         entry={
           entry ?? {
             key: `${source.type}:${source.id}`,

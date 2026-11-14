@@ -36,7 +36,7 @@ export default function PageScreen() {
 
 function AuthenticatedPage() {
   const { pageId } = useParams({ from: "/p/$pageId" });
-  const { meeting: focusMeetingId } = useSearch({ from: "/p/$pageId" });
+  const { meeting: focusMeetingId, block: focusBlockId } = useSearch({ from: "/p/$pageId" });
   const { data: page } = usePage(pageId, { refetchOnMount: false });
   const {
     closeSidePane,
@@ -59,6 +59,7 @@ function AuthenticatedPage() {
           <PageWorkspaceGate pageId={pageId}>
             <PageContent
               focusMeetingId={focusMeetingId}
+              focusBlockId={focusBlockId}
               key={pageId}
               onOpenPage={openPage}
               pageId={pageId}
