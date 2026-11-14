@@ -118,9 +118,33 @@ export function useChatRunDebug(workspaceId: string, runId: string, enabled: boo
 }
 
 import type { AiWriteRequest } from "./contracts";
-import { requestAiWriting } from "./writing";
+import { refreshAfterWorkspaceActions } from "./changes";
+import type { ChatToolActivity } from "./tools";
+import { requestAiWriting, undoAiAction } from "./writing";
 /** Generates Markdown for the editor's inline AI; the caller previews and applies it. */
 export function useAiWriting() {
   const context = useZilobaseFeatures();
   return useMutation({ mutationFn: (input: AiWriteRequest) => requestAiWriting(context, input) });
+}
+
+/** Undoes an AI change from its activity card and refreshes the reads it affected. */
+export function useUndoAiAction(workspaceId: string) {
+  const context = useZilobaseFeatures();
+  return useMutation({
+    mutationFn: async (activity: ChatToolActivity) => {
+      if (!activity.invocationId) throw new Error("This change can't be undone.");
+      const result = await undoAiAction(context, {
+        workspaceId,
+        invocationId: activity.invocationId,
+        callId: activity.id,
+      });
+      await refreshAfterWorkspaceActions(
+        context.queryClient,
+        workspaceId,
+        { canContinue: false, activities: [activity] },
+        new Set(),
+      );
+      return result;
+    },
+  });
 }

@@ -1,6 +1,7 @@
 import type { PageActionOps } from "@zilobase/features/runtime";
 import { assignBlockIds } from "@zilobase/page-context";
 import type { ServerOperationContext } from "../operations/context";
+import { getPageRecord } from "../access/resource-access-records";
 import { createPageOperation, embedPageOperation } from "../pages/hierarchy/operations";
 import { appendPageCommentOperation } from "../pages/content/comment-operation";
 import { editPageContentOperation } from "../pages/content/edit-operation";
@@ -21,7 +22,13 @@ export type PagePortOptions = {
 
 type PageRequest =
   | { op: "page.create"; pageId: string; body: Record<string, unknown> }
-  | { op: "page.update"; pageId: string; body: Record<string, unknown> }
+  | {
+      op: "page.update";
+      pageId: string;
+      body: Record<string, unknown>;
+      /** Captured before the update and stored with the request, so replays keep it. */
+      previous?: { name: string; metadata: Record<string, unknown> | null };
+    }
   | { op: "page.favorite"; pageId: string; favorite: boolean }
   | { op: "page.comment"; pageId: string; body: string; threadId: string; messageId: string }
   | { op: "page.restore"; pageId: string }
@@ -41,7 +48,9 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
 
   async function run<T>(
     request: PageRequest | ((opIndex: number) => Promise<PageRequest>),
-    inverse: ActionChange["inverse"],
+    inverse:
+      | ActionChange["inverse"]
+      | ((result: unknown, request: PageRequest) => ActionChange["inverse"]),
     pick: (result: unknown) => T = (result) => (result as { page: T }).page,
   ) {
     const key = {
@@ -69,7 +78,7 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
       dataSourceId: null,
       pageId: replayed.pageId,
       ack: { commandId: `${key.opIndex}`, event: null, result, sourceVersions: {} } as never,
-      inverse,
+      inverse: typeof inverse === "function" ? inverse(result, replayed) : inverse,
     });
     return pick(result);
   }
@@ -137,7 +146,29 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
         },
         { op: "page.delete", input: { pageId } },
       ),
-    updatePage: ({ pageId, ...patch }) => run({ op: "page.update", pageId, body: patch }, null),
+    updatePage: ({ pageId, ...patch }) =>
+      run(
+        async () => {
+          const page = await getPageRecord(pageId);
+          return {
+            op: "page.update",
+            pageId,
+            body: patch,
+            ...(page
+              ? { previous: { name: page.name, metadata: (page.metadata ?? null) as never } }
+              : {}),
+          };
+        },
+        (_, request) => {
+          const previous = request.op === "page.update" ? request.previous : undefined;
+          if (!previous) return null;
+          const emoji = (previous.metadata as { emoji?: unknown } | null)?.emoji ?? null;
+          return {
+            op: "page.update",
+            input: { pageId, name: previous.name, metadata: { ...previous.metadata, emoji } },
+          };
+        },
+      ),
     addPageComment: ({ pageId, body }) =>
       run(
         async (opIndex) => ({
@@ -170,7 +201,12 @@ export function createPageActionPort(options: PagePortOptions): PageActionOps {
             `edit:${opIndex}`,
           ),
         }),
-        null,
+        (result) => {
+          const edit = result as { status: string; inverse?: unknown[] };
+          return edit.status === "applied" && edit.inverse
+            ? { op: "page.edit", input: { pageId, edits: edit.inverse } }
+            : null;
+        },
         (result) => result as { status: "applied" | "replayed"; blocks: number },
       ),
     embedItem: ({ hostPageId, itemId, kind }) =>

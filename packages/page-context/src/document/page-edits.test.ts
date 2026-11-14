@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import { markdownToPageDocument } from "../markdown/markdown-to-page-document";
 import { prosemirrorToMarkdown } from "../markdown/prosemirror-to-markdown";
-import { planPageEdits } from "./page-edits";
+import { assignBlockIds } from "./block-ids";
+import { invertPageSplices, planPageEdits } from "./page-edits";
 
 const page = markdownToPageDocument(
   [
@@ -107,4 +108,30 @@ test("block IDs anchor any edit exactly, including replacements", () => {
   ).toMatchObject({
     splices: [{ index: 1, deleteCount: 1 }],
   });
+});
+
+test("inverted splices restore the page exactly", () => {
+  let next = 0;
+  const before = assignBlockIds(page.content ?? [], () => `b-${next++}`);
+  const plan = planPageEdits({ type: "doc", content: before }, [
+    { type: "replace_section", heading: "Risks", markdown: "- New risk" },
+    { type: "prepend", markdown: "Draft" },
+    { type: "replace_text", find: "Done.", replace: "Finished." },
+  ]);
+  if ("error" in plan) throw new Error(plan.error);
+  const splices = plan.splices.map((splice) => ({
+    ...splice,
+    nodes: assignBlockIds(splice.nodes, () => `n-${next++}`),
+  }));
+  const after = splices.reduce(
+    (blocks, splice) => [
+      ...blocks.slice(0, splice.index),
+      ...splice.nodes,
+      ...blocks.slice(splice.index + splice.deleteCount),
+    ],
+    before,
+  );
+  const undo = planPageEdits({ type: "doc", content: after }, invertPageSplices(before, splices));
+  if ("error" in undo) throw new Error(undo.error);
+  expect(undo.blocks).toEqual(before);
 });

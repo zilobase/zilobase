@@ -3,7 +3,12 @@ import type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capa
 import { getRuntimePorts, requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 import * as Y from "yjs";
 import type { RuntimeEnv } from "../../../shared/config/config";
-import { assignBlockIds, planPageEdits, type PageEdit } from "@zilobase/page-context";
+import {
+  assignBlockIds,
+  invertPageSplices,
+  planPageEdits,
+  type PageEdit,
+} from "@zilobase/page-context";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import {
   encodeContentAsYjs,
@@ -38,7 +43,9 @@ export type PageContentEditInput = {
   editId: string;
 };
 export type PageContentEditResult =
-  | { status: "applied" | "replayed"; blocks: number }
+  /** `inverse` restores the page as it was before an applied edit, for undo. */
+  | { status: "applied"; blocks: number; inverse: PageEdit[] }
+  | { status: "replayed"; blocks: number }
   | { status: "rejected"; error: string };
 
 export async function editPageContent(input: PageContentEditInput) {
@@ -320,19 +327,20 @@ export async function editPageContentInHocuspocus(
         result = { status: "rejected", error: plan.error };
         return;
       }
-      for (const splice of plan.splices) {
+      const splices = plan.splices.map((splice) => ({
+        ...splice,
+        nodes: assignBlockIds(splice.nodes, () => crypto.randomUUID()),
+      }));
+      for (const splice of splices) {
         if (splice.deleteCount) fragment.delete(splice.index, splice.deleteCount);
-        if (splice.nodes.length)
-          fragment.insert(
-            splice.index,
-            pageNodesAsYjsBlocks(assignBlockIds(splice.nodes, () => crypto.randomUUID())),
-          );
+        if (splice.nodes.length) fragment.insert(splice.index, pageNodesAsYjsBlocks(splice.nodes));
       }
+      const inverse = invertPageSplices((current.content ?? []) as never[], splices);
       const now = Date.now();
       for (const [id, at] of applied.entries())
         if (now - at > APPLIED_EDIT_RETENTION_MS) applied.delete(id);
       applied.set(input.editId, now);
-      result = { status: "applied", blocks: fragment.length };
+      result = { status: "applied", blocks: fragment.length, inverse };
     });
   } finally {
     await direct.disconnect();

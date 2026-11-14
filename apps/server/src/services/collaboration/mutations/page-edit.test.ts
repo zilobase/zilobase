@@ -39,10 +39,9 @@ test("edits splice only the targeted blocks of the live page and replay as no-op
       { type: "append" as const, markdown: "## Owners\n\nAna" },
     ],
   };
-  expect(await editPageContentInHocuspocus(hocuspocus, input)).toEqual({
-    status: "applied",
-    blocks: 8,
-  });
+  const original = markdownOf(document);
+  const applied = await editPageContentInHocuspocus(hocuspocus, input);
+  expect(applied).toMatchObject({ status: "applied", blocks: 8 });
   expect(markdownOf(document)).toBe(
     "# Plan\n\nIntro\n\n## Risks\n\n- Vendor delay\n- Hiring\n\n## Notes\n\nDone\n\n## Owners\n\nAna",
   );
@@ -58,6 +57,15 @@ test("edits splice only the targeted blocks of the live page and replay as no-op
     materializePageDocument(document) as { content: Array<{ attrs?: { blockId?: string } }> }
   ).content;
   expect(blocks.slice(-2).every((block) => typeof block.attrs?.blockId === "string")).toBe(true);
+  // Applying the recorded inverse restores the page, for undo.
+  const undo = await editPageContentInHocuspocus(hocuspocus, {
+    ...input,
+    editId: "undo-1",
+    edits: (applied as unknown as { inverse: never[] }).inverse,
+  });
+  expect(undo).toMatchObject({ status: "applied" });
+  expect(markdownOf(document)).toBe(original);
+  expect(document.getXmlFragment(FIELD_NAME).get(1)).toBe(untouched);
 });
 
 test("edits that cannot be resolved leave the page unchanged", async () => {

@@ -1,5 +1,10 @@
 import { captureClientOperation, type ClientOperationContext } from "../shared/operation-context";
-import { aiWriteRequestSchema, type AiWriteRequest } from "./contracts";
+import {
+  actionUndoRequestSchema,
+  aiWriteRequestSchema,
+  type ActionUndoRequest,
+  type AiWriteRequest,
+} from "./contracts";
 
 /*
  * Inline AI writing in the editor: the client sends the selection or the text
@@ -45,5 +50,14 @@ export function requestAiWriting(context: ClientOperationContext, input: AiWrite
   return scope.context.apiFetch<AiWriteResult>("/ai/write", {
     method: "POST",
     body: JSON.stringify(aiWriteRequestSchema.parse(input)),
+  });
+}
+
+/** Undoes one AI workspace action call; the server applies its recorded inverses. */
+export function undoAiAction(context: ClientOperationContext, input: ActionUndoRequest) {
+  const scope = captureClientOperation(context);
+  return scope.context.apiFetch<{ undone: number }>("/ai/actions/undo", {
+    method: "POST",
+    body: JSON.stringify(actionUndoRequestSchema.parse(input)),
   });
 }

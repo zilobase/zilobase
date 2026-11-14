@@ -49,6 +49,7 @@ test("Ask AI streams and history reach the API while its screen stays a web rout
     "/ai/runs/run-id/events",
     "/ai/runs/run-id/cancel",
     "/ai/write",
+    "/ai/actions/undo",
   ])
     assert.equal(isNodeApiPath(path), true);
   assert.equal(isNodeApiPath("/ai"), false);

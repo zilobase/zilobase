@@ -114,3 +114,13 @@ export const aiWriteRequestSchema = z
   })
   .strict();
 export type AiWriteRequest = z.infer<typeof aiWriteRequestSchema>;
+
+/** Undo one AI workspace action call (POST /ai/actions/undo). */
+export const actionUndoRequestSchema = z
+  .object({
+    workspaceId: z.string().min(1).max(128),
+    invocationId: z.string().min(1).max(128),
+    callId: z.string().min(1).max(256),
+  })
+  .strict();
+export type ActionUndoRequest = z.infer<typeof actionUndoRequestSchema>;

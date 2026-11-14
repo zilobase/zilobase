@@ -1,7 +1,10 @@
 import type { ChatMessage, ChatToolActivity } from "@zilobase/features/ai";
 import { Trace } from "@/components/ui/trace";
 import { ActivityDisclosure } from "./activity-trace";
-import { AnswerSources } from "./answer-sources";
+import { useUndoAiAction } from "@zilobase/features/ai/react";
+import { useContext } from "react";
+import { Button } from "@/components/ui/button";
+import { AnswerSources, ChatSourceContext } from "./answer-sources";
 import { searchAvailabilityNotice } from "@zilobase/features/search";
 
 type ReadGroup = {
@@ -215,6 +218,10 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
                 />
               )}
               {detail && <p className="mt-1.5 text-xs text-content-secondary">{detail}</p>}
+              {latest.name === "workspace_action" &&
+                status === "completed" &&
+                latest.invocationId &&
+                (latest.changes?.length ?? 0) > 0 && <UndoAction activity={latest} />}
               {!links.length && !detail && (
                 <p className="text-xs">Source details are unavailable.</p>
               )}
@@ -222,6 +229,29 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
           </Trace>
         );
       })}
+    </div>
+  );
+}
+
+/** Undoes one AI change; the server refuses changes it cannot reverse exactly. */
+function UndoAction({ activity }: { activity: ChatToolActivity }) {
+  const { workspaceId } = useContext(ChatSourceContext);
+  const undo = useUndoAiAction(workspaceId ?? "");
+  if (!workspaceId) return null;
+  if (undo.isSuccess) return <p className="mt-1.5 text-xs text-content-secondary">Undone</p>;
+  const message = undo.error instanceof Error ? undo.error.message : null;
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <Button
+        disabled={undo.isPending}
+        onClick={() => undo.mutate(activity)}
+        size="sm"
+        type="button"
+        variant="ghost"
+      >
+        {undo.isPending ? "Undoing…" : "Undo"}
+      </Button>
+      {message && <p className="text-xs text-feedback-danger-text">{message}</p>}
     </div>
   );
 }

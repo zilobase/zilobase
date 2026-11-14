@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   applyConfigurationChanges,
+  invertConfigurationChanges,
   configurationChangesSchema,
   diffConfiguration,
 } from "./configuration";
@@ -45,4 +46,19 @@ test("drafts omit optional fields without sending undefined JSON or spurious rem
   assert.deepEqual(changes, [
     { operation: "set", path: ["summaries"], value: { page: { name: "Task" } } },
   ]);
+});
+
+test("inverted changes restore the previous configuration", () => {
+  const previous = { sorts: [{ column: "a" }], group: { by: "status", hidden: ["x"] }, keep: 1 };
+  const changes = [
+    { operation: "set" as const, path: ["sorts"], value: [] },
+    { operation: "set" as const, path: ["group", "by"], value: "owner" },
+    { operation: "remove" as const, path: ["keep"] },
+    { operation: "set" as const, path: ["filters"], value: [{ id: "f" }] },
+  ];
+  const next = applyConfigurationChanges(previous, changes);
+  assert.deepEqual(
+    applyConfigurationChanges(next, invertConfigurationChanges(previous, changes)),
+    previous,
+  );
 });

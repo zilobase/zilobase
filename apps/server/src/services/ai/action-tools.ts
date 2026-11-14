@@ -62,6 +62,7 @@ export function createActionTools(
         id: toolCallId,
         name: "workspace_action",
         action: action.name,
+        invocationId: input.invocationId,
         status: "running",
         label: action.title,
       };

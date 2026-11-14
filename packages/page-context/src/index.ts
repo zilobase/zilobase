@@ -37,6 +37,7 @@ export {
 } from "./blocks/block-templates";
 export {
   blockText,
+  invertPageSplices,
   planPageEdits,
   type PageEdit,
   type PageEditAnchor,

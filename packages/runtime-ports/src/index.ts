@@ -248,7 +248,8 @@ export interface Documents {
 
 export type PageContentEdit = { pageId: string; userId: string; edits: unknown[]; editId: string };
 export type PageContentEditOutcome =
-  | { status: "applied" | "replayed"; blocks: number }
+  | { status: "applied"; blocks: number; inverse: unknown[] }
+  | { status: "replayed"; blocks: number }
   | { status: "rejected"; error: string };
 
 export type TelemetryProperties = Record<string, boolean | number | string | null | undefined>;

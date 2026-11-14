@@ -4,6 +4,7 @@ import {
   type DatabaseBootstrapResponse,
   type DatabaseCommandAck,
   type DatabaseCommandRequest,
+  invertConfigurationChanges,
 } from "@zilobase/features/runtime";
 import { executeDatabaseApplicationCommand } from "../databases/commands/operations";
 import type { ServerOperationContext } from "../operations/context";
@@ -94,7 +95,72 @@ function inverseOf(input: CommandInput, ack: DatabaseCommandAck): CommandInput |
     case "template.restore":
       return build.buildTemplateState(scope, input.command.templateId, "template.archive");
     default:
-      // Updates and moves need their pre-image, captured when undo ships.
+      return null;
+  }
+}
+
+type Patch = {
+  configuration?: Parameters<typeof invertConfigurationChanges>[1];
+  [field: string]: unknown;
+};
+
+/**
+ * Inverses of updates, from the state before the command ran: configuration
+ * changes are inverted against the previous configuration and plain fields get
+ * their previous values. Row value changes and moves have no pre-image yet.
+ */
+function preImageInverse(input: CommandInput, cache: DatabasePortCache): CommandInput | null {
+  const command = input.command as {
+    type: string;
+    patch?: Patch;
+    viewId?: string;
+    propertyId?: string;
+  };
+  const patch = command.patch;
+  if (!patch) return null;
+  const restore = (previous: Record<string, unknown>, config: unknown) => {
+    const inverse: Patch = {};
+    for (const [field, value] of Object.entries(patch))
+      if (field === "configuration")
+        inverse.configuration = invertConfigurationChanges(config, value as never);
+      else if (previous[field] !== undefined) inverse[field] = previous[field];
+    return inverse;
+  };
+  const bootstrap = cache.bootstrap;
+  switch (command.type) {
+    case "view.update": {
+      const view = bootstrap?.views.find(({ id }) => id === command.viewId);
+      if (!view) return null;
+      const config = cache.viewConfigs.get(view.id) ?? view.config;
+      return {
+        ...input,
+        command: { ...command, patch: restore(view as never, config) } as never,
+      };
+    }
+    case "property.update": {
+      const column = bootstrap?.properties.find(({ id }) => id === command.propertyId);
+      if (!column) return null;
+      const { property } = column as unknown as { property: Record<string, unknown> };
+      return {
+        ...input,
+        command: {
+          ...command,
+          patch: restore(
+            { ...property, ...(column as unknown as Record<string, unknown>) },
+            property.config,
+          ),
+        } as never,
+      };
+    }
+    case "dataSource.update": {
+      const source = bootstrap?.dataSources.find(({ id }) => id === input.dataSourceId);
+      if (!source) return null;
+      return {
+        ...input,
+        command: { ...command, patch: restore(source as never, source.config) } as never,
+      };
+    }
+    default:
       return null;
   }
 }
@@ -133,6 +199,7 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
       protocolVersion: 2 as const,
     };
     if (!stored) await receipts.savePending(key, { kind: "database", request });
+    const before = preImageInverse(input, cache);
     const ack = await execute(
       options.context,
       request.command.type === "database.create"
@@ -151,7 +218,7 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
           : input.databaseId,
       dataSourceId: input.dataSourceId ?? null,
       ack,
-      inverse: inverseOf(input, ack),
+      inverse: inverseOf(input, ack) ?? before,
     });
     return ack;
   }

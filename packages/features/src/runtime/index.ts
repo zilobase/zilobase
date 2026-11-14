@@ -120,7 +120,10 @@ export {
 } from "../databases/views/view-evaluation";
 export { databaseViewQueryHash } from "../databases/views/query-hash";
 export { changeRecordHierarchy } from "../databases/interactions/hierarchy";
-export { applyConfigurationChanges } from "../databases/interactions/configuration";
+export {
+  applyConfigurationChanges,
+  invertConfigurationChanges,
+} from "../databases/interactions/configuration";
 export {
   databaseCreationCommandSchema,
   databaseLifecycleCommandSchema,
@@ -158,7 +161,7 @@ export { timedLayout } from "../calendar/context";
 
 export { parsePageDocument } from "@zilobase/page-context";
 export { chatRequestSchema } from "../ai/contracts";
-export { aiWriteRequestSchema } from "../ai/contracts";
+export { actionUndoRequestSchema, aiWriteRequestSchema } from "../ai/contracts";
 export { chatDisplayText } from "../ai/citations";
 export type { ChatRequest, ChatRequestInput, ChatEvent, ChatMessage } from "../ai/contracts";
 

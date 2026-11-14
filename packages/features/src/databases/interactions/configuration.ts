@@ -39,6 +39,32 @@ export function applyConfigurationChanges(value: unknown, changes: readonly Conf
   return result;
 }
 
+/** Changes that restore `previous` after `changes` were applied to it, for undo. */
+export function invertConfigurationChanges(
+  previous: unknown,
+  changes: readonly ConfigurationChange[],
+): ConfigurationChange[] {
+  const read = (path: readonly string[]) => {
+    let value: unknown = previous;
+    for (const segment of path) {
+      const record = object(value);
+      if (!(segment in record)) return { found: false as const };
+      value = record[segment];
+    }
+    return { found: true as const, value };
+  };
+  return [...changes].reverse().map((change) => {
+    const before = read(change.path);
+    return before.found && before.value !== undefined
+      ? {
+          operation: "set" as const,
+          path: [...change.path],
+          value: structuredClone(before.value) as never,
+        }
+      : { operation: "remove" as const, path: [...change.path] };
+  });
+}
+
 /** For full editor drafts only: capture the exact fields changed at submission. */
 export function diffConfiguration(previous: unknown, next: unknown): ConfigurationChange[] {
   const changes: ConfigurationChange[] = [];

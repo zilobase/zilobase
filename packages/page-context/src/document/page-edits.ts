@@ -24,7 +24,11 @@ export type PageEdit =
   /** Replaces everything under a heading up to the next heading of the same or higher level. */
   | { type: "replace_section"; heading: PageEditAnchor; markdown: string }
   /** Replaces text inside blocks, keeping their formatting; `all` replaces every occurrence. */
-  | { type: "replace_text"; find: string; replace: string; all?: boolean };
+  | { type: "replace_text"; find: string; replace: string; all?: boolean }
+  /** Internal (undo): removes blocks by ID. */
+  | { type: "remove_blocks"; blockIds: string[] }
+  /** Internal (undo): reinserts saved blocks after an anchor, or at the start when `after` is null. */
+  | { type: "insert_nodes"; after: PageEditAnchor | null; nodes: PageDocumentNode[] };
 
 export type PageSplice = { index: number; deleteCount: number; nodes: PageDocumentNode[] };
 export type PageEditPlan =
@@ -125,6 +129,19 @@ export function planPageEdits(
       else splice(edit.type === "append" ? blocks.length : 0, 0, nodes(edit.markdown));
       continue;
     }
+    if (edit.type === "remove_blocks") {
+      for (const id of edit.blockIds) {
+        const index = blocks.findIndex((block) => blockId(block) === id);
+        if (index >= 0) splice(index, 1, []);
+      }
+      continue;
+    }
+    if (edit.type === "insert_nodes") {
+      const index = edit.after === null ? -1 : findBlock(blocks, edit.after, true);
+      if (typeof index === "string") return { error: index };
+      splice(index + 1, 0, edit.nodes);
+      continue;
+    }
     if (edit.type === "replace_text") {
       if (!edit.find) return { error: "replace_text needs text to find." };
       let total = 0;
@@ -155,4 +172,36 @@ export function planPageEdits(
     }
   }
   return { splices, blocks };
+}
+
+/**
+ * Edits that undo applied splices: remove the inserted blocks (by ID) and put
+ * the removed ones back after their former neighbour, latest splice first.
+ */
+export function invertPageSplices(
+  before: PageDocumentNode[],
+  splices: readonly PageSplice[],
+): PageEdit[] {
+  let blocks = [...before];
+  const inverse: PageEdit[][] = [];
+  for (const splice of splices) {
+    const removed = blocks.slice(splice.index, splice.index + splice.deleteCount);
+    const previous = blocks[splice.index - 1];
+    const after =
+      splice.index === 0 ? null : previous ? (blockId(previous) ?? String(splice.index - 1)) : null;
+    const inserted = splice.nodes.flatMap((node) => {
+      const id = blockId(node);
+      return id ? [id] : [];
+    });
+    inverse.push([
+      ...(inserted.length ? [{ type: "remove_blocks" as const, blockIds: inserted }] : []),
+      ...(removed.length ? [{ type: "insert_nodes" as const, after, nodes: removed }] : []),
+    ]);
+    blocks = [
+      ...blocks.slice(0, splice.index),
+      ...splice.nodes,
+      ...blocks.slice(splice.index + splice.deleteCount),
+    ];
+  }
+  return inverse.reverse().flat();
 }

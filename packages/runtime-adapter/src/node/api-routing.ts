@@ -9,6 +9,7 @@ const apiPathPrefixes = [
   "/ai/runs",
   "/ai/threads",
   "/ai/write",
+  "/ai/actions",
   "/clips",
   "/automation-slack",
   "/session",
