@@ -23,3 +23,10 @@ export {
 export { isEffectivelyEmptyPageContent } from "./document/empty-page-content";
 
 export type { PageDocumentNode } from "./document/page-document";
+export {
+  blockTemplate,
+  createDatabaseSetupBlockContent,
+  createTabsContent,
+  type BlockTemplateContent,
+  type BlockTemplateNode,
+} from "./blocks/block-templates";
