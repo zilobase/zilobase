@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
-import { pagesQueryKey } from "../pages/queries";
+import { pageQueryKey, pagesQueryKey } from "../pages/queries";
 import { refreshAfterWorkspaceActions } from "./changes";
 import type { ChatReadProgress } from "./tools";
 
@@ -51,4 +51,30 @@ test("a created database refreshes every database read", async () => {
     new Set(),
   );
   assert.equal(client.getQueryState(["db", "session", "db-2", "bootstrap"])?.isInvalidated, true);
+});
+
+test("page changes refresh the changed pages", async () => {
+  const client = new QueryClient();
+  client.setQueryData(pageQueryKey("page-1"), {});
+  client.setQueryData(pageQueryKey("page-2"), {});
+  await refreshAfterWorkspaceActions(
+    client,
+    "org",
+    {
+      canContinue: false,
+      activities: [
+        {
+          id: "call-2",
+          name: "workspace_action",
+          action: "pages.create",
+          status: "completed",
+          label: "Create page",
+          changes: [{ command: "page.create", databaseId: null, pageId: "page-1" }],
+        },
+      ],
+    },
+    new Set(),
+  );
+  assert.equal(client.getQueryState(pageQueryKey("page-1"))?.isInvalidated, true);
+  assert.equal(client.getQueryState(pageQueryKey("page-2"))?.isInvalidated, false);
 });

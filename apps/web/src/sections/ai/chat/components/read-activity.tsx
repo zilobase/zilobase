@@ -128,16 +128,23 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
         const entry = message.context?.manifest.find(
           (entry) => entry.type === source?.type && entry.id === source.id,
         );
-        const changedDatabaseId = latest.changes?.find((change) => change.databaseId)?.databaseId;
-        const link =
+        type ChangedLink = { key: string; title: string; pageId?: string; databaseId?: string };
+        const changed = (latest.name === "workspace_action" ? (latest.changes ?? []) : []).flatMap(
+          (change): ChangedLink[] =>
+            change.pageId
+              ? [{ key: `page:${change.pageId}`, title: "Page", pageId: change.pageId }]
+              : change.databaseId
+                ? [
+                    {
+                      key: `database:${change.databaseId}`,
+                      title: "Database",
+                      databaseId: change.databaseId,
+                    },
+                  ]
+                : [],
+        );
+        const sourceLink =
           entry ??
-          (latest.name === "workspace_action" && changedDatabaseId
-            ? {
-                key: `database:${changedDatabaseId}`,
-                title: "Database",
-                databaseId: changedDatabaseId,
-              }
-            : undefined) ??
           (source
             ? {
                 key: `${source.type}:${source.id}`,
@@ -145,6 +152,11 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
                 ...(source.type === "page" ? { pageId: source.id } : { databaseId: source.id }),
               }
             : undefined);
+        const links = changed.length
+          ? [...new Map(changed.map((link) => [link.key, link])).values()]
+          : sourceLink
+            ? [sourceLink]
+            : [];
         const records =
           latest.name === "query_records"
             ? group.calls.reduce((sum, call) => sum + (call.returned ?? 0), 0)
@@ -195,15 +207,17 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
             data-read-status={status}
           >
             <ActivityDisclosure title={readLabel(activity, active)} status={status}>
-              {link && (
+              {links.length > 0 && (
                 <AnswerSources
-                  citations={[link]}
-                  label="Read source link"
+                  citations={links}
+                  label={latest.name === "workspace_action" ? "Changed items" : "Read source link"}
                   className="mt-0 max-w-full"
                 />
               )}
               {detail && <p className="mt-1.5 text-xs text-content-secondary">{detail}</p>}
-              {!link && !detail && <p className="text-xs">Source details are unavailable.</p>}
+              {!links.length && !detail && (
+                <p className="text-xs">Source details are unavailable.</p>
+              )}
             </ActivityDisclosure>
           </Trace>
         );
