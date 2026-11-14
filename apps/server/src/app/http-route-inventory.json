@@ -180,6 +180,8 @@
   "GET /ai/runs/:id/debug",
   "GET /ai/runs/:id/events",
   "POST /ai/runs/:id/cancel",
+  "POST /ai/write",
+  "POST /ai/write",
   "GET /ai/capabilities",
   "GET /session",
   "GET /user-settings",

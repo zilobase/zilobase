@@ -158,6 +158,7 @@ export { timedLayout } from "../calendar/context";
 
 export { parsePageDocument } from "@zilobase/page-context";
 export { chatRequestSchema } from "../ai/contracts";
+export { aiWriteRequestSchema } from "../ai/contracts";
 export { chatDisplayText } from "../ai/citations";
 export type { ChatRequest, ChatRequestInput, ChatEvent, ChatMessage } from "../ai/contracts";
 

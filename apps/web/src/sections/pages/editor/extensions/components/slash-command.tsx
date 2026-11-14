@@ -43,7 +43,7 @@ import {
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker";
 import { ExcalidrawIcon, FigmaIcon, MiroIcon, YouTubeIcon } from "./embed-block";
-import { openAskAiPopover } from "./ask-ai-block";
+import { insertAskAiBlock } from "./ask-ai-block";
 import { isFeatureEnabled } from "@/platform/environment";
 import {
   runBlockCommand,
@@ -186,8 +186,7 @@ function createSlashCommandItems(options: SlashCommandOptions = {}): SlashComman
     command: ({ editor, range }) => {
       if (!editor.isEditable || options.isEnabled?.() === false) return;
       if (id === "emoji") return openSlashEmojiPicker({ editor, range });
-      if (id === "askAi")
-        return openAskAiPopover({ editor, range, workspaceId: options.workspaceId });
+      if (id === "askAi") return insertAskAiBlock({ editor, range });
       return runBlockCommand(editor, id, range, options);
     },
   }));

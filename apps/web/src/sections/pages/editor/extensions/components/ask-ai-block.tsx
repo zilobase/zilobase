@@ -1,119 +1,43 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import type { Editor, Range } from "@tiptap/core";
-import { AppIconProvider, Send, Sparkles, X } from "@/components/icons";
+import { Send, Sparkles, X } from "@/components/icons";
 import { useState } from "react";
-import { createRoot, type Root } from "react-dom/client";
 
-import {
-  PromptInput,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-} from "@/components/ui/prompt-input";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { useAiWriting } from "@zilobase/features/ai/react";
+import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { isFeatureEnabled } from "@/platform/environment";
+import {
+  contextMarkdown,
+  editorAiWorkspaceId,
+  markdownContent,
+} from "../../operations/lib/ai-writing";
 
 type AskAiBlockOptions = {
   workspaceId?: string | null;
 };
 
-type AskAiAnchorRect = {
-  bottom: number;
-  left: number;
-  right: number;
-  top: number;
-};
-
-type AskAiPopoverProps = {
-  anchorRect: AskAiAnchorRect;
-  editor: Editor;
-  insertPos: number;
-  onDone: () => void;
-};
-
-function AskAiPopover({ anchorRect, onDone }: AskAiPopoverProps) {
-  const [isOpen, setIsOpen] = useState(true);
-  const [prompt, setPrompt] = useState("");
-
-  return (
-    <Popover
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) onDone();
-      }}
-      open={isOpen}
-    >
-      <PopoverAnchor asChild>
-        <span
-          className="pointer-events-none absolute"
-          style={{
-            left: anchorRect.left,
-            top: anchorRect.top,
-            width: Math.max(1, anchorRect.right - anchorRect.left),
-            height: Math.max(1, anchorRect.bottom - anchorRect.top),
-          }}
-        />
-      </PopoverAnchor>
-      <PopoverContent align="start" className="w-80 p-3" side="bottom">
-        <PromptInput
-          onSubmit={({ text }) => {
-            setPrompt(text);
-          }}
-        >
-          <PromptInputTextarea
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Ask AI to write in this page..."
-            value={prompt}
-          />
-          <PromptInputFooter>
-            <PromptInputSubmit disabled={!prompt.trim()} />
-          </PromptInputFooter>
-        </PromptInput>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-export function openAskAiPopover({
-  editor,
-  range,
-  workspaceId: _workspaceId,
-}: {
-  editor: Editor;
-  range: Range;
-  workspaceId?: string | null;
-}) {
+export function insertAskAiBlock({ editor, range }: { editor: Editor; range: Range }) {
   if (!isFeatureEnabled("askAi")) return;
-
-  const coords = editor.view.coordsAtPos(range.from);
-  const insertPos = range.from;
-  const host = document.createElement("div");
-  document.body.appendChild(host);
-  const root: Root = createRoot(host);
-  const cleanup = () => {
-    editor.off("destroy", cleanup);
-    root.unmount();
-    host.remove();
-  };
-
-  editor.on("destroy", cleanup);
-  editor.chain().focus().deleteRange(range).setTextSelection(insertPos).run();
-
-  root.render(
-    <AppIconProvider>
-      <AskAiPopover anchorRect={coords} editor={editor} insertPos={insertPos} onDone={cleanup} />
-    </AppIconProvider>,
-  );
+  editor.chain().focus().deleteRange(range).insertContent({ type: "askAiBlock" }).run();
 }
 
-function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
+function AskAiBlockView(props: ReactNodeViewProps) {
+  if (!isFeatureEnabled("askAi")) {
+    return <NodeViewWrapper className="hidden" contentEditable={false} />;
+  }
+  return <AskAiBlockPanel {...props} />;
+}
+
+function AskAiBlockPanel({ editor, getPos, node }: ReactNodeViewProps) {
   const [prompt, setPrompt] = useState("");
+  const writing = useAiWriting();
+  const workspaceId = editorAiWorkspaceId(editor);
+  const position = () => (typeof getPos === "function" ? getPos() : undefined);
 
   const removeBlock = () => {
-    if (typeof getPos !== "function") return;
-    const pos = getPos();
+    const pos = position();
     if (typeof pos !== "number") return;
     editor
       .chain()
@@ -121,10 +45,25 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
       .deleteRange({ from: pos, to: pos + node.nodeSize })
       .run();
   };
-
-  if (!isFeatureEnabled("askAi")) {
-    return <NodeViewWrapper className="hidden" contentEditable={false} />;
-  }
+  const write = () => {
+    const pos = position();
+    if (!workspaceId || typeof pos !== "number" || !prompt.trim()) return;
+    writing.mutate({
+      workspaceId,
+      instruction: prompt.trim(),
+      context: contextMarkdown(editor, pos),
+    });
+  };
+  const insert = () => {
+    const pos = position();
+    const markdown = writing.data?.markdown;
+    if (typeof pos !== "number" || !markdown || !editor.isEditable) return;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt({ from: pos, to: pos + node.nodeSize }, markdownContent(markdown, false))
+      .run();
+  };
 
   return (
     <NodeViewWrapper className="ask-ai-block w-full" contentEditable={false}>
@@ -133,11 +72,15 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
         <InputGroupTextarea
           autoFocus
           className="max-h-48 min-h-8 flex-1 resize-none border-0 bg-transparent px-0 py-1 text-base leading-6 shadow-none focus-visible:ring-0"
+          disabled={writing.isPending}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
               removeBlock();
+            } else if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              write();
             }
           }}
           placeholder="Ask AI to write in this page..."
@@ -157,7 +100,8 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
         <InputGroupButton
           aria-label="Send prompt"
           className="size-8 shrink-0 rounded-sm [&_svg]:size-4"
-          disabled={!prompt.trim()}
+          disabled={!prompt.trim() || writing.isPending}
+          onClick={write}
           size="icon-sm"
           type="button"
           variant="ghost"
@@ -165,6 +109,37 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
           <Send />
         </InputGroupButton>
       </InputGroup>
+      {writing.isPending && (
+        <p className="mt-2 text-sm text-content-secondary" role="status">
+          Writing…
+        </p>
+      )}
+      {writing.isError && (
+        <p className="mt-2 text-sm text-feedback-danger-text" role="alert">
+          {writing.error instanceof Error ? writing.error.message : "AI couldn't write this."}
+        </p>
+      )}
+      {writing.data && !writing.isPending && (
+        <div className="mt-2 space-y-2">
+          <div
+            aria-label="AI suggestion"
+            className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border p-3 text-sm"
+          >
+            {writing.data.markdown}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <Button onClick={insert} size="sm" type="button">
+              Insert
+            </Button>
+            <Button onClick={write} size="sm" type="button" variant="ghost">
+              Try again
+            </Button>
+            <Button onClick={removeBlock} size="sm" type="button" variant="ghost">
+              Discard
+            </Button>
+          </div>
+        </div>
+      )}
     </NodeViewWrapper>
   );
 }

@@ -116,3 +116,11 @@ export function useChatRunDebug(workspaceId: string, runId: string, enabled: boo
     refetchOnWindowFocus: true,
   });
 }
+
+import type { AiWriteRequest } from "./contracts";
+import { requestAiWriting } from "./writing";
+/** Generates Markdown for the editor's inline AI; the caller previews and applies it. */
+export function useAiWriting() {
+  const context = useZilobaseFeatures();
+  return useMutation({ mutationFn: (input: AiWriteRequest) => requestAiWriting(context, input) });
+}

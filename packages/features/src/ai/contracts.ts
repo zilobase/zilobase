@@ -101,3 +101,16 @@ export type ChatThreadDetail = {
   messages: ChatMessage[];
   roots: ResourceRef[];
 };
+
+/** Inline AI writing in the editor (POST /ai/write). */
+export const aiWriteRequestSchema = z
+  .object({
+    workspaceId: z.string().min(1).max(128),
+    instruction: z.string().trim().min(1).max(2_000),
+    /** Markdown the result replaces; omit to write new content at the cursor. */
+    selection: z.string().max(20_000).optional(),
+    /** Markdown around the cursor, used for tone and continuity only. */
+    context: z.string().max(20_000).optional(),
+  })
+  .strict();
+export type AiWriteRequest = z.infer<typeof aiWriteRequestSchema>;

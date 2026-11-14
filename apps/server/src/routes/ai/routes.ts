@@ -10,10 +10,11 @@ import { chatRunResponse, legacyChatRunResponse } from "./durable-stream";
 import { listChatThreads, getChatThread, deleteChatThread } from "../../services/ai/conversations";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { chatRequestSchema } from "@zilobase/features/runtime";
+import { aiWriteRequestSchema, chatRequestSchema } from "@zilobase/features/runtime";
 import type { AppBindings } from "../../shared/contracts/http";
 import { prepareChat } from "../../services/ai/chat";
 import { chatSourceIdentity } from "../../services/ai/context";
+import { writeWithAi } from "../../services/ai/writing";
 import { jsonValidator } from "../http/json";
 import { serverOperationContext } from "../http/operation-context";
 import { attachServiceErrorHandler } from "../http/route-error";
@@ -141,6 +142,12 @@ aiRoutes.post("/runs/:id/cancel", async (c) =>
       c.req.param("id"),
       c.req.query("workspaceId") ?? "",
     ),
+  ),
+);
+
+aiRoutes.post("/write", jsonValidator(aiWriteRequestSchema), async (c) =>
+  c.json(
+    await writeWithAi(serverOperationContext(c), c.req.valid("json"), undefined, c.req.raw.signal),
   ),
 );
 

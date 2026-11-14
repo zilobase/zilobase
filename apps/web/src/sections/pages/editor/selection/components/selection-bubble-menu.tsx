@@ -198,7 +198,7 @@ export function SelectionBubbleMenu({
         {isFeatureEnabled("askAi") ? (
           <>
             <ButtonGroupSeparator />
-            <SelectionAiMenu />
+            <SelectionAiMenu editor={editor} />
             <ButtonGroupSeparator />
           </>
         ) : (
