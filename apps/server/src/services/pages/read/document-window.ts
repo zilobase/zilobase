@@ -13,6 +13,7 @@ import {
   requireOperationPolicy,
   requireOperationWorkspace,
 } from "../../operations/context";
+import { readLivePageContent } from "../../collaboration/mutations/document-mutations";
 import { requireActivePageWorkspace } from "../access";
 import { getCanonicalWebOrigin } from "../../../shared/config/config";
 
@@ -148,7 +149,15 @@ export async function resolveDocumentPageTitles(
 
 export async function readDocumentWindow(
   context: ServerOperationContext,
-  input: { pageId: string; offset?: number; revision?: string; limit?: number; outline?: boolean },
+  input: {
+    pageId: string;
+    offset?: number;
+    revision?: string;
+    limit?: number;
+    outline?: boolean;
+    /** Read the live collaboration document, so unsaved edits are visible. */
+    live?: boolean;
+  },
 ) {
   const identity = await readPageIdentity(context, input.pageId);
   const [saved] = await db
@@ -163,8 +172,15 @@ export async function readDocumentWindow(
     )
     .limit(1);
   if (!saved) throw new ServerOperationError({ error: "Page is no longer accessible" }, 404);
+  const live =
+    input.live && context.authentication.user
+      ? await readLivePageContent({
+          pageId: input.pageId,
+          userId: context.authentication.user.id,
+        }).catch(() => null)
+      : null;
   const document = await resolveDocumentPageTitles(
-    parsePageDocument(saved.content) as Node,
+    parsePageDocument(live ?? saved.content) as Node,
     async (id) => {
       try {
         return (await readPageIdentity(context, id)).name;

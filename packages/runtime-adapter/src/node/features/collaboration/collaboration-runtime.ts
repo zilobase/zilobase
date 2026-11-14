@@ -12,6 +12,7 @@ import { getDefaultCollaborationHocuspocus } from "@zilobase/server/node-adapter
 import {
   appendPageCommentInHocuspocus,
   editPageContentInHocuspocus,
+  readPageContentInHocuspocus,
   replacePageContentInHocuspocus,
 } from "@zilobase/server/node-adapter-api";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
@@ -122,6 +123,9 @@ export function attachNodeCollaborationRuntime(
   return {
     async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
       return appendPageCommentInHocuspocus(hocuspocus, input);
+    },
+    async readPageContent(input: { pageId: string; userId: string }) {
+      return readPageContentInHocuspocus(hocuspocus, input);
     },
     async editPageContent(input: Parameters<typeof editPageContentInHocuspocus>[1]) {
       return editPageContentInHocuspocus(hocuspocus, input);

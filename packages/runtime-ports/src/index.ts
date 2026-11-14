@@ -242,6 +242,8 @@ export interface Documents {
   }): Promise<{ messageId: string; threadId: string }>;
   /** Applies block-level edits to the live page; see `planPageEdits` in page-context. */
   editPageContent(input: PageContentEdit): Promise<PageContentEditOutcome>;
+  /** Live page content as a ProseMirror document, or null when the document cannot be opened. */
+  readPageContent(input: { pageId: string; userId: string }): Promise<unknown>;
 }
 
 export type PageContentEdit = { pageId: string; userId: string; edits: unknown[]; editId: string };

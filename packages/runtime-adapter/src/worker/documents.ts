@@ -8,6 +8,11 @@ export function createWorkerDocuments(env: WorkerEnvBindings): Documents {
       if (!namespace) throw new Error("PAGE_COLLABORATION binding is required");
       return namespace.getByName(`page:${input.pageId}`).appendPageComment(input);
     },
+    async readPageContent(input) {
+      const namespace = env.PAGE_COLLABORATION;
+      if (!namespace) throw new Error("PAGE_COLLABORATION binding is required");
+      return namespace.getByName(`page:${input.pageId}`).readPageContent(input);
+    },
     async editPageContent(input) {
       const namespace = env.PAGE_COLLABORATION;
       if (!namespace) throw new Error("PAGE_COLLABORATION binding is required");

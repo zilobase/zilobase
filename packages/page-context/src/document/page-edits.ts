@@ -42,11 +42,19 @@ export function blockText(node: PageDocumentNode): string {
   return (node.content ?? []).map(blockText).join(node.type === "paragraph" ? "" : " ");
 }
 
-function findBlock(blocks: PageDocumentNode[], anchor: string): number | string {
+/**
+ * Inserts may use read_page's block numbers: a moved position only misplaces
+ * new content. Replacements need the block's text, so a page that changed
+ * since it was read can never cause the wrong block to be replaced.
+ */
+function findBlock(blocks: PageDocumentNode[], anchor: string, numbered: boolean): number | string {
   const target = normalize(anchor);
   if (!target) return "The anchor is empty.";
-  if (/^\d+$/.test(target) && !blocks.some((block) => normalize(blockText(block)) === target))
+  if (/^\d+$/.test(target) && !blocks.some((block) => normalize(blockText(block)) === target)) {
+    const index = Number(target);
+    if (numbered && index < blocks.length) return index;
     return `"${anchor}" looks like a block number; anchor edits with the block's text, such as a heading.`;
+  }
   const texts = blocks.map((block) => normalize(blockText(block)));
   for (const matches of [
     (text: string) => text === target,
@@ -127,7 +135,11 @@ export function planPageEdits(
       continue;
     }
     const anchor = edit.type === "replace_section" ? edit.heading : edit.anchor;
-    const index = findBlock(blocks, anchor);
+    const index = findBlock(
+      blocks,
+      anchor,
+      edit.type === "insert_after" || edit.type === "insert_before",
+    );
     if (typeof index === "string") return { error: index };
     if (edit.type === "insert_after") splice(index + 1, 0, nodes(edit.markdown));
     else if (edit.type === "insert_before") splice(index, 0, nodes(edit.markdown));

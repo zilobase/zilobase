@@ -595,6 +595,7 @@ export function createReadTools(
     const result = await ports.document(scoped, {
       pageId,
       outline,
+      live: true,
       offset: previous?.position as number | undefined,
       revision: previous?.revision as string | undefined,
     });

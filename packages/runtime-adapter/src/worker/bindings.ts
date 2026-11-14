@@ -35,6 +35,7 @@ export type WorkerEnvBindings = Record<string, unknown> & {
         messageId?: string;
       }): Promise<{ messageId: string; threadId: string }>;
       editPageContent(input: PageContentEdit): Promise<PageContentEditOutcome>;
+      readPageContent(input: { pageId: string; userId: string }): Promise<unknown>;
       fetch(request: Request): Promise<Response>;
       replacePageContent(content: unknown, pageId: string, userId: string): Promise<void>;
     };

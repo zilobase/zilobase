@@ -31,6 +31,7 @@ describe("worker FanoutBus", () => {
     const getByName = vi.fn(() => ({
       appendPageComment: vi.fn(),
       editPageContent: vi.fn(),
+      readPageContent: vi.fn(),
       fetch: vi.fn(),
       replacePageContent,
     }));

@@ -189,6 +189,7 @@ export function createFakePorts<Database = unknown>(
     documents: {
       appendPageComment: unavailable("documents.appendPageComment"),
       editPageContent: unavailable("documents.editPageContent"),
+      readPageContent: unavailable("documents.readPageContent"),
     },
     dispatched,
     env: {

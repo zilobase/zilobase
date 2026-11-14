@@ -95,6 +95,7 @@ export {
   appendMeetingTranscriptToDocument,
   appendPageCommentInHocuspocus,
   editPageContentInHocuspocus,
+  readPageContentInHocuspocus,
   replaceMeetingSummary,
   replaceMeetingSummaryInHocuspocus,
   replacePageContent,

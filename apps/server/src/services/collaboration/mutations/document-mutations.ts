@@ -47,6 +47,11 @@ export async function editPageContent(input: PageContentEditInput) {
   return result;
 }
 
+/** The live page content, including edits not yet saved to the page record. */
+export async function readLivePageContent(input: { pageId: string; userId: string }) {
+  return requireRuntimePort("documents").readPageContent(input);
+}
+
 export async function appendPageComment(input: {
   author: { email: string | null; id: string; image: string | null; name: string | null };
   body: string;
@@ -329,4 +334,22 @@ export async function editPageContentInHocuspocus(
     await direct.disconnect();
   }
   return result;
+}
+
+export async function readPageContentInHocuspocus(
+  hocuspocus: Hocuspocus<CollaborationContext>,
+  input: { pageId: string; userId: string },
+) {
+  const direct = await hocuspocus.openDirectConnection(documentNameForPage(input.pageId), {
+    exp: Date.now() + TICKET_TTL_MS,
+    pageId: input.pageId,
+    scope: "readonly",
+    userId: input.userId,
+    workspaceId: "server",
+  });
+  try {
+    return direct.document ? materializePageDocument(direct.document) : null;
+  } finally {
+    await direct.disconnect();
+  }
 }

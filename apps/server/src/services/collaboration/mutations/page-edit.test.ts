@@ -7,13 +7,14 @@ import {
   materializePageDocument,
 } from "../documents/document-codec";
 import { COMMENT_THREADS_FIELD } from "../persistence/document-persistence";
-import { editPageContentInHocuspocus } from "./document-mutations";
+import { editPageContentInHocuspocus, readPageContentInHocuspocus } from "./document-mutations";
 
 function livePage(markdown: string) {
   const document = new Y.Doc();
   Y.applyUpdate(document, encodePageContentAsYjs(markdownToPageDocument(markdown)));
   const hocuspocus = {
     openDirectConnection: async () => ({
+      document,
       transact: async (change: (document: Y.Doc) => void) =>
         document.transact(() => change(document)),
       disconnect: async () => undefined,
@@ -67,4 +68,20 @@ test("edits that cannot be resolved leave the page unchanged", async () => {
     }),
   ).toMatchObject({ status: "rejected" });
   expect(markdownOf(document)).toBe(before);
+});
+
+test("live reads return the collaboration document, including edits not yet saved", async () => {
+  const { document, hocuspocus } = livePage("# Plan\n\nIntro");
+  await editPageContentInHocuspocus(hocuspocus, {
+    pageId: "page-1",
+    userId: "user-1",
+    editId: "edit-3",
+    edits: [{ type: "append", markdown: "Typed just now" }],
+  });
+  const live = await readPageContentInHocuspocus(hocuspocus, {
+    pageId: "page-1",
+    userId: "user-1",
+  });
+  expect(prosemirrorToMarkdown(live)).toBe("# Plan\n\nIntro\n\nTyped just now");
+  expect(markdownOf(document)).toBe(prosemirrorToMarkdown(live));
 });
