@@ -3,6 +3,7 @@ import DragHandle from "@tiptap/extension-drag-handle-react";
 import { useEditorWorkspace } from "../runtime/components/page-editor-registry";
 import type { DragHandleTarget } from "../toolbar/lib/toolbar";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents";
 import type { PageCommentController } from "@/sections/pages/editor/comments/lib/yjs-comments";
@@ -217,6 +218,7 @@ function EditorBlockHandle(
   const workspace = useEditorWorkspace();
   const targetRef = useRef<DragHandleTarget | null>(null);
   const nativeDraggingRef = useRef(false);
+  const dragHandleRef = useRef<HTMLElement | null>(null);
   const [target, setTarget] = useState<DragHandleTarget | null>(null);
   const getHandleReference = useCallback(() => {
     const current = targetRef.current;
@@ -306,6 +308,9 @@ function EditorBlockHandle(
     return () => view.dom.removeEventListener("mousemove", hideOpeningBlockHandle);
   }, [editor, props.dragHandleMenuOpen]);
   const commentPosition = target ? getBlockCommentHandleRect(editor.view, target) : null;
+  // The drag handle plugin keeps its block while the pointer moves into its own
+  // layer, so the comment handle must share that layer to stay reachable.
+  const handleLayer = dragHandleRef.current?.parentElement;
   return (
     <>
       <DragHandle
@@ -319,6 +324,9 @@ function EditorBlockHandle(
       >
         <div
           className="contents"
+          ref={(node) => {
+            dragHandleRef.current = node?.parentElement ?? null;
+          }}
           onPointerDownCapture={(event) => {
             if (
               event.button === 0 &&
@@ -348,21 +356,24 @@ function EditorBlockHandle(
           />
         </div>
       </DragHandle>
-      {target && commentPosition && props.commentController && props.pageId ? (
-        <div
-          className="block-comment-handle"
-          style={{ left: commentPosition.left, top: commentPosition.top }}
-        >
-          <BlockCommentPopover
-            commentController={props.commentController}
-            editor={editor}
-            onOpenChange={props.setBlockCommentOpen}
-            open={props.blockCommentOpen}
-            pageId={props.pageId}
-            target={target}
-          />
-        </div>
-      ) : null}
+      {target && commentPosition && handleLayer && props.commentController && props.pageId
+        ? createPortal(
+            <div
+              className="block-comment-handle"
+              style={{ left: commentPosition.left, top: commentPosition.top }}
+            >
+              <BlockCommentPopover
+                commentController={props.commentController}
+                editor={editor}
+                onOpenChange={props.setBlockCommentOpen}
+                open={props.blockCommentOpen}
+                pageId={props.pageId}
+                target={target}
+              />
+            </div>,
+            handleLayer,
+          )
+        : null}
     </>
   );
 }

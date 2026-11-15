@@ -281,3 +281,19 @@ test("comment requests stay in their page pane and do not remount the editor", a
     await page.evaluate(() => window.savedCommentEditor === window.commentEditors.get("child")),
   ).toBe(true);
 });
+
+test("block comment button stays mounted while the pointer moves onto it", async ({ page }) => {
+  const block = page.getByLabel("Document editor").locator(":scope > p").nth(1);
+  const blockBox = await block.boundingBox();
+  await page.mouse.move(blockBox.x + 8, blockBox.y + blockBox.height / 2);
+  const button = page.locator(".block-comment-button");
+  await expect(button).toBeVisible();
+
+  const buttonBox = await button.boundingBox();
+  await page.mouse.move(buttonBox.x + buttonBox.width / 2, buttonBox.y + buttonBox.height / 2, {
+    steps: 12,
+  });
+  await expect(button).toBeVisible();
+  await button.click();
+  await expect(page.getByPlaceholder("Add a comment…", { exact: true })).toBeVisible();
+});
