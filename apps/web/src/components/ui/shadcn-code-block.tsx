@@ -6,7 +6,6 @@
 
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Effect } from "effect";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
@@ -118,15 +117,12 @@ function CodeBlockCopyButton({
         onClick={(event) => {
           onClick?.(event);
           if (event.defaultPrevented) return;
-          void Effect.runPromise(
-            Effect.tryPromise({
-              try: () => navigator.clipboard.writeText(value),
-              catch: (error) => error,
-            }).pipe(
-              Effect.tap(() => Effect.sync(() => setCopied(true))),
-              Effect.ignore,
-            ),
-          );
+          void (async () => {
+            try {
+              await navigator.clipboard.writeText(value);
+              setCopied(true);
+            } catch {}
+          })();
         }}
         {...props}
       >

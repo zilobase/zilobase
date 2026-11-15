@@ -104,7 +104,7 @@ export function register({ assert, sourcePath, test }) {
   });
 
   async function dropFixture() {
-    const { Effect, commitDatabaseBlockDrop, controls } = await runtime();
+    const { commitDatabaseBlockDrop, controls } = await runtime();
     const events = [],
       errors = [];
     const source = {};
@@ -155,7 +155,7 @@ export function register({ assert, sourcePath, test }) {
       errors,
       receipt,
       controls,
-      run: () => Effect.runPromise(commitDatabaseBlockDrop(input)),
+      run: () => commitDatabaseBlockDrop(input),
     };
   }
 
@@ -266,7 +266,7 @@ async function loadWorkflows(sourcePath) {
   };
   const result = await build({
     stdin: {
-      contents: `export { prefetchPageForNavigation } from "./collaboration/lib/page-prefetch"; export { commitDatabaseBlockDrop } from "./drag-drop/lib/block-drop"; export { Effect } from "effect"; export { controls } from "workflow-test-ports";`,
+      contents: `export { prefetchPageForNavigation } from "./collaboration/lib/page-prefetch"; export { commitDatabaseBlockDrop } from "./drag-drop/lib/block-drop"; export { controls } from "workflow-test-ports";`,
       resolveDir: sourcePath("/src/sections/pages/editor"),
     },
     bundle: true,

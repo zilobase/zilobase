@@ -1,6 +1,5 @@
 import { blockBackgroundProps } from "../lib/block-background";
 import { lazy, Suspense, useState } from "react";
-import { Effect } from "effect";
 import { toast } from "sonner";
 import {
   NodeViewContent,
@@ -266,14 +265,9 @@ function CodeBlockShikiView({ editor, node, updateAttributes }: ReactNodeViewPro
             <CodeBlockCopyButton
               size="icon"
               preserveSource
-              copyText={(value) =>
-                Effect.runPromise(
-                  Effect.tryPromise({
-                    try: () => navigator.clipboard.writeText(value),
-                    catch: (error) => error,
-                  }),
-                )
-              }
+              copyText={async (value) => {
+                await navigator.clipboard.writeText(value);
+              }}
               onCopyError={() => toast.error("Could not copy code.")}
               labels={{ copy: "Copy code", copied: "Copied code" }}
             />

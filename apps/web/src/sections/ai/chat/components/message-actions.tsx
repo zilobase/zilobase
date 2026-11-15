@@ -1,6 +1,5 @@
 // Message pattern: https://ui.shadcn.com/docs/ai-elements/radix/message
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { Effect } from "effect";
 import {
   CheckIcon,
   CopyIcon,
@@ -28,22 +27,14 @@ export function MessageActions({ text, onRetry }: { text: string; onRetry?: () =
     const timeout = setTimeout(() => setCopyState("idle"), 2000);
     return () => clearTimeout(timeout);
   }, [copyState]);
-  const copy = () => {
-    void Effect.runPromise(
-      Effect.tryPromise({
-        try: () => navigator.clipboard.writeText(text),
-        catch: (error) => error,
-      }).pipe(
-        Effect.match({
-          onSuccess: () => {
-            if (mounted.current) setCopyState("copied");
-          },
-          onFailure: () => {
-            if (mounted.current) setCopyState("error");
-          },
-        }),
-      ),
-    );
+  const copy = async () => {
+    let copied = true;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      copied = false;
+    }
+    if (mounted.current) setCopyState(copied ? "copied" : "error");
   };
   return (
     <MessageFooter className="gap-1 px-0" aria-label="Response actions">

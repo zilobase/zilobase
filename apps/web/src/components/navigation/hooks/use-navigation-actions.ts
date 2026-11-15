@@ -19,7 +19,6 @@ import { toast } from "sonner";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useOpenInNewTab } from "@/sections/desktop/tabs/components/desktop-tabs";
 import { type SidebarNavItem } from "@zilobase/features/pages";
-import { Cause, Effect } from "effect";
 import { usePageDesignEditor } from "@/sections/pages/design/components/page-design-editor";
 
 export function useHeaderActions({
@@ -89,44 +88,25 @@ export function useHeaderActions({
       onError: (error) =>
         toast.error(error instanceof Error ? error.message : "Could not update favorite."),
     });
-  const copyLink = () =>
-    Effect.runPromise(
-      Effect.gen(function* () {
-        if (!pageId && !databaseId) return;
-        yield* Effect.tryPromise({
-          try: () =>
-            navigator.clipboard.writeText(
-              `${window.location.origin}${getNavigationItemPath({ databaseId, pageId })}`,
-            ),
-          catch: (error) => error,
-        });
-        setIsOpen(false);
-        toast.success(`${databaseId ? "Database" : "Page"} link copied.`);
-      }),
+  const copyLink = async () => {
+    if (!pageId && !databaseId) return;
+    await navigator.clipboard.writeText(
+      `${window.location.origin}${getNavigationItemPath({ databaseId, pageId })}`,
     );
-  const duplicatePage = () =>
-    Effect.runPromise(
-      Effect.gen(function* () {
-        const duplicate = yield* Effect.tryPromise({
-          try: () => actions.duplicatePage(),
-          catch: (error) => error,
-        });
-        if (!duplicate) return;
-        setIsOpen(false);
-        toast.success("Page duplicated.");
-        yield* Effect.tryPromise({
-          try: () => navigate({ to: "/p/$pageId", params: { pageId: duplicate.id } }),
-          catch: (error) => error,
-        });
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Effect.sync(() => {
-            const error = Cause.squash(cause);
-            toast.error(error instanceof Error ? error.message : "Could not duplicate page.");
-          }),
-        ),
-      ),
-    );
+    setIsOpen(false);
+    toast.success(`${databaseId ? "Database" : "Page"} link copied.`);
+  };
+  const duplicatePage = async () => {
+    try {
+      const duplicate = await actions.duplicatePage();
+      if (!duplicate) return;
+      setIsOpen(false);
+      toast.success("Page duplicated.");
+      await navigate({ to: "/p/$pageId", params: { pageId: duplicate.id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not duplicate page.");
+    }
+  };
   const moveToTrash = () =>
     actions.moveToTrash({
       onSuccess: () => {
@@ -331,12 +311,8 @@ export function useSidebarEntryActions(item: SidebarNavItem<unknown>) {
   };
 }
 
-export function copySidebarEntryLink(path: string) {
-  return Effect.runPromise(
-    Effect.tryPromise({
-      try: () =>
-        navigator.clipboard?.writeText(`${window.location.origin}${path}`) ?? Promise.resolve(),
-      catch: (error) => error,
-    }).pipe(Effect.ignore),
-  );
+export async function copySidebarEntryLink(path: string) {
+  try {
+    await navigator.clipboard?.writeText(`${window.location.origin}${path}`);
+  } catch {}
 }

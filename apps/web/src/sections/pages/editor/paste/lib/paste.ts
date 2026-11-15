@@ -1,5 +1,4 @@
 import type { Editor } from "@tiptap/core";
-import { Effect } from "effect";
 import { createPositionAnchor } from "../../operations/lib/position-anchor";
 import { workspaceForView } from "../../extensions/lib/editor-integration";
 import { canEditEditorStructure } from "../../commands/lib/block-insert";
@@ -366,21 +365,17 @@ export function handleEditorPaste(
   return handleProviderLinkPaste(editor.view, event, true, onPasteChoice);
 }
 
-export function pasteBookmark(
+export async function pasteBookmark(
   choice: PasteChoiceState,
   replace: (content: import("@tiptap/core").Content) => void,
   type: "bookmarkBlock" | "linkMention",
 ) {
-  return Effect.runPromise(
-    Effect.gen(function* () {
-      const fallback = getFallbackBookmarkMetadata(choice.url);
-      const metadata = yield* Effect.tryPromise({
-        try: () => fetchBookmarkMetadata(choice.url),
-        catch: (error) => error,
-      }).pipe(Effect.catch(() => Effect.succeed({})));
-      if (!choice.resolve()) return;
-      const block = { type, attrs: { ...fallback, ...metadata, href: choice.url } };
-      replace(type === "linkMention" ? [block, { type: "text", text: " " }] : block);
-    }),
-  );
+  const fallback = getFallbackBookmarkMetadata(choice.url);
+  let metadata = {};
+  try {
+    metadata = await fetchBookmarkMetadata(choice.url);
+  } catch {}
+  if (!choice.resolve()) return;
+  const block = { type, attrs: { ...fallback, ...metadata, href: choice.url } };
+  replace(type === "linkMention" ? [block, { type: "text", text: " " }] : block);
 }

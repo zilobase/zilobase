@@ -7,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Effect } from "effect";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { sharedClient } from "@zilobase/features/data";
 import { useSharedDataRevision } from "@zilobase/features/data/react";
@@ -487,22 +486,19 @@ function DatabaseRecordRowActionsProvider({
           <DropDrawerSeparator />
           {matches("Copy link") ? (
             <DropDrawerItem
-              onSelect={() => {
+              onSelect={async () => {
                 close();
-                void Effect.runPromise(
-                  Effect.tryPromise({
-                    try: () =>
-                      navigator.clipboard.writeText(
-                        selection.selectedRows
-                          .map((row) => `${window.location.origin}/p/${row.pageId}`)
-                          .join("\n"),
-                      ),
-                    catch: (error) => error,
-                  }),
-                ).then(
-                  () => toast.success("Links copied"),
-                  () => toast.error("Couldn't copy links"),
-                );
+                try {
+                  await navigator.clipboard.writeText(
+                    selection.selectedRows
+                      .map((row) => `${window.location.origin}/p/${row.pageId}`)
+                      .join("\n"),
+                  );
+                } catch {
+                  toast.error("Couldn't copy links");
+                  return;
+                }
+                toast.success("Links copied");
               }}
             >
               <Link2 />

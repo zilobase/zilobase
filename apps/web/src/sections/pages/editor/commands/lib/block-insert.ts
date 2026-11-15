@@ -5,7 +5,6 @@ import { TextSelection } from "@tiptap/pm/state";
 import { getSelectedBlockRangesForTarget } from "../../extensions/lib/block-selection";
 import { workspaceForView } from "../../extensions/lib/editor-integration";
 import { dispatchVerified } from "../../operations/lib/dispatch-verified";
-import { Effect } from "effect";
 
 import type { SlashCommandItem } from "../../extensions/components/slash-command";
 import {
@@ -369,32 +368,21 @@ type StructuralInsertionOptions<T> = {
   onPendingChange?: StructuralInsertionPendingChange;
 };
 
-function structuralInsertion<T>({
+export async function runStructuralInsertion<T>({
   create,
   insert,
   onPendingChange,
 }: StructuralInsertionOptions<T>) {
-  return Effect.gen(function* () {
-    if (!create) return null;
-    // This callback stays outside the cleanup region, as in the Promise workflow.
-    yield* Effect.try({ try: () => onPendingChange?.(true), catch: (error) => error });
-    return yield* Effect.gen(function* () {
-      const created = yield* Effect.tryPromise({ try: create, catch: (error) => error });
-      if (created !== null) {
-        yield* Effect.try({ try: () => insert(created), catch: (error) => error });
-      }
-      return created;
-    }).pipe(
-      // Capture the body failure so a throwing finalizer retains JavaScript finally precedence.
-      Effect.exit,
-      Effect.ensuring(Effect.sync(() => onPendingChange?.(false))),
-      Effect.flatMap((exit) => exit),
-    );
-  });
-}
-
-export async function runStructuralInsertion<T>(input: StructuralInsertionOptions<T>) {
-  return Effect.runPromise(structuralInsertion(input));
+  if (!create) return null;
+  // This callback stays outside the cleanup region.
+  onPendingChange?.(true);
+  try {
+    const created = await create();
+    if (created !== null) insert(created);
+    return created;
+  } finally {
+    onPendingChange?.(false);
+  }
 }
 
 export async function insertCreatedBlock<T>({
@@ -423,8 +411,8 @@ export async function insertCreatedBlock<T>({
   const from = createPositionAnchor(editor, range.from),
     to = createPositionAnchor(editor, range.to);
   const expected = editor.state.doc.slice(range.from, range.to);
-  return Effect.runPromise(
-    structuralInsertion({
+  try {
+    return await runStructuralInsertion({
       create,
       onPendingChange,
       insert: (created) => {
@@ -448,17 +436,11 @@ export async function insertCreatedBlock<T>({
           .run();
         if (applied && !editor.state.doc.eq(previous)) onInserted?.(created);
       },
-    }).pipe(
-      Effect.exit,
-      Effect.ensuring(
-        Effect.sync(() => {
-          from.dispose();
-          to.dispose();
-        }),
-      ),
-      Effect.flatMap((exit) => exit),
-    ),
-  );
+    });
+  } finally {
+    from.dispose();
+    to.dispose();
+  }
 }
 
 export async function insertBlockFromPlus(
@@ -510,31 +492,24 @@ export async function insertBlockFromPlus(
     selectInsertedBlock(editor, insertPos, item);
   };
 
-  return Effect.runPromise(
-    Effect.gen(function* () {
-      if (item.id === "databaseBlock" || item.id === "meetingBlock") {
-        const database = item.id === "databaseBlock";
-        const outcome = yield* structuralInsertion({
-          create: database ? options.onCreateDatabase : options.onCreateMeeting,
-          insert: (id) =>
-            insert(blockContentForItem(item, database ? { databaseId: id } : { meetingId: id })),
-          onPendingChange: options.onStructuralInsertionPendingChange,
-        }).pipe(Effect.exit);
-        // Resource insertion crossed an await before anchor cleanup, even for missing
-        // callbacks or synchronous failures. Keep that boundary without nesting runners.
-        yield* Effect.promise(() => Promise.resolve());
-        yield* outcome;
-        return;
-      }
+  try {
+    if (item.id === "databaseBlock" || item.id === "meetingBlock") {
+      const database = item.id === "databaseBlock";
+      // Resource insertion crosses an await before anchor cleanup, even for missing
+      // callbacks or synchronous failures.
+      await runStructuralInsertion({
+        create: database ? options.onCreateDatabase : options.onCreateMeeting,
+        insert: (id) =>
+          insert(blockContentForItem(item, database ? { databaseId: id } : { meetingId: id })),
+        onPendingChange: options.onStructuralInsertionPendingChange,
+      });
+      return;
+    }
 
-      yield* Effect.try({ try: () => insert(blockContentForItem(item)), catch: (error) => error });
-    }).pipe(
-      // Preserve finally precedence if disposing the anchor throws after a body failure.
-      Effect.exit,
-      Effect.ensuring(Effect.sync(() => anchor.dispose())),
-      Effect.flatMap((exit) => exit),
-    ),
-  );
+    insert(blockContentForItem(item));
+  } finally {
+    anchor.dispose();
+  }
 }
 
 export type BlockInsertionOptions = {

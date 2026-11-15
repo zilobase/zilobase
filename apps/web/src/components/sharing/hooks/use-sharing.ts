@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import {
   type AccessLevel,
   type AccessTargetType,
@@ -61,16 +60,10 @@ export function useSharing({
       onError: (error) => toast.error(error.message || "Could not share."),
     });
 
-  const copyLink = () =>
-    Effect.runPromise(
-      Effect.gen(function* () {
-        yield* Effect.tryPromise({
-          try: () => navigator.clipboard.writeText(publicUrl || window.location.href),
-          catch: (error) => error,
-        });
-        toast.success("Page link copied.");
-      }),
-    );
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(publicUrl || window.location.href);
+    toast.success("Page link copied.");
+  };
 
   const invitePageGuest = () =>
     sharing.invitePageGuest(guestEmail, guestAccessLevel, {

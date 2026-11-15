@@ -1,6 +1,5 @@
 import { meetingCollaborationTicket } from "@zilobase/features/meetings";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Effect } from "effect";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { SessionUser } from "@zilobase/features/auth";
 import * as Y from "yjs";
@@ -87,16 +86,11 @@ export function useMeetingCollaboration(
       if (!denied) publish({ synced: state });
     };
     publish({ status: "connecting", error: null });
-    void Effect.runPromise(
-      Effect.gen(function* () {
-        const acquisition = yield* Effect.tryPromise({
-          try: () => acquirePageDocument(accountId, documentId),
-          catch: (error) => error,
-        }).pipe(
-          Effect.match({
-            onSuccess: (entry) => ({ entry, error: null }),
-            onFailure: (error) => ({ entry: null, error }),
-          }),
+    void (async () => {
+      try {
+        const acquisition = await acquirePageDocument(accountId, documentId).then(
+          (entry) => ({ entry, error: null }),
+          (error: unknown) => ({ entry: null, error }),
         );
         const acquired = acquisition.entry;
         if (disposed) {
@@ -109,64 +103,50 @@ export function useMeetingCollaboration(
         const nextDocument = acquired?.document ?? (fallbackDocument = new Y.Doc());
         nextDocument.on("update", handleDocumentUpdate);
         acquired?.errorListeners.add(cacheError);
-        const ticket = yield* Effect.tryPromise({
-          try: () => getMeetingTicket(meetingId, controller.signal),
-          catch: (error) => error,
-        });
+        const ticket = await getMeetingTicket(meetingId, controller.signal);
         if (disposed) return;
-        yield* Effect.try({
-          try: () => {
-            applyTicketState(nextDocument, ticket);
-            activeProvider = connectCollaborationDocument({
-              autoConnect: false,
-              document: nextDocument,
-              pageId: meetingId,
-              ticket,
-              refreshTicket: () => getMeetingTicket(meetingId, controller.signal),
-              onAuthenticationFailed: (reason) => {
-                denied = true;
-                publish({ status: "blocked", synced: false, error: reason });
-              },
-              onStatus: (status) => {
-                if (!denied)
-                  publish({ status, ...(status === "connected" ? {} : { synced: false }) });
-              },
-              onUnsyncedChanges: (unsyncedChanges) => publish({ unsyncedChanges }),
-            });
-            if (acquired) acquired.transportOrigin = activeProvider;
-            activeProvider.setAwarenessField("user", userRef.current!);
-            activeProvider.on("synced", synced);
-            publish({
-              document: nextDocument,
-              provider: activeProvider,
-              flushLocal: acquired
-                ? () => flushCachedPage(accountId, documentId)
-                : async () => {
-                    throw acquisition.error;
-                  },
-            });
-            void activeProvider.connect().catch(() => {
-              if (!denied) publish({ status: "disconnected", synced: false });
-            });
+        applyTicketState(nextDocument, ticket);
+        activeProvider = connectCollaborationDocument({
+          autoConnect: false,
+          document: nextDocument,
+          pageId: meetingId,
+          ticket,
+          refreshTicket: () => getMeetingTicket(meetingId, controller.signal),
+          onAuthenticationFailed: (reason) => {
+            denied = true;
+            publish({ status: "blocked", synced: false, error: reason });
           },
-          catch: (error) => error,
+          onStatus: (status) => {
+            if (!denied) publish({ status, ...(status === "connected" ? {} : { synced: false }) });
+          },
+          onUnsyncedChanges: (unsyncedChanges) => publish({ unsyncedChanges }),
         });
-      }).pipe(
-        Effect.catch((error) =>
-          Effect.sync(() => {
-            if (!controller.signal.aborted)
-              publish({
-                status:
-                  error instanceof ApiError && [401, 403, 404].includes(error.status)
-                    ? "blocked"
-                    : "disconnected",
-                error:
-                  error instanceof Error ? error.message : "Could not connect meeting content.",
-              });
-          }),
-        ),
-      ),
-    );
+        if (acquired) acquired.transportOrigin = activeProvider;
+        activeProvider.setAwarenessField("user", userRef.current!);
+        activeProvider.on("synced", synced);
+        publish({
+          document: nextDocument,
+          provider: activeProvider,
+          flushLocal: acquired
+            ? () => flushCachedPage(accountId, documentId)
+            : async () => {
+                throw acquisition.error;
+              },
+        });
+        void activeProvider.connect().catch(() => {
+          if (!denied) publish({ status: "disconnected", synced: false });
+        });
+      } catch (error) {
+        if (!controller.signal.aborted)
+          publish({
+            status:
+              error instanceof ApiError && [401, 403, 404].includes(error.status)
+                ? "blocked"
+                : "disconnected",
+            error: error instanceof Error ? error.message : "Could not connect meeting content.",
+          });
+      }
+    })();
     return () => {
       disposed = true;
       controller.abort();

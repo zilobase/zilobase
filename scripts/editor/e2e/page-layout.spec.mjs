@@ -160,7 +160,7 @@ test("row navigation uses database context and preserves that context for the ne
   await expect(side.getByRole("button", { name: "Open previous row", exact: true })).toBeEnabled();
 });
 
-test("Effect navigation commands execute synchronously and preserve thrown adapter errors", async ({
+test("navigation commands execute synchronously and preserve thrown adapter errors", async ({
   page,
 }) => {
   await page.goto(fixture);

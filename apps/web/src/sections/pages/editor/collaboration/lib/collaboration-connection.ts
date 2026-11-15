@@ -1,5 +1,4 @@
 import { collaboratorColorIds } from "@/lib/color-tokens";
-import { Effect } from "effect";
 import type { CollaborationTicket } from "@zilobase/features/pages";
 
 export type { CollaborationTicket } from "@zilobase/features/pages";
@@ -234,12 +233,13 @@ export function startPageConnection({
     const ticket = preparedTicket
       ? Promise.resolve(preparedTicket)
       : services.getTicket(pageId, controller.signal);
-    void Effect.runPromise(
-      Effect.gen(function* () {
-        const prepared = yield* Effect.tryPromise({ try: () => ticket, catch: (error) => error });
-        yield* Effect.try({ try: () => attach(prepared), catch: (error) => error });
-      }).pipe(Effect.catch((reason) => Effect.sync(() => failed(reason)))),
-    );
+    void (async () => {
+      try {
+        attach(await ticket);
+      } catch (reason) {
+        failed(reason);
+      }
+    })();
   });
 
   return () => {

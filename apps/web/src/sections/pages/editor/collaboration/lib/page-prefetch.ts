@@ -1,6 +1,5 @@
 import { pageCollaborationTicket, pageQueryOptions } from "@zilobase/features/pages";
 import { sessionQueryKey, type SessionResponse } from "@zilobase/features/auth";
-import { Effect } from "effect";
 
 import { queryClient } from "@/app/query-client";
 import { getConnectivityState } from "@/platform/network/connectivity";
@@ -28,33 +27,15 @@ export function prefetchPageForNavigation(pageId: string) {
 }
 
 async function prefetchDocument(userId: string, pageId: string) {
-  return Effect.runPromise(
-    Effect.gen(function* () {
-      const entry = yield* Effect.tryPromise({
-        try: () => acquirePageDocument(userId, pageId),
-        catch: (error) => error,
-      });
-      yield* Effect.gen(function* () {
-        if (entry.hasPersistedState) return;
-        const ticket = yield* Effect.tryPromise({
-          try: () => pageCollaborationTicket(apiFetch, pageId, undefined, true),
-          catch: (error) => error,
-        });
-        yield* Effect.try({
-          try: () => applyTicketState(entry.document, ticket),
-          catch: (error) => error,
-        });
-        yield* Effect.tryPromise({ try: () => entry.flush(), catch: (error) => error });
-        if (entry.persistenceError) return;
-        yield* Effect.tryPromise({
-          try: () => markPageDocumentInitialized(entry),
-          catch: (error) => error,
-        });
-      }).pipe(
-        Effect.exit,
-        Effect.ensuring(Effect.sync(() => releasePageDocument(entry))),
-        Effect.flatMap((exit) => exit),
-      );
-    }),
-  );
+  const entry = await acquirePageDocument(userId, pageId);
+  try {
+    if (entry.hasPersistedState) return;
+    const ticket = await pageCollaborationTicket(apiFetch, pageId, undefined, true);
+    applyTicketState(entry.document, ticket);
+    await entry.flush();
+    if (entry.persistenceError) return;
+    await markPageDocumentInitialized(entry);
+  } finally {
+    releasePageDocument(entry);
+  }
 }

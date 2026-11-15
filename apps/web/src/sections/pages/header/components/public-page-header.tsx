@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import { PageHeader } from "./page-header";
 import { Link } from "@tanstack/react-router";
 import { CopyIcon } from "@/components/icons";
@@ -19,16 +18,10 @@ export function GuestPageTitle({ pageId }: { pageId: string }) {
 }
 
 export function GuestPageActions() {
-  const copyLink = () =>
-    Effect.runPromise(
-      Effect.gen(function* () {
-        yield* Effect.tryPromise({
-          try: () => navigator.clipboard.writeText(window.location.href),
-          catch: (error) => error,
-        });
-        yield* Effect.sync(() => toast.success("Page link copied."));
-      }),
-    );
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    toast.success("Page link copied.");
+  };
   return (
     <>
       <Badge variant="outline">Guest</Badge>

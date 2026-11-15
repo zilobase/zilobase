@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import { isMobileViewport } from "@/hooks/use-mobile";
 import { useCallback } from "react";
 import { markPageNavigationStart } from "../lib/page-navigation-timing";
@@ -35,67 +34,58 @@ export function useOpenEmbeddedPage({
   } = usePageSidePane();
 
   const openPage = useCallback(
-    (pageId: string, options?: OpenPageOptions) =>
-      Effect.runSync(
-        Effect.gen(function* () {
-          if (options?.focusComment) comments?.requestFocus(pageId);
-          if (isMobileViewport()) {
-            yield* Effect.sync(() =>
-              openPageInMainPane(pageId, { databaseId: options?.databaseId ?? databaseId }),
-            );
-            return;
-          }
-          if (options?.presentation === "newtab") {
-            openNewTab({
-              href: `/p/${encodeURIComponent(pageId)}`,
-              title: readCachedPage(queryClient, pageId)?.name || "Untitled",
-            });
-            return;
-          }
-          if (options?.presentation === "fullpage") {
-            openPageInMainPane(pageId, { databaseId: options?.databaseId ?? databaseId });
-            return;
-          }
-          const mode = resolveEmbeddedItemsOpenAsFromCache(
-            queryClient,
-            contextPageId,
-            page,
-            readPublishedEmbeddedItemsOpenAs,
-          );
-          const usesDialog = (options?.presentation ?? mode) === "dialog";
-          const activePageId = usesDialog ? dialogPageId : sidePanePageId;
-          const isCurrentlyOpen = activePageId === pageId;
+    (pageId: string, options?: OpenPageOptions) => {
+      if (options?.focusComment) comments?.requestFocus(pageId);
+      if (isMobileViewport()) {
+        openPageInMainPane(pageId, { databaseId: options?.databaseId ?? databaseId });
+        return;
+      }
+      if (options?.presentation === "newtab") {
+        openNewTab({
+          href: `/p/${encodeURIComponent(pageId)}`,
+          title: readCachedPage(queryClient, pageId)?.name || "Untitled",
+        });
+        return;
+      }
+      if (options?.presentation === "fullpage") {
+        openPageInMainPane(pageId, { databaseId: options?.databaseId ?? databaseId });
+        return;
+      }
+      const mode = resolveEmbeddedItemsOpenAsFromCache(
+        queryClient,
+        contextPageId,
+        page,
+        readPublishedEmbeddedItemsOpenAs,
+      );
+      const usesDialog = (options?.presentation ?? mode) === "dialog";
+      const activePageId = usesDialog ? dialogPageId : sidePanePageId;
+      const isCurrentlyOpen = activePageId === pageId;
 
-          if (
-            (pageId === contextPageId || isCurrentlyOpen) &&
-            !options?.presentation &&
-            !options?.focusComment
-          ) {
-            if (usesDialog) {
-              yield* Effect.sync(closeEmbeddedPageDialog);
-            } else {
-              yield* Effect.sync(closeSidePane);
-            }
-            return;
-          }
+      if (
+        (pageId === contextPageId || isCurrentlyOpen) &&
+        !options?.presentation &&
+        !options?.focusComment
+      ) {
+        if (usesDialog) {
+          closeEmbeddedPageDialog();
+        } else {
+          closeSidePane();
+        }
+        return;
+      }
 
-          yield* Effect.sync(() => markPageNavigationStart(pageId));
+      markPageNavigationStart(pageId);
 
-          if (usesDialog) {
-            yield* Effect.sync(() =>
-              openEmbeddedPageDialog(pageId, {
-                databaseId: options?.databaseId ?? databaseId,
-                focusTitle: options?.focusTitle,
-              }),
-            );
-            return;
-          }
+      if (usesDialog) {
+        openEmbeddedPageDialog(pageId, {
+          databaseId: options?.databaseId ?? databaseId,
+          focusTitle: options?.focusTitle,
+        });
+        return;
+      }
 
-          yield* Effect.sync(() =>
-            openSidePane(pageId, { databaseId: options?.databaseId ?? databaseId }),
-          );
-        }),
-      ),
+      openSidePane(pageId, { databaseId: options?.databaseId ?? databaseId });
+    },
     [
       closeEmbeddedPageDialog,
       closeSidePane,

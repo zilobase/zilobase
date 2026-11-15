@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import { closeEditorHistory } from "@/sections/pages/editor/runtime/lib/editor-history-coordinator";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -441,11 +440,11 @@ export function DragBlockMenu({
         return;
       }
 
-      Effect.runSync(
-        Effect.try({ try: () => document.execCommand("copy"), catch: (error) => error }).pipe(
-          Effect.catch(() => Effect.sync(() => toast.error("Could not copy block."))),
-        ),
-      );
+      try {
+        document.execCommand("copy");
+      } catch {
+        toast.error("Could not copy block.");
+      }
     });
   };
 

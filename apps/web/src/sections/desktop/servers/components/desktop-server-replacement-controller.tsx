@@ -1,4 +1,3 @@
-import { Cause, Effect } from "effect";
 import { createDesktopServerReplacementDependencies } from "@/app/desktop-session";
 import * as React from "react";
 
@@ -60,20 +59,14 @@ export function DesktopServerReplacementController({
   const verificationOperation = React.useRef(0);
   stateRef.current = state;
 
-  const cancelCandidate = React.useCallback(
-    () =>
-      Effect.runPromise(
-        Effect.gen(function* () {
-          verificationOperation.current += 1;
-          const current = stateRef.current;
-          if ("prepared" in current) {
-            yield* discardCandidate(current.prepared.candidateId).pipe(Effect.ignore);
-          }
-          setState({ phase: "idle" });
-        }),
-      ),
-    [],
-  );
+  const cancelCandidate = React.useCallback(async () => {
+    verificationOperation.current += 1;
+    const current = stateRef.current;
+    if ("prepared" in current) {
+      await discardCandidate(current.prepared.candidateId).catch(() => undefined);
+    }
+    setState({ phase: "idle" });
+  }, []);
 
   React.useEffect(
     () =>
@@ -82,42 +75,43 @@ export function DesktopServerReplacementController({
         if (isReplacementBusy(previous)) return;
         const operation = ++verificationOperation.current;
         if ("prepared" in previous) {
-          void Effect.runPromise(discardCandidate(previous.prepared.candidateId));
+          void discardCandidate(previous.prepared.candidateId);
         }
         setState({ phase: "verifying" });
         recordDesktopDiagnostic("server_replacement.verification", {
           status: "started",
         });
-        const verificationFailed = (error: unknown) =>
-          Effect.sync(() => {
-            if (operation !== verificationOperation.current) return;
-            recordDesktopDiagnostic(
-              "server_replacement.verification",
-              describeDesktopError(error),
-              "error",
-            );
-            setState({ phase: "error", message: getApiErrorMessage(error) });
-          });
-        void Effect.runPromise(
-          Effect.gen(function* () {
-            const prepared = yield* Effect.tryPromise({
-              try: () => prepareDesktopServerCandidate(request.serverUrl),
-              catch: (error) => error,
-            }).pipe(Effect.catch(verificationFailed));
-            if (!prepared) return;
-            if (operation !== verificationOperation.current) {
-              yield* discardCandidate(prepared.candidateId).pipe(Effect.ignore);
+        const verificationFailed = (error: unknown) => {
+          if (operation !== verificationOperation.current) return;
+          recordDesktopDiagnostic(
+            "server_replacement.verification",
+            describeDesktopError(error),
+            "error",
+          );
+          setState({ phase: "error", message: getApiErrorMessage(error) });
+        };
+        void (async () => {
+          try {
+            let prepared: PreparedDesktopServer;
+            try {
+              prepared = await prepareDesktopServerCandidate(request.serverUrl);
+            } catch (error) {
+              verificationFailed(error);
               return;
             }
-            yield* Effect.try({
-              try: () => assertPreparedServerMatchesRequest(prepared, request),
-              catch: (error) => error,
-            }).pipe(
-              Effect.tapError(() => discardCandidate(prepared.candidateId).pipe(Effect.ignore)),
-            );
+            if (operation !== verificationOperation.current) {
+              await discardCandidate(prepared.candidateId).catch(() => undefined);
+              return;
+            }
+            try {
+              assertPreparedServerMatchesRequest(prepared, request);
+            } catch (error) {
+              await discardCandidate(prepared.candidateId).catch(() => undefined);
+              throw error;
+            }
             const current = getSelectedDesktopServer();
             if (current && desktopServersReferToSameInstance(current, prepared.server)) {
-              yield* discardCandidate(prepared.candidateId);
+              await discardCandidate(prepared.candidateId);
               setState({ phase: "idle" });
               if (request.path) openPath(request.path);
               return;
@@ -127,116 +121,85 @@ export function DesktopServerReplacementController({
               status: "success",
             });
             setState({ phase: "replacing", prepared, request });
-            yield* Effect.tryPromise({
-              try: () =>
-                executeDesktopServerSwitch({
-                  candidateId: prepared.candidateId,
-                  path: request.path ?? "/login",
-                  server: prepared.server,
-                }),
-              catch: (error) => error,
+            await executeDesktopServerSwitch({
+              candidateId: prepared.candidateId,
+              path: request.path ?? "/login",
+              server: prepared.server,
             });
-          }).pipe(Effect.catchCause((cause) => verificationFailed(Cause.squash(cause)))),
-        );
+          } catch (error) {
+            verificationFailed(error);
+          }
+        })();
       }),
     [openPath],
   );
 
   const replaceServer = React.useCallback(
-    (context: ReplacementContext) =>
-      Effect.runPromise(
-        Effect.gen(function* () {
-          const current = getSelectedDesktopServer();
-          if (!current) {
-            setState({
-              phase: "error",
-              message: "The current desktop server is unavailable.",
-            });
-            return;
-          }
+    async (context: ReplacementContext) => {
+      const current = getSelectedDesktopServer();
+      if (!current) {
+        setState({
+          phase: "error",
+          message: "The current desktop server is unavailable.",
+        });
+        return;
+      }
 
-          setState({ ...context, phase: "rechecking" });
-          const refreshed = yield* Effect.gen(function* () {
-            const candidate = yield* Effect.tryPromise({
-              try: () => prepareDesktopServerCandidate(context.request.serverUrl),
-              catch: (error) => error,
-            });
-            yield* Effect.try({
-              try: () => {
-                assertPreparedServerMatchesRequest(candidate, context.request);
-                if (!desktopServersReferToSameInstance(context.prepared.server, candidate.server)) {
-                  throw new Error(
-                    "The server identity changed during confirmation. Review the server and try again.",
-                  );
-                }
-              },
-              catch: (error) => error,
-            }).pipe(
-              Effect.tapError(() => discardCandidate(candidate.candidateId).pipe(Effect.ignore)),
+      setState({ ...context, phase: "rechecking" });
+      let refreshed: PreparedDesktopServer;
+      try {
+        const candidate = await prepareDesktopServerCandidate(context.request.serverUrl);
+        try {
+          assertPreparedServerMatchesRequest(candidate, context.request);
+          if (!desktopServersReferToSameInstance(context.prepared.server, candidate.server)) {
+            throw new Error(
+              "The server identity changed during confirmation. Review the server and try again.",
             );
-            yield* discardCandidate(context.prepared.candidateId).pipe(Effect.ignore);
-            return candidate;
-          }).pipe(
-            Effect.catchCause((cause) =>
-              Effect.sync(() => {
-                const error = Cause.squash(cause);
-                recordDesktopDiagnostic(
-                  "server_replacement.reverification",
-                  describeDesktopError(error),
-                  "error",
-                );
-                setState({ phase: "error", message: getApiErrorMessage(error) });
-              }),
-            ),
-          );
-          if (!refreshed) return;
+          }
+        } catch (error) {
+          await discardCandidate(candidate.candidateId).catch(() => undefined);
+          throw error;
+        }
+        await discardCandidate(context.prepared.candidateId).catch(() => undefined);
+        refreshed = candidate;
+      } catch (error) {
+        recordDesktopDiagnostic(
+          "server_replacement.reverification",
+          describeDesktopError(error),
+          "error",
+        );
+        setState({ phase: "error", message: getApiErrorMessage(error) });
+        return;
+      }
 
-          const refreshedContext = { ...context, prepared: refreshed };
-          setState({ ...refreshedContext, phase: "replacing" });
-          recordDesktopDiagnostic("server_replacement.commit", { status: "started" });
-          yield* Effect.gen(function* () {
-            yield* Effect.tryPromise({
-              try: () =>
-                executeDesktopServerReplacement(
-                  refreshed,
-                  current,
-                  context.request.path,
-                  createDesktopServerReplacementDependencies({
-                    beforeLocalCleanup: () =>
-                      Effect.runPromise(
-                        Effect.gen(function* () {
-                          yield* Effect.tryPromise({
-                            try: () => cancelDesktopBrowserSignIn(),
-                            catch: (error) => error,
-                          }).pipe(Effect.ignore);
-                          openPath("/login");
-                          yield* Effect.promise(afterReactTeardown);
-                        }),
-                      ),
-                    reload: (path) => window.location.assign(path),
-                  }),
-                ),
-              catch: (error) => error,
-            });
-            recordDesktopDiagnostic("server_replacement.commit", { status: "success" });
-          }).pipe(
-            Effect.catchCause((cause) =>
-              Effect.sync(() => {
-                const error = Cause.squash(cause);
-                recordDesktopDiagnostic(
-                  "server_replacement.commit",
-                  describeDesktopError(error),
-                  "error",
-                );
-                setState({
-                  phase: "fatal",
-                  message: `${getApiErrorMessage(error)} Restart Zilobase before trying again.`,
-                });
-              }),
-            ),
-          );
-        }),
-      ),
+      const refreshedContext = { ...context, prepared: refreshed };
+      setState({ ...refreshedContext, phase: "replacing" });
+      recordDesktopDiagnostic("server_replacement.commit", { status: "started" });
+      try {
+        await executeDesktopServerReplacement(
+          refreshed,
+          current,
+          context.request.path,
+          createDesktopServerReplacementDependencies({
+            beforeLocalCleanup: async () => {
+              try {
+                await cancelDesktopBrowserSignIn();
+              } catch {}
+              openPath("/login");
+              await afterReactTeardown();
+            },
+            reload: (path) => window.location.assign(path),
+          }),
+        );
+        recordDesktopDiagnostic("server_replacement.commit", { status: "success" });
+      } catch (error) {
+        recordDesktopDiagnostic("server_replacement.commit", describeDesktopError(error), "error");
+        setState({
+          phase: "fatal",
+          message: `${getApiErrorMessage(error)} Restart Zilobase before trying again.`,
+        });
+      }
+    },
     [openPath],
   );
 
@@ -272,9 +235,7 @@ export function DesktopServerReplacementController({
           {state.phase === "error" ? (
             <AlertDialogAction onClick={() => setState({ phase: "idle" })}>Close</AlertDialogAction>
           ) : state.phase === "fatal" ? (
-            <AlertDialogAction
-              onClick={() => Effect.runSync(Effect.sync(() => window.location.reload()))}
-            >
+            <AlertDialogAction onClick={() => window.location.reload()}>
               Restart Zilobase
             </AlertDialogAction>
           ) : !busy ? (
@@ -347,9 +308,6 @@ function isReplacementBusy(state: ReplacementState) {
   return state.phase === "rechecking" || state.phase === "replacing";
 }
 
-function discardCandidate(candidateId: string) {
-  return Effect.tryPromise({
-    try: () => discardDesktopServerCandidate(candidateId),
-    catch: (error) => error,
-  });
+async function discardCandidate(candidateId: string) {
+  await discardDesktopServerCandidate(candidateId);
 }

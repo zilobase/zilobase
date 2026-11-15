@@ -1,7 +1,6 @@
 import { ChevronDown, ChevronsRight, ChevronUp, Maximize2, XIcon } from "@/components/icons";
 import { AppBreadcrumbs } from "@/components/navigation/components/breadcrumbs";
 import { Link } from "@tanstack/react-router";
-import { Effect } from "effect";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -234,35 +233,27 @@ function PagePaneControls({
       return;
     }
 
-    Effect.runSync(
-      Effect.gen(function* () {
-        if (isPublishedFallback) {
-          yield* Effect.sync(() => writePublishedEmbeddedItemsOpenAs(nextMode));
-          yield* Effect.sync(() => setPublishedEmbeddedItemsOpenAs(nextMode));
-        } else {
-          yield* Effect.sync(() =>
-            updateUserSettings.mutate(
-              { embeddedItemsOpenAs: nextMode },
-              {
-                onError: (error) => {
-                  toast.error(
-                    error instanceof Error ? error.message : "Could not update open pages setting.",
-                  );
-                },
-              },
-            ),
-          );
-        }
+    if (isPublishedFallback) {
+      writePublishedEmbeddedItemsOpenAs(nextMode);
+      setPublishedEmbeddedItemsOpenAs(nextMode);
+    } else {
+      updateUserSettings.mutate(
+        { embeddedItemsOpenAs: nextMode },
+        {
+          onError: (error) => {
+            toast.error(
+              error instanceof Error ? error.message : "Could not update open pages setting.",
+            );
+          },
+        },
+      );
+    }
 
-        if (nextMode === "dialog" && !isDialogPane) {
-          yield* Effect.sync(() =>
-            sidePane?.openEmbeddedPageDialog(pageId, { databaseId: rowDatabaseId }),
-          );
-        } else if (nextMode === "sidepanel" && isDialogPane) {
-          yield* Effect.sync(() => sidePane?.openSidePane(pageId, { databaseId: rowDatabaseId }));
-        }
-      }),
-    );
+    if (nextMode === "dialog" && !isDialogPane) {
+      sidePane?.openEmbeddedPageDialog(pageId, { databaseId: rowDatabaseId });
+    } else if (nextMode === "sidepanel" && isDialogPane) {
+      sidePane?.openSidePane(pageId, { databaseId: rowDatabaseId });
+    }
   };
 
   const openRowPage = (targetPageId: string | null) => {

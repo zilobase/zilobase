@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Effect } from "effect";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -56,13 +55,12 @@ export function PageDialog({
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const returnFocus = useRef<HTMLElement | null>(null);
-  const closeDialogCommand = Effect.gen(function* () {
+  const closeDialog = () => {
     if (pageLayoutSidebar?.overlayPageId === dialogPageId) {
-      yield* Effect.sync(() => pageLayoutSidebar.closeOverlay());
+      pageLayoutSidebar.closeOverlay();
     }
-    yield* Effect.sync(closeEmbeddedPageDialog);
-  });
-  const closeDialog = () => Effect.runSync(closeDialogCommand);
+    closeEmbeddedPageDialog();
+  };
 
   if (isMobile || isMobileViewport()) return null;
 
@@ -100,16 +98,10 @@ export function PageDialog({
             placement="dialog"
             rowNavigationDatabaseId={dialogDatabaseId}
             onClose={closeDialog}
-            onOpenFullPage={() =>
-              Effect.runSync(
-                Effect.gen(function* () {
-                  yield* closeDialogCommand;
-                  yield* Effect.sync(() => {
-                    void navigate({ to: getFullPagePath(dialogPageId) });
-                  });
-                }),
-              )
-            }
+            onOpenFullPage={() => {
+              closeDialog();
+              void navigate({ to: getFullPagePath(dialogPageId) });
+            }}
           >
             <PageWorkspaceGate pageId={dialogPageId}>
               <PageContent

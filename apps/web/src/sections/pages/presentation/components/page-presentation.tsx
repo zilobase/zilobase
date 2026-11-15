@@ -1,6 +1,5 @@
 import { usePageEditorRegistry } from "@/sections/pages/editor/runtime/components/page-editor-registry";
 import { useLocation, useRouter } from "@tanstack/react-router";
-import { Effect } from "effect";
 import {
   createContext,
   useCallback,
@@ -142,24 +141,20 @@ export function usePageSidePaneState(
   }, []);
   const openSidePane = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
-      Effect.runSync(
-        Effect.sync(() => {
-          if (isMobile || isMobileViewport()) {
-            closeEmbeddedPageDialog();
-            if (location.pathname !== getFullPagePath(nextPageId))
-              router.history.push(getFullPagePath(nextPageId));
-            return;
-          }
-          const existing = getEditorHandle(nextPageId);
-          if (existing?.focus && sidePanePageId !== nextPageId && dialogPageId !== nextPageId) {
-            existing.focus();
-            return;
-          }
-          closeEmbeddedPageDialog();
+      if (isMobile || isMobileViewport()) {
+        closeEmbeddedPageDialog();
+        if (location.pathname !== getFullPagePath(nextPageId))
+          router.history.push(getFullPagePath(nextPageId));
+        return;
+      }
+      const existing = getEditorHandle(nextPageId);
+      if (existing?.focus && sidePanePageId !== nextPageId && dialogPageId !== nextPageId) {
+        existing.focus();
+        return;
+      }
+      closeEmbeddedPageDialog();
 
-          writeSidePaneParams(nextPageId, options?.databaseId, false, options?.blockId);
-        }),
-      );
+      writeSidePaneParams(nextPageId, options?.databaseId, false, options?.blockId);
     },
     [
       getEditorHandle,
@@ -174,40 +169,28 @@ export function usePageSidePaneState(
   );
   const openDatabaseSidePane = useCallback(
     (databaseId: string) => {
-      Effect.runSync(
-        Effect.sync(() => {
-          closeEmbeddedPageDialog();
+      closeEmbeddedPageDialog();
 
-          if (isMobile || isMobileViewport()) {
-            router.history.push(getFullDatabasePath(databaseId));
-            return;
-          }
+      if (isMobile || isMobileViewport()) {
+        router.history.push(getFullDatabasePath(databaseId));
+        return;
+      }
 
-          writeSidePaneParams(null, databaseId);
-        }),
-      );
+      writeSidePaneParams(null, databaseId);
     },
     [getEditorHandle, closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   );
   const openPageInMainPane = useCallback(
     (nextPageId: string, _options?: OpenPageSidePaneOptions) => {
-      Effect.runSync(
-        Effect.gen(function* () {
-          yield* Effect.sync(closeEmbeddedPageDialog);
-          yield* Effect.sync(() => router.history.push(getFullPagePath(nextPageId)));
-        }),
-      );
+      closeEmbeddedPageDialog();
+      router.history.push(getFullPagePath(nextPageId));
     },
     [closeEmbeddedPageDialog, router.history],
   );
   const openDatabaseInMainPane = useCallback(
     (databaseId: string) => {
-      Effect.runSync(
-        Effect.gen(function* () {
-          yield* Effect.sync(closeEmbeddedPageDialog);
-          yield* Effect.sync(() => router.history.push(getFullDatabasePath(databaseId)));
-        }),
-      );
+      closeEmbeddedPageDialog();
+      router.history.push(getFullDatabasePath(databaseId));
     },
     [closeEmbeddedPageDialog, router.history],
   );
@@ -220,26 +203,22 @@ export function usePageSidePaneState(
   }, [openDatabaseInMainPane, openPageInMainPane, sidePaneDatabaseId, sidePanePageId]);
   const openEmbeddedPageDialog = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
-      Effect.runSync(
-        Effect.sync(() => {
-          if (isMobile || isMobileViewport()) {
-            closeEmbeddedPageDialog();
-            if (location.pathname !== getFullPagePath(nextPageId))
-              router.history.push(getFullPagePath(nextPageId));
-            return;
-          }
-          const existing = getEditorHandle(nextPageId);
-          if (existing?.focus && sidePanePageId !== nextPageId && dialogPageId !== nextPageId) {
-            existing.focus();
-            return;
-          }
+      if (isMobile || isMobileViewport()) {
+        closeEmbeddedPageDialog();
+        if (location.pathname !== getFullPagePath(nextPageId))
+          router.history.push(getFullPagePath(nextPageId));
+        return;
+      }
+      const existing = getEditorHandle(nextPageId);
+      if (existing?.focus && sidePanePageId !== nextPageId && dialogPageId !== nextPageId) {
+        existing.focus();
+        return;
+      }
 
-          closeSidePane();
-          setDialogPageId(nextPageId);
-          setDialogDatabaseId(options?.databaseId ?? null);
-          setDialogFocusTitle(options?.focusTitle ?? false);
-        }),
-      );
+      closeSidePane();
+      setDialogPageId(nextPageId);
+      setDialogDatabaseId(options?.databaseId ?? null);
+      setDialogFocusTitle(options?.focusTitle ?? false);
     },
     [
       closeSidePane,
@@ -262,12 +241,8 @@ export function usePageSidePaneState(
         ? getFullDatabasePath(sidePaneDatabaseId)
         : null;
     if (!targetPath) return;
-    Effect.runSync(
-      Effect.gen(function* () {
-        yield* Effect.sync(closeEmbeddedPageDialog);
-        yield* Effect.sync(() => router.history.replace(targetPath));
-      }),
-    );
+    closeEmbeddedPageDialog();
+    router.history.replace(targetPath);
   }, [
     closeEmbeddedPageDialog,
     dialogPageId,

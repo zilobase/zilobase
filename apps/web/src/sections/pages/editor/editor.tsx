@@ -5,7 +5,6 @@ import { DatabaseView } from "@/sections/databases/views/shared/components/datab
 import { PageMetadata, type PageMetadataHandle } from "@/sections/pages/components/page-metadata";
 import { TextSelection } from "@tiptap/pm/state";
 import { EditorContent } from "@tiptap/react";
-import { Effect } from "effect";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { hasPendingCollaborationChanges } from "./collaboration/lib/page-document-session";
@@ -223,24 +222,22 @@ export function Editor({
       editor,
       ...(workspace.drag.active ? [workspace.drag.active.editor] : []),
     ]);
-    return Effect.runPromise(
-      commitDatabaseBlockDrop({
-        editor,
-        workspace,
-        pendingDrop: pendingDatabaseBlockDrop,
-        mode,
-        actions: { onEmbedDatabase, onMoveDatabase: actions.onMoveDatabase },
-        onComplete: () => setPendingDatabaseBlockDrop(null),
-        onError: (message) => toast.error(message),
-        onSettled: () => {
-          pendingDatabaseCommitRef.current = false;
-          pendingDatabaseBlockDrop.anchor.dispose();
-          workspace.drag.reset();
-          setPendingDatabaseBlockDrop(null);
-          releasePending();
-        },
-      }),
-    );
+    return commitDatabaseBlockDrop({
+      editor,
+      workspace,
+      pendingDrop: pendingDatabaseBlockDrop,
+      mode,
+      actions: { onEmbedDatabase, onMoveDatabase: actions.onMoveDatabase },
+      onComplete: () => setPendingDatabaseBlockDrop(null),
+      onError: (message) => toast.error(message),
+      onSettled: () => {
+        pendingDatabaseCommitRef.current = false;
+        pendingDatabaseBlockDrop.anchor.dispose();
+        workspace.drag.reset();
+        setPendingDatabaseBlockDrop(null);
+        releasePending();
+      },
+    });
   };
 
   useEffect(() => {

@@ -1,5 +1,4 @@
 import { blockBackgroundProps } from "../lib/block-background";
-import { Effect } from "effect";
 import { useEditorState } from "@tiptap/react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
@@ -58,9 +57,7 @@ function BookmarkBlockView({ editor, getPos, node, updateAttributes }: ReactNode
     const expected = typeof sourcePos === "number" ? editor.state.doc.nodeAt(sourcePos) : null;
 
     try {
-      const metadata = await Effect.runPromise(
-        Effect.tryPromise({ try: () => fetchBookmarkMetadata(nextUrl), catch: (error) => error }),
-      );
+      const metadata = await fetchBookmarkMetadata(nextUrl);
       const pos = getPos();
       if (
         typeof pos !== "number" ||

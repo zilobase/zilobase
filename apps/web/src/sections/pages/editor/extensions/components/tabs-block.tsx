@@ -14,7 +14,6 @@ import { useEffect, useState } from "react";
 import { closeEditorHistory } from "../../runtime/lib/editor-history-coordinator";
 import { canEditEditorStructure, createTabsContent } from "../../commands/lib/block-insert";
 
-import { Effect } from "effect";
 import { toast } from "sonner";
 import { workspaceForView } from "../lib/editor-integration";
 import { getNavigationItemPath } from "@/app/routing/route-identifiers";
@@ -149,17 +148,15 @@ function TabsBlockView({ editor, node, getPos }: ReactNodeViewProps) {
       window.location.origin,
     );
     url.hash = `editor-tab=${encodeURIComponent(tabId || `at:${currentPos}:${index}`)}`;
-    void Effect.runPromise(
-      Effect.tryPromise({
-        try: () => navigator.clipboard.writeText(url.href),
-        catch: (error) => error,
-      }).pipe(
-        Effect.match({
-          onFailure: () => toast.error("Could not copy tab link."),
-          onSuccess: () => toast.success("Tab link copied."),
-        }),
-      ),
-    );
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(url.href);
+      } catch {
+        toast.error("Could not copy tab link.");
+        return;
+      }
+      toast.success("Tab link copied.");
+    })();
   };
 
   return (
