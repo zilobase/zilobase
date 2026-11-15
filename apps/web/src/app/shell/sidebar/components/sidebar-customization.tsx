@@ -1550,8 +1550,6 @@ const tabLabelVariants = {
 };
 
 const tabTransition = {
-  bounce: 0,
-  delay: 0.05,
-  duration: 0.45,
-  type: "spring" as const,
+  duration: 0.2,
+  ease: [0.22, 1, 0.36, 1] as const,
 };

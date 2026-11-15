@@ -294,7 +294,7 @@ export function AppSidebar(sidebar: AppSidebarProps) {
                   <span className="min-w-0">
                     <span className="block text-sm font-medium">Open in desktop app</span>
                     <span className="mt-0.5 block text-xs leading-snug text-content-secondary">
-                      Continue this page in the desktop experience.
+                      Continue this page in the desktop experience
                     </span>
                   </span>
                 </a>
@@ -375,7 +375,7 @@ function SingleWorkspaceLabel({
             <SidebarMenuButton className="h-7 w-full max-w-full px-1.5" disabled={isLoading}>
               <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-action-selected text-action-on-selected">
                 {activeWorkspace ? (
-                  <span className="text-[10px] font-semibold">
+                  <span className="text-[10px] font-medium">
                     {getWorkspaceInitials(activeWorkspace.name)}
                   </span>
                 ) : (
@@ -439,7 +439,7 @@ function MultiWorkspaceSwitcher({
               <SidebarMenuButton className="h-7 w-full max-w-full px-1.5 py-0" disabled={isLoading}>
                 <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-action-selected text-action-on-selected">
                   {activeWorkspace ? (
-                    <span className="text-[10px] font-semibold">
+                    <span className="text-[10px] font-medium">
                       {getWorkspaceInitials(activeWorkspace.name)}
                     </span>
                   ) : (
@@ -846,7 +846,7 @@ function SidebarNavRow({
                 type="button"
                 variant="disclosure"
               >
-                <ChevronRightIcon weight="fill" />
+                <ChevronRightIcon weight="bold" />
                 <span className="sr-only">
                   {expanded ? "Collapse" : "Expand"} {displayName}
                 </span>
@@ -857,7 +857,7 @@ function SidebarNavRow({
         </div>
         {hasChildren ? (
           <CollapsibleContent className="pt-0.5">
-            <ul className="flex min-w-0 flex-col gap-px">
+            <ul className="flex min-w-0 flex-col gap-0.5">
               {item.pages.map((child) => (
                 <SidebarNavRow
                   activeDatabaseId={activeDatabaseId}
@@ -1034,7 +1034,7 @@ function TeamspaceHeader({
           type="button"
           variant="disclosure"
         >
-          <ChevronRightIcon weight="fill" />
+          <ChevronRightIcon weight="bold" />
           <span className="sr-only">
             {open ? "Collapse" : "Expand"} {teamspace.name}
           </span>
@@ -1115,11 +1115,14 @@ function SectionShell({
             <CollapsibleTrigger asChild>
               <SidebarGroupLabel
                 asChild
-                className="pr-24 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral [&>svg]:size-2.5"
+                className="pr-24 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral [&>svg]:size-3"
               >
                 <button className="group/section-label w-full cursor-pointer" type="button">
                   <span>{label}</span>
-                  <ChevronRightIcon className="ml-1 size-2.5 transition-transform group-data-[state=open]/section-label:rotate-90" />
+                  <ChevronRightIcon
+                    className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90"
+                    weight="bold"
+                  />
                 </button>
               </SidebarGroupLabel>
             </CollapsibleTrigger>
@@ -1500,7 +1503,7 @@ function SidebarShortcutList({
   onActivate: AppSidebarProps["activateShortcut"];
 }) {
   return (
-    <SidebarGroup className="pb-1">
+    <SidebarGroup className="pb-3.5">
       <SidebarGroupContent>
         <SidebarMenu aria-label="Shortcuts">
           {shortcuts.map((shortcut) => (
