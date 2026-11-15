@@ -1,3 +1,4 @@
+import { withActionOutcomes } from "./action-outcomes";
 import { latestThreadRun } from "./runs";
 import { createHash, randomUUID } from "node:crypto";
 import { and, asc, desc, eq, lt, sql, inArray, notExists } from "drizzle-orm";
@@ -147,10 +148,13 @@ export async function getChatThread(
     .select({ id: askAiRun.id, turnId: askAiRun.turnId })
     .from(askAiRun)
     .where(eq(askAiRun.threadId, threadId));
-  const messages = messagesFromTurns(turns).map((message) => {
-    const messageRun = runs.find((item) => message.id === `${item.turnId}:assistant`);
-    return messageRun ? { ...message, runId: messageRun.id } : message;
-  });
+  const messages = await withActionOutcomes(
+    user.id,
+    messagesFromTurns(turns).map((message) => {
+      const messageRun = runs.find((item) => message.id === `${item.turnId}:assistant`);
+      return messageRun ? { ...message, runId: messageRun.id } : message;
+    }),
+  );
   const { compactedMemory: _compactedMemory, ...publicThread } = thread;
   return {
     thread: publicThread,

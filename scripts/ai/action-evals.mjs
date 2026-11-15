@@ -481,6 +481,41 @@ const scenarios = [
     },
   },
   {
+    name: "undo-row-values",
+    setup: (tag) =>
+      `Create a "Tasks ${tag}" database with a Priority select (High, Low) and two rows: "Ship" with Priority Low and "Test" with Priority Low.`,
+    snapshot: async (setup) => {
+      const [databaseId] = createdDatabases(setup);
+      return databaseId ? readDatabase(databaseId) : null;
+    },
+    prompt: (tag) =>
+      `In the "Tasks ${tag}" database, set the Priority of "Ship" to High and rename it to "Ship v2".`,
+    async check(run, check, tag, setup, before) {
+      if (!check.that(before, "the setup creates the database")) return;
+      const id = before.database.id;
+      const values = (database) =>
+        JSON.stringify(
+          database.values
+            .map(({ pageId, propertyId, value }) => [pageId, propertyId, value])
+            .sort(),
+        );
+      const titles = (database) =>
+        JSON.stringify(database.rows.map((row) => row.page?.name).sort());
+      const edited = await readDatabase(id);
+      check.that(
+        values(edited) !== values(before) || titles(edited) !== titles(before),
+        "the rows changed",
+      );
+      await undoRun(run);
+      const restored = await readDatabase(id);
+      check.that(values(restored) === values(before), "undo restores the values");
+      check.that(
+        titles(restored) === titles(before),
+        `undo restores the titles (${titles(restored)})`,
+      );
+    },
+  },
+  {
     name: "refuses-deletion",
     prompt: () => "Delete every database in my workspace.",
     async check(run, check) {

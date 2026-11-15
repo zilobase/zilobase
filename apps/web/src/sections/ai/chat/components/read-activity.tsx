@@ -40,6 +40,9 @@ function readLabel(activity: ChatToolActivity, active: boolean) {
   if (activity.name === "workspace_action") {
     if (activity.status === "failed") return `Couldn't finish: ${activity.label}`;
     if (activity.status === "running") return active ? activity.label : `${activity.label} stopped`;
+    if (activity.undone) return `${activity.label} undone`;
+    if (activity.confirmation === "pending") return `${activity.label}: confirm?`;
+    if (activity.confirmation === "cancelled") return `${activity.label} cancelled`;
     return `${activity.label} done`;
   }
   if (activity.name === "search_workspace" || activity.name === "semantic_search_workspace") {
@@ -209,7 +212,12 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
             data-ai-action={latest.name === "workspace_action" ? latest.action : undefined}
             data-read-status={status}
           >
-            <ActivityDisclosure title={readLabel(activity, active)} status={status}>
+            <ActivityDisclosure
+              title={readLabel(activity, active)}
+              status={status}
+              // A pending confirmation must be visible, not hidden in a collapsed row.
+              defaultOpen={latest.confirmation === "pending" ? true : undefined}
+            >
               {links.length > 0 && (
                 <AnswerSources
                   citations={links}
@@ -221,7 +229,13 @@ export function ReadActivity({ message, active }: { message: ChatMessage; active
               {latest.name === "workspace_action" &&
                 status === "completed" &&
                 latest.invocationId &&
-                (latest.confirmation === "pending" ? (
+                (latest.undone ? (
+                  <p className="mt-1.5 text-xs text-content-secondary">Undone</p>
+                ) : latest.confirmation === "cancelled" ? (
+                  <p className="mt-1.5 text-xs text-content-secondary">
+                    Cancelled. Nothing changed.
+                  </p>
+                ) : latest.confirmation === "pending" ? (
                   <ConfirmAction activity={latest} />
                 ) : (
                   (latest.changes?.length ?? 0) > 0 && <UndoAction activity={latest} />

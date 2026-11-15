@@ -20,8 +20,8 @@ import type { AppBindings } from "../../shared/contracts/http";
 import { prepareChat } from "../../services/ai/chat";
 import { chatSourceIdentity } from "../../services/ai/context";
 import { writeWithAi } from "../../services/ai/writing";
-import { undoWorkspaceAction } from "../../services/actions/undo";
 import { decideWorkspaceAction } from "../../services/actions/confirm";
+import { undoWorkspaceAction } from "../../services/actions/undo";
 import { jsonValidator } from "../http/json";
 import { serverOperationContext } from "../http/operation-context";
 import { attachServiceErrorHandler } from "../http/route-error";
@@ -152,11 +152,15 @@ aiRoutes.post("/runs/:id/cancel", async (c) =>
   ),
 );
 
-aiRoutes.post("/write", jsonValidator(aiWriteRequestSchema), async (c) =>
-  c.json(
-    await writeWithAi(serverOperationContext(c), c.req.valid("json"), undefined, c.req.raw.signal),
-  ),
-);
+aiRoutes.post("/write", jsonValidator(aiWriteRequestSchema), async (c) => {
+  const result = await writeWithAi(
+    serverOperationContext(c),
+    c.req.valid("json"),
+    undefined,
+    c.req.raw.signal,
+  );
+  return result instanceof Response ? result : c.json(result);
+});
 
 aiRoutes.post("/actions/undo", jsonValidator(actionUndoRequestSchema), async (c) =>
   c.json(await undoWorkspaceAction(serverOperationContext(c), c.req.valid("json"))),

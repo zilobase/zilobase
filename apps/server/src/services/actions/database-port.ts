@@ -6,6 +6,9 @@ import {
   type DatabaseCommandRequest,
   invertConfigurationChanges,
 } from "@zilobase/features/runtime";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "../../infrastructure/database";
+import { databaseRow, page, pagePropertyValue } from "../../infrastructure/database/schema";
 import { executeDatabaseApplicationCommand } from "../databases/commands/operations";
 import type { ServerOperationContext } from "../operations/context";
 import { deterministicActionId, type ActionReceiptStore } from "./receipts";
@@ -199,7 +202,7 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
       protocolVersion: 2 as const,
     };
     if (!stored) await receipts.savePending(key, { kind: "database", request });
-    const before = preImageInverse(input, cache);
+    const before = preImageInverse(input, cache) ?? (await rowPreImage(input));
     const ack = await execute(
       options.context,
       request.command.type === "database.create"
@@ -338,4 +341,57 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
     restoreDatabase: (input) => run(build.buildDatabaseState(input.databaseId, "database.restore")),
     deleteDatabase: (input) => run(build.buildDatabaseState(input.databaseId, "database.archive")),
   } as DatabaseActionOps;
+}
+
+/**
+ * The inverse of a row's title and value changes, read before the change runs.
+ * Placement and hierarchy moves have no inverse, so undo refuses them rather
+ * than reverting only part of the change.
+ */
+async function rowPreImage(input: CommandInput): Promise<CommandInput | null> {
+  const command = input.command as {
+    type: string;
+    rowId?: string;
+    title?: string;
+    valuesByPropertyId?: Record<string, unknown>;
+    placement?: unknown;
+    hierarchy?: unknown;
+  };
+  if (command.type !== "row.change" || !command.rowId || command.placement || command.hierarchy)
+    return null;
+  const [row] = await db
+    .select({ pageId: databaseRow.pageId, title: page.name })
+    .from(databaseRow)
+    .innerJoin(page, eq(page.id, databaseRow.pageId))
+    .where(eq(databaseRow.id, command.rowId))
+    .limit(1);
+  if (!row) return null;
+  const propertyIds = Object.keys(command.valuesByPropertyId ?? {});
+  const previous = propertyIds.length
+    ? await db
+        .select({ propertyId: pagePropertyValue.propertyId, value: pagePropertyValue.value })
+        .from(pagePropertyValue)
+        .where(
+          and(
+            eq(pagePropertyValue.pageId, row.pageId),
+            inArray(pagePropertyValue.propertyId, propertyIds),
+          ),
+        )
+    : [];
+  const values = new Map(previous.map(({ propertyId, value }) => [propertyId, value]));
+  return {
+    ...input,
+    command: {
+      type: "row.change",
+      rowId: command.rowId,
+      ...(command.title !== undefined ? { title: row.title } : {}),
+      ...(propertyIds.length
+        ? {
+            valuesByPropertyId: Object.fromEntries(
+              propertyIds.map((id) => [id, values.get(id) ?? null]),
+            ),
+          }
+        : {}),
+    } as never,
+  };
 }

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useZilobaseFeatures } from "../shared/context";
 import type { ResourceRef } from "@zilobase/page-context";
 
@@ -120,11 +120,18 @@ export function useChatRunDebug(workspaceId: string, runId: string, enabled: boo
 import type { AiWriteRequest } from "./contracts";
 import { refreshAfterWorkspaceActions } from "./changes";
 import type { ChatToolActivity } from "./tools";
-import { decideAiAction, requestAiWriting, undoAiAction } from "./writing";
-/** Generates Markdown for the editor's inline AI; the caller previews and applies it. */
+import { decideAiAction, streamAiWriting, undoAiAction } from "./writing";
+/** Generates Markdown for the editor's inline AI, streaming `partial`; the caller previews and applies it. */
 export function useAiWriting() {
   const context = useZilobaseFeatures();
-  return useMutation({ mutationFn: (input: AiWriteRequest) => requestAiWriting(context, input) });
+  const [partial, setPartial] = useState("");
+  const mutation = useMutation({
+    mutationFn: (input: AiWriteRequest) => {
+      setPartial("");
+      return streamAiWriting(context, input, setPartial);
+    },
+  });
+  return { ...mutation, partial };
 }
 
 /** Undoes an AI change from its activity card and refreshes the reads it affected. */
@@ -169,7 +176,7 @@ export function useDecideAiAction(workspaceId: string) {
       });
       const decided: ChatToolActivity = {
         ...activity,
-        confirmation: undefined,
+        confirmation: result.status === "cancelled" ? "cancelled" : "confirmed",
         changes: result.changes,
       };
       if (result.changes.length)
