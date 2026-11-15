@@ -59,11 +59,7 @@
   }
 
   .tiptap-editor .database-table tbody td.database-value-cell {
-    @apply font-medium;
-  }
-
-  .tiptap-editor .database-table tbody td.database-page-cell .database-page-title {
-    @apply font-semibold;
+    @apply font-normal;
   }
 
   .tiptap-editor
@@ -316,6 +312,14 @@
     @apply relative;
   }
 
+  .database-input-cell-trigger[data-number="true"] {
+    @apply tabular-nums;
+  }
+
+  .database-table .database-input-cell-trigger[data-number="true"] {
+    @apply justify-end;
+  }
+
   .database-input-cell-trigger > .database-input-cell-link {
     @apply absolute left-0 top-0;
   }
@@ -431,10 +435,6 @@
   .database-sub-item-name {
     @apply flex min-w-0 items-center;
     padding-left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
-  }
-
-  .database-page-cell .database-page-main {
-    @apply translate-y-0.5;
   }
 
   .database-sub-item-name-has-toggle {
@@ -615,7 +615,7 @@
   }
 
   .database-page-open {
-    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-surface-canvas px-2 text-xs font-semibold uppercase tracking-wide text-action-on-neutral opacity-0 shadow-sm transition-[opacity,background-color,color] duration-75 hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:text-action-on-neutral;
+    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-surface-canvas px-2 text-xs font-medium text-action-on-neutral opacity-0 shadow-sm transition-[opacity,background-color,color] duration-75 hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:text-action-on-neutral;
   }
 
   :is([data-page-side-pane-panel], [data-page-dialog-panel]) .database-page-open {

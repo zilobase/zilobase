@@ -84,7 +84,9 @@ function DatabaseInputCell({
         {displayContent}
       </a>
     ) : (
-      <span className="database-input-cell-trigger">{displayContent}</span>
+      <span className="database-input-cell-trigger" data-number={isNumberCell || undefined}>
+        {displayContent}
+      </span>
     );
   }
 
@@ -125,6 +127,7 @@ function DatabaseInputCell({
         <button
           aria-label={`${label} value: ${value.trim() || emptyLabel || "Empty"}`}
           className="database-input-cell-trigger"
+          data-number={isNumberCell || undefined}
           type="button"
         >
           {actionHref ? (
