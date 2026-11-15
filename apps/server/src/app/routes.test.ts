@@ -297,6 +297,7 @@ test("user settings route returns existing normalized preferences", async () => 
   const response = await appFor(pageSettingsRoutes).request("/");
   assert.deepEqual(await response.json(), {
     settings: {
+      aiInstructionPages: {},
       embeddedItemsOpenAs: "dialog",
       pageFullWidth: true,
       sidebarConfig: normalizeSidebarConfig({
@@ -310,6 +311,7 @@ test("user settings route returns existing normalized preferences", async () => 
 
 const defaultUserSettingsPayload = {
   settings: {
+    aiInstructionPages: {},
     embeddedItemsOpenAs: "sidepanel",
     pageFullWidth: false,
     sidebarConfig: defaultSidebarConfig,
@@ -320,6 +322,7 @@ test("user settings route creates default preferences when none exist", async ()
   mocks.selectResults.push([]);
   mocks.insertResults.push([
     {
+      aiInstructionPages: {},
       embeddedItemsOpenAs: "sidepanel",
       pageFullWidth: false,
       sidebarConfig: {},
@@ -335,6 +338,7 @@ test("user settings route recovers when a concurrent create wins", async () => {
   mocks.insertResults.push([]);
   mocks.selectResults.push([
     {
+      aiInstructionPages: {},
       embeddedItemsOpenAs: "sidepanel",
       pageFullWidth: false,
       sidebarConfig: {},
