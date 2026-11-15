@@ -11,7 +11,7 @@ const { default: react } = await import(pathToFileURL(require.resolve("@vitejs/p
 export default defineConfig({
   root,
   cacheDir: path.join(root, "node_modules/.cache/zilobase-databases-e2e"),
-  optimizeDeps: { entries: ["scripts/databases/e2e/index.html"] },
+  optimizeDeps: { entries: ["scripts/databases/e2e/index.html"], exclude: ["zod"] },
   configFile: false,
   envDir: false,
   plugins: [react(), tailwindcss()],
