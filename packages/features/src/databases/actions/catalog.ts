@@ -310,7 +310,13 @@ export const createDatabaseInput = z
       )
       .max(50)
       .optional(),
-    rows: z.array(rowInputSchema).max(100).optional(),
+    rows: z
+      .array(rowInputSchema)
+      .max(100)
+      .optional()
+      .describe(
+        "Exactly the rows the user asked for, no more. Add example rows only when the user asks for examples or sample data.",
+      ),
   })
   .strict();
 export type CreateDatabaseActionInput = z.infer<typeof createDatabaseInput>;
@@ -656,6 +662,56 @@ const updateRowsInput = target.extend({
     .max(100),
 });
 
+const rowId = z.string().trim().min(1).max(128);
+const moveRowsInput = target.extend({
+  moves: z
+    .array(
+      z
+        .object({
+          rowId,
+          position: z
+            .discriminatedUnion("type", [
+              z.object({ type: z.literal("before"), rowId }).strict(),
+              z.object({ type: z.literal("after"), rowId }).strict(),
+              z.object({ type: z.literal("end") }).strict(),
+            ])
+            .describe(
+              "Where to put the row, relative to another row's ID from query_records. To move a row to the top, place it before the current first row.",
+            ),
+        })
+        .strict(),
+    )
+    .min(1)
+    .max(100)
+    .describe("Applied in order."),
+});
+
+function planMoveRowsAction(
+  state: DatabaseActionState,
+  input: z.infer<typeof moveRowsInput>,
+): Plan {
+  return (
+    guard(state) ?? {
+      steps: input.moves.map(
+        (move, index) =>
+          ({
+            id: `move-${index}`,
+            op: "changeRow",
+            input: () => ({
+              databaseId: state.hostDatabaseId ?? state.dataSourceId!,
+              dataSourceId: state.dataSourceId!,
+              rowId: move.rowId,
+              placement: {
+                afterRowId: move.position.type === "after" ? move.position.rowId : null,
+                beforeRowId: move.position.type === "before" ? move.position.rowId : null,
+              },
+            }),
+          }) satisfies Step,
+      ),
+    }
+  );
+}
+
 function planUpdateRowsAction(
   state: DatabaseActionState,
   input: z.infer<typeof updateRowsInput>,
@@ -826,6 +882,18 @@ export const databaseWriteActions = [
     milestone: "A",
     covers: ["row.change"],
     plan: planUpdateRowsAction,
+  }),
+  writeAction({
+    name: "databases.move_rows",
+    group: "databases.rows",
+    title: "Move rows",
+    description:
+      "Reorder rows in a database's manual order, for example to move a row to the top or after another row. Find row IDs with databases.query_records first.",
+    input: moveRowsInput,
+    effect: "write",
+    milestone: "A",
+    covers: ["row.change"],
+    plan: planMoveRowsAction,
   }),
   writeAction({
     name: "databases.duplicate_rows",
