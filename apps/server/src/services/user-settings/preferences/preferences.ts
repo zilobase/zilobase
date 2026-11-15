@@ -8,7 +8,6 @@ type UserSettingsPayload = {
   embeddedItemsOpenAs: EmbeddedItemsOpenAs;
   pageFullWidth: boolean;
   sidebarConfig: SidebarConfig;
-  aiInstructionPages: Record<string, string>;
 };
 
 export async function getOrCreateUserSettings(userId: string) {
@@ -53,7 +52,6 @@ function toUserSettingsPayload(settings: typeof pageSettings.$inferSelect): User
     embeddedItemsOpenAs: settings.embeddedItemsOpenAs === "dialog" ? "dialog" : "sidepanel",
     pageFullWidth: settings.pageFullWidth,
     sidebarConfig: normalizeSidebarConfig(settings.sidebarConfig),
-    aiInstructionPages: settings.aiInstructionPages ?? {},
   };
 }
 
@@ -63,7 +61,6 @@ export async function updateUserPreferences(
     pageFullWidth?: boolean;
     embeddedItemsOpenAs?: EmbeddedItemsOpenAs;
     sidebarConfig?: unknown;
-    aiInstructionPage?: { workspaceId: string; pageId: string | null };
   },
 ) {
   const values: Partial<typeof pageSettings.$inferInsert> = {
@@ -80,15 +77,6 @@ export async function updateUserPreferences(
 
   if (patch.sidebarConfig !== undefined) {
     values.sidebarConfig = normalizeSidebarConfig(patch.sidebarConfig);
-  }
-
-  if (patch.aiInstructionPage) {
-    const current = await getOrCreateUserSettings(userId);
-    const { [patch.aiInstructionPage.workspaceId]: _previous, ...others } =
-      current.aiInstructionPages;
-    values.aiInstructionPages = patch.aiInstructionPage.pageId
-      ? { ...others, [patch.aiInstructionPage.workspaceId]: patch.aiInstructionPage.pageId }
-      : others;
   }
 
   const [settings] = await db
