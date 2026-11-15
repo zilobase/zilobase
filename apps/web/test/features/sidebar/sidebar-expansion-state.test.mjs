@@ -57,7 +57,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.deepEqual(readExpandedSidebarItems("missing", blockedStorage), []);
   });
-  test("sidebar storage Effects preserve active tabs, legacy payloads, write limits and blocked storage", async () => {
+  test("sidebar storage helpers preserve active tabs, legacy payloads, write limits and blocked storage", async () => {
     const {
       readActiveSidebarTab,
       writeActiveSidebarTab,

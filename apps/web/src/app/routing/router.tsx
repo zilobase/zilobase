@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import {
   createRootRoute,
   createRoute,
@@ -41,7 +40,7 @@ const rootRoute = createRootRoute({ component: RootRouteShell });
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app",
-  beforeLoad: () => Effect.runPromise(applyAppAccess()),
+  beforeLoad: () => applyAppAccess(),
   component: Outlet,
   pendingComponent: PendingPage,
 });
@@ -50,26 +49,23 @@ const appRoute = createRoute({
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => Effect.runPromise(applyStartRedirect()),
+  beforeLoad: () => applyStartRedirect(),
 });
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   validateSearch: validateLoginSearch,
-  beforeLoad: ({ search }) => Effect.runPromise(applyLoginAccess(search)),
+  beforeLoad: ({ search }) => applyLoginAccess(search),
   component: lazyRouteComponent(() => import("@/sections/auth/login-screen")),
 });
 
 const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/connect",
-  beforeLoad: () =>
-    Effect.runSync(
-      Effect.suspend(() =>
-        isDesktopApp() ? Effect.void : Effect.fail(redirect({ to: "/login" })),
-      ),
-    ),
+  beforeLoad: () => {
+    if (!isDesktopApp()) throw redirect({ to: "/login" });
+  },
   component: lazyRouteComponent(() => import("@/sections/desktop/servers/desktop-connect-screen")),
 });
 
@@ -77,26 +73,23 @@ const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/signup",
   validateSearch: validateSignupSearch,
-  beforeLoad: ({ search }) => Effect.runPromise(applySignupAccess(search)),
+  beforeLoad: ({ search }) => applySignupAccess(search),
   component: lazyRouteComponent(() => import("@/sections/auth/signup-screen")),
 });
 
 const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/onboarding",
-  beforeLoad: () => Effect.runPromise(applyOnboardingAccess()),
+  beforeLoad: () => applyOnboardingAccess(),
   component: lazyRouteComponent(() => import("@/sections/auth/onboarding-screen")),
 });
 
 const otpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/otp",
-  beforeLoad: () =>
-    Effect.runPromise(
-      Effect.suspend(() =>
-        isDesktopApp() ? Effect.fail(redirect({ to: "/login" })) : Effect.void,
-      ),
-    ),
+  beforeLoad: async () => {
+    if (isDesktopApp()) throw redirect({ to: "/login" });
+  },
   component: lazyRouteComponent(() => import("@/sections/auth/otp-screen")),
 });
 
@@ -104,7 +97,7 @@ const oauthConsentRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/oauth/consent",
   validateSearch: validateOAuthConsentSearch,
-  beforeLoad: ({ search }) => Effect.runPromise(applyOAuthConsentAccess(search)),
+  beforeLoad: ({ search }) => applyOAuthConsentAccess(search),
   component: lazyRouteComponent(() => import("@/sections/oauth/consent-screen")),
 });
 
@@ -156,14 +149,10 @@ const appRoutes = [
     getParentRoute: () => appRoute,
     path: "/ai",
     validateSearch: validateAiSearch,
-    beforeLoad: () =>
-      Effect.runSync(
-        Effect.suspend(() =>
-          isFeatureEnabled("askAi")
-            ? Effect.void
-            : Effect.fail(redirect({ to: "/recents", search: { view: "recents" } })),
-        ),
-      ),
+    beforeLoad: () => {
+      if (!isFeatureEnabled("askAi"))
+        throw redirect({ to: "/recents", search: { view: "recents" } });
+    },
     component: lazyRouteComponent(() => import("@/sections/ai/ai-screen")),
   }),
   createRoute({
@@ -185,8 +174,9 @@ const appRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/trash",
-    beforeLoad: () =>
-      Effect.runSync(Effect.fail(redirect({ search: { view: "trash" }, to: "/recents" }))),
+    beforeLoad: () => {
+      throw redirect({ search: { view: "trash" }, to: "/recents" });
+    },
   }),
 ];
 
@@ -195,7 +185,9 @@ const settingsRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings",
-    beforeLoad: () => Effect.runSync(Effect.fail(redirect({ to: "/settings/preferences" }))),
+    beforeLoad: () => {
+      throw redirect({ to: "/settings/preferences" });
+    },
   }),
   createRoute({
     getParentRoute: () => appRoute,
@@ -280,24 +272,18 @@ const contentRoutes = [
     getParentRoute: () => rootRoute,
     path: "/p/$pageId",
     validateSearch: validatePageSearch,
-    beforeLoad: ({ params }) =>
-      Effect.runPromise(
-        applyPageShareAccess(params.pageId).pipe(
-          Effect.map((publishedShare) => ({ publishedShare })),
-        ),
-      ),
+    beforeLoad: async ({ params }) => ({
+      publishedShare: await applyPageShareAccess(params.pageId),
+    }),
     component: lazyRouteComponent(() => import("@/sections/pages/page-screen")),
     pendingComponent: PendingPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/m/$meetingId",
-    beforeLoad: () =>
-      Effect.runPromise(
-        getFreshSession({ optional: true }).pipe(
-          Effect.map((session) => ({ authenticatedMeeting: Boolean(session.user) })),
-        ),
-      ),
+    beforeLoad: async () => ({
+      authenticatedMeeting: Boolean((await getFreshSession({ optional: true })).user),
+    }),
     component: lazyRouteComponent(() => import("@/sections/meetings/meeting-screen")),
     pendingComponent: PendingPage,
   }),
@@ -305,12 +291,9 @@ const contentRoutes = [
     getParentRoute: () => rootRoute,
     path: "/d/$databaseId",
     validateSearch: validateDatabaseSearch,
-    beforeLoad: ({ params }) =>
-      Effect.runPromise(
-        applyDatabaseShareAccess(params.databaseId).pipe(
-          Effect.map((publishedShare) => ({ publishedShare })),
-        ),
-      ),
+    beforeLoad: async ({ params }) => ({
+      publishedShare: await applyDatabaseShareAccess(params.databaseId),
+    }),
     component: lazyRouteComponent(() => import("@/sections/databases/database-screen")),
     pendingComponent: PendingPage,
   }),

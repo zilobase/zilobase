@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import {
   createContext,
   useCallback,
@@ -57,15 +56,11 @@ export function UndoHistoryScope({
   const runWithoutRecording = useCallback(<T,>(callback: () => T) => {
     recordingSuppressionDepthRef.current += 1;
 
-    return Effect.runSync(
-      Effect.sync(callback).pipe(
-        Effect.ensuring(
-          Effect.sync(() => {
-            recordingSuppressionDepthRef.current -= 1;
-          }),
-        ),
-      ),
-    );
+    try {
+      return callback();
+    } finally {
+      recordingSuppressionDepthRef.current -= 1;
+    }
   }, []);
   const shouldRecord = useCallback(() => recordingSuppressionDepthRef.current === 0, []);
   const contextValue = useMemo(

@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import { getApiRequestHeaders } from "@/platform/network/api";
 import {
   forgetDesktopAuthCredentials,
@@ -24,37 +23,25 @@ import { useAuthFlowStore } from "@/sections/auth/hooks/auth-flow-store";
 import { clearPageSnapshotsForDeployment } from "@/platform/storage/client-cache-storage";
 import { sessionQueryKey, type SessionResponse } from "@zilobase/features/auth";
 
-export function switchDesktopServerSession(request: DesktopServerSwitchRequest) {
-  return Effect.runPromise(
-    Effect.gen(function* () {
-      beginDesktopServerNetworkShutdown();
-      yield* Effect.tryPromise({ try: () => queryClient.cancelQueries(), catch: (error) => error });
+export async function switchDesktopServerSession(request: DesktopServerSwitchRequest) {
+  beginDesktopServerNetworkShutdown();
+  await queryClient.cancelQueries();
 
-      if (request.candidateId) {
-        const candidateId = request.candidateId;
-        yield* Effect.tryPromise({
-          try: () => commitDesktopServerCandidate(candidateId),
-          catch: (error) => error,
-        });
-      } else {
-        yield* Effect.tryPromise({
-          try: () =>
-            switchDesktopServerProfile({
-              apiOrigin: request.server.apiOrigin,
-              instanceId: request.server.instanceId,
-              path: request.path,
-              workspaceId: request.workspaceId,
-            }),
-          catch: (error) => error,
-        });
-      }
+  if (request.candidateId) {
+    await commitDesktopServerCandidate(request.candidateId);
+  } else {
+    await switchDesktopServerProfile({
+      apiOrigin: request.server.apiOrigin,
+      instanceId: request.server.instanceId,
+      path: request.path,
+      workspaceId: request.workspaceId,
+    });
+  }
 
-      forgetDesktopAuthCredentials();
-      const path = resolveDesktopServerSwitchPath(request);
-      if (typeof window !== "undefined") window.location.replace(path);
-      return path;
-    }),
-  );
+  forgetDesktopAuthCredentials();
+  const path = resolveDesktopServerSwitchPath(request);
+  if (typeof window !== "undefined") window.location.replace(path);
+  return path;
 }
 
 export function createDesktopServerReplacementDependencies(input: {
@@ -74,61 +61,39 @@ export function createDesktopServerReplacementDependencies(input: {
   };
 }
 
-function clearDesktopServerBrowserState() {
-  return Effect.runPromise(
-    Effect.gen(function* () {
-      const userId = queryClient.getQueryData<SessionResponse>(sessionQueryKey)?.user?.id;
-      if (userId) {
-        yield* Effect.tryPromise({
-          try: () => clearPageSnapshotsForDeployment(userId),
-          catch: (error) => error,
-        });
-      }
-      queryClient.clear();
-      useAppStore.getState().resetAccountState();
-      useAuthFlowStore.getState().clearAuthFlow();
-      yield* Effect.tryPromise({
-        try: () =>
-          Promise.all([
-            useAppStore.persist.clearStorage(),
-            useAuthFlowStore.persist.clearStorage(),
-          ]),
-        catch: (error) => error,
-      });
-      window.localStorage.removeItem("zilobase-app");
-      window.localStorage.removeItem("zilobase-auth-flow");
-      const server = getSelectedDesktopServer();
-      if (server) {
-        window.localStorage.removeItem(`zilobase-app:${server.instanceId}`);
-        window.localStorage.removeItem(`zilobase-auth-flow:${server.instanceId}`);
-      }
-      window.sessionStorage.clear();
-    }),
-  );
+async function clearDesktopServerBrowserState() {
+  const userId = queryClient.getQueryData<SessionResponse>(sessionQueryKey)?.user?.id;
+  if (userId) await clearPageSnapshotsForDeployment(userId);
+  queryClient.clear();
+  useAppStore.getState().resetAccountState();
+  useAuthFlowStore.getState().clearAuthFlow();
+  await Promise.all([useAppStore.persist.clearStorage(), useAuthFlowStore.persist.clearStorage()]);
+  window.localStorage.removeItem("zilobase-app");
+  window.localStorage.removeItem("zilobase-auth-flow");
+  const server = getSelectedDesktopServer();
+  if (server) {
+    window.localStorage.removeItem(`zilobase-app:${server.instanceId}`);
+    window.localStorage.removeItem(`zilobase-auth-flow:${server.instanceId}`);
+  }
+  window.sessionStorage.clear();
 }
 
-function bestEffortRevokeDesktopSession(server: DesktopServer) {
-  return Effect.runPromise(
-    Effect.gen(function* () {
-      const token = getDesktopAuthToken();
-      if (!token) return;
+async function bestEffortRevokeDesktopSession(server: DesktopServer) {
+  const token = getDesktopAuthToken();
+  if (!token) return;
 
-      const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 3_000);
-      yield* Effect.gen(function* () {
-        const response = yield* Effect.tryPromise({
-          try: () =>
-            desktopNetworkFetch(`${server.apiOrigin}/api/auth/sign-out`, {
-              body: "{}",
-              credentials: "include",
-              headers: getApiRequestHeaders({ "content-type": "application/json" }),
-              method: "POST",
-              signal: controller.signal,
-            }),
-          catch: (error) => error,
-        });
-        yield* Effect.tryPromise({ try: () => response.arrayBuffer(), catch: (error) => error });
-      }).pipe(Effect.ensuring(Effect.sync(() => window.clearTimeout(timeout))));
-    }),
-  );
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 3_000);
+  try {
+    const response = await desktopNetworkFetch(`${server.apiOrigin}/api/auth/sign-out`, {
+      body: "{}",
+      credentials: "include",
+      headers: getApiRequestHeaders({ "content-type": "application/json" }),
+      method: "POST",
+      signal: controller.signal,
+    });
+    await response.arrayBuffer();
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }

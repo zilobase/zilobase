@@ -1,5 +1,4 @@
 import { webChatReceipts } from "@/platform/storage/chat-receipts";
-import { Cause, Effect } from "effect";
 import {
   ZilobaseFeaturesProvider,
   type ZilobaseAuthClient,
@@ -38,47 +37,33 @@ export const webAuthClient: ZilobaseAuthClient = {
   getSession: async (signal) => {
     const startedAt = performance.now();
     recordDesktopDiagnostic("session.request", { status: "started" });
-    return Effect.runPromise(
-      Effect.gen(function* () {
-        const session = yield* Effect.tryPromise({
-          try: () => apiFetch<SessionResponse>("/session", { signal, timeoutMs: 15_000 }),
-          catch: (error) => error,
-        });
-        const write = rememberClientSession(webClientCacheStorage, clientDeployment(), session);
-        yield* Effect.tryPromise({ try: () => write, catch: (error) => error }).pipe(Effect.ignore);
-        recordDesktopDiagnostic("session.request", {
+    try {
+      const session = await apiFetch<SessionResponse>("/session", { signal, timeoutMs: 15_000 });
+      await rememberClientSession(webClientCacheStorage, clientDeployment(), session).catch(
+        () => undefined,
+      );
+      recordDesktopDiagnostic("session.request", {
+        duration_ms: performance.now() - startedAt,
+        session_present: Boolean(session.session),
+        status: "success",
+        user_present: Boolean(session.user),
+      });
+      return session;
+    } catch (error) {
+      if (getConnectivityState() === "offline") {
+        const cached = await readCachedSession().catch(() => null);
+        if (cached) return cached;
+      }
+      recordDesktopDiagnostic(
+        "session.request",
+        {
+          ...describeDesktopError(error),
           duration_ms: performance.now() - startedAt,
-          session_present: Boolean(session.session),
-          status: "success",
-          user_present: Boolean(session.user),
-        });
-        return session;
-      }).pipe(
-        Effect.catchCause((cause) => {
-          if (Cause.hasInterrupts(cause)) return Effect.failCause(cause);
-          const error = Cause.squash(cause);
-          return Effect.gen(function* () {
-            if (getConnectivityState() === "offline") {
-              const read = readCachedSession();
-              const cached = yield* Effect.tryPromise({
-                try: () => read,
-                catch: (error) => error,
-              }).pipe(Effect.orElseSucceed(() => null));
-              if (cached) return cached;
-            }
-            recordDesktopDiagnostic(
-              "session.request",
-              {
-                ...describeDesktopError(error),
-                duration_ms: performance.now() - startedAt,
-              },
-              "error",
-            );
-            return yield* Effect.fail(error);
-          });
-        }),
-      ),
-    );
+        },
+        "error",
+      );
+      throw error;
+    }
   },
   requestSignInOtp: (email) => runAuthCommand(() => apiAuthClient.requestSignInOtp(email)),
   signInWithOtp: (input) =>
@@ -99,32 +84,17 @@ export const webAuthClient: ZilobaseAuthClient = {
   requestEmailVerificationOtp: (email) =>
     runAuthCommand(() => apiAuthClient.requestEmailVerificationOtp(email)),
   verifyEmailOtp: (input) => runAuthCommand(() => apiAuthClient.verifyEmailOtp(input)),
-  signOut: () =>
-    Effect.runPromise(
-      Effect.gen(function* () {
-        if (isHostedDemoRuntime()) return yield* Effect.fail(requestDemoGuard());
-        const previousSession = yield* Effect.tryPromise({
-          try: () => readCachedSession(),
-          catch: (error) => error,
-        });
-        const result = yield* Effect.tryPromise({
-          try: () => apiAuthClient.signOut(),
-          catch: (error) => error,
-        });
-        yield* Effect.tryPromise({ try: () => clearCachedSession(), catch: (error) => error });
-        if (previousSession?.user) {
-          const userId = previousSession.user.id;
-          yield* Effect.tryPromise({
-            try: () => clearPageCacheForUser(userId),
-            catch: (error) => error,
-          });
-        }
-        posthog?.reset();
-        yield* Effect.tryPromise({ try: () => clearApiAuthToken(), catch: (error) => error });
-        useAppStore.getState().resetAccountState();
-        return result;
-      }),
-    ),
+  signOut: async () => {
+    if (isHostedDemoRuntime()) throw requestDemoGuard();
+    const previousSession = await readCachedSession();
+    const result = await apiAuthClient.signOut();
+    await clearCachedSession();
+    if (previousSession?.user) await clearPageCacheForUser(previousSession.user.id);
+    posthog?.reset();
+    await clearApiAuthToken();
+    useAppStore.getState().resetAccountState();
+    return result;
+  },
   createWorkspace: <TWorkspace,>(input: { name: string; slug: string }) =>
     runAuthCommand(() => apiAuthClient.createWorkspace<TWorkspace>(input)),
   setActiveWorkspace: (workspaceId) =>
@@ -135,12 +105,8 @@ export const webAuthClient: ZilobaseAuthClient = {
     runAuthCommand(() => apiAuthClient.acceptWorkspaceInvitation<TResponse>(input)),
   listWorkspaces: <TWorkspace,>(signal?: AbortSignal) =>
     isHostedDemoRuntime()
-      ? Effect.runPromise(
-          Effect.tryPromise({
-            try: () =>
-              apiFetch<{ workspace: Workspace }>("/demo/bootstrap", { method: "GET", signal }),
-            catch: (error) => error,
-          }).pipe(Effect.map(({ workspace }) => [workspace] as TWorkspace[])),
+      ? apiFetch<{ workspace: Workspace }>("/demo/bootstrap", { method: "GET", signal }).then(
+          ({ workspace }) => [workspace] as TWorkspace[],
         )
       : apiAuthClient.listWorkspaces<TWorkspace>(signal),
   listWorkspaceInvitations: <TInvitation,>(workspaceId: string, signal?: AbortSignal) =>
@@ -150,10 +116,8 @@ export const webAuthClient: ZilobaseAuthClient = {
 };
 
 function runAuthCommand<T>(command: () => Promise<T>): Promise<T> {
-  if (isHostedDemoRuntime()) return Effect.runPromise(Effect.fail(requestDemoGuard()));
-  // Start the existing Promise port before bridging so synchronous throws retain their behavior.
-  const request = command();
-  return Effect.runPromise(Effect.tryPromise({ try: () => request, catch: (error) => error }));
+  if (isHostedDemoRuntime()) return Promise.reject(requestDemoGuard());
+  return command();
 }
 
 export function WebFeaturesProvider({ children }: React.PropsWithChildren) {

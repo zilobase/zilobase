@@ -62,7 +62,7 @@ export function register({ assert, loadModule, sourcePath, test }) {
     );
   });
 
-  test("route error profile Effects recover failed reads and stop after cleanup", async () => {
+  test("route error profile reads recover failed reads and stop after cleanup", async () => {
     const saved = Object.getOwnPropertyDescriptors(globalThis);
     const { window, document } = parseHTML("<html><body><div id='root'></div></body></html>");
     Object.assign(globalThis, { window, document });

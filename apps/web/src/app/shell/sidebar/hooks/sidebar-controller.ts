@@ -5,7 +5,6 @@ import {
   getActiveDatabaseViewId,
 } from "@/app/routing/route-identifiers";
 import type { MeetingListItem } from "@zilobase/features/meetings";
-import { Effect } from "effect";
 import * as React from "react";
 import { type DragEvent, type ComponentProps } from "react";
 import {
@@ -101,29 +100,17 @@ export function getSidebarDatabaseViewSearchId({
 }
 
 export function readActiveSidebarTab(workspaceId: string | null) {
-  return Effect.runSync(
-    Effect.try({
-      try: () => {
-        return window.localStorage.getItem(activeTabStorageKey(workspaceId)) ?? "home";
-      },
-      catch: (error) => error,
-    }).pipe(
-      Effect.orElseSucceed(() => {
-        return "home";
-      }),
-    ),
-  );
+  try {
+    return window.localStorage.getItem(activeTabStorageKey(workspaceId)) ?? "home";
+  } catch {
+    return "home";
+  }
 }
 
 export function writeActiveSidebarTab(workspaceId: string | null, tabId: string) {
-  Effect.runSync(
-    Effect.try({
-      try: () => {
-        window.localStorage.setItem(activeTabStorageKey(workspaceId), tabId);
-      },
-      catch: (error) => error,
-    }).pipe(Effect.ignore),
-  );
+  try {
+    window.localStorage.setItem(activeTabStorageKey(workspaceId), tabId);
+  } catch {}
 }
 
 function activeTabStorageKey(workspaceId: string | null) {
@@ -140,14 +127,9 @@ export function useSidebarSectionOpen(storageKey: string) {
   const setOpen = React.useCallback(
     (nextOpen: boolean) => {
       setOpenState(nextOpen);
-      Effect.runSync(
-        Effect.try({
-          try: () => {
-            window.localStorage.setItem(storageKey, nextOpen ? "open" : "closed");
-          },
-          catch: (error) => error,
-        }).pipe(Effect.ignore),
-      );
+      try {
+        window.localStorage.setItem(storageKey, nextOpen ? "open" : "closed");
+      } catch {}
     },
     [storageKey],
   );
@@ -156,18 +138,11 @@ export function useSidebarSectionOpen(storageKey: string) {
 }
 
 function readSidebarSectionOpen(storageKey: string) {
-  return Effect.runSync(
-    Effect.try({
-      try: () => {
-        return window.localStorage.getItem(storageKey) !== "closed";
-      },
-      catch: (error) => error,
-    }).pipe(
-      Effect.orElseSucceed(() => {
-        return true;
-      }),
-    ),
-  );
+  try {
+    return window.localStorage.getItem(storageKey) !== "closed";
+  } catch {
+    return true;
+  }
 }
 
 const STORAGE_PREFIX = "zilobase:sidebar-tree:v1";
@@ -182,26 +157,19 @@ export function getSidebarExpansionStorageKey(
 }
 
 export function readExpandedSidebarItems(key: string, storage: StorageLike | null = getStorage()) {
-  return Effect.runSync(
-    Effect.try({
-      try: () => {
-        const value = storage?.getItem(key);
-        const parsed = value ? JSON.parse(value) : null;
-        const ids: unknown[] = Array.isArray(parsed)
-          ? parsed
-          : parsed?.version === 1
-            ? parsed.expandedNodeIds
-            : [];
+  try {
+    const value = storage?.getItem(key);
+    const parsed = value ? JSON.parse(value) : null;
+    const ids: unknown[] = Array.isArray(parsed)
+      ? parsed
+      : parsed?.version === 1
+        ? parsed.expandedNodeIds
+        : [];
 
-        return [...new Set(ids.filter((id): id is string => typeof id === "string"))];
-      },
-      catch: (error) => error,
-    }).pipe(
-      Effect.orElseSucceed(() => {
-        return [];
-      }),
-    ),
-  );
+    return [...new Set(ids.filter((id): id is string => typeof id === "string"))];
+  } catch {
+    return [];
+  }
 }
 
 export function writeExpandedSidebarItems(
@@ -209,14 +177,9 @@ export function writeExpandedSidebarItems(
   ids: Iterable<string>,
   storage: StorageLike | null = getStorage(),
 ) {
-  Effect.runSync(
-    Effect.try({
-      try: () => {
-        storage?.setItem(key, JSON.stringify([...ids].slice(0, 500)));
-      },
-      catch: (error) => error,
-    }).pipe(Effect.ignore),
-  );
+  try {
+    storage?.setItem(key, JSON.stringify([...ids].slice(0, 500)));
+  } catch {}
 }
 
 export function setSidebarItemExpanded(ids: ReadonlySet<string>, id: string, expanded: boolean) {
@@ -227,18 +190,11 @@ export function setSidebarItemExpanded(ids: ReadonlySet<string>, id: string, exp
 }
 
 function getStorage(): StorageLike | null {
-  return Effect.runSync(
-    Effect.try({
-      try: () => {
-        return typeof window === "undefined" ? null : window.localStorage;
-      },
-      catch: (error) => error,
-    }).pipe(
-      Effect.orElseSucceed(() => {
-        return null;
-      }),
-    ),
-  );
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
 export const sidebarSectionLabels: Record<SidebarSectionKind, string> = {
@@ -384,19 +340,12 @@ export function useAppSidebar({
   React.useEffect(() => {
     if (desktopLinkServer || isDesktopApp()) return;
     let disposed = false;
-    void Effect.runPromise(
-      Effect.tryPromise({
-        try: () => discoverRuntimeDesktopServer(),
-        catch: (error) => error,
-      }).pipe(
-        Effect.tap((server) =>
-          Effect.sync(() => {
-            if (!disposed) setDesktopLinkServer(server);
-          }),
-        ),
-        Effect.ignoreCause,
-      ),
-    );
+    void (async () => {
+      try {
+        const server = await discoverRuntimeDesktopServer();
+        if (!disposed) setDesktopLinkServer(server);
+      } catch {}
+    })();
     return () => {
       disposed = true;
     };
@@ -504,79 +453,39 @@ export function useAppSidebar({
   );
 
   const handleCreatePage = React.useCallback(
-    (teamspaceId?: string) =>
-      Effect.runPromise(
-        Effect.gen(function* () {
-          const scope = sidebarScope.current;
-          if (!workspaceId || isCreatingPage) return;
-          const page = yield* Effect.tryPromise({
-            try: () => createPage({ teamspaceId, workspaceId }),
-            catch: (error) => error,
-          });
-          if (sidebarScope.current !== scope) return;
-          yield* Effect.tryPromise({
-            try: () => navigate({ params: { pageId: page.id }, to: "/p/$pageId" }),
-            catch: (error) => error,
-          });
-        }),
-      ),
+    async (teamspaceId?: string) => {
+      const scope = sidebarScope.current;
+      if (!workspaceId || isCreatingPage) return;
+      const page = await createPage({ teamspaceId, workspaceId });
+      if (sidebarScope.current !== scope) return;
+      await navigate({ params: { pageId: page.id }, to: "/p/$pageId" });
+    },
     [createPage, isCreatingPage, navigate, workspaceId],
   );
   const handleCreateDatabase = React.useCallback(
-    (teamspaceId?: string) =>
-      Effect.runPromise(
-        Effect.gen(function* () {
-          const scope = sidebarScope.current;
-          if (!workspaceId || isCreatingDatabase) return;
-          const payload = yield* Effect.tryPromise({
-            try: () => createDatabase({ standalone: true, teamspaceId, workspaceId }),
-            catch: (error) => error,
-          });
-          if (sidebarScope.current !== scope) return;
-          yield* Effect.tryPromise({
-            try: () =>
-              navigate({
-                params: { databaseId: payload.database.id },
-                search: { view: undefined },
-                to: "/d/$databaseId",
-              }),
-            catch: (error) => error,
-          });
-        }),
-      ),
+    async (teamspaceId?: string) => {
+      const scope = sidebarScope.current;
+      if (!workspaceId || isCreatingDatabase) return;
+      const payload = await createDatabase({ standalone: true, teamspaceId, workspaceId });
+      if (sidebarScope.current !== scope) return;
+      await navigate({
+        params: { databaseId: payload.database.id },
+        search: { view: undefined },
+        to: "/d/$databaseId",
+      });
+    },
     [createDatabase, isCreatingDatabase, navigate, workspaceId],
   );
-  const handleCreateChat = React.useCallback(
-    () =>
-      Effect.runPromise(
-        Effect.sync(() => {
-          chatSelection.select(null);
-          setOpenMobile(false);
-        }).pipe(
-          Effect.flatMap(() =>
-            Effect.tryPromise({
-              try: () => navigate({ to: "/ai", search: { thread: undefined } }),
-              catch: (error) => error,
-            }),
-          ),
-        ),
-      ),
-    [navigate, chatSelection, setOpenMobile],
-  );
-  const handleOpenChat = (id: string) =>
-    Effect.runPromise(
-      Effect.sync(() => {
-        if (chatSelection.id !== id) chatSelection.select(id);
-        setOpenMobile(false);
-      }).pipe(
-        Effect.flatMap(() =>
-          Effect.tryPromise({
-            try: () => navigate({ to: "/ai", search: { thread: id } }),
-            catch: (error) => error,
-          }),
-        ),
-      ),
-    );
+  const handleCreateChat = React.useCallback(async () => {
+    chatSelection.select(null);
+    setOpenMobile(false);
+    await navigate({ to: "/ai", search: { thread: undefined } });
+  }, [navigate, chatSelection, setOpenMobile]);
+  const handleOpenChat = async (id: string) => {
+    if (chatSelection.id !== id) chatSelection.select(id);
+    setOpenMobile(false);
+    await navigate({ to: "/ai", search: { thread: id } });
+  };
   const handleDropPageOnDatabase = React.useCallback(
     (input: {
       databaseId: string;
@@ -614,25 +523,18 @@ export function useAppSidebar({
     [isSettingDatabaseFavorite, setDatabaseFavorite],
   );
   const saveLayout = React.useCallback(
-    (nextLayout: typeof layout) =>
-      Effect.runPromise(
-        Effect.gen(function* () {
-          const scope = sidebarScope.current;
-          if (!workspaceId) return;
-          yield* Effect.tryPromise({
-            try: () =>
-              updateUserSettings.mutateAsync({
-                sidebarConfig: withSidebarWorkspaceLayout(
-                  sidebarConfig,
-                  workspaceId,
-                  restoreUnconfiguredIntegrationTabs(storedLayout, nextLayout, sidebarAvailability),
-                ),
-              }),
-            catch: (error) => error,
-          });
-          if (sidebarScope.current === scope) setCustomizing(false);
-        }),
-      ),
+    async (nextLayout: typeof layout) => {
+      const scope = sidebarScope.current;
+      if (!workspaceId) return;
+      await updateUserSettings.mutateAsync({
+        sidebarConfig: withSidebarWorkspaceLayout(
+          sidebarConfig,
+          workspaceId,
+          restoreUnconfiguredIntegrationTabs(storedLayout, nextLayout, sidebarAvailability),
+        ),
+      });
+      if (sidebarScope.current === scope) setCustomizing(false);
+    },
     [sidebarAvailability, sidebarConfig, storedLayout, updateUserSettings, workspaceId],
   );
   const changeRuntimeSection = React.useCallback(
@@ -1148,20 +1050,14 @@ export function useSidebarWorkspaceSwitcher(sessionData: ReturnType<typeof useSe
   React.useEffect(() => {
     if (!isDesktop) return;
     let disposed = false;
-    void Effect.runPromise(
-      Effect.tryPromise({ try: () => listDesktopServerProfiles(), catch: (error) => error }).pipe(
-        Effect.tap((result) =>
-          Effect.sync(() => {
-            if (!disposed) setProfiles(result.profiles);
-          }),
-        ),
-        Effect.catchCause(() =>
-          Effect.sync(() => {
-            if (!disposed) setProfiles([]);
-          }),
-        ),
-      ),
-    );
+    void (async () => {
+      try {
+        const result = await listDesktopServerProfiles();
+        if (!disposed) setProfiles(result.profiles);
+      } catch {
+        if (!disposed) setProfiles([]);
+      }
+    })();
     return () => {
       disposed = true;
     };
@@ -1175,9 +1071,7 @@ export function useSidebarWorkspaceSwitcher(sessionData: ReturnType<typeof useSe
         lastPath: `${window.location.pathname}${window.location.search}`,
         workspaces: workspaces.map((workspace) => ({ id: workspace.id, name: workspace.name })),
       });
-      void Effect.runPromise(
-        Effect.tryPromise({ try: () => update, catch: (error) => error }).pipe(Effect.ignore),
-      );
+      void update.catch(() => undefined);
     }, 400);
     return () => window.clearTimeout(handle);
   }, [activeWorkspace?.id, isDesktop, isError, isLoading, workspaces]);
@@ -1189,17 +1083,14 @@ export function useSidebarWorkspaceSwitcher(sessionData: ReturnType<typeof useSe
     const formData = new FormData(form);
     const workspaceName = String(formData.get("workspaceName") ?? "").trim();
 
-    return Effect.runPromise(
-      Effect.gen(function* () {
-        yield* Effect.tryPromise({
-          try: () => createWorkspace.mutateAsync(workspaceName),
-          catch: (error) => error,
-        });
-        form.reset();
-        setIsCreateDialogOpen(false);
-        void navigate({ to: "/recents" });
-      }).pipe(Effect.ignoreCause), // React Query owns the visible error state.
-    );
+    try {
+      await createWorkspace.mutateAsync(workspaceName);
+      form.reset();
+      setIsCreateDialogOpen(false);
+      void navigate({ to: "/recents" });
+    } catch {
+      // React Query owns the visible error state.
+    }
   }
 
   return {

@@ -1,7 +1,6 @@
 import { type ErrorComponentProps, useNavigate } from "@tanstack/react-router";
 import { isDesktopApp } from "@/platform/environment";
 import { useEffect, useState } from "react";
-import { Effect, Fiber } from "effect";
 
 import {
   describeDesktopError,
@@ -26,33 +25,24 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
   const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([]);
 
   useEffect(() => {
-    Effect.runSync(
-      Effect.sync(() => {
-        captureProductException(error, { error_boundary: "router.error" });
-        recordDesktopDiagnostic("router.error", describeDesktopError(error), "error");
-      }),
-    );
+    captureProductException(error, { error_boundary: "router.error" });
+    recordDesktopDiagnostic("router.error", describeDesktopError(error), "error");
   }, [error]);
 
   useEffect(() => {
     if (!copy.showChangeServer) return;
-    const fiber = Effect.runFork(
-      Effect.tryPromise({
-        try: () => listDesktopServerProfiles(),
-        catch: (error) => error,
-      }).pipe(
-        Effect.flatMap((result) =>
-          Effect.try({
-            try: () => result.profiles.filter((profile) => !profile.active),
-            catch: (error) => error,
-          }),
-        ),
-        Effect.orElseSucceed(() => []),
-        Effect.tap((profiles) => Effect.sync(() => setOtherProfiles(profiles))),
-      ),
-    );
+    let cancelled = false;
+    void (async () => {
+      let profiles: DesktopServerProfile[] = [];
+      try {
+        profiles = (await listDesktopServerProfiles()).profiles.filter(
+          (profile) => !profile.active,
+        );
+      } catch {}
+      if (!cancelled) setOtherProfiles(profiles);
+    })();
     return () => {
-      Effect.runFork(Fiber.interrupt(fiber));
+      cancelled = true;
     };
   }, [copy.showChangeServer]);
 
@@ -64,23 +54,17 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
           <p className="mt-1 text-sm text-content-secondary">{copy.description}</p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-3">
-          <Button onClick={() => Effect.runSync(Effect.sync(() => window.location.reload()))}>
-            Try again
-          </Button>
+          <Button onClick={() => window.location.reload()}>Try again</Button>
           {otherProfiles.map((profile) => (
             <Button
               key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}
               onClick={() => {
-                void Effect.runSync(
-                  Effect.sync(() =>
-                    executeDesktopServerSwitch({
-                      hasCredentials: profile.hasCredentials,
-                      path: profile.hasCredentials ? (profile.lastPath ?? "/recents") : "/login",
-                      server: profile.server,
-                      workspaceId: profile.lastActiveWorkspaceId,
-                    }),
-                  ),
-                );
+                void executeDesktopServerSwitch({
+                  hasCredentials: profile.hasCredentials,
+                  path: profile.hasCredentials ? (profile.lastPath ?? "/recents") : "/login",
+                  server: profile.server,
+                  workspaceId: profile.lastActiveWorkspaceId,
+                });
               }}
               variant="outline"
             >
@@ -88,10 +72,7 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
             </Button>
           ))}
           {copy.showChangeServer ? (
-            <Button
-              onClick={() => void Effect.runSync(Effect.sync(() => navigate({ to: "/connect" })))}
-              variant="outline"
-            >
+            <Button onClick={() => void navigate({ to: "/connect" })} variant="outline">
               Change server
             </Button>
           ) : null}

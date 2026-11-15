@@ -1,6 +1,5 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { lazy, Suspense, useRef, useEffect } from "react";
-import { Effect } from "effect";
 import { editionWebModule } from "@zilobase/edition-web";
 import { Button } from "@/components/ui/button";
 import { recordDesktopDiagnostic } from "@/platform/diagnostics/desktop-diagnostics";
@@ -63,9 +62,7 @@ export function RootRouteShell() {
 
 export function PendingPage() {
   useEffect(() => {
-    Effect.runSync(
-      Effect.sync(() => recordDesktopDiagnostic("router.pending", { status: "started" })),
-    );
+    recordDesktopDiagnostic("router.pending", { status: "started" });
   }, []);
 
   return (
@@ -83,11 +80,7 @@ export function AuthenticatedRouteError({ resource }: { resource: "database" | "
     <main className="flex min-h-[calc(100svh-3rem)] flex-1 items-center justify-center px-6">
       <div className="flex max-w-sm flex-col items-center gap-3 text-center">
         <p className="text-sm text-content-secondary">This {resource} could not be opened.</p>
-        <Button
-          onClick={() => Effect.runSync(Effect.sync(() => window.location.reload()))}
-          type="button"
-          variant="outline"
-        >
+        <Button onClick={() => window.location.reload()} type="button" variant="outline">
           Try again
         </Button>
       </div>

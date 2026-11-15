@@ -1,5 +1,4 @@
 import ts from "typescript";
-import { Effect } from "effect";
 const controllerPath = "/src/app/shell/sidebar/hooks/sidebar-controller.ts";
 
 export function register({ assert, loadModule, readSource, test }) {
@@ -233,7 +232,7 @@ export function register({ assert, loadModule, readSource, test }) {
     }).outputText;
     const capture = new Function(
       "ports",
-      `const {React,Effect,workspaceId,updateUserSettings,withSidebarWorkspaceLayout,sidebarConfig,storedLayout,restoreUnconfiguredIntegrationTabs,sidebarAvailability,setCustomizing,sidebarScope}=ports; ${code}; return saveLayout;`,
+      `const {React,workspaceId,updateUserSettings,withSidebarWorkspaceLayout,sidebarConfig,storedLayout,restoreUnconfiguredIntegrationTabs,sidebarAvailability,setCustomizing,sidebarScope}=ports; ${code}; return saveLayout;`,
     );
     const calls = [];
     let resolve;
@@ -241,7 +240,6 @@ export function register({ assert, loadModule, readSource, test }) {
     const scope = { current: "workspace" };
     const ports = {
       React: { useCallback: (callback) => callback },
-      Effect,
       workspaceId: "workspace",
       sidebarScope: scope,
       updateUserSettings: {

@@ -27,7 +27,7 @@ export function register({ readSource, sourcePath, assert, test }) {
     assert.match(source, /Add workspace/);
     assert.match(source, /isDesktop[\s\S]*otherProfiles\.map/);
   });
-  test("workspace Effects retain profile cleanup, debounced snapshots and ordered form completion", async () => {
+  test("workspace commands retain profile cleanup, debounced snapshots and ordered form completion", async () => {
     const saved = Object.getOwnPropertyDescriptors(globalThis);
     const { window, document } = parseHTML("<html><body><div id='root'></div></body></html>");
     Object.assign(globalThis, { window, document });

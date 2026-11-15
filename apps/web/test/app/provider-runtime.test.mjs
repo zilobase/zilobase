@@ -108,7 +108,7 @@ export function register({ assert, sourcePath, test }) {
     controls.reset();
   });
 
-  test("Effect auth command gate preserves all payloads, demo restrictions and failure identities", async () => {
+  test("auth command gate preserves all payloads, demo restrictions and failure identities", async () => {
     const { webAuthClient, controls } = await runtime();
     const commands = [
       [
@@ -210,7 +210,7 @@ export function register({ assert, sourcePath, test }) {
     controls.reset();
   });
 
-  test("AppProviders Effects preserve analytics ordering, theme updates and unload cleanup", async () => {
+  test("AppProviders preserve analytics ordering, theme updates and unload cleanup", async () => {
     const saved = Object.getOwnPropertyDescriptors(globalThis);
     const { window, document } = parseHTML(
       "<html><head><meta name='theme-color'></head><body><div id='root'></div></body></html>",
@@ -338,11 +338,7 @@ export function register({ assert, sourcePath, test }) {
         },
       });
       render();
-      assert.equal(
-        uncaught,
-        failure,
-        "synchronous Effect failures reach the React boundary unchanged",
-      );
+      assert.equal(uncaught, failure, "synchronous failures reach the React boundary unchanged");
       assert.equal(controls.subscriptions.size, 0);
     } finally {
       if (root) fixture.flushSync(() => root.unmount());

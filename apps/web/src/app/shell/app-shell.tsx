@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import { CalendarWorkspaceProvider } from "@/sections/calendar/workspace/components/calendar-workspace";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
@@ -232,23 +231,17 @@ function AppShellContent({
     isAiPage && aiWorkspacePanel === "settings"
       ? new URLSearchParams(searchStr).get("settingsPage")
       : null;
-  const closeAuxiliaryWorkspaceSidePane = useCallback(
-    () =>
-      Effect.runSync(
-        Effect.sync(() => {
-          const search = new URLSearchParams(searchStr);
-          if (search.has("settingsPage")) search.delete("settingsPage");
-          else {
-            search.delete("panel");
-            search.delete("settingsScope");
-            search.delete("settingsTab");
-          }
-          const query = search.toString();
-          router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`);
-        }),
-      ),
-    [hash, pathname, router.history, searchStr],
-  );
+  const closeAuxiliaryWorkspaceSidePane = useCallback(() => {
+    const search = new URLSearchParams(searchStr);
+    if (search.has("settingsPage")) search.delete("settingsPage");
+    else {
+      search.delete("panel");
+      search.delete("settingsScope");
+      search.delete("settingsTab");
+    }
+    const query = search.toString();
+    router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`);
+  }, [hash, pathname, router.history, searchStr]);
   const isFullPanePage = pathname === "/calendar";
   const pageId = useRoutePageId(pathname);
   const databaseId = getDatabaseId(pathname);
@@ -340,14 +333,9 @@ function AppShellContent({
   }, [chatSidebarOpen, pathname]);
 
   useEffect(() => {
-    Effect.runSync(
-      Effect.try({
-        try: () => {
-          window.localStorage.setItem(CHAT_PRESENTATION_MODE_STORAGE_KEY, chatPresentationMode);
-        },
-        catch: (error) => error,
-      }).pipe(Effect.ignore),
-    );
+    try {
+      window.localStorage.setItem(CHAT_PRESENTATION_MODE_STORAGE_KEY, chatPresentationMode);
+    } catch {}
   }, [chatPresentationMode]);
 
   const togglePageLayoutSidebar = useCallback(() => {
@@ -592,15 +580,13 @@ function AppShellContent({
 }
 
 function readChatPresentationMode(): ChatPresentationMode {
-  return Effect.runSync(
-    Effect.try({
-      try: (): ChatPresentationMode =>
-        window.localStorage.getItem(CHAT_PRESENTATION_MODE_STORAGE_KEY) === "floating"
-          ? "floating"
-          : "sidebar",
-      catch: (error) => error,
-    }).pipe(Effect.orElseSucceed((): ChatPresentationMode => "sidebar")),
-  );
+  try {
+    return window.localStorage.getItem(CHAT_PRESENTATION_MODE_STORAGE_KEY) === "floating"
+      ? "floating"
+      : "sidebar";
+  } catch {
+    return "sidebar";
+  }
 }
 
 function PageLayoutOverlayDrawer() {

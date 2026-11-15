@@ -1,5 +1,4 @@
 import * as React from "react";
-import { Effect } from "effect";
 import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -26,21 +25,17 @@ import { guardPendingDatabaseWrites } from "@/platform/browser/database-write-gu
 
 import posthog from "@/platform/analytics/posthog";
 
-Effect.runSync(
-  Effect.sync(() =>
-    installDemoCache({
-      getQueriesData: (filters) => queryClient.getQueriesData(filters),
-      getQueryData: <T,>(key: readonly unknown[]) => {
-        if (key[0] === "page")
-          return resolvePageDetailReference(
-            queryClient,
-            queryClient.getQueryData<PageDetailReference | null>(key),
-          ) as T | undefined;
-        return queryClient.getQueryData<T>(key);
-      },
-    }),
-  ),
-);
+installDemoCache({
+  getQueriesData: (filters) => queryClient.getQueriesData(filters),
+  getQueryData: <T,>(key: readonly unknown[]) => {
+    if (key[0] === "page")
+      return resolvePageDetailReference(
+        queryClient,
+        queryClient.getQueryData<PageDetailReference | null>(key),
+      ) as T | undefined;
+    return queryClient.getQueryData<T>(key);
+  },
+});
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
@@ -79,12 +74,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
 
 function DatabaseUnloadGuard() {
   const controller = useDatabaseController();
-  React.useEffect(() => {
-    const dispose = Effect.runSync(
-      Effect.sync(() => guardPendingDatabaseWrites(window, controller.commandState)),
-    );
-    return () => Effect.runSync(Effect.sync(dispose));
-  }, [controller]);
+  React.useEffect(() => guardPendingDatabaseWrites(window, controller.commandState), [controller]);
   return null;
 }
 
@@ -98,16 +88,12 @@ function PostHogIdentitySync() {
     const client = posthog;
     if (!client || session === undefined) return;
 
-    Effect.runSync(
-      Effect.gen(function* () {
-        if (!user) {
-          yield* resetSignedOutPostHogIdentity(client, previousUserId);
-          return;
-        }
-        yield* syncSignedInPostHogIdentity(client, previousUserId, user.id);
-        yield* syncPostHogWorkspace(client, workspaceId);
-      }),
-    );
+    if (!user) {
+      resetSignedOutPostHogIdentity(client, previousUserId);
+      return;
+    }
+    syncSignedInPostHogIdentity(client, previousUserId, user.id);
+    syncPostHogWorkspace(client, workspaceId);
   }, [session, user, workspaceId]);
 
   return null;
@@ -119,12 +105,10 @@ function resetSignedOutPostHogIdentity(
   client: ConfiguredPostHog,
   previousUserId: React.MutableRefObject<string | null | undefined>,
 ) {
-  return Effect.sync(() => {
-    if (previousUserId.current && client.get_distinct_id() === previousUserId.current) {
-      client.reset();
-    }
-    previousUserId.current = null;
-  });
+  if (previousUserId.current && client.get_distinct_id() === previousUserId.current) {
+    client.reset();
+  }
+  previousUserId.current = null;
 }
 
 function syncSignedInPostHogIdentity(
@@ -132,22 +116,18 @@ function syncSignedInPostHogIdentity(
   previousUserId: React.MutableRefObject<string | null | undefined>,
   userId: string,
 ) {
-  return Effect.sync(() => {
-    if (previousUserId.current !== userId) {
-      if (previousUserId.current) client.reset();
-      client.identify(userId);
-      previousUserId.current = userId;
-      return;
-    }
-    if (client.get_distinct_id() !== userId) client.identify(userId);
-  });
+  if (previousUserId.current !== userId) {
+    if (previousUserId.current) client.reset();
+    client.identify(userId);
+    previousUserId.current = userId;
+    return;
+  }
+  if (client.get_distinct_id() !== userId) client.identify(userId);
 }
 
 function syncPostHogWorkspace(client: ConfiguredPostHog, workspaceId: string | null | undefined) {
-  return Effect.sync(() => {
-    if (workspaceId) client.group("workspace", workspaceId);
-    else client.resetGroups();
-  });
+  if (workspaceId) client.group("workspace", workspaceId);
+  else client.resetGroups();
 }
 
 function ThemeDocumentSync() {
@@ -155,16 +135,12 @@ function ThemeDocumentSync() {
   const { themeFamily } = useThemeFamily();
 
   React.useEffect(() => {
-    Effect.runSync(
-      Effect.sync(() => {
-        const colorScheme = getThemeColorScheme(resolvedTheme);
-        if (!colorScheme) return;
-        const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-        document.documentElement.dataset.themeFamily = themeFamily;
-        document.documentElement.style.colorScheme = colorScheme;
-        meta?.setAttribute("content", getComputedStyle(document.body).backgroundColor);
-      }),
-    );
+    const colorScheme = getThemeColorScheme(resolvedTheme);
+    if (!colorScheme) return;
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    document.documentElement.dataset.themeFamily = themeFamily;
+    document.documentElement.style.colorScheme = colorScheme;
+    meta?.setAttribute("content", getComputedStyle(document.body).backgroundColor);
   }, [resolvedTheme, themeFamily]);
 
   return null;

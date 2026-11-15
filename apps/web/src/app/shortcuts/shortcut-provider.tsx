@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import {
   createContext,
   useCallback,
@@ -102,35 +101,32 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(() => ({ register }), [register]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) =>
-      Effect.runSync(
-        Effect.gen(function* () {
-          if (event.defaultPrevented) {
-            return;
-          }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
 
-          const registrations = [...registrationsRef.current.values()].sort(
-            (left, right) => right.priority - left.priority || right.order - left.order,
-          );
-
-          for (const registration of registrations) {
-            if (
-              !matchesAppShortcut(event, registration.shortcutId) ||
-              (!registration.allowInEditable && isEditableShortcutTarget(event.target))
-            ) {
-              continue;
-            }
-
-            if (!(yield* Effect.sync(() => registration.handler(event)))) {
-              continue;
-            }
-
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            return;
-          }
-        }),
+      const registrations = [...registrationsRef.current.values()].sort(
+        (left, right) => right.priority - left.priority || right.order - left.order,
       );
+
+      for (const registration of registrations) {
+        if (
+          !matchesAppShortcut(event, registration.shortcutId) ||
+          (!registration.allowInEditable && isEditableShortcutTarget(event.target))
+        ) {
+          continue;
+        }
+
+        if (!registration.handler(event)) {
+          continue;
+        }
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+    };
 
     window.addEventListener("keydown", handleKeyDown, true);
 

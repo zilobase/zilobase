@@ -7,7 +7,7 @@ export function register({ assert, sourcePath, test }) {
   let loaded;
   const runtime = () => (loaded ??= loadRoutingRuntime(sourcePath));
   test("routing preserves authentication, onboarding and public access decisions", async () => {
-    const { router, guards, controls, NetworkUnavailableError, Effect } = await runtime();
+    const { router, guards, controls, NetworkUnavailableError } = await runtime();
     const route = (path) =>
       Object.values(router.routesById).find(
         (item) => item.fullPath === path && item.id !== "__root__" && item.id !== "/app",
@@ -34,23 +34,17 @@ export function register({ assert, sourcePath, test }) {
     await rejectsTo(() => route("/otp").options.beforeLoad(), "/login");
     controls.reset();
     controls.responses["/pages/shared/published"] = { published: true };
-    assert.equal(await Effect.runPromise(guards.applyPageShareAccess("shared")), "public");
+    assert.equal(await guards.applyPageShareAccess("shared"), "public");
     controls.responses["/pages/shared/published"] = { published: false };
-    await rejectsTo(() => Effect.runPromise(guards.applyPageShareAccess("shared")), "/login");
+    await rejectsTo(() => guards.applyPageShareAccess("shared"), "/login");
     controls.session = { user: { id: "user" }, session: { id: "session" } };
     controls.queryClient.clear();
-    await rejectsTo(
-      () => Effect.runPromise(guards.applyDatabaseShareAccess("shared")),
-      "/onboarding",
-    );
+    await rejectsTo(() => guards.applyDatabaseShareAccess("shared"), "/onboarding");
     controls.offline = true;
-    await assert.rejects(
-      Effect.runPromise(guards.applyPageShareAccess("shared")),
-      NetworkUnavailableError,
-    );
+    await assert.rejects(guards.applyPageShareAccess("shared"), NetworkUnavailableError);
     controls.reset();
   });
-  test("synchronous Effect route guards retain throws and OTP keeps its Promise boundary", async () => {
+  test("synchronous route guards retain throws and OTP keeps its Promise boundary", async () => {
     const { router, controls } = await runtime();
     const route = (path) => Object.values(router.routesById).find((item) => item.fullPath === path);
     controls.reset();
@@ -78,8 +72,8 @@ export function register({ assert, sourcePath, test }) {
     controls.reset();
   });
 
-  test("routing composes lazy Effects and preserves OAuth, signup, onboarding and demo redirects", async () => {
-    const { router, guards, controls, Effect } = await runtime();
+  test("routing preserves OAuth, signup, onboarding and demo redirects", async () => {
+    const { router, guards, controls } = await runtime();
     const route = (path) =>
       Object.values(router.routesById).find(
         (item) => item.fullPath === path && item.id !== "__root__" && item.id !== "/app",
@@ -93,13 +87,6 @@ export function register({ assert, sourcePath, test }) {
       }
       assert.fail("Expected redirect");
     };
-    controls.reset();
-    const sessionRead = guards.getFreshSession();
-    const workspaceRead = guards.getWorkspaces();
-    assert.equal(controls.sessionReads, 0);
-    assert.equal(controls.workspaceReads, 0);
-    await Effect.runPromise(sessionRead);
-    await Effect.runPromise(workspaceRead);
     controls.reset();
     assert.equal(
       (await redirected("/login", { search: { error: "bootstrap_required" } })).to,
@@ -144,21 +131,8 @@ export function register({ assert, sourcePath, test }) {
     controls.reset();
   });
 
-  test("authentication Effects stay lazy and route failures retain their identity", async () => {
-    const { router, guards, controls, Effect } = await runtime();
-    controls.reset();
-    const workflows = [
-      guards.applyAppAccess(),
-      guards.applyStartRedirect(),
-      guards.applyLoginAccess({}),
-      guards.applySignupAccess({}),
-      guards.applyOnboardingAccess(),
-      guards.applyOAuthConsentAccess({}),
-    ];
-    assert.ok(workflows.every(Effect.isEffect));
-    assert.equal(controls.sessionReads, 0);
-    assert.equal(controls.workspaceReads, 0);
-    assert.deepEqual(controls.requests, []);
+  test("authentication route failures retain their identity", async () => {
+    const { router, guards, controls } = await runtime();
     const routes = [
       router.routesById["/app"],
       ...["/", "/login", "/signup", "/onboarding", "/oauth/consent"].map((path) =>
@@ -186,7 +160,7 @@ export function register({ assert, sourcePath, test }) {
     controls.reset();
   });
 
-  test("TanStack Router accepts Effect redirects and resolved sharing context", async () => {
+  test("TanStack Router accepts guard redirects and resolved sharing context", async () => {
     const { router, controls, createMemoryHistory, createRouter } = await runtime();
     const load = async (path) => {
       const current = createRouter({
@@ -212,28 +186,28 @@ export function register({ assert, sourcePath, test }) {
     assert.equal((await load("/p/shared")).matches.at(-1).context.publishedShare, "public");
     controls.reset();
   });
-  test("routing reuses fresh queries and preserves original failures through Effect", async () => {
-    const { guards, controls, NetworkUnavailableError, Effect } = await runtime();
+  test("routing reuses fresh queries and preserves original failures", async () => {
+    const { guards, controls, NetworkUnavailableError } = await runtime();
     controls.reset();
     const session = { user: { id: "user" }, session: { id: "session" } };
     controls.session = session;
-    await Effect.runPromise(guards.getFreshSession());
-    await Effect.runPromise(guards.getFreshSession());
+    await guards.getFreshSession();
+    await guards.getFreshSession();
     assert.equal(controls.sessionReads, 1);
-    await Effect.runPromise(guards.getWorkspaces());
-    await Effect.runPromise(guards.getWorkspaces());
+    await guards.getWorkspaces();
+    await guards.getWorkspaces();
     assert.equal(controls.workspaceReads, 1);
     controls.queryClient.setQueryData(["session"], session, { updatedAt: Date.now() - 31000 });
-    await Effect.runPromise(guards.getFreshSession());
+    await guards.getFreshSession();
     assert.equal(controls.sessionReads, 2);
     controls.reset();
     const offline = new NetworkUnavailableError();
     controls.errors.session = offline;
-    assert.deepEqual(await Effect.runPromise(guards.getFreshSession({ optional: true })), {
+    assert.deepEqual(await guards.getFreshSession({ optional: true }), {
       user: null,
       session: null,
     });
-    await assert.rejects(Effect.runPromise(guards.getFreshSession()), (error) => error === offline);
+    await assert.rejects(guards.getFreshSession(), (error) => error === offline);
     for (const failure of [
       new Error("Unexpected"),
       Object.assign(new Error("Forbidden"), { status: 403 }),
@@ -241,16 +215,16 @@ export function register({ assert, sourcePath, test }) {
     ]) {
       controls.errors.session = failure;
       await assert.rejects(
-        Effect.runPromise(guards.getFreshSession({ optional: true })),
+        guards.getFreshSession({ optional: true }),
         (error) => error === failure,
       );
       controls.errors.workspaces = failure;
-      await assert.rejects(Effect.runPromise(guards.getWorkspaces()), (error) => error === failure);
+      await assert.rejects(guards.getWorkspaces(), (error) => error === failure);
     }
     controls.reset();
   });
   test("routing keeps hydration optional and trusts only cached members offline", async () => {
-    const { guards, controls, NetworkUnavailableError, Effect } = await runtime();
+    const { guards, controls, NetworkUnavailableError } = await runtime();
     const page = {
       id: "page",
       workspaceId: "workspace",
@@ -266,7 +240,7 @@ export function register({ assert, sourcePath, test }) {
       controls.responses["/pages/page"] = { page, viewerType, databaseIds: ["database"] };
       controls.storageError = new Error("Storage unavailable");
       assert.equal(
-        await Effect.runPromise(guards.applyPageShareAccess("page")),
+        await guards.applyPageShareAccess("page"),
         viewerType === "member" ? "app" : viewerType,
       );
       assert.equal(controls.hydrated.length, viewerType === "member" ? 1 : 0);
@@ -283,20 +257,15 @@ export function register({ assert, sourcePath, test }) {
       }
       const requestCount = controls.requests.length;
       controls.offline = true;
-      if (viewerType === "member")
-        assert.equal(await Effect.runPromise(guards.applyPageShareAccess("page")), "app");
-      else
-        await assert.rejects(
-          Effect.runPromise(guards.applyPageShareAccess("page")),
-          NetworkUnavailableError,
-        );
+      if (viewerType === "member") assert.equal(await guards.applyPageShareAccess("page"), "app");
+      else await assert.rejects(guards.applyPageShareAccess("page"), NetworkUnavailableError);
       assert.equal(controls.requests.length, requestCount);
       assert.equal(controls.hydrated.length, viewerType === "member" ? 1 : 0);
     }
     controls.reset();
   });
   test("routing chooses the preferred workspace and recovers navigation failures", async () => {
-    const { guards, controls, Effect } = await runtime();
+    const { guards, controls } = await runtime();
     controls.reset();
     const session = {
       user: { id: "user" },
@@ -306,17 +275,11 @@ export function register({ assert, sourcePath, test }) {
     controls.preferredWorkspace = "preferred";
     const path = "/pages?fields=nav&workspaceId=preferred";
     controls.errors[path] = new Error("Navigation unavailable");
-    assert.equal(
-      await Effect.runPromise(guards.getDefaultAppPath(session, workspaces)),
-      "/recents",
-    );
+    assert.equal(await guards.getDefaultAppPath(session, workspaces), "/recents");
     assert.deepEqual(controls.requests, [path]);
     delete controls.errors[path];
     controls.responses[path] = { pages: [], databases: [], placements: [] };
-    assert.equal(
-      await Effect.runPromise(guards.getDefaultAppPath(session, workspaces)),
-      "/recents",
-    );
+    assert.equal(await guards.getDefaultAppPath(session, workspaces), "/recents");
     controls.queryClient.removeQueries({ queryKey: ["pages"] });
     controls.responses[path] = {
       pages: [
@@ -334,11 +297,8 @@ export function register({ assert, sourcePath, test }) {
       databases: [],
       placements: [],
     };
-    assert.equal(
-      await Effect.runPromise(guards.getDefaultAppPath(session, workspaces)),
-      "/p/recent%20page",
-    );
-    assert.equal(await Effect.runPromise(guards.getDefaultAppPath(session, [])), "/recents");
+    assert.equal(await guards.getDefaultAppPath(session, workspaces), "/p/recent%20page");
+    assert.equal(await guards.getDefaultAppPath(session, []), "/recents");
     controls.reset();
   });
   test("routing preserves URL validation and disabled-feature redirects", async () => {
@@ -413,7 +373,7 @@ async function loadRoutingRuntime(sourcePath) {
   };
   const result = await build({
     stdin: {
-      contents: `export { router } from "./router"; export { createMemoryHistory, createRouter } from "@tanstack/react-router"; export * as guards from "./guards"; export { Effect } from "effect"; export { controls, NetworkUnavailableError } from "routing-test-ports";`,
+      contents: `export { router } from "./router"; export { createMemoryHistory, createRouter } from "@tanstack/react-router"; export * as guards from "./guards"; export { controls, NetworkUnavailableError } from "routing-test-ports";`,
       resolveDir: sourcePath("/src/app/routing"),
     },
     bundle: true,

@@ -1,6 +1,5 @@
 import { build } from "esbuild";
 import ts from "typescript";
-import { Effect } from "effect";
 import { createRequire } from "node:module";
 
 export function register({ assert, appPath, readSource, test }) {
@@ -264,7 +263,7 @@ export function register({ assert, appPath, readSource, test }) {
       else delete globalThis.navigator;
     }
   });
-  test("sidebar creation Effects preserve guards, mutation/navigation order and exact failures", async () => {
+  test("sidebar creation commands preserve guards, mutation/navigation order and exact failures", async () => {
     // Probe the real callbacks with their closed-over ports without mounting the
     // unrelated sidebar renderers or changing production exports for a test.
     const source = ts.createSourceFile(
@@ -288,13 +287,12 @@ export function register({ assert, appPath, readSource, test }) {
     }).outputText;
     const capture = new Function(
       "ports",
-      `const {React, Effect, workspaceId, isCreatingPage, isCreatingDatabase, createPage, createDatabase, navigate, sidebarScope, chatSelection, setOpenMobile} = ports; ${compiled}; return {handleCreatePage, handleCreateDatabase, handleCreateChat};`,
+      `const {React, workspaceId, isCreatingPage, isCreatingDatabase, createPage, createDatabase, navigate, sidebarScope, chatSelection, setOpenMobile} = ports; ${compiled}; return {handleCreatePage, handleCreateDatabase, handleCreateChat};`,
     );
     const calls = [];
     let failure;
     const ports = {
       React: { useCallback: (callback) => callback },
-      Effect,
       sidebarScope: { current: "workspace" },
       workspaceId: "workspace",
       isCreatingPage: false,
