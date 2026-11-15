@@ -344,6 +344,11 @@ synchronization. Preserve that distinction for flush, close, reconnect, and
 identity teardown. Hosted startup requires connectivity; bundled offline editor
 assets remain deferred.
 
+## Commits
+
+Commit as the repository user only. Do not add AI attribution such as
+"Generated with …" lines or `Co-Authored-By` trailers for bots or agents.
+
 ## Imports and implementation style
 
 - Keep `@zilobase/features` as one package. Do not add an SDK, parallel client
