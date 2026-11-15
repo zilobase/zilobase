@@ -75,7 +75,7 @@ only substantial subsystems get nested folders.
 | `src/app`               | Application factory, middleware installation, route registration, extensions, background orchestration |
 | `src/routes/<domain>`   | HTTP input validation, request middleware, headers/cookies, response serialization                     |
 | `src/services/<domain>` | Domain rules, authorization decisions, database operations, transactions, ordered workflows            |
-| `src/infrastructure`    | Database/schema, storage, email, Effect runtime, generic background delivery                           |
+| `src/infrastructure`    | Database/schema, storage, email, generic background delivery                                           |
 | `src/shared`            | Generic configuration, cancellation/crypto utilities, named cross-domain contracts and errors          |
 | `src/public`            | Supported runtime-neutral, Node, and realtime package exports                                          |
 | `src/scripts`           | Operational and verification commands                                                                  |

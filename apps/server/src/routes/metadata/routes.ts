@@ -1,6 +1,10 @@
-import { Effect } from "effect";
 import { Hono } from "hono";
-import { readBookmarkMetadata } from "../../services/metadata/bookmark-metadata";
+import {
+  BookmarkFetchFailed,
+  InvalidBookmarkUrl,
+  readBookmarkMetadata,
+  UnsupportedBookmarkContent,
+} from "../../services/metadata/bookmark-metadata";
 import type { AppBindings } from "../../shared/contracts/http";
 
 export const metadataRoutes = new Hono<AppBindings>();
@@ -10,29 +14,15 @@ metadataRoutes.get("/bookmark", async (c) => {
     return c.json({ message: "Please sign in to continue." }, 401);
   }
 
-  const result = await Effect.runPromise(
-    readBookmarkMetadata(c.req.query("url") ?? "").pipe(
-      Effect.map((body) => ({ status: 200 as const, body })),
-      Effect.catchTag("InvalidBookmarkUrl", () =>
-        Effect.succeed({
-          status: 400 as const,
-          body: { message: "A valid http or https URL is required." },
-        }),
-      ),
-      Effect.catchTag("UnsupportedBookmarkContent", () =>
-        Effect.succeed({
-          status: 415 as const,
-          body: { message: "URL does not point to an HTML page." },
-        }),
-      ),
-      Effect.catchTag("BookmarkFetchFailed", () =>
-        Effect.succeed({
-          status: 502 as const,
-          body: { message: "Unable to fetch bookmark metadata." },
-        }),
-      ),
-    ),
-  );
-
-  return c.json(result.body, result.status);
+  try {
+    return c.json(await readBookmarkMetadata(c.req.query("url") ?? ""), 200);
+  } catch (error) {
+    if (error instanceof InvalidBookmarkUrl)
+      return c.json({ message: "A valid http or https URL is required." }, 400);
+    if (error instanceof UnsupportedBookmarkContent)
+      return c.json({ message: "URL does not point to an HTML page." }, 415);
+    if (error instanceof BookmarkFetchFailed)
+      return c.json({ message: "Unable to fetch bookmark metadata." }, 502);
+    throw error;
+  }
 });

@@ -1,69 +1,46 @@
-import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect";
 import { isIP } from "node:net";
 
-export class InvalidBookmarkUrl extends Schema.TaggedError<InvalidBookmarkUrl>()(
-  "InvalidBookmarkUrl",
-  {},
-) {}
+export class InvalidBookmarkUrl extends Error {
+  override readonly name = "InvalidBookmarkUrl";
+}
 
-export class UnsupportedBookmarkContent extends Schema.TaggedError<UnsupportedBookmarkContent>()(
-  "UnsupportedBookmarkContent",
-  {},
-) {}
+export class UnsupportedBookmarkContent extends Error {
+  override readonly name = "UnsupportedBookmarkContent";
+}
 
-export class BookmarkFetchFailed extends Schema.TaggedError<BookmarkFetchFailed>()(
-  "BookmarkFetchFailed",
-  {},
-) {}
+export class BookmarkFetchFailed extends Error {
+  override readonly name = "BookmarkFetchFailed";
+}
 
-const bookmarkUrlFromString = SchemaTransformation.transformEffect<string, string>({
-  decode: (value, options) => {
-    const url = normalizeUrl(value);
-    return url
-      ? Effect.succeed(url)
-      : Effect.fail(
-          new SchemaIssue.InvalidValue({ expected: "a public http or https URL" }, value, options),
-        );
-  },
-  encode: (url) => Effect.succeed(url),
-});
+export function decodeBookmarkUrl(rawUrl: unknown) {
+  const url = typeof rawUrl === "string" ? normalizeUrl(rawUrl) : null;
+  if (!url) throw new InvalidBookmarkUrl("Expected a public http or https URL");
+  return url;
+}
 
-export const BookmarkUrl = Schema.String.pipe(
-  Schema.decode(SchemaTransformation.trim()),
-  Schema.decodeTo(Schema.String, bookmarkUrlFromString),
-);
-
-export const decodeBookmarkUrl = Schema.decodeUnknownEffect(BookmarkUrl);
-
-export const readBookmarkMetadata = Effect.fn("readBookmarkMetadata")(function* (rawUrl: unknown) {
-  const url = yield* decodeBookmarkUrl(rawUrl).pipe(
-    Effect.mapError(() => new InvalidBookmarkUrl({})),
-  );
-  const response = yield* Effect.tryPromise({
-    try: (signal) =>
-      fetch(url, {
-        headers: {
-          accept: "text/html,application/xhtml+xml",
-          "user-agent": "Mozilla/5.0 (compatible; ZilobaseBookmarkBot/1.0; +https://zilobase.com)",
-        },
-        redirect: "follow",
-        signal,
-      }),
-    catch: () => new BookmarkFetchFailed({}),
+export async function readBookmarkMetadata(rawUrl: unknown) {
+  const url = decodeBookmarkUrl(rawUrl);
+  const response = await fetch(url, {
+    headers: {
+      accept: "text/html,application/xhtml+xml",
+      "user-agent": "Mozilla/5.0 (compatible; ZilobaseBookmarkBot/1.0; +https://zilobase.com)",
+    },
+    redirect: "follow",
+  }).catch(() => {
+    throw new BookmarkFetchFailed();
   });
 
   if (!response.ok) {
-    return yield* new BookmarkFetchFailed({});
+    throw new BookmarkFetchFailed();
   }
 
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) {
-    return yield* new UnsupportedBookmarkContent({});
+    throw new UnsupportedBookmarkContent();
   }
 
-  const html = yield* Effect.tryPromise({
-    try: () => readLimitedResponse(response, 1_000_000),
-    catch: () => new BookmarkFetchFailed({}),
+  const html = await readLimitedResponse(response, 1_000_000).catch(() => {
+    throw new BookmarkFetchFailed();
   });
 
   return {
@@ -87,7 +64,7 @@ export const readBookmarkMetadata = Effect.fn("readBookmarkMetadata")(function* 
       getTitle(html) ??
       getUrlTitle(url),
   };
-});
+}
 
 export function normalizeUrl(value: string) {
   const trimmed = value.trim();

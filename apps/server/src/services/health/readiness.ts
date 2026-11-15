@@ -1,11 +1,8 @@
 import { sql } from "drizzle-orm";
-import { Context, Effect, Layer, ManagedRuntime } from "effect";
 
 import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
-import { db } from "../../infrastructure/database";
-import { Db } from "../../infrastructure/database/db";
-import { appMemoMap, createAppRuntime } from "../../infrastructure/effect/runtime";
-import { ObjectStorage } from "../../infrastructure/storage/object-storage";
+import { db, runWithDbEnv } from "../../infrastructure/database";
+import { createImageStorage } from "../../infrastructure/storage/image-storage";
 import type { RuntimeEnv } from "../../shared/config/config";
 
 export type ReadinessResult = {
@@ -24,50 +21,22 @@ type ReadinessDependencies = {
   checkObjectStorage(env: RuntimeEnv): Promise<void>;
 };
 
-export class ReadinessChecks extends Context.Service<
-  ReadinessChecks,
-  {
-    checkDatabase(env: RuntimeEnv): Effect.Effect<void, unknown>;
-    checkObjectStorage(env: RuntimeEnv): Effect.Effect<void, unknown>;
-  }
->()("@zilobase/server/features/health/ReadinessChecks") {
-  static readonly layerNoDeps = Layer.effect(
-    this,
-    Effect.gen(function* () {
-      const database = yield* Db;
-      const objectStorage = yield* ObjectStorage;
-
-      return ReadinessChecks.of({
-        checkDatabase: (env) =>
-          database.withEnv(env, async () => {
-            await db.execute(sql`select 1`);
-          }),
-        checkObjectStorage: (env) => objectStorage.checkReady(env),
-      });
+const defaultReadinessDependencies: ReadinessDependencies = {
+  checkDatabase: (env) =>
+    runWithDbEnv(env, async () => {
+      await db.execute(sql`select 1`);
     }),
-  );
+  checkObjectStorage: (env) => createImageStorage(env).checkReady(),
+};
 
-  static readonly layer = this.layerNoDeps.pipe(
-    Layer.provide(Db.layer),
-    Layer.provide(ObjectStorage.layer),
-  );
-}
-
-export const evaluateReadiness = Effect.fn("evaluateReadiness")(function* (env: RuntimeEnv) {
-  const dependencies = yield* ReadinessChecks;
-  const [database, objectStorage] = yield* Effect.all(
-    [
-      dependencies.checkDatabase(env).pipe(
-        Effect.as("ok" as const),
-        Effect.orElseSucceed(() => "unavailable" as const),
-      ),
-      dependencies.checkObjectStorage(env).pipe(
-        Effect.as("ok" as const),
-        Effect.orElseSucceed(() => "unavailable" as const),
-      ),
-    ],
-    { concurrency: "unbounded" },
-  );
+export async function checkReadiness(
+  env: RuntimeEnv,
+  dependencies: ReadinessDependencies = defaultReadinessDependencies,
+): Promise<ReadinessResult> {
+  const [database, objectStorage] = await Promise.all([
+    probe(() => dependencies.checkDatabase(env)),
+    probe(() => dependencies.checkObjectStorage(env)),
+  ]);
   const readiness = requireRuntimePort("readiness");
   const checks: ReadinessResult["checks"] = {
     database,
@@ -87,42 +56,14 @@ export const evaluateReadiness = Effect.fn("evaluateReadiness")(function* (env: 
     checks,
     ok: Object.values(checks).every((check) => check === "ok"),
     service: "zilobase-server",
-  } satisfies ReadinessResult;
-});
+  };
+}
 
-export const readinessRuntime = createAppRuntime(ReadinessChecks.layer, {
-  process: true,
-});
-
-export async function checkReadiness(
-  env: RuntimeEnv,
-  dependencies?: ReadinessDependencies,
-): Promise<ReadinessResult> {
-  if (!dependencies) {
-    return readinessRuntime.runPromise(evaluateReadiness(env));
-  }
-
-  const runtime = ManagedRuntime.make(readinessChecksLayerFrom(dependencies), {
-    memoMap: appMemoMap,
-  });
+async function probe(check: () => Promise<void>) {
   try {
-    return await runtime.runPromise(evaluateReadiness(env));
-  } finally {
-    await runtime.dispose();
+    await check();
+    return "ok" as const;
+  } catch {
+    return "unavailable" as const;
   }
-}
-
-function readinessChecksLayerFrom(dependencies: ReadinessDependencies) {
-  return Layer.succeed(ReadinessChecks, {
-    checkDatabase: promiseCheck(dependencies.checkDatabase),
-    checkObjectStorage: promiseCheck(dependencies.checkObjectStorage),
-  });
-}
-
-function promiseCheck(run: (env: RuntimeEnv) => Promise<void>) {
-  return (env: RuntimeEnv) =>
-    Effect.tryPromise({
-      try: () => run(env),
-      catch: (cause) => cause,
-    });
 }

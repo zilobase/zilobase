@@ -1482,10 +1482,6 @@ try {
   providers.releaseAll();
   await runtime?.close();
   await fixture.client.end();
-  // Close pooled fixture connections created by the shared database adapter.
-  const { disposeProcessRuntimes } =
-    await import("../../apps/server/src/infrastructure/effect/runtime");
-  await disposeProcessRuntimes();
   await mkdir(".test-results/automations", { recursive: true });
   await writeFile(
     `.test-results/automations/${kind}.json`,

@@ -1,20 +1,13 @@
-import { Effect } from "effect";
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { decodeBookmarkUrl } from "./bookmark-metadata";
 
-test("bookmark URL schema accepts public hosts and rejects private ones", async () => {
-  assert.equal(
-    await Effect.runPromise(decodeBookmarkUrl("example.test/path")),
-    "https://example.test/path",
-  );
-  assert.equal(
-    await Effect.runPromise(decodeBookmarkUrl(" https://example.test ")),
-    "https://example.test/",
-  );
+test("bookmark URL schema accepts public hosts and rejects private ones", () => {
+  assert.equal(decodeBookmarkUrl("example.test/path"), "https://example.test/path");
+  assert.equal(decodeBookmarkUrl(" https://example.test "), "https://example.test/");
 
-  await assert.rejects(() => Effect.runPromise(decodeBookmarkUrl("")));
-  await assert.rejects(() => Effect.runPromise(decodeBookmarkUrl("localhost")));
-  await assert.rejects(() => Effect.runPromise(decodeBookmarkUrl("127.0.0.1")));
+  assert.throws(() => decodeBookmarkUrl(""));
+  assert.throws(() => decodeBookmarkUrl("localhost"));
+  assert.throws(() => decodeBookmarkUrl("127.0.0.1"));
 });

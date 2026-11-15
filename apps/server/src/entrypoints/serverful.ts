@@ -14,7 +14,6 @@ import {
   shutdownNodeTelemetry,
   startNodeTelemetry,
 } from "../infrastructure/background/node-telemetry";
-import { disposeProcessRuntimes } from "../infrastructure/effect/runtime";
 
 const CORE_SCHEMA_TARGET = "0092_database_v2_constraints";
 
@@ -40,7 +39,6 @@ async function main() {
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, async () => {
       await runtime.close();
-      await disposeProcessRuntimes();
       await shutdownNodeTelemetry();
       process.exit(0);
     });
@@ -59,7 +57,6 @@ async function main() {
 
 void main().catch(async (error) => {
   console.error("Failed to start the Zilobase server", error);
-  await disposeProcessRuntimes();
   await shutdownNodeTelemetry();
   process.exitCode = 1;
 });
