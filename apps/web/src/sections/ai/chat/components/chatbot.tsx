@@ -20,7 +20,6 @@ import {
   useChatSelection,
 } from "@zilobase/features/ai/react";
 import { useChatAttachments } from "../../attachments/hooks/use-chat-attachments";
-import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-settings/react";
 import { ChatLayout } from "./chat-layout";
 import {
   MessageScroller,
@@ -499,9 +498,6 @@ export default function Chatbot({
                   Attach current {databaseId ? "database" : "page"}
                 </Button>
               )}
-              {pageId && !databaseId && workspaceId && (
-                <InstructionsToggle pageId={pageId} workspaceId={workspaceId} />
-              )}
             </div>
             {chatError && (
               <ChatError>
@@ -532,26 +528,5 @@ export default function Chatbot({
         </ChatLayout>
       </MessageScroller>
     </MessageScrollerProvider>
-  );
-}
-
-/** Makes the current page the user's Ask AI instructions for this workspace, or stops using it. */
-function InstructionsToggle({ pageId, workspaceId }: { pageId: string; workspaceId: string }) {
-  const { data: settings } = useUserSettings();
-  const update = useUpdateUserSettings();
-  const current = settings?.aiInstructionPages?.[workspaceId] === pageId;
-  return (
-    <Button
-      type="button"
-      size="sm"
-      variant="ghost"
-      disabled={update.isPending}
-      title="Ask AI follows the text of your instructions page in every chat in this workspace."
-      onClick={() =>
-        update.mutate({ aiInstructionPage: { workspaceId, pageId: current ? null : pageId } })
-      }
-    >
-      {current ? "Stop using as AI instructions" : "Use page as AI instructions"}
-    </Button>
   );
 }
