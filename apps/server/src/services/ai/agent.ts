@@ -10,6 +10,7 @@ import {
   type ReadToolDependencies,
 } from "./read-tools";
 import { readProgressKey, updateReadCoverage, type AgentState } from "./agent-state";
+import { readUserInstructions, withUserInstructions } from "./instructions";
 import {
   chatTokenCounter,
   modelContextWindow,
@@ -45,6 +46,8 @@ export async function* generateReadAgent(
     transport?: typeof fetch;
     persistence?: AgentPersistence;
     dependencies?: ReadToolDependencies;
+    /** The user's instructions text; read from their Instructions page when omitted. */
+    instructions?: string | null;
   } = {},
 ): AsyncGenerator<ProviderChunk> {
   const window = modelContextWindow(context.env);
@@ -152,9 +155,14 @@ export async function* generateReadAgent(
     }),
     ...actionTools,
   };
-  const baseInstructions = Object.keys(actionTools).length
-    ? `${CHAT_INSTRUCTIONS.replace("a read-only workspace assistant", "a workspace assistant").replace(" Never create, edit or delete workspace content.", "")} ${ACTION_INSTRUCTIONS}`
-    : CHAT_INSTRUCTIONS;
+  const baseInstructions = withUserInstructions(
+    Object.keys(actionTools).length
+      ? `${CHAT_INSTRUCTIONS.replace("a read-only workspace assistant", "a workspace assistant").replace(" Never create, edit or delete workspace content.", "")} ${ACTION_INSTRUCTIONS}`
+      : CHAT_INSTRUCTIONS,
+    options.instructions === undefined
+      ? await readUserInstructions(context, state.workspaceId).catch(() => null)
+      : options.instructions,
+  );
   const agent = new ToolLoopAgent({
     model,
     instructions: baseInstructions,

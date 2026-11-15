@@ -12,6 +12,11 @@ export const pageSettings = pgTable(
     embeddedItemsOpenAs: text("embedded_items_open_as").notNull().default("sidepanel"),
     pageFullWidth: boolean("page_full_width").notNull().default(false),
     sidebarConfig: jsonb("sidebar_config").notNull().default({}),
+    /** Workspace ID → the page whose text Ask AI follows as the user's instructions. */
+    aiInstructionPages: jsonb("ai_instruction_pages")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
     ...timestampColumns(),
   },
   (table) => [uniqueIndex("page_settings_user_id_unique").on(table.userId)],

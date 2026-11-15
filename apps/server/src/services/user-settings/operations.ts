@@ -31,6 +31,13 @@ const UpdateUserSettings = z.object({
       "sidebarConfig must be an object",
     )
     .optional(),
+  aiInstructionPage: z
+    .object({
+      workspaceId: z.string().min(1).max(128),
+      pageId: z.string().min(1).max(128).nullable(),
+    })
+    .strict()
+    .optional(),
 });
 export type GetUserSettingsOperationInput = {};
 export async function getUserSettingsOperation(

@@ -4,7 +4,10 @@ import { beginClientWrite, clientMutation, runClientMutation } from "../shared/o
 import type { UserSettings } from "./contracts";
 import { defaultUserSettings, userSettingsQueryKey } from "./queries";
 
-export type UpdateUserSettingsOperationInput = Partial<UserSettings>;
+export type UpdateUserSettingsOperationInput = Partial<UserSettings> & {
+  /** Sets or clears (null) the Ask AI instructions page for one workspace. */
+  aiInstructionPage?: { workspaceId: string; pageId: string | null };
+};
 export type UpdateUserSettingsOperationResult = UserSettings;
 
 export function updateUserSettings(
