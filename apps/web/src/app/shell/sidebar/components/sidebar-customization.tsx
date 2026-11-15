@@ -58,6 +58,7 @@ import {
   getPageIconNode,
 } from "@/sections/pages/appearance/components/page-icon";
 import { libraryViewIcons } from "@/components/navigation/lib/library-views";
+import { isFeatureEnabled } from "@/platform/environment";
 import {
   closestCenter,
   DndContext,
@@ -556,10 +557,12 @@ function AddShortcutMenu({
         </DropDrawerItem>
         <DropDrawerSeparator />
         <DropDrawerLabel>Go to</DropDrawerLabel>
-        <DropDrawerItem onSelect={() => onAdd({ route: "tasks", type: "route" })}>
-          <ListChecksIcon />
-          Tasks
-        </DropDrawerItem>
+        {isFeatureEnabled("tasks") ? (
+          <DropDrawerItem onSelect={() => onAdd({ route: "tasks", type: "route" })}>
+            <ListChecksIcon />
+            Tasks
+          </DropDrawerItem>
+        ) : null}
         <DropDrawerSub title="Library views">
           <DropDrawerSubTrigger>
             <LibraryIcon />
@@ -664,7 +667,12 @@ function AddSectionMenu({
         ) : (
           <>
             {sidebarSectionKinds
-              .filter((kind) => kind !== "databaseView" && kind !== "aiChats")
+              .filter(
+                (kind): kind is Exclude<SidebarSectionKind, "databaseView" | "aiChats"> =>
+                  kind !== "databaseView" &&
+                  kind !== "aiChats" &&
+                  (kind !== "tasks" || isFeatureEnabled("tasks")),
+              )
               .map((kind) => {
                 const Icon = sectionIcons[kind];
                 return (

@@ -25,6 +25,7 @@ export const appConfig = {
   featureFlags: {
     askAi: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_ASK_AI, true),
     notionImport: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_NOTION_IMPORT, false),
+    tasks: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_TASKS, false),
     webClipper: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_WEB_CLIPPER, false),
   },
 } as const;

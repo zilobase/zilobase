@@ -162,4 +162,38 @@ export function register({ assert, loadModule, test }) {
       ["home", "ai", "calendar"],
     );
   });
+
+  test("Tasks shortcuts and sections stay hidden while the feature flag is off and return on save", async () => {
+    const { hideUnconfiguredIntegrationTabs, restoreUnconfiguredIntegrationTabs } =
+      await loadModule("/packages/features/src/user-settings/index.ts");
+    const recents = { id: "recents", kind: "recents", limit: 5, sort: "lastEdited" };
+    const tasks = { id: "tasks", kind: "tasks", limit: 10, sort: "lastEdited" };
+    const library = { id: "library", target: { type: "library", view: "recents" } };
+    const tasksShortcut = { id: "tasks", target: { route: "tasks", type: "route" } };
+    const layout = {
+      tabs: [
+        {
+          icon: "home",
+          id: "home",
+          name: "Home",
+          sections: [tasks, recents],
+          shortcuts: [library, tasksShortcut],
+        },
+      ],
+      taskDatabaseIds: ["db"],
+    };
+    const availability = { calendar: true, tasks: false };
+
+    const hidden = hideUnconfiguredIntegrationTabs(layout, availability);
+    assert.deepEqual(hidden.tabs[0].sections, [recents]);
+    assert.deepEqual(hidden.tabs[0].shortcuts, [library]);
+    assert.deepEqual(hidden.taskDatabaseIds, ["db"]);
+
+    const restored = restoreUnconfiguredIntegrationTabs(layout, hidden, availability);
+    assert.deepEqual(restored.tabs[0].sections, [tasks, recents]);
+    assert.deepEqual(restored.tabs[0].shortcuts, [library, tasksShortcut]);
+
+    const visible = hideUnconfiguredIntegrationTabs(layout, { calendar: true, tasks: true });
+    assert.deepEqual(visible.tabs[0].sections, [tasks, recents]);
+  });
 }

@@ -361,7 +361,11 @@ export function useAppSidebar({
   );
   const integrations = useIntegrationAvailability(workspaceId);
   const sidebarAvailability = React.useMemo(
-    () => ({ askAi: isFeatureEnabled("askAi"), calendar: integrations.calendar }),
+    () => ({
+      askAi: isFeatureEnabled("askAi"),
+      calendar: integrations.calendar,
+      tasks: isFeatureEnabled("tasks"),
+    }),
     [integrations.calendar],
   );
   const layout = React.useMemo(

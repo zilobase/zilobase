@@ -169,6 +169,10 @@ const appRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/tasks",
+    beforeLoad: () => {
+      if (!isFeatureEnabled("tasks"))
+        throw redirect({ to: "/recents", search: { view: "recents" } });
+    },
     component: lazyRouteComponent(() => import("@/sections/tasks/tasks-screen")),
   }),
   createRoute({
