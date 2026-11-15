@@ -6,7 +6,7 @@ import {
   type DatabaseCommandRequest,
   invertConfigurationChanges,
 } from "@zilobase/features/runtime";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../../infrastructure/database";
 import { databaseRow, page, pagePropertyValue } from "../../infrastructure/database/schema";
 import { executeDatabaseApplicationCommand } from "../databases/commands/operations";
@@ -344,9 +344,8 @@ export function createDatabaseActionPort(options: DatabasePortOptions): Database
 }
 
 /**
- * The inverse of a row's title and value changes, read before the change runs.
- * Placement and hierarchy moves have no inverse, so undo refuses them rather
- * than reverting only part of the change.
+ * The inverse of a row change, read before it runs: the previous title and
+ * values, the row's former neighbours for a move, and its former parent.
  */
 async function rowPreImage(input: CommandInput): Promise<CommandInput | null> {
   const command = input.command as {
@@ -357,10 +356,14 @@ async function rowPreImage(input: CommandInput): Promise<CommandInput | null> {
     placement?: unknown;
     hierarchy?: unknown;
   };
-  if (command.type !== "row.change" || !command.rowId || command.placement || command.hierarchy)
-    return null;
+  if (command.type !== "row.change" || !command.rowId) return null;
   const [row] = await db
-    .select({ pageId: databaseRow.pageId, title: page.name })
+    .select({
+      pageId: databaseRow.pageId,
+      title: page.name,
+      dataSourceId: databaseRow.dataSourceId,
+      parentRowId: databaseRow.parentRowId,
+    })
     .from(databaseRow)
     .innerJoin(page, eq(page.id, databaseRow.pageId))
     .where(eq(databaseRow.id, command.rowId))
@@ -379,12 +382,29 @@ async function rowPreImage(input: CommandInput): Promise<CommandInput | null> {
         )
     : [];
   const values = new Map(previous.map(({ propertyId, value }) => [propertyId, value]));
+  let placement: { afterRowId: string | null; beforeRowId: string | null } | undefined;
+  if (command.placement) {
+    const order = await db
+      .select({ id: databaseRow.id })
+      .from(databaseRow)
+      .where(and(eq(databaseRow.dataSourceId, row.dataSourceId), isNull(databaseRow.deletedAt)))
+      .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id));
+    const index = order.findIndex(({ id }) => id === command.rowId);
+    placement = {
+      afterRowId: order[index - 1]?.id ?? null,
+      beforeRowId: order[index + 1]?.id ?? null,
+    };
+  }
   return {
     ...input,
     command: {
       type: "row.change",
       rowId: command.rowId,
       ...(command.title !== undefined ? { title: row.title } : {}),
+      ...(placement ? { placement } : {}),
+      ...(command.hierarchy
+        ? { hierarchy: { ...(command.hierarchy as object), parentRowId: row.parentRowId } }
+        : {}),
       ...(propertyIds.length
         ? {
             valuesByPropertyId: Object.fromEntries(
