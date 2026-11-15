@@ -1,4 +1,4 @@
-import { Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 import { getCanonicalApiOrigin } from "../../shared/config/config";
 import { parseOperationBody } from "../../shared/validation";
 import { getMembership } from "../access/principal-access";
@@ -17,28 +17,21 @@ import {
   toApiKeyPayload,
   updateOwnedApiKey,
 } from "./lifecycle";
-const trimmedName = Schema.String.pipe(
-  Schema.decode(SchemaTransformation.trim()),
-  Schema.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
-);
-const CreateApiKey = Schema.Struct({
-  expiresIn: Schema.optionalKey(Schema.NullOr(Schema.Int.check(Schema.isGreaterThan(0)))),
+const trimmedName = z.string().trim().min(1).max(80);
+const CreateApiKey = z.object({
+  expiresIn: z.int().positive().nullable().optional(),
   name: trimmedName,
-  workspaceId: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isMinLength(1)),
-  ),
+  workspaceId: z.string().trim().min(1),
 });
-const UpdateApiKey = Schema.Struct({
-  enabled: Schema.optionalKey(Schema.Boolean),
-  name: Schema.optionalKey(trimmedName),
-}).check(
-  Schema.makeFilter((value) =>
-    value.enabled !== undefined || value.name !== undefined
-      ? undefined
-      : "At least one field is required",
-  ),
-);
+const UpdateApiKey = z
+  .object({
+    enabled: z.boolean().optional(),
+    name: trimmedName.optional(),
+  })
+  .refine(
+    (value) => value.enabled !== undefined || value.name !== undefined,
+    "At least one field is required",
+  );
 async function requireSessionUser(context: ServerOperationContext) {
   const requestUser = context.authentication.user;
   if (!requestUser) {

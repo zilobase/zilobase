@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { z } from "zod";
 import { sendEmail } from "../../../infrastructure/email/email";
 import { getPrimaryClientOrigin } from "../../../shared/config/config";
 import { parseOperationBody } from "../../../shared/validation";
@@ -22,9 +22,8 @@ import {
   revokeWorkspaceGuest,
   updateWorkspaceGuestInvitePolicy,
 } from "./workspace-guests";
-const strictJson = { onExcessProperty: "error" as const };
-const GuestPolicy = Schema.Struct({
-  mode: Schema.Literals(["direct", "request", "owners_only"]),
+const GuestPolicy = z.strictObject({
+  mode: z.enum(["direct", "request", "owners_only"]),
 });
 export type ListWorkspaceGuestsOperationInput = { workspaceId: string };
 export async function listWorkspaceGuestsOperation(
@@ -82,7 +81,7 @@ export async function updateWorkspaceGuestPolicyOperation(
   const workspaceId = operationInput.workspaceId;
   requireOperationWorkspace(context, workspaceId);
 
-  const parsed = await parseOperationBody(GuestPolicy, readBody, strictJson);
+  const parsed = await parseOperationBody(GuestPolicy, readBody);
   if (!parsed.ok) return deny({ error: "Invalid guest policy." }, 400);
   try {
     return {

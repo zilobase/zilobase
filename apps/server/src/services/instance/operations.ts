@@ -1,4 +1,4 @@
-import { Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 import { isCommunityRegistration } from "../../shared/config/app-policy";
 import { parseOperationBody } from "../../shared/validation";
 import { getMembership } from "../access/principal-access";
@@ -12,21 +12,15 @@ import {
   getInstanceAdministrationSettings,
   updateInstanceAdministrationSettings,
 } from "./settings/administration";
-const InstanceSettingsUpdate = Schema.Struct({
-  displayName: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.decode(SchemaTransformation.trim()),
-      Schema.check(Schema.isMinLength(1), Schema.isMaxLength(100)),
-    ),
-  ),
-  registrationMode: Schema.optionalKey(Schema.Literals(["invite-only", "open"])),
-}).check(
-  Schema.makeFilter((value) =>
-    value.displayName !== undefined || value.registrationMode !== undefined
-      ? undefined
-      : "Provide at least one setting to update.",
-  ),
-);
+const InstanceSettingsUpdate = z
+  .object({
+    displayName: z.string().trim().min(1).max(100).optional(),
+    registrationMode: z.enum(["invite-only", "open"]).optional(),
+  })
+  .refine(
+    (value) => value.displayName !== undefined || value.registrationMode !== undefined,
+    "Provide at least one setting to update.",
+  );
 async function requireSelfHostedOwner(context: ServerOperationContext) {
   if (!isCommunityRegistration(context.policy)) {
     return deny({ error: "Not found" }, 404);

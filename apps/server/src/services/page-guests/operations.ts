@@ -1,4 +1,4 @@
-import { Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 import { sendEmail } from "../../infrastructure/email/email";
 import { getPrimaryClientOrigin } from "../../shared/config/config";
 import { parseUnknown } from "../../shared/validation";
@@ -18,12 +18,12 @@ import {
   submitPageGuestInvitation,
 } from "./invitations/invitations";
 import { listPageGuestRequests } from "./requests/requests";
-const GuestInvitation = Schema.Struct({
-  accessLevel: Schema.Literals(["view", "comment", "edit", "full"]),
-  email: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-  ),
+const GuestInvitation = z.strictObject({
+  accessLevel: z.enum(["view", "comment", "edit", "full"]),
+  email: z
+    .string()
+    .trim()
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
 });
 
 export async function invitePageGuestOperation(
@@ -33,9 +33,7 @@ export async function invitePageGuestOperation(
 ) {
   requireOperationPolicy(context, { write: true, oauthScope: "pages.write" });
   const user = requireOperationActor(context);
-  const parsed = await parseUnknown(GuestInvitation, readBody ? await readBody() : input.body, {
-    onExcessProperty: "error",
-  });
+  const parsed = await parseUnknown(GuestInvitation, readBody ? await readBody() : input.body);
   if (!parsed.ok)
     throw new ServerOperationError({ error: parsed.message || "Invalid page invitation." }, 400);
   const teamspacePolicy = await getPageTeamspaceSecurityPolicy(input.pageId);

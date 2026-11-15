@@ -1,14 +1,11 @@
-import { Effect, Schema, SchemaTransformation } from "effect";
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { z } from "zod";
 
-import { decodeJsonBody, parseJsonBody, parseUnknown } from "./schema-json";
+import { parseJsonBody, parseUnknown } from "./schema-json";
 
-const Payload = Schema.Struct({
-  name: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isMinLength(1)),
-  ),
+const Payload = z.object({
+  name: z.string().trim().min(1),
 });
 
 function request(body: unknown) {
@@ -20,15 +17,17 @@ function request(body: unknown) {
   };
 }
 
-test("decodeJsonBody decodes a valid JSON object", async () => {
-  const payload = await Effect.runPromise(decodeJsonBody(request({ name: " Inbox " }), Payload));
-  assert.deepEqual(payload, { name: "Inbox" });
+test("parseJsonBody decodes a valid JSON object", async () => {
+  assert.deepEqual(await parseJsonBody(request({ name: " Inbox " }), Payload), {
+    ok: true,
+    data: { name: "Inbox" },
+  });
 });
 
 test("parseJsonBody maps schema failures without throwing", async () => {
   const invalid = await parseJsonBody(request({ name: "" }), Payload);
   assert.equal(invalid.ok, false);
-  if (!invalid.ok) assert.equal(typeof invalid.message, "string");
+  if (!invalid.ok) assert.match(invalid.message, /\n {2}at \["name"\]$/);
 
   const malformed = await parseJsonBody(request("throw"), Payload);
   assert.equal(malformed.ok, false);
@@ -43,8 +42,5 @@ test("parseUnknown decodes an already-read value", async () => {
     data: { name: "Inbox" },
   });
   assert.equal((await parseUnknown(Payload, { name: "" })).ok, false);
-  assert.equal(
-    (await parseUnknown(Payload, { name: "Inbox", extra: true }, { onExcessProperty: "error" })).ok,
-    false,
-  );
+  assert.equal((await parseUnknown(Payload.strict(), { name: "Inbox", extra: true })).ok, false);
 });

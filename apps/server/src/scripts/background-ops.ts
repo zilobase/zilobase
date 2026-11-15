@@ -1,7 +1,7 @@
 import { purgeNodeCellQueues } from "@zilobase/runtime-adapter/node";
 import { purgeCloudflareCellQueues } from "@zilobase/runtime-adapter/operations/cloudflare-queues";
-import { Schema } from "effect";
 import { parseArgs } from "node:util";
+import { z } from "zod";
 import {
   applyBackgroundCutover,
   previewBackgroundCutover,
@@ -26,15 +26,13 @@ const { values, positionals } = parseArgs({
     limit: { type: "string", default: "50" },
   },
 });
-const command = Schema.decodeUnknownSync(Schema.Literals(["inspect", "replay", "cutover"]))(
-  positionals[0],
-);
+const command = z.enum(["inspect", "replay", "cutover"]).parse(positionals[0]);
 if (positionals.length !== 1) throw new Error("One background operation is required");
 const env = process.env;
 if (!env.DATABASE_URL) throw new Error("DATABASE_URL_REQUIRED_FOR_BACKGROUND_OPERATIONS");
-const cellId = Schema.decodeUnknownSync(Schema.String)(values.cell);
+const cellId = z.string().parse(values.cell);
 if (!cellId || cellId !== getBackgroundCellId(env)) throw new Error("OPERATIONS_CELL_MISMATCH");
-const runtime = Schema.decodeUnknownSync(Schema.Literals(["node", "worker"]))(values.runtime);
+const runtime = z.enum(["node", "worker"]).parse(values.runtime);
 if (command === "replay" && !values.apply) throw new Error("REPLAY_REQUIRES_EXPLICIT_APPLY");
 const output = await runWithDbEnv(env, async () => {
   if (command === "inspect") {

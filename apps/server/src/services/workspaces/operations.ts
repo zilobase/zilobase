@@ -7,7 +7,7 @@ import {
   ServerOperationError,
   type ServerOperationContext,
 } from "../operations/context";
-import { DeleteWorkspaceInput, strictJson } from "./input";
+import { DeleteWorkspaceInput } from "./input";
 import { deleteWorkspace, getWorkspace, listWorkspaces } from "./workspaces";
 
 export type ListWorkspacesOperationInput = {};
@@ -65,7 +65,7 @@ export async function deleteWorkspaceOperation(
   if (!membership || membership.role !== "owner") {
     return deny({ error: "Only the workspace owner can delete this workspace." }, 403);
   }
-  const parsed = await parseOperationBody(DeleteWorkspaceInput, readBody, strictJson);
+  const parsed = await parseOperationBody(DeleteWorkspaceInput, readBody);
   if (!parsed.ok) {
     return deny({ error: "Enter the workspace name to confirm deletion." }, 400);
   }

@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { z } from "zod";
 import {
   requireOperationPolicy,
   requireOperationWorkspace,
@@ -8,16 +8,10 @@ import {
 import { requireCalendarMembership } from "../connections/ownership";
 import { calendarWriteSchema, type CalendarMutationAction } from "./input";
 import { mutateCalendarEvent, reconcileCalendarOperation } from "./mutations";
-const CalendarMutationActionSchema = Schema.Literals([
-  "update",
-  "delete",
-  "duplicate",
-  "rsvp",
-  "move",
-]);
-const CalendarMutationExtra = Schema.Struct({
-  destination: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))),
-  responseStatus: Schema.optionalKey(Schema.Literals(["accepted", "declined", "tentative"])),
+const CalendarMutationActionSchema = z.enum(["update", "delete", "duplicate", "rsvp", "move"]);
+const CalendarMutationExtra = z.object({
+  destination: z.string().max(1024).optional(),
+  responseStatus: z.enum(["accepted", "declined", "tentative"]).optional(),
 });
 export type CreateCalendarEventOperationInput = {
   workspaceId: string;
@@ -69,12 +63,12 @@ export async function mutateCalendarEventOperation(
   requireOperationWorkspace(context, operationInput.workspaceId);
   await requireCalendarMembership(actor.id, operationInput.workspaceId);
 
-  const action = Schema.decodeUnknownSync(CalendarMutationActionSchema)(
+  const action = CalendarMutationActionSchema.parse(
     operationInput.action,
   ) as CalendarMutationAction;
   const body = await readBody();
   const write = calendarWriteSchema.parse(body);
-  const extra = Schema.decodeUnknownSync(CalendarMutationExtra)(body);
+  const extra = CalendarMutationExtra.parse(body);
   const result = await mutateCalendarEvent(context.env, {
     userId: context.authentication.user!.id,
     workspaceId: operationInput.workspaceId!,

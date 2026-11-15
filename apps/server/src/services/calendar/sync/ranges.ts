@@ -1,46 +1,33 @@
 import type { CalendarRangeResponse } from "@zilobase/features/runtime";
 import { and, eq } from "drizzle-orm";
-import { Schema } from "effect";
+import { z } from "zod";
 import { db } from "../../../infrastructure/database";
 import { calendarRangeSnapshot } from "../../../infrastructure/database/schema";
 import { recordCalendarMetric } from "../metrics";
 import { CalendarGateway, CalendarProviderError, normalizeEvent } from "../provider/gateway";
 
-const IsoDateTime = Schema.String.pipe(
-  Schema.check(
-    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/, {
-      message: "Invalid date-time format",
-    }),
-  ),
-);
+const IsoDateTime = z
+  .string()
+  .regex(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/,
+    "Invalid date-time format",
+  );
 
-export const CalendarRange = Schema.Struct({
-  calendarId: Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(1024))),
-  start: IsoDateTime,
-  end: IsoDateTime,
-  pageToken: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(4096)))),
-}).check(
-  Schema.makeFilter((r) =>
-    Date.parse(r.end) > Date.parse(r.start) &&
-    Date.parse(r.end) - Date.parse(r.start) <= 62 * 86400_000
-      ? undefined
-      : "Range must be positive and at most 62 days",
-  ),
-);
+export const calendarRangeSchema = z
+  .object({
+    calendarId: z.string().min(1).max(1024),
+    start: IsoDateTime,
+    end: IsoDateTime,
+    pageToken: z.string().max(4096).optional(),
+  })
+  .refine(
+    (r) =>
+      Date.parse(r.end) > Date.parse(r.start) &&
+      Date.parse(r.end) - Date.parse(r.start) <= 62 * 86400_000,
+    "Range must be positive and at most 62 days",
+  );
 
-export type CalendarRange = typeof CalendarRange.Type;
-
-export const calendarRangeSchema = {
-  parse: (input: unknown) => Schema.decodeUnknownSync(CalendarRange)(input),
-  safeParse: (input: unknown) => {
-    try {
-      const data = Schema.decodeUnknownSync(CalendarRange)(input);
-      return { success: true as const, data };
-    } catch (error) {
-      return { success: false as const, error };
-    }
-  },
-};
+export type CalendarRange = z.infer<typeof calendarRangeSchema>;
 
 type RangeInput = CalendarRange & {
   accountId: string;

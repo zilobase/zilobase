@@ -1,5 +1,5 @@
-import type { CalendarPreferences, CalendarTimeZoneColumn } from "@zilobase/features/runtime";
-import { Schema, SchemaTransformation } from "effect";
+import type { CalendarPreferences } from "@zilobase/features/runtime";
+import { z } from "zod";
 import {
   requireOperationPolicy,
   requireOperationWorkspace,
@@ -8,111 +8,59 @@ import {
 } from "../../operations/context";
 import { requireCalendarMembership } from "../connections/ownership";
 import { readCalendarPreferences, saveCalendarPreferences } from "./preferences";
-const TimeZone = Schema.String.pipe(
-  Schema.check(Schema.isMaxLength(100)),
-  Schema.check(
-    Schema.makeFilter((value) => {
-      try {
-        new Intl.DateTimeFormat("en", { timeZone: value });
-        return undefined;
-      } catch {
-        return "Invalid time zone";
-      }
-    }),
-  ),
-);
-const TimeZoneColumn = Schema.Struct({
-  zone: TimeZone,
-  label: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
-  ),
-});
-const CalendarPreferencesBase = Schema.Struct({
-  promptTimeZoneChanges: Schema.Boolean,
-  timeZoneColumns: Schema.Array(TimeZoneColumn).pipe(
-    Schema.check(Schema.isMinLength(1), Schema.isMaxLength(4)),
-    Schema.check(
-      Schema.makeFilter((columns) =>
-        new Set(columns.map((column) => column.zone)).size === columns.length
-          ? undefined
-          : "Time zones must be unique",
-      ),
-    ),
-  ),
-  todayAlignment: Schema.Literals(["week", "start"]),
-  meetingPreviewMinutes: Schema.Int.pipe(
-    Schema.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(1440)),
-  ),
-  mapsProvider: Schema.Literals(["google", "apple"]),
-  hourHeight: Schema.Int.pipe(
-    Schema.check(Schema.isGreaterThanOrEqualTo(32), Schema.isLessThanOrEqualTo(120)),
-  ),
-  accountOrder: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
-    Schema.check(Schema.isMaxLength(500)),
-  ),
-  calendarOrder: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
-    Schema.check(Schema.isMaxLength(500)),
-  ),
-  collapsedAccountIds: Schema.Array(
-    Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
-  ).pipe(Schema.check(Schema.isMaxLength(500))),
-  calendarColors: Schema.Record(
-    Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
-    Schema.Literals(["red", "orange", "yellow", "green", "blue", "purple", "gray"]),
-  ).pipe(
-    Schema.check(
-      Schema.makeFilter((value) =>
-        Object.keys(value).length <= 500 ? undefined : "Too many calendar colors",
-      ),
-    ),
-  ),
-  removedCalendarKeys: Schema.Array(
-    Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
-  ).pipe(Schema.check(Schema.isMaxLength(500))),
-  view: Schema.Literals(["day", "week", "month", "agenda"]),
-  hiddenCalendarKeys: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
-    Schema.check(Schema.isMaxLength(500)),
-  ),
-  defaultCalendarKey: Schema.NullOr(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))),
-  weekStartsOn: Schema.Literals([0, 1, 2, 3, 4, 5, 6]),
-  showWeekends: Schema.Boolean,
-  showDeclined: Schema.Boolean,
-  showWeekNumbers: Schema.Boolean,
-  timeFormat: Schema.Literals(["12", "24"]),
-  timeZone: TimeZone,
-  remindersEnabled: Schema.Boolean,
-});
-export const calendarPreferencesSchema = {
-  ...CalendarPreferencesBase,
-  parse: (input: unknown): CalendarPreferences => {
-    const raw = Schema.decodeUnknownSync(CalendarPreferencesBase)(input);
-    const columns: CalendarTimeZoneColumn[] = raw.timeZoneColumns.map((c) => ({
-      zone: c.zone,
-      label: c.label,
-    }));
-    return {
-      ...raw,
-      timeZoneColumns: columns,
-      timeZone: columns[0]!.zone,
-      accountOrder: [...raw.accountOrder],
-      calendarOrder: [...raw.calendarOrder],
-      collapsedAccountIds: [...raw.collapsedAccountIds],
-      removedCalendarKeys: [...raw.removedCalendarKeys],
-      hiddenCalendarKeys: [...raw.hiddenCalendarKeys],
-      calendarColors: { ...raw.calendarColors },
-    };
-  },
-  safeParse: (
-    input: unknown,
-  ): { success: true; data: CalendarPreferences } | { success: false; error: unknown } => {
+const TimeZone = z
+  .string()
+  .max(100)
+  .refine((value) => {
     try {
-      return { success: true, data: calendarPreferencesSchema.parse(input) };
-    } catch (error) {
-      return { success: false, error };
+      new Intl.DateTimeFormat("en", { timeZone: value });
+      return true;
+    } catch {
+      return false;
     }
-  },
-};
+  }, "Invalid time zone");
+const TimeZoneColumn = z.object({
+  zone: TimeZone,
+  label: z.string().trim().min(1).max(32),
+});
+const CalendarKeys = z.array(z.string().max(1024)).max(500);
+export const calendarPreferencesSchema = z
+  .object({
+    promptTimeZoneChanges: z.boolean(),
+    timeZoneColumns: z
+      .array(TimeZoneColumn)
+      .min(1)
+      .max(4)
+      .refine(
+        (columns) => new Set(columns.map((column) => column.zone)).size === columns.length,
+        "Time zones must be unique",
+      ),
+    todayAlignment: z.enum(["week", "start"]),
+    meetingPreviewMinutes: z.int().min(0).max(1440),
+    mapsProvider: z.enum(["google", "apple"]),
+    hourHeight: z.int().min(32).max(120),
+    accountOrder: CalendarKeys,
+    calendarOrder: CalendarKeys,
+    collapsedAccountIds: CalendarKeys,
+    calendarColors: z
+      .record(
+        z.string().max(1024),
+        z.enum(["red", "orange", "yellow", "green", "blue", "purple", "gray"]),
+      )
+      .refine((value) => Object.keys(value).length <= 500, "Too many calendar colors"),
+    removedCalendarKeys: CalendarKeys,
+    view: z.enum(["day", "week", "month", "agenda"]),
+    hiddenCalendarKeys: CalendarKeys,
+    defaultCalendarKey: z.string().max(1024).nullable(),
+    weekStartsOn: z.literal([0, 1, 2, 3, 4, 5, 6]),
+    showWeekends: z.boolean(),
+    showDeclined: z.boolean(),
+    showWeekNumbers: z.boolean(),
+    timeFormat: z.enum(["12", "24"]),
+    timeZone: TimeZone,
+    remindersEnabled: z.boolean(),
+  })
+  .transform((raw): CalendarPreferences => ({ ...raw, timeZone: raw.timeZoneColumns[0]!.zone }));
 export type GetCalendarPreferencesOperationInput = { workspaceId: string };
 export async function getCalendarPreferencesOperation(
   context: ServerOperationContext,

@@ -4,7 +4,7 @@ import type {
   CalendarIdentity,
   CalendarRecord,
 } from "@zilobase/features/runtime";
-import { Effect, Schema } from "effect";
+import { z } from "zod";
 import { recordCalendarMetric } from "../metrics";
 export class CalendarProviderError extends Error {
   constructor(
@@ -15,108 +15,85 @@ export class CalendarProviderError extends Error {
     super(code);
   }
 }
-const GoogleTime = Schema.Struct({
-  date: Schema.optionalKey(Schema.String),
-  dateTime: Schema.optionalKey(Schema.String),
-  timeZone: Schema.optionalKey(Schema.String),
+const GoogleTime = z.object({
+  date: z.string().optional(),
+  dateTime: z.string().optional(),
+  timeZone: z.string().optional(),
 });
 
-type GoogleTime = typeof GoogleTime.Type;
+type GoogleTime = z.infer<typeof GoogleTime>;
 
-export const GoogleEvent = Schema.Struct({
-  id: Schema.String,
-  etag: Schema.optionalKey(Schema.String),
-  summary: Schema.optionalKey(Schema.String),
-  description: Schema.optionalKey(Schema.String),
-  location: Schema.optionalKey(Schema.String),
-  start: Schema.optionalKey(GoogleTime),
-  end: Schema.optionalKey(GoogleTime),
-  status: Schema.optionalKey(Schema.Literals(["confirmed", "tentative", "cancelled"])),
-  eventType: Schema.optionalKey(Schema.String),
-  recurringEventId: Schema.optionalKey(Schema.String),
-  originalStartTime: Schema.optionalKey(GoogleTime),
-  recurrence: Schema.optionalKey(Schema.mutable(Schema.Array(Schema.String))),
-  attendees: Schema.optionalKey(
-    Schema.mutable(
-      Schema.Array(
-        Schema.Struct({
-          email: Schema.String,
-          displayName: Schema.optionalKey(Schema.String),
-          optional: Schema.optionalKey(Schema.Boolean),
-          self: Schema.optionalKey(Schema.Boolean),
-          organizer: Schema.optionalKey(Schema.Boolean),
-          responseStatus: Schema.Literals([
-            "needsAction",
-            "declined",
-            "tentative",
-            "accepted",
-          ]).pipe(Schema.withDecodingDefault(Effect.succeed("needsAction" as const))),
-        }),
-      ),
-    ),
-  ),
-  organizer: Schema.optionalKey(
-    Schema.Struct({
-      email: Schema.String,
-      self: Schema.optionalKey(Schema.Boolean),
-    }),
-  ),
-  reminders: Schema.optionalKey(
-    Schema.Struct({
-      useDefault: Schema.Boolean,
-      overrides: Schema.optionalKey(
-        Schema.mutable(
-          Schema.Array(
-            Schema.Struct({
-              method: Schema.Literals(["email", "popup"]),
-              minutes: Schema.Number,
-            }),
-          ),
-        ),
-      ),
-    }),
-  ),
-  transparency: Schema.optionalKey(Schema.Literals(["opaque", "transparent"])),
-  visibility: Schema.optionalKey(Schema.Literals(["default", "public", "private", "confidential"])),
-  conferenceData: Schema.optionalKey(
-    Schema.Struct({
-      createRequest: Schema.optionalKey(
-        Schema.Struct({
-          status: Schema.optionalKey(
-            Schema.Struct({
-              statusCode: Schema.optionalKey(Schema.Literals(["pending", "success", "failure"])),
-            }),
-          ),
-        }),
-      ),
-    }),
-  ),
-  colorId: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  htmlLink: Schema.optionalKey(Schema.String),
-  hangoutLink: Schema.optionalKey(Schema.String),
+/** Known Google event fields are validated; unrecognized top-level fields are preserved for writes. */
+export const googleEventSchema = z.looseObject({
+  id: z.string(),
+  etag: z.string().optional(),
+  summary: z.string().optional(),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  start: GoogleTime.optional(),
+  end: GoogleTime.optional(),
+  status: z.enum(["confirmed", "tentative", "cancelled"]).optional(),
+  eventType: z.string().optional(),
+  recurringEventId: z.string().optional(),
+  originalStartTime: GoogleTime.optional(),
+  recurrence: z.array(z.string()).optional(),
+  attendees: z
+    .array(
+      z.object({
+        email: z.string(),
+        displayName: z.string().optional(),
+        optional: z.boolean().optional(),
+        self: z.boolean().optional(),
+        organizer: z.boolean().optional(),
+        responseStatus: z
+          .enum(["needsAction", "declined", "tentative", "accepted"])
+          .default("needsAction"),
+      }),
+    )
+    .optional(),
+  organizer: z
+    .object({
+      email: z.string(),
+      self: z.boolean().optional(),
+    })
+    .optional(),
+  reminders: z
+    .object({
+      useDefault: z.boolean(),
+      overrides: z
+        .array(
+          z.object({
+            method: z.enum(["email", "popup"]),
+            minutes: z.number(),
+          }),
+        )
+        .optional(),
+    })
+    .optional(),
+  transparency: z.enum(["opaque", "transparent"]).optional(),
+  visibility: z.enum(["default", "public", "private", "confidential"]).optional(),
+  conferenceData: z
+    .object({
+      createRequest: z
+        .object({
+          status: z
+            .object({
+              statusCode: z.enum(["pending", "success", "failure"]).optional(),
+            })
+            .optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  colorId: z.string().nullable().optional(),
+  htmlLink: z.string().optional(),
+  hangoutLink: z.string().optional(),
 });
 
-export type GoogleCalendarEvent = typeof GoogleEvent.Type & {
+export type GoogleCalendarEvent = z.infer<typeof googleEventSchema> & {
   extendedProperties?: unknown;
-  [key: string]: unknown;
 };
 
-export const googleEventSchema = {
-  ...GoogleEvent,
-  parse: (input: unknown): GoogleCalendarEvent => {
-    const parsed = Schema.decodeUnknownSync(GoogleEvent)(input);
-    return typeof input === "object" && input !== null
-      ? ({ ...input, ...parsed } as GoogleCalendarEvent)
-      : (parsed as GoogleCalendarEvent);
-  },
-  safeParse: (input: unknown) => {
-    try {
-      return { success: true as const, data: googleEventSchema.parse(input) };
-    } catch (error) {
-      return { success: false as const, error };
-    }
-  },
-};
 export class CalendarGateway {
   constructor(
     private token: string,

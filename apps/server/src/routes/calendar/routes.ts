@@ -1,5 +1,5 @@
-import { Schema } from "effect";
 import { Hono } from "hono";
+import { z } from "zod";
 import {
   CalendarAccessError,
   requireCalendarMembership,
@@ -24,7 +24,7 @@ for (const app of [calendarRoutes, calendarProviderRoutes]) {
     await next();
   });
   app.onError((error, c) => {
-    if (Schema.isSchemaError(error)) return c.json({ message: "Invalid calendar request." }, 400);
+    if (error instanceof z.ZodError) return c.json({ message: "Invalid calendar request." }, 400);
     if (error instanceof CalendarAccessError)
       return c.json({ message: error.message }, error.status);
     if (error instanceof CalendarProviderError)

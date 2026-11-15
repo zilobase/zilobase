@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { z } from "zod";
 import { getStringEnv } from "../../../shared/config/config";
 import {
   requireOperationPolicy,
@@ -11,8 +11,8 @@ import { beginCalendarOAuth, createCalendarGateway } from "../provider/oauth";
 import { personalCalendarSources } from "./catalog";
 import { disconnectOwnedCalendar, listCalendarConnections } from "./connections";
 import { requireCalendarBinding } from "./ownership";
-const GoogleOAuthStart = Schema.Struct({
-  client: Schema.Literals(["web", "desktop"]),
+const GoogleOAuthStart = z.object({
+  client: z.enum(["web", "desktop"]),
 });
 export type ListCalendarConnectionsOperationInput = { workspaceId: string };
 export async function listCalendarConnectionsOperation(
@@ -71,7 +71,7 @@ export async function connectCalendarOperation(
   requireOperationWorkspace(context, operationInput.workspaceId);
   await requireCalendarMembership(actor.id, operationInput.workspaceId);
 
-  const body = Schema.decodeUnknownSync(GoogleOAuthStart)(await readBody());
+  const body = GoogleOAuthStart.parse(await readBody());
   return {
     authorizationUrl: await beginCalendarOAuth(context.env, {
       userId: context.authentication.user!.id,

@@ -1,5 +1,5 @@
-import { Schema, SchemaTransformation } from "effect";
 import { Hono } from "hono";
+import { z } from "zod";
 import {
   getInstanceSettingsOperation,
   updateInstanceSettingsOperation,
@@ -20,33 +20,15 @@ import { parseJsonBody } from "../http/schema-json";
 
 export const instanceRoutes = attachServiceErrorHandler(new Hono<AppBindings>());
 
-const BootstrapInput = Schema.Struct({
-  email: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(
-      Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, {
-        message: "Invalid email",
-      }),
-      Schema.isMaxLength(320),
-    ),
-  ),
-  name: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isMinLength(1, { message: "Name is required." }), Schema.isMaxLength(100)),
-  ),
-  password: Schema.String.pipe(
-    Schema.check(
-      Schema.isMinLength(8, { message: "Password must be at least 8 characters." }),
-      Schema.isMaxLength(128),
-    ),
-  ),
-  workspaceName: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(
-      Schema.isMinLength(1, { message: "Workspace name is required." }),
-      Schema.isMaxLength(120),
-    ),
-  ),
+const BootstrapInput = z.object({
+  email: z
+    .string()
+    .trim()
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email")
+    .max(320),
+  name: z.string().trim().min(1, "Name is required.").max(100),
+  password: z.string().min(8, "Password must be at least 8 characters.").max(128),
+  workspaceName: z.string().trim().min(1, "Workspace name is required.").max(120),
 });
 
 instanceRoutes.get("/.well-known/zilobase", async (c) => {

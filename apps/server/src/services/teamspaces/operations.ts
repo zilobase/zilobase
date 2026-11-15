@@ -1,4 +1,4 @@
-import { Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 import { parseOperationBody } from "../../shared/validation";
 import {
   requireOperationActor,
@@ -8,78 +8,51 @@ import {
   type ServerOperationContext,
 } from "../operations/context";
 import { TeamspaceManagementService } from "./management";
-const strictJson = { onExcessProperty: "error" as const };
-const TeamspaceAccessMode = Schema.Literals(["open", "closed", "private"]);
-const TeamspaceRole = Schema.Literals(["owner", "member"]);
-const MemberAccessLevel = Schema.Literals(["view", "comment", "edit", "full"]);
-const PrincipalType = Schema.Literals(["user", "team"]);
-const InvitePolicy = Schema.Literals(["owners", "owners_and_members"]);
-const SidebarEditPolicy = Schema.Literals(["owners", "owners_and_members"]);
-const CreationPolicy = Schema.Literals(["workspace_owners", "workspace_members"]);
-const CreateTeamspaceInput = Schema.Struct({
+const TeamspaceAccessMode = z.enum(["open", "closed", "private"]);
+const TeamspaceRole = z.enum(["owner", "member"]);
+const MemberAccessLevel = z.enum(["view", "comment", "edit", "full"]);
+const PrincipalType = z.enum(["user", "team"]);
+const InvitePolicy = z.enum(["owners", "owners_and_members"]);
+const SidebarEditPolicy = z.enum(["owners", "owners_and_members"]);
+const CreationPolicy = z.enum(["workspace_owners", "workspace_members"]);
+const CreateTeamspaceInput = z.strictObject({
   accessMode: TeamspaceAccessMode,
-  description: Schema.optionalKey(
-    Schema.NullOr(
-      Schema.String.pipe(
-        Schema.decode(SchemaTransformation.trim()),
-        Schema.check(Schema.isMaxLength(2000)),
-      ),
-    ),
-  ),
-  exportEnabled: Schema.optionalKey(Schema.Boolean),
-  guestsEnabled: Schema.optionalKey(Schema.Boolean),
-  icon: Schema.optionalKey(Schema.Unknown),
-  name: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isMinLength(1), Schema.isMaxLength(120)),
-  ),
+  description: z.string().trim().max(2000).nullable().optional(),
+  exportEnabled: z.boolean().optional(),
+  guestsEnabled: z.boolean().optional(),
+  icon: z.unknown().optional(),
+  name: z.string().trim().min(1).max(120),
 });
-const UpdateTeamspaceInput = Schema.Struct({
-  accessMode: Schema.optionalKey(TeamspaceAccessMode),
-  description: Schema.optionalKey(
-    Schema.NullOr(
-      Schema.String.pipe(
-        Schema.decode(SchemaTransformation.trim()),
-        Schema.check(Schema.isMaxLength(2000)),
-      ),
-    ),
-  ),
-  icon: Schema.optionalKey(Schema.Unknown),
-  invitePolicy: Schema.optionalKey(InvitePolicy),
-  memberAccessLevel: Schema.optionalKey(MemberAccessLevel),
-  name: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.decode(SchemaTransformation.trim()),
-      Schema.check(Schema.isMinLength(1), Schema.isMaxLength(120)),
-    ),
-  ),
-  publicSharingEnabled: Schema.optionalKey(Schema.Boolean),
-  sidebarEditPolicy: Schema.optionalKey(SidebarEditPolicy),
-}).check(
-  Schema.makeFilter((value) =>
-    Object.keys(value).length > 0 ? undefined : "Provide a field to update.",
-  ),
-);
-const AddPrincipalInput = Schema.Struct({
-  accessLevelOverride: Schema.optionalKey(Schema.NullOr(MemberAccessLevel)),
-  principalType: Schema.optionalKey(PrincipalType),
+const UpdateTeamspaceInput = z
+  .strictObject({
+    accessMode: TeamspaceAccessMode.optional(),
+    description: z.string().trim().max(2000).nullable().optional(),
+    icon: z.unknown().optional(),
+    invitePolicy: InvitePolicy.optional(),
+    memberAccessLevel: MemberAccessLevel.optional(),
+    name: z.string().trim().min(1).max(120).optional(),
+    publicSharingEnabled: z.boolean().optional(),
+    sidebarEditPolicy: SidebarEditPolicy.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, "Provide a field to update.");
+const AddPrincipalInput = z.strictObject({
+  accessLevelOverride: MemberAccessLevel.nullable().optional(),
+  principalType: PrincipalType.optional(),
   role: TeamspaceRole,
-  userId: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+  userId: z.string().min(1),
 });
-const UpdatePrincipalInput = Schema.Struct({
-  accessLevelOverride: Schema.optionalKey(Schema.NullOr(MemberAccessLevel)),
+const UpdatePrincipalInput = z.strictObject({
+  accessLevelOverride: MemberAccessLevel.nullable().optional(),
   role: TeamspaceRole,
 });
-const UpdateTeamspaceSettingsInput = Schema.Struct({
+const UpdateTeamspaceSettingsInput = z.strictObject({
   creationPolicy: CreationPolicy,
 });
-const UpdateTeamspaceDefaultsInput = Schema.Struct({
-  defaultTeamspaceIds: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMinLength(1)))).pipe(
-    Schema.check(Schema.isMinLength(1)),
-  ),
+const UpdateTeamspaceDefaultsInput = z.strictObject({
+  defaultTeamspaceIds: z.array(z.string().min(1)).min(1),
 });
-const UpdateInviteLinkInput = Schema.Struct({
-  enabled: Schema.Boolean,
+const UpdateInviteLinkInput = z.strictObject({
+  enabled: z.boolean(),
 });
 export type GetTeamspaceSettingsOperationInput = { workspaceId: string };
 export async function getTeamspaceSettingsOperation(
@@ -104,7 +77,7 @@ export async function updateTeamspaceSettingsOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(UpdateTeamspaceSettingsInput, readBody, strictJson);
+  const parsed = await parseOperationBody(UpdateTeamspaceSettingsInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;
@@ -121,7 +94,7 @@ export async function updateTeamspaceDefaultsOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(UpdateTeamspaceDefaultsInput, readBody, strictJson);
+  const parsed = await parseOperationBody(UpdateTeamspaceDefaultsInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;
@@ -162,7 +135,7 @@ export async function createTeamspaceOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(CreateTeamspaceInput, readBody, strictJson);
+  const parsed = await parseOperationBody(CreateTeamspaceInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;
@@ -201,7 +174,7 @@ export async function updateTeamspaceOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(UpdateTeamspaceInput, readBody, strictJson);
+  const parsed = await parseOperationBody(UpdateTeamspaceInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;
@@ -273,7 +246,7 @@ export async function updateTeamspaceInviteLinkOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(UpdateInviteLinkInput, readBody, strictJson);
+  const parsed = await parseOperationBody(UpdateInviteLinkInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;
@@ -337,7 +310,7 @@ export async function addTeamspacePrincipalOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(AddPrincipalInput, readBody, strictJson);
+  const parsed = await parseOperationBody(AddPrincipalInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;
@@ -367,7 +340,7 @@ export async function updateTeamspacePrincipalOperation(
   requireOperationPolicy(context, { write: true, oauthScope: undefined });
   requireOperationWorkspace(context, operationInput.workspaceId);
 
-  const parsed = await parseOperationBody(UpdatePrincipalInput, readBody, strictJson);
+  const parsed = await parseOperationBody(UpdatePrincipalInput, readBody);
   if (!parsed.ok) return deny({ error: parsed.message }, 400);
   const service = teamspaceService(context);
   const userId = requireOperationActor(context).id;

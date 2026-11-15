@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { z } from "zod";
 import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import { parseOperationBody } from "../../shared/validation";
 import { hasAccess } from "../access/access-level";
@@ -28,46 +28,36 @@ import {
   recordMeetingConsent,
   releaseMeetingRecorder,
 } from "./lifecycle/recorder-session";
-const strictJson = { onExcessProperty: "error" as const };
-const UuidString = Schema.String.pipe(
-  Schema.check(
-    Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i, {
-      message: "Invalid UUID",
-    }),
-  ),
-);
-const CreateMeetingInput = Schema.Struct({
-  pageId: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
-  title: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(200)))),
-  workspaceId: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
+const UuidString = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    "Invalid UUID",
+  );
+const CreateMeetingInput = z.object({
+  pageId: z.string().min(1),
+  title: z.string().max(200).optional(),
+  workspaceId: z.string().min(1),
 });
-const UpdateMeetingInput = Schema.Struct({
-  archiveLocalAudio: Schema.optionalKey(Schema.Boolean),
-  autoPlayConsent: Schema.optionalKey(Schema.Boolean),
-  consentMessage: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(2_000)))),
-  customInstructions: Schema.optionalKey(
-    Schema.NullOr(Schema.String.pipe(Schema.check(Schema.isMaxLength(8_000)))),
-  ),
-  instructionsPreset: Schema.optionalKey(
-    Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(80))),
-  ),
-  language: Schema.optionalKey(
-    Schema.String.pipe(Schema.check(Schema.isMinLength(2), Schema.isMaxLength(35))),
-  ),
-  title: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(200)))),
+const UpdateMeetingInput = z.strictObject({
+  archiveLocalAudio: z.boolean().optional(),
+  autoPlayConsent: z.boolean().optional(),
+  consentMessage: z.string().max(2_000).optional(),
+  customInstructions: z.string().max(8_000).nullable().optional(),
+  instructionsPreset: z.string().min(1).max(80).optional(),
+  language: z.string().min(2).max(35).optional(),
+  title: z.string().max(200).optional(),
 });
-const LifecycleInput = Schema.Struct({
-  durationMs: Schema.optionalKey(
-    Schema.Number.pipe(Schema.check(Schema.isGreaterThanOrEqualTo(0))),
-  ),
-  leaseId: Schema.optionalKey(UuidString),
+const LifecycleInput = z.object({
+  durationMs: z.number().min(0).optional(),
+  leaseId: UuidString.optional(),
 });
-const RecorderLeaseInput = Schema.Struct({
+const RecorderLeaseInput = z.object({
   leaseId: UuidString,
 });
-const ConsentInput = Schema.Struct({
-  metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
-  mode: Schema.Literals(["confirmed", "played"]),
+const ConsentInput = z.object({
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  mode: z.enum(["confirmed", "played"]),
 });
 function serviceError(error: unknown): never {
   if (!(error instanceof ServiceMutationError)) {
@@ -291,7 +281,7 @@ export async function updateMeetingOperation(
 
   await requireMeetingWorkspace(context, operationInput.id);
   const user = requireOperationActor(context);
-  const parsed = await parseOperationBody(UpdateMeetingInput, readBody, strictJson);
+  const parsed = await parseOperationBody(UpdateMeetingInput, readBody);
   if (!parsed.ok) {
     return deny({ error: "Invalid meeting patch" }, 400);
   }

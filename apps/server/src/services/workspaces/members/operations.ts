@@ -10,7 +10,7 @@ import {
   ServerOperationError,
   type ServerOperationContext,
 } from "../../operations/context";
-import { MemberUpdateInput, strictJson } from "../input";
+import { MemberUpdateInput } from "../input";
 import {
   getWorkspaceAccessTargets,
   removeWorkspaceMember,
@@ -69,7 +69,7 @@ export async function updateWorkspaceMemberOperation(
   if (!actorMembership || !isPrivilegedOrgRole(actorMembership.role)) {
     return deny({ error: "Only workspace admins can manage members." }, 403);
   }
-  const parsed = await parseOperationBody(MemberUpdateInput, readBody, strictJson);
+  const parsed = await parseOperationBody(MemberUpdateInput, readBody);
   if (!parsed.ok) {
     return deny({ error: parsed.message || "Invalid member update." }, 400);
   }

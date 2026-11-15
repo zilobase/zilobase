@@ -1,4 +1,4 @@
-import { Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 import { parseOperationBody, parseUnknown } from "../../shared/validation";
 import {
   requireOperationPolicy,
@@ -7,42 +7,30 @@ import {
 } from "../operations/context";
 import { getOrCreateUserSettings, updateUserPreferences } from "./preferences/preferences";
 import { updateUserProfile } from "./profile/profile";
-const UpdateProfile = Schema.Struct({
-  email: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.decode(SchemaTransformation.trim()),
-      Schema.decode(SchemaTransformation.toLowerCase()),
-      Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    ),
-  ),
-  name: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.decode(SchemaTransformation.trim()),
-      Schema.check(
-        Schema.isMinLength(1, { message: "Name is required." }),
-        Schema.isMaxLength(120),
-      ),
-    ),
-  ),
-}).check(
-  Schema.makeFilter((value) =>
-    value.name !== undefined || value.email !== undefined
-      ? undefined
-      : "Provide at least one field to update.",
-  ),
-);
-const UpdateUserSettings = Schema.Struct({
-  embeddedItemsOpenAs: Schema.optionalKey(Schema.Literals(["dialog", "sidepanel"])),
-  pageFullWidth: Schema.optionalKey(Schema.Boolean),
-  sidebarConfig: Schema.optionalKey(
-    Schema.Unknown.check(
-      Schema.makeFilter((value) =>
-        typeof value === "object" && value !== null && !Array.isArray(value)
-          ? undefined
-          : "sidebarConfig must be an object",
-      ),
-    ),
-  ),
+const UpdateProfile = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+      .optional(),
+    name: z.string().trim().min(1, "Name is required.").max(120).optional(),
+  })
+  .refine(
+    (value) => value.name !== undefined || value.email !== undefined,
+    "Provide at least one field to update.",
+  );
+const UpdateUserSettings = z.object({
+  embeddedItemsOpenAs: z.enum(["dialog", "sidepanel"]).optional(),
+  pageFullWidth: z.boolean().optional(),
+  sidebarConfig: z
+    .unknown()
+    .refine(
+      (value) => typeof value === "object" && value !== null && !Array.isArray(value),
+      "sidebarConfig must be an object",
+    )
+    .optional(),
 });
 export type GetUserSettingsOperationInput = {};
 export async function getUserSettingsOperation(

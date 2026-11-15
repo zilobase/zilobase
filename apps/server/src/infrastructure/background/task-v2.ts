@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { z } from "zod";
 import type { BackgroundLane } from "./contracts";
 export const BACKGROUND_TASK_KINDS = [
   "ai.generate",
@@ -17,18 +17,18 @@ export function getBackgroundCellId(env: Record<string, unknown>): string {
     : "default";
 }
 
-const Task = Schema.Struct({
-  version: Schema.Literal(2),
-  taskId: Schema.String,
-  cellId: Schema.String,
-  kind: Schema.Literals(BACKGROUND_TASK_KINDS),
-  resourceId: Schema.String,
-  availableAt: Schema.String,
-  traceparent: Schema.optionalKey(Schema.String),
-  tracestate: Schema.optionalKey(Schema.String),
+const Task = z.object({
+  version: z.literal(2),
+  taskId: z.string(),
+  cellId: z.string(),
+  kind: z.enum(BACKGROUND_TASK_KINDS),
+  resourceId: z.string(),
+  availableAt: z.string(),
+  traceparent: z.string().optional(),
+  tracestate: z.string().optional(),
 });
 
-export type BackgroundTaskV2 = typeof Task.Type;
+export type BackgroundTaskV2 = z.infer<typeof Task>;
 export const BACKGROUND_PUBLICATION_HORIZON_MS = 12 * 60 * 60 * 1000;
 export const BACKGROUND_LANE_POLICY: Record<
   BackgroundLane,
@@ -66,7 +66,7 @@ export function createBackgroundTaskV2(input: {
 export function decodeBackgroundTaskV2(value: unknown, cellId: string): BackgroundTaskV2 {
   if (new TextEncoder().encode(JSON.stringify(value)).byteLength > 16_384)
     throw new Error("BACKGROUND_TASK_TOO_LARGE");
-  const task = Schema.decodeUnknownSync(Task)(value);
+  const task = Task.parse(value);
   if (task.cellId !== cellId) throw new Error("BACKGROUND_TASK_CELL_MISMATCH");
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(task.taskId))
     throw new Error("BACKGROUND_TASK_ID_INVALID");

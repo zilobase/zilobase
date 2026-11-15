@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { z } from "zod";
 import { parseUnknown } from "../../../shared/validation";
 import {
   requireOperationActor,
@@ -15,10 +15,10 @@ import {
   resolveScopeContext,
   savePageLayout,
 } from "./page-layouts";
-const PageLayoutScopeSchema = Schema.Literals(["workspace", "database", "page"]);
-const SavePageLayout = Schema.Struct({
-  clearPageOverrides: Schema.optionalKey(Schema.Boolean),
-  config: Schema.Unknown,
+const PageLayoutScopeSchema = z.enum(["workspace", "database", "page"]);
+const SavePageLayout = z.object({
+  clearPageOverrides: z.boolean().optional(),
+  config: z.unknown(),
 });
 
 export async function resolvePageLayoutOperation(

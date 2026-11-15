@@ -1,45 +1,28 @@
 import type { CalendarRecord, CalendarScope } from "@zilobase/features/runtime";
-import { Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 import { CalendarProviderError, normalizeEvent, type CalendarGateway } from "../provider/gateway";
 
-const IsoDateTime = Schema.String.pipe(
-  Schema.check(
-    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/, {
-      message: "Invalid date-time format",
-    }),
-  ),
-);
+const IsoDateTime = z
+  .string()
+  .regex(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/,
+    "Invalid date-time format",
+  );
 
-export const CalendarSearch = Schema.Struct({
-  calendarId: Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(1024))),
-  q: Schema.String.pipe(
-    Schema.decode(SchemaTransformation.trim()),
-    Schema.check(Schema.isMinLength(1), Schema.isMaxLength(500)),
-  ),
-  start: Schema.optionalKey(IsoDateTime),
-  end: Schema.optionalKey(IsoDateTime),
-  pageToken: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(4096)))),
-}).check(
-  Schema.makeFilter((value) =>
-    !value.start || !value.end || Date.parse(value.end) > Date.parse(value.start)
-      ? undefined
-      : "End must follow start",
-  ),
-);
+export const calendarSearchSchema = z
+  .object({
+    calendarId: z.string().min(1).max(1024),
+    q: z.string().trim().min(1).max(500),
+    start: IsoDateTime.optional(),
+    end: IsoDateTime.optional(),
+    pageToken: z.string().max(4096).optional(),
+  })
+  .refine(
+    (value) => !value.start || !value.end || Date.parse(value.end) > Date.parse(value.start),
+    "End must follow start",
+  );
 
-export type CalendarSearch = typeof CalendarSearch.Type;
-
-export const calendarSearchSchema = {
-  parse: (input: unknown) => Schema.decodeUnknownSync(CalendarSearch)(input),
-  safeParse: (input: unknown) => {
-    try {
-      const data = Schema.decodeUnknownSync(CalendarSearch)(input);
-      return { success: true as const, data };
-    } catch (error) {
-      return { success: false as const, error };
-    }
-  },
-};
+export type CalendarSearch = z.infer<typeof calendarSearchSchema>;
 
 export async function searchCalendarEvents(
   input: CalendarSearch,

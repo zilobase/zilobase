@@ -10,7 +10,7 @@ import {
   ServerOperationError,
   type ServerOperationContext,
 } from "../../operations/context";
-import { MemberInvitationInput, strictJson } from "../input";
+import { MemberInvitationInput } from "../input";
 import { createWorkspaceInvitation } from "./workspace-invitations";
 
 export type InviteWorkspaceMemberOperationInput = { workspaceId: string; body?: unknown };
@@ -40,7 +40,7 @@ export async function inviteWorkspaceMemberOperation(
   if (!actorMembership || !isPrivilegedOrgRole(actorMembership.role)) {
     return deny({ error: "Only workspace admins can invite members." }, 403);
   }
-  const parsed = await parseOperationBody(MemberInvitationInput, readBody, strictJson);
+  const parsed = await parseOperationBody(MemberInvitationInput, readBody);
   if (!parsed.ok) {
     return deny({ error: parsed.message || "Invalid invitation." }, 400);
   }

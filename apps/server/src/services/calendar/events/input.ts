@@ -1,118 +1,89 @@
-import { Effect, Schema, SchemaTransformation } from "effect";
+import { z } from "zod";
 
-const TimeZone = Schema.String.pipe(
-  Schema.check(Schema.isMaxLength(100)),
-  Schema.check(
-    Schema.makeFilter((value) => {
-      try {
-        new Intl.DateTimeFormat("en", { timeZone: value });
-        return undefined;
-      } catch {
-        return "Invalid time zone";
-      }
-    }),
-  ),
-);
+const TimeZone = z
+  .string()
+  .max(100)
+  .refine((value) => {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, "Invalid time zone");
 
-const IsoDate = Schema.String.pipe(
-  Schema.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/, { message: "Invalid date format" })),
-);
+const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format");
 
-const IsoDateTime = Schema.String.pipe(
-  Schema.check(
-    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/, {
-      message: "Invalid date-time format",
-    }),
-  ),
-);
+const IsoDateTime = z
+  .string()
+  .regex(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/,
+    "Invalid date-time format",
+  );
 
-export const EventTime = Schema.Union([
-  Schema.Struct({ date: IsoDate }),
-  Schema.Struct({
+export const EventTime = z.union([
+  z.object({ date: IsoDate }),
+  z.object({
     dateTime: IsoDateTime,
     timeZone: TimeZone,
   }),
 ]);
 
-export type EventTime = typeof EventTime.Type;
+export type EventTime = z.infer<typeof EventTime>;
 
-export const CalendarEventWrite = Schema.Struct({
-  title: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.decode(SchemaTransformation.trim()),
-      Schema.check(Schema.isMinLength(1), Schema.isMaxLength(1024)),
-    ),
-  ),
-  description: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(100_000)))),
-  location: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(4096)))),
-  start: Schema.optionalKey(EventTime),
-  end: Schema.optionalKey(EventTime),
-  colorId: Schema.optionalKey(
-    Schema.NullOr(Schema.String.pipe(Schema.check(Schema.isPattern(/^(?:[1-9]|10|11)$/)))),
-  ),
-  recurrence: Schema.optionalKey(
-    Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(2000)))).pipe(
-      Schema.check(Schema.isMaxLength(20)),
-    ),
-  ),
-  attendees: Schema.optionalKey(
-    Schema.Array(
-      Schema.Struct({
-        email: Schema.String.pipe(
-          Schema.check(
-            Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: "Invalid email" }),
-          ),
-        ),
-        displayName: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))),
-        optional: Schema.optionalKey(Schema.Boolean),
-        responseStatus: Schema.Literals(["needsAction", "declined", "tentative", "accepted"]).pipe(
-          Schema.withDecodingDefault(Effect.succeed("needsAction" as const)),
-        ),
+export const CalendarEventWrite = z.object({
+  title: z.string().trim().min(1).max(1024).optional(),
+  description: z.string().max(100_000).optional(),
+  location: z.string().max(4096).optional(),
+  start: EventTime.optional(),
+  end: EventTime.optional(),
+  colorId: z
+    .string()
+    .regex(/^(?:[1-9]|10|11)$/)
+    .nullable()
+    .optional(),
+  recurrence: z.array(z.string().max(2000)).max(20).optional(),
+  attendees: z
+    .array(
+      z.object({
+        email: z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email"),
+        displayName: z.string().max(1024).optional(),
+        optional: z.boolean().optional(),
+        responseStatus: z
+          .enum(["needsAction", "declined", "tentative", "accepted"])
+          .default("needsAction"),
       }),
-    ).pipe(Schema.check(Schema.isMaxLength(200))),
-  ),
-  reminders: Schema.optionalKey(
-    Schema.Struct({
-      useDefault: Schema.Boolean,
-      overrides: Schema.optionalKey(
-        Schema.Array(
-          Schema.Struct({
-            method: Schema.Literals(["email", "popup"]),
-            minutes: Schema.Int.pipe(
-              Schema.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(40320)),
-            ),
+    )
+    .max(200)
+    .optional(),
+  reminders: z
+    .object({
+      useDefault: z.boolean(),
+      overrides: z
+        .array(
+          z.object({
+            method: z.enum(["email", "popup"]),
+            minutes: z.int().min(0).max(40320),
           }),
-        ).pipe(Schema.check(Schema.isMaxLength(5))),
-      ),
-    }),
-  ),
-  transparency: Schema.optionalKey(Schema.Literals(["opaque", "transparent"])),
-  visibility: Schema.optionalKey(Schema.Literals(["default", "public", "private"])),
+        )
+        .max(5)
+        .optional(),
+    })
+    .optional(),
+  transparency: z.enum(["opaque", "transparent"]).optional(),
+  visibility: z.enum(["default", "public", "private"]).optional(),
 });
 
-export const CalendarWrite = Schema.Struct({
-  operationId: Schema.String.check(Schema.isUUID()),
-  etag: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))),
-  sendUpdates: Schema.Literals(["all", "externalOnly", "none"]),
-  recurrenceScope: Schema.optionalKey(Schema.Literals(["occurrence", "following", "series"])),
-  createMeet: Schema.optionalKey(Schema.Boolean),
+export const calendarWriteSchema = z.object({
+  operationId: z.uuid(),
+  etag: z.string().max(1024).optional(),
+  sendUpdates: z.enum(["all", "externalOnly", "none"]),
+  recurrenceScope: z.enum(["occurrence", "following", "series"]).optional(),
+  createMeet: z.boolean().optional(),
   event: CalendarEventWrite,
 });
 
-export type CalendarWrite = typeof CalendarWrite.Type;
-
-export const calendarWriteSchema = {
-  ...CalendarWrite,
-  parse: (input: unknown): CalendarWrite => Schema.decodeUnknownSync(CalendarWrite)(input),
-  safeParse: (input: unknown) => {
-    try {
-      const data = Schema.decodeUnknownSync(CalendarWrite)(input);
-      return { success: true as const, data };
-    } catch (error) {
-      return { success: false as const, error };
-    }
-  },
-};
+export type CalendarWrite = z.infer<typeof calendarWriteSchema>;
 
 export type CalendarMutationAction = "create" | "update" | "delete" | "rsvp" | "move" | "duplicate";
 
