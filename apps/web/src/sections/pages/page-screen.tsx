@@ -45,6 +45,7 @@ function AuthenticatedPage() {
     sidePaneAnimatedOpen,
     sidePaneContentReady,
     sidePaneDatabaseId,
+    sidePaneBlockId,
   } = usePageSidePane();
   const { openPage } = useOpenEmbeddedPage({
     contextPageId: pageId,
@@ -80,6 +81,7 @@ function AuthenticatedPage() {
             <PageWorkspaceGate pageId={renderedSidePanePageId}>
               <PageContent
                 databaseId={sidePaneDatabaseId}
+                focusBlockId={sidePaneBlockId ?? undefined}
                 layoutPanelMode="overlay"
                 key={renderedSidePanePageId}
                 onOpenPage={openPage}

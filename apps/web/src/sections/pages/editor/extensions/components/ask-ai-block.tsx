@@ -110,9 +110,16 @@ function AskAiBlockPanel({ editor, getPos, node }: ReactNodeViewProps) {
         </InputGroupButton>
       </InputGroup>
       {writing.isPending && (
-        <p className="mt-2 text-sm text-content-secondary" role="status">
-          Writing…
-        </p>
+        <div className="mt-2 space-y-1">
+          <p className="text-sm text-content-secondary" role="status">
+            Writing…
+          </p>
+          {writing.partial && (
+            <div className="max-h-80 overflow-y-auto whitespace-pre-wrap rounded-md border p-3 text-sm">
+              {writing.partial}
+            </div>
+          )}
+        </div>
       )}
       {writing.isError && (
         <p className="mt-2 text-sm text-feedback-danger-text" role="alert">

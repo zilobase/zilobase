@@ -17,6 +17,8 @@ import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages";
 
 export type OpenPageSidePaneOptions = {
   databaseId?: string | null;
+  /** A block to reveal, from an AI citation. */
+  blockId?: string | null;
   focusTitle?: boolean;
 };
 
@@ -39,6 +41,7 @@ export type PageSidePaneContextValue = {
   sidePaneAnimatedOpen: boolean;
   sidePaneContentReady: boolean;
   sidePaneDatabaseId: string | null;
+  sidePaneBlockId: string | null;
   sidePanePageId: string | null;
 };
 
@@ -56,6 +59,7 @@ export const SIDE_PANE_KEYBOARD_RESIZE_STEP = 24;
 
 const SIDE_PANE_PAGE_PARAM = "p";
 const SIDE_PANE_DATABASE_PARAM = "d";
+const SIDE_PANE_BLOCK_PARAM = "b";
 
 export const getFullPagePath = (pageId: string) => `/p/${encodeURIComponent(pageId)}`;
 
@@ -76,6 +80,7 @@ export function usePageSidePaneState(
   });
   const sidePanePageId = getSearchParam(location.searchStr, SIDE_PANE_PAGE_PARAM);
   const sidePaneDatabaseId = getSearchParam(location.searchStr, SIDE_PANE_DATABASE_PARAM);
+  const sidePaneBlockId = getSearchParam(location.searchStr, SIDE_PANE_BLOCK_PARAM);
   const { getEditorHandle } = usePageEditorRegistry();
   const [dialogPageId, setDialogPageId] = useState<string | null>(null);
   const [dialogDatabaseId, setDialogDatabaseId] = useState<string | null>(null);
@@ -86,7 +91,12 @@ export function usePageSidePaneState(
   const [sidePaneContentReady, setSidePaneContentReady] = useState(false);
   const sidePaneWasOpenRef = useRef(false);
   const writeSidePaneParams = useCallback(
-    (pageId: string | null, databaseId?: string | null, replace = false) => {
+    (
+      pageId: string | null,
+      databaseId?: string | null,
+      replace = false,
+      blockId?: string | null,
+    ) => {
       const params = new URLSearchParams(location.searchStr);
       const databaseParam = getSidePaneDatabaseParam(location.pathname, databaseId);
 
@@ -101,6 +111,9 @@ export function usePageSidePaneState(
       } else {
         params.delete(SIDE_PANE_DATABASE_PARAM);
       }
+
+      if (pageId && blockId) params.set(SIDE_PANE_BLOCK_PARAM, blockId);
+      else params.delete(SIDE_PANE_BLOCK_PARAM);
 
       const search = params.toString();
       const hash = location.hash ? `#${location.hash}` : "";
@@ -144,7 +157,7 @@ export function usePageSidePaneState(
           }
           closeEmbeddedPageDialog();
 
-          writeSidePaneParams(nextPageId, options?.databaseId);
+          writeSidePaneParams(nextPageId, options?.databaseId, false, options?.blockId);
         }),
       );
     },
@@ -340,9 +353,11 @@ export function usePageSidePaneState(
       sidePaneAnimatedOpen,
       sidePaneContentReady,
       sidePaneDatabaseId,
+      sidePaneBlockId,
       sidePanePageId,
     }),
     [
+      sidePaneBlockId,
       closeEmbeddedPageDialog,
       closeSidePane,
       dialogDatabaseId,

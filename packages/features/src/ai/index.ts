@@ -17,7 +17,7 @@ export type {
 } from "./runs";
 export { applyChatRunEvent, terminalChatRun, chatRunEnvelopeSchema } from "./runs";
 export { refreshAfterWorkspaceActions } from "./changes";
-export { aiSelectionActions } from "./writing";
+export { aiSelectionActions, aiTranslationLanguages, translateInstruction } from "./writing";
 export type { AiWriteResult } from "./writing";
 export type { AiWriteRequest } from "./contracts";
 

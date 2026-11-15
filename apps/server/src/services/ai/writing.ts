@@ -1,5 +1,5 @@
-import { aiWriteRequestSchema } from "@zilobase/features/runtime";
-import { generateText, type LanguageModel } from "ai";
+import { aiWriteRequestSchema, unwrapMarkdownFence } from "@zilobase/features/runtime";
+import { generateText, streamText, type LanguageModel } from "ai";
 import type { z } from "zod";
 import type { ServerOperationContext } from "../operations/context";
 import { configuredChatModel } from "./chat";
@@ -22,23 +22,24 @@ export async function writeWithAi(
 ) {
   const request = aiWriteRequestSchema.parse(input);
   await authorizeChatWorkspace(context, request.workspaceId);
-  const sections = [
+  const options = {
+    model: model(context),
+    system: WRITING_INSTRUCTIONS,
+    prompt: writingPrompt(request),
+    maxOutputTokens: 4_000,
+    abortSignal: signal,
+  };
+  if (request.stream) return streamText(options).toTextStreamResponse();
+  const result = await generateText(options);
+  return { markdown: unwrapMarkdownFence(result.text) };
+}
+
+function writingPrompt(request: z.output<typeof aiWriteRequestSchema>) {
+  return [
     request.context ? `<surrounding_text>\n${request.context}\n</surrounding_text>` : "",
     request.selection ? `<selection>\n${request.selection}\n</selection>` : "",
     `<instruction>\n${request.instruction}\n</instruction>`,
-  ].filter(Boolean);
-  const result = await generateText({
-    model: model(context),
-    system: WRITING_INSTRUCTIONS,
-    prompt: sections.join("\n\n"),
-    maxOutputTokens: 4_000,
-    abortSignal: signal,
-  });
-  return { markdown: unwrapFence(result.text.trim()) };
-}
-
-/** Models sometimes fence the whole answer despite the instructions. */
-function unwrapFence(text: string) {
-  const fenced = text.match(/^```(?:markdown|md)?\n([\s\S]*?)\n```$/i);
-  return fenced ? fenced[1]!.trim() : text;
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }

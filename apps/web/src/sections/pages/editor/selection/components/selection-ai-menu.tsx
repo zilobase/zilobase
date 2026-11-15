@@ -1,5 +1,9 @@
 import type { Editor } from "@tiptap/core";
-import { aiSelectionActions } from "@zilobase/features/ai";
+import {
+  aiSelectionActions,
+  aiTranslationLanguages,
+  translateInstruction,
+} from "@zilobase/features/ai";
 import { useAiWriting } from "@zilobase/features/ai/react";
 import { Sparkles } from "@/components/icons";
 import * as React from "react";
@@ -110,9 +114,16 @@ export function SelectionAiMenu({ editor }: { editor: Editor }) {
           </InputGroup>
         </form>
         {writing.isPending ? (
-          <p className="mt-2 text-sm text-content-secondary" role="status">
-            Writing…
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-sm text-content-secondary" role="status">
+              Writing…
+            </p>
+            {writing.partial && (
+              <div className="max-h-60 overflow-y-auto whitespace-pre-wrap rounded-md border bg-surface-canvas p-2 text-sm">
+                {writing.partial}
+              </div>
+            )}
+          </div>
         ) : writing.data ? (
           <div className="mt-2 space-y-2">
             <div
@@ -161,6 +172,27 @@ export function SelectionAiMenu({ editor }: { editor: Editor }) {
                 {action.label}
               </Button>
             ))}
+            <label className="mt-1 flex items-center gap-2 px-3 text-sm">
+              <span className="shrink-0">Translate to</span>
+              <select
+                aria-label="Translate to"
+                className="min-w-0 flex-1 rounded-md border bg-surface-canvas px-2 py-1 text-sm"
+                defaultValue=""
+                onChange={(event) => {
+                  if (event.currentTarget.value)
+                    start(translateInstruction(event.currentTarget.value));
+                }}
+              >
+                <option disabled value="">
+                  Choose a language
+                </option>
+                {aiTranslationLanguages.map((language) => (
+                  <option key={language} value={language}>
+                    {language}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
       </PopoverContent>

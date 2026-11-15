@@ -41,10 +41,8 @@ export function SourcePill({ entry, blockId }: { entry: SourceLink; blockId?: st
           )}
           search={entry.pageId && blockId ? { block: blockId } : undefined}
           onClick={(event) => {
-            // The side pane has no block focus; block citations open the page itself.
             if (
               openIn !== "sidepanel" ||
-              (entry.pageId && blockId) ||
               event.button !== 0 ||
               event.metaKey ||
               event.ctrlKey ||
@@ -53,7 +51,7 @@ export function SourcePill({ entry, blockId }: { entry: SourceLink; blockId?: st
             )
               return;
             event.preventDefault();
-            if (entry.pageId) openSidePane(entry.pageId, { databaseId: entry.databaseId });
+            if (entry.pageId) openSidePane(entry.pageId, { databaseId: entry.databaseId, blockId });
             else openDatabaseSidePane(entry.databaseId!);
           }}
         >

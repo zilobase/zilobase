@@ -165,6 +165,7 @@ export {
   actionDecisionRequestSchema,
   actionUndoRequestSchema,
   aiWriteRequestSchema,
+  unwrapMarkdownFence,
 } from "../ai/contracts";
 export { chatDisplayText } from "../ai/citations";
 export type { ChatRequest, ChatRequestInput, ChatEvent, ChatMessage } from "../ai/contracts";

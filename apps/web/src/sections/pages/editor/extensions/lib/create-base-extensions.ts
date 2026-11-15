@@ -17,7 +17,8 @@ import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
 import { BackgroundColor, Color, TextStyle } from "@tiptap/extension-text-style";
 import Typography from "@tiptap/extension-typography";
-import type { Extensions } from "@tiptap/core";
+import { Extension, type Extensions } from "@tiptap/core";
+import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration, { isChangeOrigin } from "@tiptap/extension-collaboration";
 import UniqueID from "@tiptap/extension-unique-id";
@@ -55,6 +56,41 @@ import type { StructuralInsertionPendingChange } from "../../commands/lib/block-
  * extension waits for a provider "synced" event, but the caret extension's
  * provider here only carries awareness.
  */
+/**
+ * Keeps an empty paragraph after a trailing list, table or other block so the
+ * user can click below it. Unlike the stock extension it reacts only to this
+ * user's edits, never to other users' changes or the initial sync, so editors
+ * opening a page at the same time don't each append a paragraph.
+ */
+const LocalTrailingParagraph = Extension.create({
+  name: "localTrailingParagraph",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("localTrailingParagraph"),
+        appendTransaction: (transactions, _previous, state) => {
+          const local = transactions.some((transaction) => {
+            // Appended transactions count as their root; only this user's edits qualify,
+            // not Yjs syncs and renders or block-ID bookkeeping.
+            const root =
+              (transaction.getMeta("appendedTransaction") as Transaction | undefined) ??
+              transaction;
+            return (
+              root.docChanged &&
+              !root.getMeta("y-sync$") &&
+              !isChangeOrigin(root) &&
+              !root.getMeta("__uniqueIDTransaction")
+            );
+          });
+          const last = state.doc.lastChild;
+          if (!local || !last || last.type.name === "paragraph") return;
+          return state.tr.insert(state.doc.content.size, state.schema.nodes.paragraph!.create());
+        },
+      }),
+    ];
+  },
+});
+
 const BlockIds = UniqueID.extend({
   addStorage() {
     return { needsInitialIdGeneration: false };
@@ -63,16 +99,14 @@ const BlockIds = UniqueID.extend({
     const collaboration = this.editor.extensionManager.extensions.find(
       ({ name }) => name === "collaboration",
     )?.options as { document?: import("yjs").Doc; field?: string } | undefined;
-    if (!collaboration) {
-      (this as unknown as { parent?: () => void }).parent?.();
-      return;
-    }
     if (!this.options.updateDocument) return;
     // A later first sync is handled by the plugin. Content is only stamped now if the
     // shared document already has it: stamping the empty placeholder would write a
     // stray paragraph into every page.
-    this.storage.needsInitialIdGeneration = true;
-    if (!collaboration.document?.getXmlFragment(collaboration.field ?? "default").length) return;
+    if (collaboration) {
+      this.storage.needsInitialIdGeneration = true;
+      if (!collaboration.document?.getXmlFragment(collaboration.field ?? "default").length) return;
+    }
     const { state, view } = this.editor;
     const types = new Set(this.options.types === "all" ? [] : this.options.types);
     const { tr } = state;
@@ -83,7 +117,8 @@ const BlockIds = UniqueID.extend({
           [this.options.attributeName]: this.options.generateID({ node, pos }),
         });
     });
-    if (tr.steps.length) view.dispatch(tr.setMeta("addToHistory", false));
+    if (tr.steps.length)
+      view.dispatch(tr.setMeta("addToHistory", false).setMeta("__uniqueIDTransaction", true));
   },
 });
 
@@ -126,6 +161,7 @@ export const createBaseExtensions = ({
 }: BaseExtensionsOptions): Extensions => [
   StarterKit.configure({
     codeBlock: false,
+    trailingNode: false,
     dropcursor: false,
     link: false,
     undoRedo: collaboration ? false : undefined,
@@ -227,6 +263,7 @@ export const createBaseExtensions = ({
   BlockSelection,
   MeetingTranscriptPreview,
   AskAiBlock.configure({ workspaceId }),
+  LocalTrailingParagraph,
   // Stable block IDs for AI anchors and citations; remote collaboration changes keep their IDs.
   BlockIds.configure({
     attributeName: BLOCK_ID_ATTRIBUTE,

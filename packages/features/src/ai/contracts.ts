@@ -111,6 +111,8 @@ export const aiWriteRequestSchema = z
     selection: z.string().max(20_000).optional(),
     /** Markdown around the cursor, used for tone and continuity only. */
     context: z.string().max(20_000).optional(),
+    /** Stream the Markdown as plain text instead of returning JSON. */
+    stream: z.boolean().optional(),
   })
   .strict();
 export type AiWriteRequest = z.infer<typeof aiWriteRequestSchema>;
@@ -130,3 +132,10 @@ export const actionDecisionRequestSchema = actionUndoRequestSchema
   .extend({ decision: z.enum(["confirm", "cancel"]) })
   .strict();
 export type ActionDecisionRequest = z.infer<typeof actionDecisionRequestSchema>;
+
+/** Models sometimes fence a whole writing answer despite the instructions. */
+export function unwrapMarkdownFence(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/^```(?:markdown|md)?\n([\s\S]*?)\n```$/i);
+  return fenced ? fenced[1]!.trim() : trimmed;
+}

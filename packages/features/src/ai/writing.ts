@@ -7,6 +7,7 @@ import {
   aiWriteRequestSchema,
   type ActionUndoRequest,
   type AiWriteRequest,
+  unwrapMarkdownFence,
 } from "./contracts";
 
 /*
@@ -45,8 +46,26 @@ export const aiSelectionActions = [
     instruction: "Rewrite it in simpler, plain language.",
   },
   { id: "summarize", label: "Summarize", instruction: "Summarize it in a few sentences." },
-  { id: "translate", label: "Translate to English", instruction: "Translate it to English." },
 ] as const;
+
+/** Target languages offered by "Translate to" in the selection menu. */
+export const aiTranslationLanguages = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Portuguese",
+  "Italian",
+  "Dutch",
+  "Japanese",
+  "Korean",
+  "Chinese (Simplified)",
+  "Hindi",
+  "Arabic",
+] as const;
+
+export const translateInstruction = (language: string) =>
+  `Translate it to ${language}. Keep its formatting, links and names.`;
 
 export function requestAiWriting(context: ClientOperationContext, input: AiWriteRequest) {
   const scope = captureClientOperation(context);
@@ -75,4 +94,33 @@ export function decideAiAction(context: ClientOperationContext, input: ActionDec
     method: "POST",
     body: JSON.stringify(actionDecisionRequestSchema.parse(input)),
   });
+}
+
+/** Streams generated Markdown, reporting the text so far; falls back to one response. */
+export async function streamAiWriting(
+  context: ClientOperationContext,
+  input: AiWriteRequest,
+  onText: (text: string) => void,
+): Promise<AiWriteResult> {
+  const scope = captureClientOperation(context);
+  const streamFetch = scope.context.streamFetch;
+  if (!streamFetch) return requestAiWriting(context, input);
+  const response = await streamFetch("/ai/write", {
+    method: "POST",
+    body: JSON.stringify(aiWriteRequestSchema.parse({ ...input, stream: true })),
+  });
+  if (!response.ok || !response.body) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "AI couldn't write this.");
+  }
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    scope.assertCurrent();
+    text += value;
+    onText(text);
+  }
+  return { markdown: unwrapMarkdownFence(text) };
 }
