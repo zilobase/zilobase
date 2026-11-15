@@ -1,4 +1,5 @@
 // Message pattern: https://ui.shadcn.com/docs/ai-elements/radix/message
+import { useRateChatAnswer } from "@zilobase/features/ai/react";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
   CheckIcon,
@@ -11,9 +12,27 @@ import { Button } from "@/components/ui/button";
 import { MessageFooter } from "@/components/ui/message";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export function MessageActions({ text, onRetry }: { text: string; onRetry?: () => void }) {
-  // Feedback is a local selection until the service exposes a feedback command.
-  const [feedback, setFeedback] = useState<"like" | "dislike" | null>(null);
+export function MessageActions({
+  text,
+  onRetry,
+  feedback: saved = null,
+  messageId,
+  workspaceId,
+}: {
+  text: string;
+  onRetry?: () => void;
+  feedback?: "like" | "dislike" | null;
+  /** Saved answers can be rated; unsaved streaming answers keep the choice locally. */
+  messageId?: string;
+  workspaceId?: string | null;
+}) {
+  const [feedback, setLocalFeedback] = useState<"like" | "dislike" | null>(saved);
+  const rate = useRateChatAnswer(workspaceId ?? "");
+  const setFeedback = (rating: "like" | "dislike" | null) => {
+    setLocalFeedback(rating);
+    if (messageId && workspaceId && !messageId.startsWith("pending"))
+      rate.mutate({ messageId, rating }, { onError: () => setLocalFeedback(feedback) });
+  };
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const mounted = useRef(true);
   useEffect(() => {

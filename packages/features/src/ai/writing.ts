@@ -7,6 +7,8 @@ import {
   aiWriteRequestSchema,
   type ActionUndoRequest,
   type AiWriteRequest,
+  chatFeedbackRequestSchema,
+  type ChatFeedbackRequest,
   unwrapMarkdownFence,
 } from "./contracts";
 
@@ -123,4 +125,13 @@ export async function streamAiWriting(
     onText(text);
   }
   return { markdown: unwrapMarkdownFence(text) };
+}
+
+/** Saves the user's rating of an assistant answer; a null rating clears it. */
+export function rateChatAnswer(context: ClientOperationContext, input: ChatFeedbackRequest) {
+  const scope = captureClientOperation(context);
+  return scope.context.apiFetch<{ feedback: unknown }>("/ai/feedback", {
+    method: "POST",
+    body: JSON.stringify(chatFeedbackRequestSchema.parse(input)),
+  });
 }

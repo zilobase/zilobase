@@ -120,7 +120,7 @@ export function useChatRunDebug(workspaceId: string, runId: string, enabled: boo
 import type { AiWriteRequest } from "./contracts";
 import { refreshAfterWorkspaceActions } from "./changes";
 import type { ChatToolActivity } from "./tools";
-import { decideAiAction, streamAiWriting, undoAiAction } from "./writing";
+import { decideAiAction, rateChatAnswer, streamAiWriting, undoAiAction } from "./writing";
 /** Generates Markdown for the editor's inline AI, streaming `partial`; the caller previews and applies it. */
 export function useAiWriting() {
   const context = useZilobaseFeatures();
@@ -188,5 +188,17 @@ export function useDecideAiAction(workspaceId: string) {
         );
       return { ...result, activity: decided };
     },
+  });
+}
+
+/** Saves thumbs up/down for an answer. */
+export function useRateChatAnswer(workspaceId: string) {
+  const context = useZilobaseFeatures();
+  return useMutation({
+    mutationFn: (input: {
+      messageId: string;
+      rating: "like" | "dislike" | null;
+      comment?: string;
+    }) => rateChatAnswer(context, { workspaceId, ...input }),
   });
 }

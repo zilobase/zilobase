@@ -85,6 +85,12 @@ function messagesFromTurns(turns: Turn[]): ChatMessage[] {
       context: historicalContext(turn),
       status: turn.status as ChatMessage["status"],
       progress: turn.progress,
+      feedback: turn.feedback
+        ? {
+            rating: turn.feedback.rating,
+            ...(turn.feedback.comment ? { comment: turn.feedback.comment } : {}),
+          }
+        : null,
     } as ChatMessage,
   ]);
 }

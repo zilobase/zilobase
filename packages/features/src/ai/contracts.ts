@@ -86,6 +86,8 @@ export type ChatMessage = {
   debug?: { events: ChatDebugEvent[]; omitted: number };
   runId?: string;
   status?: "completed" | "stopped" | "failed" | "interrupted" | "streaming";
+  /** The user's saved rating of an assistant answer. */
+  feedback?: { rating: "like" | "dislike"; comment?: string } | null;
 };
 
 export type ChatThread = {
@@ -139,3 +141,14 @@ export function unwrapMarkdownFence(text: string) {
   const fenced = trimmed.match(/^```(?:markdown|md)?\n([\s\S]*?)\n```$/i);
   return fenced ? fenced[1]!.trim() : trimmed;
 }
+
+/** Rate an assistant answer (POST /ai/feedback); a null rating clears it. */
+export const chatFeedbackRequestSchema = z
+  .object({
+    workspaceId: z.string().min(1).max(128),
+    messageId: z.string().min(1).max(256),
+    rating: z.enum(["like", "dislike"]).nullable(),
+    comment: z.string().trim().max(2_000).optional(),
+  })
+  .strict();
+export type ChatFeedbackRequest = z.infer<typeof chatFeedbackRequestSchema>;

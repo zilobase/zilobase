@@ -55,6 +55,12 @@ export const askAiTurn = pgTable(
       .notNull()
       .default({ activities: [], canContinue: false }),
     usage: jsonb("usage").$type<{ inputTokens?: number; outputTokens?: number }>(),
+    /** The user's rating of the answer, with an optional comment. */
+    feedback: jsonb("feedback").$type<{
+      rating: "like" | "dislike";
+      comment?: string;
+      at: string;
+    }>(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     ...timestampColumns(),
   },

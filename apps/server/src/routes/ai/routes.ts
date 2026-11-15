@@ -14,12 +14,14 @@ import {
   actionDecisionRequestSchema,
   actionUndoRequestSchema,
   aiWriteRequestSchema,
+  chatFeedbackRequestSchema,
   chatRequestSchema,
 } from "@zilobase/features/runtime";
 import type { AppBindings } from "../../shared/contracts/http";
 import { prepareChat } from "../../services/ai/chat";
 import { chatSourceIdentity } from "../../services/ai/context";
 import { writeWithAi } from "../../services/ai/writing";
+import { saveChatFeedback } from "../../services/ai/feedback";
 import { decideWorkspaceAction } from "../../services/actions/confirm";
 import { undoWorkspaceAction } from "../../services/actions/undo";
 import { jsonValidator } from "../http/json";
@@ -168,6 +170,10 @@ aiRoutes.post("/actions/undo", jsonValidator(actionUndoRequestSchema), async (c)
 
 aiRoutes.post("/actions/decide", jsonValidator(actionDecisionRequestSchema), async (c) =>
   c.json(await decideWorkspaceAction(serverOperationContext(c), c.req.valid("json"))),
+);
+
+aiRoutes.post("/feedback", jsonValidator(chatFeedbackRequestSchema), async (c) =>
+  c.json(await saveChatFeedback(serverOperationContext(c), c.req.valid("json"))),
 );
 
 aiRoutes.get("/capabilities", (c) =>

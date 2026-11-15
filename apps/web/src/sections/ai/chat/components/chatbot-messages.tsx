@@ -156,7 +156,15 @@ function AssistantMessage({
             </Button>
           )}
       </MessageContent>
-      {displayText && !rendering && <MessageActions text={displayText} onRetry={onRetry} />}
+      {displayText && !rendering && (
+        <MessageActions
+          text={displayText}
+          onRetry={onRetry}
+          feedback={message.feedback?.rating ?? null}
+          messageId={message.id}
+          workspaceId={workspaceId}
+        />
+      )}
       {workspaceId && (
         <Suspense fallback={null}>
           <LazyRunDebugger workspaceId={workspaceId} message={message} />
