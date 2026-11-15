@@ -64,6 +64,7 @@ import {
   addMonths,
   format,
   getWeek,
+  isSameMonth,
   startOfMonth,
   startOfQuarter,
   startOfWeek,
@@ -575,9 +576,10 @@ function GanttView({
       if (lastGroup && lastGroup.key === weekKey) {
         lastGroup.span += weight;
       } else {
+        const weekEnd = addDays(weekStart, 6);
         groups.push({
           key: weekKey,
-          label: `${settings.i18n.labels.week(weekNumber)} ${format(weekStart, "MMM d", { locale: settings.locale })} - ${format(addDays(weekStart, 6), "d", { locale: settings.locale })}`,
+          label: `${settings.i18n.labels.week(weekNumber)} ${format(weekStart, "MMM d", { locale: settings.locale })}–${format(weekEnd, isSameMonth(weekStart, weekEnd) ? "d" : "MMM d", { locale: settings.locale })}`,
           span: weight,
         });
       }
@@ -2327,14 +2329,7 @@ function GanttView({
                 )}
                 style={{ flex: `${unit.weight} 0 0px` }}
               >
-                {/* today reads as a soft pill, not just tinted text */}
-                {unit.isToday ? (
-                  <span className="bg-action-selected-subtle truncate rounded-full px-1.5 py-px">
-                    {unit.label}
-                  </span>
-                ) : (
-                  unit.label
-                )}
+                {unit.label}
               </div>
             ))}
           </div>
@@ -2380,16 +2375,6 @@ function GanttView({
                 <span
                   data-off=""
                   className={cn("absolute inset-y-0", offDayBodyClassName)}
-                  style={{
-                    insetInlineStart: `${start * 100}%`,
-                    width: `${width * 100}%`,
-                  }}
-                />
-              )}
-              {unit.isToday && scale !== "day" && (
-                <span
-                  data-today=""
-                  className="bg-action-selected-subtle absolute inset-y-0"
                   style={{
                     insetInlineStart: `${start * 100}%`,
                     width: `${width * 100}%`,
