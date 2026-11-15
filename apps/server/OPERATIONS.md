@@ -132,7 +132,7 @@ The desktop check covers the shared networking adapter; it is not a packaged nat
 
 ## Cleanup passes
 
-The behavior-preserving cleanup keeps operation definitions beside their exported functions and uses named input/result contracts. Hooks reuse those inputs, while `runClientMutation` retains identity guards and mutation/cache execution. Shared principal, template and row-state factories remain domain-owned. Existing Effect workflows retain their current owners.
+The behavior-preserving cleanup keeps operation definitions beside their exported functions and uses named input/result contracts. Hooks reuse those inputs, while `runClientMutation` retains identity guards and mutation/cache execution. Shared principal, template and row-state factories remain domain-owned.
 
 The passes cover small client mutations; authentication, membership and integration operations; page/database operations; server management wrappers and meeting guards; OAuth compatibility types; architecture coverage; and recorder operations. Server helpers preserve the order of policy, actor, workspace and payload checks. Context-based and legacy transport-only OAuth signatures remain supported.
 

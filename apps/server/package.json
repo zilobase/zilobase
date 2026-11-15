@@ -75,7 +75,6 @@
     "bullmq": "6.3.11",
     "crossws": "^0.4.9",
     "drizzle-orm": "^0.45.2",
-    "effect": "4.0.0-rc.113",
     "fflate": "^0.8.3",
     "hono": "^4.13.7",
     "ioredis": "^5.11.1",

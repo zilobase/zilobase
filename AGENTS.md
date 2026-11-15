@@ -54,7 +54,7 @@ renderers. Reserve the `features` folder name for `packages/features`.
 
 Keep sidebar composition and private navigation/workspace/section renderers in
 `app/shell/sidebar/components/app-sidebar.tsx`; controller composition, local state, storage,
-and Effect commands live in `app/shell/sidebar/hooks/sidebar-controller.ts`. Keep the customization editor
+and commands live in `app/shell/sidebar/hooks/sidebar-controller.ts`. Keep the customization editor
 and its shared tab/icon presentation in `sidebar-customization.tsx` so its preview
 has no import cycle through the app sidebar. Reuse the shadcn sidebar-07 primitive
 structure in `components/ui/sidebar.tsx`, with CSS-variable widths, offcanvas
@@ -63,10 +63,10 @@ Import shared configuration commands from features directly. Shared library view
 labels/icons belong in `components/navigation/lib/library-views.ts`; keep library
 row rendering and presentation models in `sections/library`. Avoid a shell
 navigation barrel or forwarding modules.
-Use Effect for fallible shell storage, native profile workflows, clipboard actions,
-and ordered creation/navigation commands. Preserve storage keys, debounce timing,
-best-effort fallbacks, and stale-result checks. Keep layout geometry and React view
-state plain.
+Write fallible shell storage, native profile workflows, clipboard actions, and
+ordered creation/navigation commands as plain functions with `try`/`catch` and
+`async`/`await`. Preserve storage keys, debounce timing, best-effort fallbacks, and
+stale-result checks. Keep layout geometry and React view state plain.
 
 Keep shell composition at `app/shell/app-shell.tsx`, the fallback screen header
 in `app/shell/header/components`, favicon UI in `app/shell/components` and
@@ -106,8 +106,8 @@ Settings URL tab definitions and validation belong in `app/routing/search-valida
 keep presentation-only tab counts beside the members screen.
 Navigation icons belong in `components/navigation/lib`;
 SVG icon helpers belong in `components/ui/icon-svg.ts`. Avoid domain forwarding barrels.
-Use Effect for clipboard and duplicate/navigation sequences while Query retains
-mutation ownership and React retains form/screen state.
+Clipboard and duplicate/navigation sequences are plain async functions; Query
+retains mutation ownership and React retains form/screen state.
 Load settings and embedded-page dialogs lazily. Route workspace settings directly
 to its owning component instead of adding a shell forwarding screen.
 
@@ -115,15 +115,15 @@ Compose app-wide providers in `app/providers/app-providers.tsx`. Keep scoped
 providers beside the UI or runtime they serve. Merge tiny provider wrappers into
 their existing owner when practical; icon defaults live in `components/icons.ts`
 so independent editor roots can use them without importing application startup.
-Provider adapter workflows use Effect for session recovery, ordered cleanup, and
-fallible storage. Keep their auth ports Promise-based and React lifecycle/context
-composition unchanged; avoid adding another runtime or service layer.
+Provider adapter workflows handle session recovery, ordered cleanup, and fallible
+storage with plain `async`/`await`. Keep their auth ports Promise-based and React
+lifecycle/context composition unchanged; avoid adding another runtime or service layer.
 
 Keep shortcut definitions, modifier matching, registration, and dispatch together
 in `app/shortcuts/shortcut-provider.tsx`. Scoped action history remains in
 `undo-history.tsx`; editor-native and Yjs history helpers belong to
-`editor/runtime/lib/editor-history-coordinator.ts`. Use synchronous Effect dispatch
-and finalizers for recording suppression, preserving priority, editable-target
+`editor/runtime/lib/editor-history-coordinator.ts`. Use synchronous dispatch and
+`try`/`finally` for recording suppression, preserving priority, editable-target
 behavior, and synchronous errors. Independent editor roots import the shortcut
 provider directly without importing application startup.
 
@@ -133,16 +133,14 @@ the shell, pending UI, authenticated fallback, and edition host in `route-shell.
 keep global error recovery in `route-error-page.tsx` and load it lazily. Avoid
 forwarding route-group modules and extra files for small route surfaces.
 Keep authentication, onboarding, OAuth, start-page, and share-access workflows
-together in `guards.ts`. Compose them as Effects; `router.tsx` declares routes and
-runs them with `Effect.runPromise` at the router adapter boundary. Preserve original
-errors and redirect responses.
-Use `Effect.runSync` for synchronous guards and browser actions to preserve
-callback timing.
-Compose routing helpers directly as Effects; convert to Promises only in router
-callbacks or when supplying an existing Promise-based shared-client port.
-Interrupt asynchronous UI fibers in React cleanup to prevent late state updates.
+together in `guards.ts` as async functions that `throw redirect(...)`; `router.tsx`
+declares routes and calls them from `beforeLoad`. Preserve original errors and
+redirect responses.
+Keep synchronous guards and browser actions synchronous to preserve callback timing.
+Guard asynchronous UI work with a cancelled/disposed flag set in React cleanup to
+prevent late state updates.
 TanStack Query retains request/cache/retry ownership; keep rendering and URL
-parsing straightforward without extra Effect services or layers.
+parsing straightforward without extra services or layers.
 
 Desktop transport, capture, persistence, window, and deep-link adapters live under
 `platform`; application state and demo runtime composition live under `app`.
@@ -162,11 +160,10 @@ PostHog initialization lives in `platform/analytics`. Platform modules must not
 import app composition or section/shared UI modules. Keep the demo experience
 wrapper with its application runtime in `app/demo/components`.
 Keep native operations in `platform` and avoid recreating an `app/runtime` folder.
-Use Effect for startup installation and desktop session workflows. Run synchronous
-installation and browser callbacks with `Effect.runSync`; keep native/cleanup ports
-Promise-based with `Effect.runPromise` at their boundaries. Preserve candidate
-verification counters, cleanup order, and the two-frame React teardown wait.
-Use finalizers for revocation timer cleanup without changing its timeout scope.
+Startup installation runs synchronously; desktop session workflows and native/cleanup
+ports are Promise-based. Preserve candidate verification counters, cleanup order,
+and the two-frame React teardown wait. Use `try`/`finally` for revocation timer
+cleanup without changing its timeout scope.
 Web build feature flags and desktop environment checks live together in
 `apps/web/src/platform/environment.ts`. Keep Vite environment reads in web and
 reuse this module instead of creating a single-file application config folder.
@@ -194,6 +191,9 @@ and serialize responses. They must not import Drizzle or database clients/schema
 Services own authorization decisions, transactions, persistence workflows, and
 post-commit effects; they must not import routes or Hono adapters. Pass actors,
 resource IDs, validated payloads, environment, and extension context explicitly.
+Validate inputs with Zod schemas through `parseUnknown`/`parseOperationBody` in
+`shared/validation.ts`; use `z.strictObject` where unknown keys must be rejected.
+Do not reintroduce the Effect library in server, web, or shared packages.
 
 Keep inbound HTTP support in `routes/http`; generic cancellation in
 `shared/async`; and named HTTP, edition, and error-reporting types in
@@ -303,21 +303,21 @@ metadata lives in `sections/pages/components/page-metadata.tsx`; database proper
 remains in `sections/databases/page-properties`. Page read-cache hydration lives
 in `sections/pages/lib/page-read-cache.ts`. Do not recreate top-level editor/comments folders, editor
 composition/core buckets, or page content forwarding modules.
-Use Effect for structural insertion, document prefetch, and database drop resource
-workflows. Keep Promise adapters, synchronous pending flags, anchor cleanup,
-compensation, prefetch limits, and local flush versus server synchronization intact.
+Structural insertion, document prefetch, and database drop resource workflows are
+async functions with `try`/`finally` cleanup. Keep synchronous pending flags, anchor
+cleanup, compensation, prefetch limits, and local flush versus server synchronization intact.
 Keep block construction, conversion, plus-menu insertion, and slash-command resource
-insertion together in `editor/commands/lib/block-insert.ts`. Compose creation and
-anchor cleanup as Effects and run them at the existing Promise boundaries.
+insertion together in `editor/commands/lib/block-insert.ts`, releasing anchors in
+`finally` blocks.
 Group editor resource callbacks and mobile block action state in
 `editor/commands/hooks/use-editor-actions.ts`; shared mutation hooks retain backend/cache
 ownership, and mobile selection and movement remain plain React/editor code.
 Keep collaboration transport, connection startup, awareness users, and colors in
 `editor/collaboration/lib/collaboration-connection.ts`; document sessions own leases,
 readiness, and page connection indicators in `page-document-session.ts`. Keep
-persistence, navigation prefetch, the React hook, and presence UI separate. Use
-Effect for ordered connection startup while preserving deferred attachment,
-synchronous ticket-port errors, and explicit provider teardown.
+persistence, navigation prefetch, the React hook, and presence UI separate. Keep
+ordered connection startup, deferred attachment, synchronous ticket-port errors,
+and explicit provider teardown.
 Meeting block DOM lookup/scrolling belongs beside its editor extension in
 `sections/pages/editor/extensions/meeting/lib/meeting-block-navigation.ts`; it is
 editor presentation behavior, separate from application URL routing.
