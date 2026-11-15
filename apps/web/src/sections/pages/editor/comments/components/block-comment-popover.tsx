@@ -112,7 +112,7 @@ export function BlockCommentPopover({
           <PageCommentThread
             onCreateThread={(body) => commentController.createBlockThread(body, range)}
             pageId={pageId}
-            placeholder="Add a comment…"
+            placeholder="Add a comment..."
           />
         )}
       </PopoverContent>

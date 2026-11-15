@@ -170,7 +170,7 @@ export function SelectionBubbleMenu({
               <PageCommentThread
                 pageId={pageId}
                 compact
-                placeholder="Add a comment…"
+                placeholder="Add a comment..."
                 onCreateThread={(body) => {
                   const from = anchors.current?.from.resolve();
                   const to = anchors.current?.to.resolve();

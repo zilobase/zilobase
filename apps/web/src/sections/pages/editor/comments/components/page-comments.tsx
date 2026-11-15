@@ -85,12 +85,10 @@ type CommentAvatarAuthor =
 
 export function CommentAvatar({
   author,
-  authorId,
   className,
   small = false,
 }: {
   author: CommentAvatarAuthor;
-  authorId?: string | null;
   className?: string;
   small?: boolean;
 }) {
@@ -99,9 +97,7 @@ export function CommentAvatar({
   return (
     <Avatar aria-hidden className={className} size={small ? "sm" : "default"}>
       {author?.image ? <AvatarImage alt={label} src={getUserImageUrl(author.image)} /> : null}
-      <AvatarFallback gradientSeed={getCommentAvatarSeed(author, authorId, label)}>
-        {getCommentInitials(label)}
-      </AvatarFallback>
+      <AvatarFallback>{getCommentInitials(label)}</AvatarFallback>
     </Avatar>
   );
 }
@@ -169,7 +165,6 @@ function CommentItemComponent({
       <ThreadAvatar>
         <CommentAvatar
           author={comment.author ?? null}
-          authorId={comment.authorId}
           className={compact ? "size-5" : undefined}
           small
         />
@@ -181,28 +176,17 @@ function CommentItemComponent({
             compact ? "pr-24 text-[13px] leading-4" : "pr-28 text-sm leading-5",
           )}
         >
-          <span
-            className={cn(
-              "truncate text-content-primary",
-              compact ? "font-medium" : "font-semibold",
-            )}
-          >
+          <span className={cn("truncate text-content-primary", "font-medium")}>
             {getCommentAuthorName(comment.author ?? null)}
           </span>
           <span
-            className={cn(
-              "shrink-0 text-content-secondary",
-              compact ? "text-[11px] font-normal" : "text-xs font-medium",
-            )}
+            className={cn("shrink-0 text-content-secondary", compact ? "text-[11px]" : "text-xs")}
           >
             {formatCommentTime(comment.createdAt)}
           </span>
           {comment.editedAt ? (
             <span
-              className={cn(
-                "shrink-0 text-content-secondary",
-                compact ? "text-[11px] font-normal" : "text-xs font-medium",
-              )}
+              className={cn("shrink-0 text-content-secondary", compact ? "text-[11px]" : "text-xs")}
             >
               (edited)
             </span>
@@ -212,7 +196,7 @@ function CommentItemComponent({
             <AlertDialog>
               <ButtonGroup
                 aria-label="Comment actions"
-                className="absolute right-0 top-0 opacity-0 transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100 has-[[aria-expanded=true]]:opacity-100"
+                className="absolute -top-3 right-0 bg-surface-overlay opacity-0 shadow-sm transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100 has-[[aria-expanded=true]]:opacity-100"
                 variant="segmented"
               >
                 {canReact ? (
@@ -353,7 +337,6 @@ function CommentItemComponent({
               </Button>
               <Button
                 aria-label="Save edited comment"
-                className="rounded-full"
                 disabled={isMutating || !editingBody?.trim()}
                 onClick={onSaveEdit}
                 size="icon-sm"
@@ -369,9 +352,7 @@ function CommentItemComponent({
             <p
               className={cn(
                 "whitespace-pre-wrap break-words text-content-primary",
-                compact
-                  ? "mt-0.5 text-[13px] font-normal leading-5"
-                  : "mt-1 text-sm font-medium leading-6",
+                compact ? "mt-0.5 text-[13px] font-normal leading-5" : "mt-1 text-sm leading-6",
               )}
             >
               <CommentMentionText parts={commentTextParts} />
@@ -572,14 +553,6 @@ export function formatCommentButtonLabel(commentCount: number) {
 
 export function getCommentAuthorName(author: CommentAvatarAuthor) {
   return author?.name?.trim() || author?.email?.trim() || "Unknown";
-}
-
-function getCommentAvatarSeed(
-  author: CommentAvatarAuthor,
-  authorId: string | null | undefined,
-  label: string,
-) {
-  return author?.id?.trim() || authorId?.trim() || label;
 }
 
 function getCommentInitials(label: string) {
@@ -884,7 +857,7 @@ export function PageCommentThread({
           (controller.canModerate || (comment.authorId && comment.authorId === session?.user?.id)),
         )}
         canReact={Boolean(controller?.canEdit)}
-        canResolve={Boolean(controller?.canEdit && !threadResolved && isRoot && thread)}
+        canResolve={Boolean(!compact && controller?.canEdit && !threadResolved && isRoot && thread)}
         comment={comment}
         compact={compact}
         deletesThread={isRoot}
@@ -910,9 +883,7 @@ export function PageCommentThread({
   return (
     <div className={className}>
       {label ? (
-        <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-content-secondary">
-          {label}
-        </div>
+        <div className="px-1 pb-1 text-xs font-medium text-content-secondary">{label}</div>
       ) : null}
 
       {commentsLoading ? (
@@ -1091,7 +1062,7 @@ export function PageCommentThread({
                   <Button
                     aria-label="Send reply"
                     className={cn(
-                      "rounded-full bg-action-primary text-action-on-primary hover:bg-action-primary-hover",
+                      "bg-action-primary text-action-on-primary hover:bg-action-primary-hover",
                       !compact && "h-7 w-7",
                     )}
                     disabled={actionsDisabled || !newCommentBody.trim()}

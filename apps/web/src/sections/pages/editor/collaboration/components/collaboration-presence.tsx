@@ -34,7 +34,7 @@ export function CollaborationPresence({
           {visibleUsers.map((user) => (
             <Avatar key={user.id} size="sm" title={user.name}>
               {user.avatar ? <AvatarImage alt="" src={getUserImageUrl(user.avatar)} /> : null}
-              <AvatarFallback gradientSeed={user.id}>{initials(user.name)}</AvatarFallback>
+              <AvatarFallback>{initials(user.name)}</AvatarFallback>
             </Avatar>
           ))}
           {hiddenCount > 0 ? (

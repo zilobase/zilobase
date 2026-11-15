@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Avatar as AvatarPrimitive } from "radix-ui";
 
-import { generateAvatarGradient } from "@/lib/gradient-avatars";
 import { cn } from "@/lib/utils";
 
 function Avatar({
@@ -36,25 +35,15 @@ function AvatarImage({ className, ...props }: React.ComponentProps<typeof Avatar
 
 function AvatarFallback({
   className,
-  gradientSeed,
-  style,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback> & {
-  gradientSeed?: string | null;
-}) {
-  const fallbackSeed = gradientSeed ?? (typeof props.children === "string" ? props.children : "");
-
+}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-action-selected text-xs/relaxed font-medium text-action-on-selected group-data-[size=sm]/avatar:text-[0.625rem]",
+        "flex size-full items-center justify-center rounded-full bg-surface-muted text-xs/relaxed font-medium text-content-secondary group-data-[size=sm]/avatar:text-[0.625rem]",
         className,
       )}
-      style={{
-        background: generateAvatarGradient(fallbackSeed),
-        ...style,
-      }}
       {...props}
     />
   );

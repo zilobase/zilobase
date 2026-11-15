@@ -61,9 +61,7 @@ function Participant({ attendee }: { attendee: CalendarAttendee }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
       <Avatar size="sm">
-        <AvatarFallback gradientSeed={attendee.email}>
-          {name.slice(0, 1).toUpperCase()}
-        </AvatarFallback>
+        <AvatarFallback>{name.slice(0, 1).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <p className="truncate" title={attendee.email}>

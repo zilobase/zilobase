@@ -83,11 +83,9 @@ export function FloatingComments({ pageId, onClose }: { pageId: string; onClose:
         }
       }}
     >
-      <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+      <header className="flex shrink-0 items-center gap-2 py-3 pr-4 pl-5">
         <h2 className="text-sm font-medium">Comments</h2>
-        <span className="rounded-md border px-1.5 text-xs tabular-nums text-content-secondary">
-          {threads.length}
-        </span>
+        <span className="text-xs tabular-nums text-content-secondary">{threads.length}</span>
         <Button
           className="ml-auto"
           aria-label="Close comments"
@@ -119,9 +117,7 @@ export function FloatingComments({ pageId, onClose }: { pageId: string; onClose:
                 )}
               >
                 <div className="flex items-start gap-2">
-                  {!active ? (
-                    <CommentAvatar author={first.author} authorId={first.authorId} small />
-                  ) : null}
+                  {!active ? <CommentAvatar author={first.author} small /> : null}
                   <button
                     type="button"
                     className="min-w-0 flex-1 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -193,8 +189,10 @@ export function FloatingComments({ pageId, onClose }: { pageId: string; onClose:
           </p>
         ) : null}
         {controller?.canEdit && !hasPageThread ? (
-          <div className="p-3">
-            <PageCommentThread compact pageId={pageId} placeholder="Add a page comment…" />
+          <div
+            className={cn("p-3", threads.length > 0 && "mt-1 border-t border-stroke-default pt-4")}
+          >
+            <PageCommentThread compact pageId={pageId} placeholder="Add a page comment..." />
           </div>
         ) : null}
       </div>

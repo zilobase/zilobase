@@ -162,7 +162,7 @@ test("selection comments keep their anchor while the document changes", async ({
     editor.chain().focus().setTextSelection({ from: 22, to: 35 }).run();
   });
   await page.getByRole("button", { name: "Comment on selection", exact: true }).click();
-  const input = page.getByPlaceholder("Add a comment…", { exact: true });
+  const input = page.getByPlaceholder("Add a comment...", { exact: true });
   await input.fill("Clarify this selection.");
   await page.evaluate(() => {
     const editor = window.commentEditors.get("main");
@@ -295,5 +295,5 @@ test("block comment button stays mounted while the pointer moves onto it", async
   });
   await expect(button).toBeVisible();
   await button.click();
-  await expect(page.getByPlaceholder("Add a comment…", { exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder("Add a comment...", { exact: true })).toBeVisible();
 });

@@ -199,7 +199,7 @@ function ProfileDetailsCard({
                 src={getUserImageUrl(profileImage)}
               />
             ) : null}
-            <AvatarFallback className="text-base" gradientSeed={name || initialEmail}>
+            <AvatarFallback className="text-base">
               {getInitials(name || initialEmail)}
             </AvatarFallback>
           </Avatar>
