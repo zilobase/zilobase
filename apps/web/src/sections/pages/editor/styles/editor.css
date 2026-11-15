@@ -69,6 +69,7 @@
   }
 
   .tiptap-editor {
+    --editor-block-selection-padding: 0.5rem;
     @apply min-h-[520px] pt-4 pb-5 text-base leading-7 text-content-primary outline-none md:pb-6;
     padding-inline: var(--page-content-gutter);
   }
@@ -340,7 +341,8 @@
     background-color: var(--zb-color-selection-background-editor);
     border-radius: var(--radius-sm);
     content: "";
-    inset: 0;
+    /* Extend past the content so selected text isn't flush with the highlight's edge. */
+    inset: 0 calc(-1 * var(--editor-block-selection-padding));
     pointer-events: none;
     position: absolute;
     z-index: 1000;
