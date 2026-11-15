@@ -66,6 +66,11 @@ export default function Chatbot({
     null,
   );
   const attachmentState = useChatAttachments();
+  // A new chat beside a page or database starts with it attached, as in Notion;
+  // once the user removes it, it stays removed for that chat.
+  const currentKey = databaseId ? `database:${databaseId}` : pageId ? `page:${pageId}` : null;
+  const autoAttached = useRef<string | null>(null);
+  const dismissedCurrent = useRef(new Set<string>());
   const send = useSendChat();
   const follow = useFollowChatRun();
   const cancelRun = useCancelChatRun();
@@ -139,7 +144,28 @@ export default function Chatbot({
     setMessages([]);
     setChatError(null);
     attachmentState.reset();
+    autoAttached.current = null;
   }, [selection.revision, attachmentState, threads]);
+  useEffect(() => {
+    if (!currentKey || messages.length || streaming || selection.id) return;
+    if (dismissedCurrent.current.has(currentKey)) return;
+    const attached = attachmentState.attachments.some(
+      (item) => `${item.type}:${item.id}` === currentKey,
+    );
+    if (attached) return;
+    if (autoAttached.current === currentKey) {
+      dismissedCurrent.current.add(currentKey);
+      return;
+    }
+    autoAttached.current = currentKey;
+    attachmentState.add({
+      id: databaseId || pageId!,
+      type: databaseId ? "database" : "page",
+      title: databaseId ? "Current database" : "Current page",
+      path: "",
+      emoji: null,
+    });
+  }, [currentKey, messages.length, streaming, selection.id, attachmentState, databaseId, pageId]);
   // Reloading or switching threads attaches a subscriber to the existing producer.
   const savedRun = threads.detail.data?.run;
   const followedRun = useRef<string | null>(null);
