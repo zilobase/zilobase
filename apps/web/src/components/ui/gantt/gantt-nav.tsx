@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CalendarBlank, CaretDown, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from "@/components/icons";
 
 const GANTT_SCALES: GanttScale[] = ["day", "week", "month", "quarter", "year"];
 
@@ -129,7 +129,7 @@ function GanttNavPrev({ className, asChild = false, children, tooltip, ...props 
         asChild={asChild}
         {...props}
       >
-        {children ?? <CaretLeft className="size-4" aria-hidden="true" />}
+        {children ?? <ChevronLeft className="size-4" aria-hidden="true" />}
       </Button>
     </NavTooltip>
   );
@@ -151,7 +151,7 @@ function GanttNavNext({ className, asChild = false, children, tooltip, ...props 
         asChild={asChild}
         {...props}
       >
-        {children ?? <CaretRight className="size-4" aria-hidden="true" />}
+        {children ?? <ChevronRight className="size-4" aria-hidden="true" />}
       </Button>
     </NavTooltip>
   );
@@ -250,7 +250,7 @@ function GanttScaleSwitcher({
               {children ?? (
                 <>
                   {labels.scales[scale]}
-                  <CaretDown className="size-4 opacity-60" aria-hidden="true" />
+                  <ChevronDown className="size-4 opacity-60" aria-hidden="true" />
                 </>
               )}
             </Button>
@@ -306,7 +306,7 @@ function GanttDatePicker({ className }: GanttDatePickerProps) {
           aria-label={settings.i18n.labels.goToDate}
           className={cn(className)}
         >
-          <CalendarBlank className="size-4" aria-hidden="true" />
+          <CalendarIcon className="size-4" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0!">

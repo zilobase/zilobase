@@ -846,7 +846,7 @@ function SidebarNavRow({
                 type="button"
                 variant="disclosure"
               >
-                <ChevronRightIcon weight="bold" />
+                <ChevronRightIcon />
                 <span className="sr-only">
                   {expanded ? "Collapse" : "Expand"} {displayName}
                 </span>
@@ -1034,7 +1034,7 @@ function TeamspaceHeader({
           type="button"
           variant="disclosure"
         >
-          <ChevronRightIcon weight="bold" />
+          <ChevronRightIcon />
           <span className="sr-only">
             {open ? "Collapse" : "Expand"} {teamspace.name}
           </span>
@@ -1082,7 +1082,13 @@ function SidebarItemIcon({ icon }: { icon: SidebarIcon | null }) {
     );
   if (icon.kind === "view") return <DatabaseViewIcon view={icon.view} />;
   if (icon.kind === "meeting")
-    return <PageIconDisplay size="sm" value={icon.value ?? DEFAULT_MEETING_ITEM_ICON} />;
+    return (
+      <PageIconDisplay
+        fallbackValue={DEFAULT_MEETING_ITEM_ICON}
+        size="sm"
+        value={icon.value ?? DEFAULT_MEETING_ITEM_ICON}
+      />
+    );
   if (icon.kind === "task") return <ListChecksIcon />;
   if (icon.kind === "file") return <FileIcon />;
   return <PageIconDisplay size="sm" value={icon.value} />;
@@ -1119,10 +1125,7 @@ function SectionShell({
               >
                 <button className="group/section-label w-full cursor-pointer" type="button">
                   <span>{label}</span>
-                  <ChevronRightIcon
-                    className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90"
-                    weight="bold"
-                  />
+                  <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
                 </button>
               </SidebarGroupLabel>
             </CollapsibleTrigger>

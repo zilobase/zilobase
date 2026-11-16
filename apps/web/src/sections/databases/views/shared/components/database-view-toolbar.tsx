@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/app-tabs";
 import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/sections/pages/appearance/components/page-icon";
+import { DEFAULT_DATABASE_ITEM_ICON } from "@/components/navigation/lib/navigation-icons";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -314,7 +315,12 @@ export function DatabaseViewToolbar({
               className="inline-flex shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 leading-none focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
               type="button"
             >
-              <PageIconDisplay className="size-auto" size="lg" value={databaseEmoji} />
+              <PageIconDisplay
+                className="size-auto"
+                fallbackValue={DEFAULT_DATABASE_ITEM_ICON}
+                size="lg"
+                value={databaseEmoji}
+              />
             </button>
           </PopoverTrigger>
           {databaseEmojiPopoverContent}
@@ -325,7 +331,12 @@ export function DatabaseViewToolbar({
         aria-label="Database icon"
         className="flex size-9 shrink-0 items-center justify-center rounded-md text-2xl leading-none"
       >
-        <PageIconDisplay className="size-auto" size="lg" value={databaseEmoji} />
+        <PageIconDisplay
+          className="size-auto"
+          fallbackValue={DEFAULT_DATABASE_ITEM_ICON}
+          size="lg"
+          value={databaseEmoji}
+        />
       </span>
     )
   ) : null;

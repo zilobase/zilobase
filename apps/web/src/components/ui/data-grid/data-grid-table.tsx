@@ -2420,7 +2420,7 @@ function DataGridTableRowPin<TData extends object>({ row }: { row: Row<DataGridF
         isPinned && "text-action-link hover:text-action-link",
       )}
     >
-      <PinIcon aria-hidden="true" className="size-4" weight={isPinned ? "fill" : "bold"} />
+      <PinIcon aria-hidden="true" className="size-4" fill={isPinned ? "currentColor" : "none"} />
     </button>
   );
 }

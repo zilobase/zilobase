@@ -3,8 +3,10 @@ import { getDatabaseEmoji } from "@zilobase/features/databases";
 import { getIconTextClassName } from "@/lib/color-tokens";
 import {
   CONTENT_PAGE_ITEM_ICON,
+  DEFAULT_DATABASE_ITEM_ICON,
   DEFAULT_PAGE_ITEM_ICON,
 } from "@/components/navigation/lib/navigation-icons";
+import { useStoredIcon } from "@/hooks/use-stored-icon";
 import { cn } from "@/lib/utils";
 import {
   getDatabaseIconConfig,
@@ -31,13 +33,27 @@ const svgIconSizeClasses = {
 
 export function PageIconDisplay({
   className,
+  fallbackValue = DEFAULT_PAGE_ITEM_ICON,
   size = "md",
-  value,
+  value: storedValue,
 }: {
   className?: string;
+  /** Shown when a saved Phosphor icon has no Lucide equivalent. */
+  fallbackValue?: string | null;
   size?: keyof typeof iconSizeClasses;
   value: string | null | undefined;
 }) {
+  const { icon: value, pending } = useStoredIcon(storedValue, fallbackValue);
+
+  if (pending) {
+    return (
+      <span
+        aria-hidden="true"
+        className={cn("inline-flex shrink-0", svgIconSizeClasses[size], className)}
+      />
+    );
+  }
+
   if (!value) {
     return null;
   }
@@ -112,7 +128,7 @@ export function getDatabaseIconNode(database: { config?: unknown; dataSourceConf
   const icon = getDatabaseIconValue(database);
 
   if (icon) {
-    return <PageIconDisplay size="sm" value={icon} />;
+    return <PageIconDisplay fallbackValue={DEFAULT_DATABASE_ITEM_ICON} size="sm" value={icon} />;
   }
 
   return null;

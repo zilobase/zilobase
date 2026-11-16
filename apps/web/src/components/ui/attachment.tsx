@@ -1,6 +1,6 @@
 // Source: https://ui.shadcn.com/r/styles/radix-mira/attachment.json
 // Retrieved 2026-10-20; SHA-256 091db897a7bf23728822c1a086b93ce51ab6e98393df8506f70f659d6f3cc27a.
-// Adaptations: local imports, Phosphor icons and Zilobase semantic colors.
+// Adaptations: local imports, Lucide icons and Zilobase semantic colors.
 // MIT license: ./ai-elements.LICENSE
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";

@@ -436,7 +436,7 @@
   }
 
   .page-property-label > svg {
-    @apply size-[15px] shrink-0 opacity-70;
+    @apply size-[15px] shrink-0;
   }
 
   .page-property-row

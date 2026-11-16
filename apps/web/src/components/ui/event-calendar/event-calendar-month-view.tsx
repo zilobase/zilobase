@@ -1,4 +1,4 @@
-import { Plus } from "@phosphor-icons/react";
+import { Plus } from "@/components/icons";
 // Title: Event Calendar Month View
 // Description: ARIA-grid month view with week rows, day cells, event chips, and overflow counts.
 

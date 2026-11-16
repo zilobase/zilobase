@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { DatabaseIcon, SidebarSimpleIcon, SquareIcon, X } from "@/components/icons";
+import { DatabaseIcon, SidebarSimpleRightIcon, SquareIcon, X } from "@/components/icons";
 import { toast } from "sonner";
 
 import { useOptionalPageSidePane } from "@/sections/pages/presentation/components/page-presentation";
@@ -288,7 +288,7 @@ export function DatabasePageLink({
           ) : sidePane?.embeddedItemsOpenAs === "dialog" ? (
             <SquareIcon />
           ) : (
-            <SidebarSimpleIcon mirrored />
+            <SidebarSimpleRightIcon />
           )}
           <span>{actionLabel}</span>
         </button>

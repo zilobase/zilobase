@@ -1,6 +1,6 @@
 // Source: https://ui.shadcn.com/r/styles/radix-mira/message.json
 // Retrieved 2026-10-20; SHA-256 eee63e2232b284e2a8e26fc2b033ce0be8fc0aef16a16b34dd440a15d5a006b0.
-// Adaptations: local imports, Phosphor icons and Zilobase semantic colors.
+// Adaptations: local imports, Lucide icons and Zilobase semantic colors.
 // MIT license: ./ai-elements.LICENSE
 import * as React from "react";
 import { cn } from "@/lib/utils";

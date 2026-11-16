@@ -1,6 +1,6 @@
 // Source: https://ui.shadcn.com/r/styles/radix-mira/code-block.json
 // Retrieved 2026-10-20; SHA-256 61818b3f53d1f1ff35214979206b4b00b437af3ddda9f15a628e7e4bb6497598.
-// Adaptations: local imports, Phosphor icons and Zilobase semantic colors.
+// Adaptations: local imports, Lucide icons and Zilobase semantic colors.
 // MIT license: ./ai-elements.LICENSE
 "use client";
 

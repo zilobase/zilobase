@@ -1,4 +1,4 @@
-import { CalendarBlank } from "@phosphor-icons/react";
+import { CalendarIcon } from "@/components/icons";
 // Title: Event Calendar Agenda View
 // Description: Chronological agenda grouped by day - a day header row plus a clean time / dot / title table.
 
@@ -130,7 +130,7 @@ function EventCalendarAgendaView({
           {viewConfig.renderNoEvents?.() ?? (
             <>
               <div className="text-content-secondary">
-                <CalendarBlank className="size-5" aria-hidden="true" />
+                <CalendarIcon className="size-5" aria-hidden="true" />
               </div>
               <span className="text-content-secondary text-sm">
                 {settings.i18n.labels.noEvents}

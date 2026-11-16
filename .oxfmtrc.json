@@ -11,6 +11,8 @@
     ".agents/**",
     ".claude/**",
     "apps/server/drizzle/meta/**",
+    "apps/web/src/components/ui/legacy-phosphor-icons.ts",
+    "apps/web/src/components/ui/lucide-icon-catalog.ts",
     "deploy/helm/zilobase/templates/**",
     "scripts/refactor/public-exports-baseline.json"
   ]

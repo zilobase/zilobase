@@ -2,7 +2,7 @@ import { CalendarWorkspaceProvider } from "@/sections/calendar/workspace/compone
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { ChevronsRightIcon, SidebarSimpleIcon } from "@/components/icons";
+import { ChevronsRightIcon, SidebarSimpleRightIcon } from "@/components/icons";
 
 import { useAppSidebar } from "@/app/shell/sidebar/hooks/sidebar-controller";
 import { AppSidebar } from "@/app/shell/sidebar/components/app-sidebar";
@@ -432,7 +432,7 @@ function AppShellContent({
   const pageSidebarPanel = pageLayoutSidebar?.hasSidebar ? (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-        <SidebarSimpleIcon className="size-4 text-content-secondary" mirrored />
+        <SidebarSimpleRightIcon className="size-4 text-content-secondary" />
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium">Page sidebar</h2>
         <Button
           aria-label="Close page sidebar"

@@ -1,5 +1,5 @@
 import * as React from "react";
-import type { Icon } from "@/components/icons";
+import { DynamicIcon, type IconName } from "lucide-react/dynamic";
 import { Search } from "@/components/icons";
 
 import { IconColorGrid } from "@/components/ui/icon-color-grid";
@@ -9,53 +9,37 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { buildStoredSvgFromRenderedSvg } from "@/components/ui/icon-svg";
+import { buildLucideStoredSvgByName } from "@/components/ui/icon-svg";
+import { lucideIcons } from "@/components/ui/lucide-icon-catalog";
 
-type PhosphorCatalogEntry = {
-  Icon: React.LazyExoticComponent<Icon>;
+type LucideCatalogEntry = {
   label: string;
-  name: string;
+  name: IconName;
   searchText: string;
 };
 
-type PhosphorIconModule = Record<string, Icon>;
-
-const iconModules = import.meta.glob<PhosphorIconModule>(
-  "../../../../../node_modules/@phosphor-icons/react/dist/csr/*.es.js",
-);
-
-const phosphorCatalog = Object.entries(iconModules)
-  .map(([path, loadIcon]) => {
-    const name = path.slice(path.lastIndexOf("/") + 1, -6);
-    const label = formatPhosphorLabel(name);
-    const Icon = React.lazy(async () => {
-      const module = await loadIcon();
-      const component = module[`${name}Icon`] ?? module[name];
-
-      if (!component) {
-        throw new Error(`Phosphor icon module did not export ${name}`);
-      }
-
-      return { default: component };
-    });
+const lucideCatalog: LucideCatalogEntry[] = lucideIcons
+  .split("|")
+  .map((entry) => {
+    const [name, ...aliases] = entry.split(" ");
+    const label = formatLucideLabel(name);
 
     return {
-      Icon,
       label,
-      name,
-      searchText: `${name.toLowerCase()} ${label.toLowerCase()}`,
+      name: name as IconName,
+      searchText: [name, ...aliases, label.toLowerCase()].join(" "),
     };
   })
   .sort((first, second) => first.label.localeCompare(second.label));
 
-type PhosphorIconPickerProps = {
+type LucideIconPickerProps = {
   className?: string;
   onIconSelect: (svg: string) => void;
 };
 
 const ICON_BATCH_SIZE = 72;
 
-export function PhosphorIconPicker({ className, onIconSelect }: PhosphorIconPickerProps) {
+export function LucideIconPicker({ className, onIconSelect }: LucideIconPickerProps) {
   const [query, setQuery] = React.useState("");
   const [visibleCount, setVisibleCount] = React.useState(ICON_BATCH_SIZE);
 
@@ -63,10 +47,10 @@ export function PhosphorIconPicker({ className, onIconSelect }: PhosphorIconPick
     const normalizedQuery = query.trim().toLowerCase();
 
     if (!normalizedQuery) {
-      return phosphorCatalog;
+      return lucideCatalog;
     }
 
-    return phosphorCatalog.filter((icon) => icon.searchText.includes(normalizedQuery));
+    return lucideCatalog.filter((icon) => icon.searchText.includes(normalizedQuery));
   }, [query]);
 
   React.useEffect(() => {
@@ -88,7 +72,7 @@ export function PhosphorIconPicker({ className, onIconSelect }: PhosphorIconPick
           autoFocus
           className="h-7 w-full rounded-md border border-control-border bg-control-background pr-2 pl-8 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-1 focus-visible:ring-action-focus-ring dark:bg-control-background"
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search Phosphor icons..."
+          placeholder="Search icons..."
           type="search"
           value={query}
         />
@@ -113,27 +97,25 @@ export function PhosphorIconPicker({ className, onIconSelect }: PhosphorIconPick
         ) : (
           <div className="grid grid-cols-9 px-2 pt-2">
             {visibleIcons.map((icon) => (
-              <PhosphorIconOption icon={icon} key={icon.name} onIconSelect={onIconSelect} />
+              <LucideIconOption icon={icon} key={icon.name} onIconSelect={onIconSelect} />
             ))}
           </div>
         )}
       </div>
       <div className="flex h-10 items-center border-t px-3 text-xs text-content-secondary">
-        Select a Phosphor icon
+        Select an icon
       </div>
     </div>
   );
 }
 
-function PhosphorIconOption({
+function LucideIconOption({
   icon,
   onIconSelect,
 }: {
-  icon: PhosphorCatalogEntry;
+  icon: LucideCatalogEntry;
   onIconSelect: (svg: string) => void;
 }) {
-  const { Icon } = icon;
-
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -143,43 +125,27 @@ function PhosphorIconOption({
           title={icon.label}
           type="button"
         >
-          <React.Suspense fallback={<span className="size-5" />}>
-            <Icon aria-hidden className="size-5" weight="fill" />
-          </React.Suspense>
+          <DynamicIcon aria-hidden className="size-5" name={icon.name} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-auto min-w-0 p-2" side="right" sideOffset={6}>
         <IconColorGrid
           label={icon.label}
-          onSelect={(colorValue, svgElement) => {
-            if (!svgElement) {
-              return;
-            }
-
-            const storedSvg = buildStoredSvgFromRenderedSvg({
-              color: colorValue,
-              svg: svgElement.outerHTML,
-            });
+          onSelect={async (colorValue) => {
+            const storedSvg = await buildLucideStoredSvgByName(icon.name, colorValue);
 
             if (storedSvg) {
               onIconSelect(storedSvg);
             }
           }}
-          preview={
-            <React.Suspense fallback={<span className="size-5" />}>
-              <Icon aria-hidden weight="fill" />
-            </React.Suspense>
-          }
+          preview={<DynamicIcon aria-hidden name={icon.name} />}
         />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function formatPhosphorLabel(name: string) {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
-    .replace(/(\D)(\d+)/g, "$1 $2")
-    .trim();
+function formatLucideLabel(name: string) {
+  const label = name.replaceAll("-", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }

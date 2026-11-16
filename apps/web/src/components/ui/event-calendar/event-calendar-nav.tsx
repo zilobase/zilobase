@@ -1,4 +1,4 @@
-import { CalendarBlank, CaretDown, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from "@/components/icons";
 // Title: Event Calendar Nav
 // Description: Composable navigation - Today, prev/next, period title, view switcher dropdown, and a free toolbar slot.
 
@@ -166,7 +166,7 @@ function EventCalendarNavPrev({
         asChild={asChild}
         {...props}
       >
-        {children ?? <CaretLeft className="size-4" aria-hidden="true" />}
+        {children ?? <ChevronLeft className="size-4" aria-hidden="true" />}
       </Button>
     </NavTooltip>
   );
@@ -194,7 +194,7 @@ function EventCalendarNavNext({
         asChild={asChild}
         {...props}
       >
-        {children ?? <CaretRight className="size-4" aria-hidden="true" />}
+        {children ?? <ChevronRight className="size-4" aria-hidden="true" />}
       </Button>
     </NavTooltip>
   );
@@ -299,7 +299,7 @@ function EventCalendarViewSwitcher({
               {children ?? (
                 <>
                   {viewLabel(view)}
-                  <CaretDown className="size-4 opacity-60" aria-hidden="true" />
+                  <ChevronDown className="size-4 opacity-60" aria-hidden="true" />
                 </>
               )}
             </Button>
@@ -439,7 +439,7 @@ function EventCalendarDatePicker({
             className={cn(nav.className, className)}
             asChild={asChild}
           >
-            {children ?? <CalendarBlank className="size-4" aria-hidden="true" />}
+            {children ?? <CalendarIcon className="size-4" aria-hidden="true" />}
           </Button>
         </PopoverTrigger>
       </NavTooltip>

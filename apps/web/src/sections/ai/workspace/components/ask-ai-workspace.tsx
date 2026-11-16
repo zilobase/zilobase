@@ -6,7 +6,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import {
   ChevronsRightIcon,
   PictureInPicture2Icon,
-  SidebarSimpleIcon,
+  SidebarSimpleRightIcon,
   XIcon,
 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -126,7 +126,7 @@ function ChatHeader({
           {presentationMode === "sidebar" ? (
             <PictureInPicture2Icon className="size-4" />
           ) : (
-            <SidebarSimpleIcon className="size-4" mirrored />
+            <SidebarSimpleRightIcon className="size-4" />
           )}
         </Button>
       ) : null}

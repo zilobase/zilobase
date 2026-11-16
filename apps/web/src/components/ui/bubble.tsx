@@ -1,6 +1,6 @@
 // Source: https://ui.shadcn.com/r/styles/radix-mira/bubble.json
 // Retrieved 2026-10-20; SHA-256 4151a35e305ee6d54735f2d32fbb3070aee09d42aa9b00f6742bf70b5c2aa3f3.
-// Adaptations: local imports, Phosphor icons and Zilobase semantic colors.
+// Adaptations: local imports, Lucide icons and Zilobase semantic colors.
 // MIT license: ./ai-elements.LICENSE
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";

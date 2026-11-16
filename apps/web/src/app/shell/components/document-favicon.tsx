@@ -19,7 +19,11 @@ import { getDatabaseEmoji } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings/react";
 import { getPageEmoji } from "@zilobase/features/pages";
 import { usePage } from "@zilobase/features/pages/react";
-import { getPageIconValue } from "@/sections/pages/appearance/components/page-icon";
+import {
+  getDefaultPageIconValue,
+  getPageIconValue,
+} from "@/sections/pages/appearance/components/page-icon";
+import { useStoredIcon } from "@/hooks/use-stored-icon";
 
 export function DocumentFavicon() {
   const location = useRouterState({ select: (state) => state.location });
@@ -50,8 +54,16 @@ export function DocumentFavicon() {
       : directPageId
         ? page?.name
         : null;
-  const icon = getRouteFaviconIcon({
+  const { icon: resolvedItemIcon } = useStoredIcon(
     itemIcon,
+    databaseId
+      ? DEFAULT_DATABASE_ITEM_ICON
+      : meetingId
+        ? DEFAULT_MEETING_ITEM_ICON
+        : getDefaultPageIconValue(page),
+  );
+  const icon = getRouteFaviconIcon({
+    itemIcon: resolvedItemIcon,
     pathname: location.pathname,
   });
   const title = getRouteDocumentTitle({

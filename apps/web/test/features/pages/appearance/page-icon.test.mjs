@@ -6,7 +6,7 @@ export function register({ assert, loadModule, test }) {
       "getPageIconNode",
     ]);
 
-  test("empty page bodies use the blank Phosphor page", async () => {
+  test("empty page bodies use the blank Lucide page", async () => {
     const { getPageIconValue } = await loadIcons();
     const blank = getPageIconValue({ hasContent: false });
     for (const content of [
@@ -20,15 +20,15 @@ export function register({ assert, loadModule, test }) {
       assert.equal(getPageIconValue({ content }), blank);
     }
     assert.equal(getPageIconValue(), blank);
-    assert.match(blank, /data-icon-library="phosphor"/);
+    assert.match(blank, /data-icon-library="lucide"/);
   });
 
-  test("text and non-text content use a lined Phosphor page with the same outline", async () => {
+  test("text and non-text content use a lined Lucide page with the same outline", async () => {
     const { getPageIconValue, getPageIconNode } = await loadIcons();
     const blank = getPageIconValue({ hasContent: false });
     const lined = getPageIconValue({ hasContent: true });
     assert.notEqual(lined, blank);
-    assert.match(lined, /data-icon-library="phosphor"/);
+    assert.match(lined, /data-icon-library="lucide"/);
     const outlinePath = blank.match(/<path d="([^"]+)"/)[1];
     assert.ok(lined.includes(outlinePath));
     for (const node of [

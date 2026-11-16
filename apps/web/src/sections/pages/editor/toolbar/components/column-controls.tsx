@@ -3,7 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent, PointerEvent } from "react";
 import type { Editor } from "@tiptap/react";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { Copy, Eraser, MoreHorizontal, SidebarSimpleIcon, Trash2 } from "@/components/icons";
+import {
+  Copy,
+  Eraser,
+  MoreHorizontal,
+  SidebarSimpleIcon,
+  SidebarSimpleRightIcon,
+  Trash2,
+} from "@/components/icons";
 import {
   columnHandleGap,
   columnHandleHeight,
@@ -778,7 +785,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
             onClick={() => runColumnCommand(() => insertColumn(editor, rect, menu.index + 1))}
             type="button"
           >
-            <SidebarSimpleIcon mirrored />
+            <SidebarSimpleRightIcon />
             <span>Insert right</span>
           </button>
           <button

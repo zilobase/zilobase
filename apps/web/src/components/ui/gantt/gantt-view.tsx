@@ -79,7 +79,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CaretLeft, CaretRight, DotsSixVertical, Minus, Plus } from "@phosphor-icons/react";
+import { ChevronLeft, ChevronRight, GripVertical, Minus, Plus } from "@/components/icons";
 
 /** Current time, refreshed on an interval and on tab focus. */
 function useNow(intervalMs = 30_000): Date {
@@ -3064,7 +3064,7 @@ const GanttTreeRow = memo(function GanttTreeRow({
                 onPointerDown={(e) => onGripPointerDown(e, row)}
                 onClick={(e) => e.stopPropagation()}
               >
-                <DotsSixVertical className="size-3" aria-hidden="true" />
+                <GripVertical className="size-3" aria-hidden="true" />
               </button>
             )}
             {/* per-level indent keeps sibling titles on one x */}
@@ -3086,7 +3086,7 @@ const GanttTreeRow = memo(function GanttTreeRow({
                   )}
                   onClick={() => onToggle(row)}
                 >
-                  <CaretRight
+                  <ChevronRight
                     className={cn("size-3.5 transition-transform", !row.collapsed && "rotate-90")}
                     aria-hidden="true"
                   />
@@ -4194,9 +4194,9 @@ function GanttOffscreenChips({
                 onClick={() => scrollTo(chip)}
               >
                 {chip.side === "start" ? (
-                  <CaretLeft className="size-3" aria-hidden="true" />
+                  <ChevronLeft className="size-3" aria-hidden="true" />
                 ) : (
-                  <CaretRight className="size-3" aria-hidden="true" />
+                  <ChevronRight className="size-3" aria-hidden="true" />
                 )}
                 <span
                   aria-hidden

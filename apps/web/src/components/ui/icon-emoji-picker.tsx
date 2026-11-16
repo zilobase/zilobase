@@ -20,9 +20,9 @@ import { cn } from "@/lib/utils";
 
 type IconPosition = "inline" | "top";
 
-const PhosphorIconPicker = React.lazy(() =>
-  import("@/components/ui/phosphor-icon-picker").then((module) => ({
-    default: module.PhosphorIconPicker,
+const LucideIconPicker = React.lazy(() =>
+  import("@/components/ui/lucide-icon-picker").then((module) => ({
+    default: module.LucideIconPicker,
   })),
 );
 
@@ -75,7 +75,7 @@ export function IconEmojiPicker({
                 </div>
               }
             >
-              <PhosphorIconPicker onIconSelect={onIconSelect} />
+              <LucideIconPicker onIconSelect={onIconSelect} />
             </React.Suspense>
           ) : null}
         </TabsContent>

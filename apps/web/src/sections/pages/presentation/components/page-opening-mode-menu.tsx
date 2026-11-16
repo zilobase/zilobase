@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { CheckIcon, SidebarSimpleIcon, SquareIcon } from "@/components/icons";
+import { CheckIcon, SidebarSimpleRightIcon, SquareIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ export function PageOpeningModeMenu({
   mode: EmbeddedItemsOpenAs;
   onSelect: (mode: EmbeddedItemsOpenAs) => void;
 }) {
-  const ModeIcon = mode === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
+  const ModeIcon = mode === "sidepanel" ? SidebarSimpleRightIcon : SquareIcon;
   const [open, setOpen] = useState(false);
 
   return (
@@ -39,12 +39,12 @@ export function PageOpeningModeMenu({
           type="button"
           variant="ghost"
         >
-          <ModeIcon mirrored={mode === "sidepanel"} />
+          <ModeIcon />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
         {embeddedItemsOpenAsModes.map((value) => {
-          const OptionIcon = value === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
+          const OptionIcon = value === "sidepanel" ? SidebarSimpleRightIcon : SquareIcon;
 
           return (
             <DropdownMenuItem
@@ -55,7 +55,7 @@ export function PageOpeningModeMenu({
                 setOpen(false);
               }}
             >
-              <OptionIcon mirrored={value === "sidepanel"} />
+              <OptionIcon />
               <span>{embeddedItemsOpenAsLabels[value]}</span>
               {mode === value ? <CheckIcon className="ml-auto" /> : null}
             </DropdownMenuItem>

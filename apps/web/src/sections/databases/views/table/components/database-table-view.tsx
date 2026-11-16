@@ -1272,11 +1272,7 @@ export function DatabaseTableView({
                             }}
                             type="button"
                           >
-                            {subItemsExpanded ? (
-                              <ChevronDown weight="fill" />
-                            ) : (
-                              <ChevronRight weight="fill" />
-                            )}
+                            {subItemsExpanded ? <ChevronDown /> : <ChevronRight />}
                           </button>
                         ) : null}
                         <DatabaseCellContent wrapContent={nameColumnWrapContent}>

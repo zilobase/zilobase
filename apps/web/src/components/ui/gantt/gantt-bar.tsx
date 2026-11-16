@@ -26,7 +26,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Check, Repeat } from "@phosphor-icons/react";
+import { Check, Repeat } from "@/components/icons";
 
 /**
  * Effective Tailwind palette presets for bar colors; every entry works on

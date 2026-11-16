@@ -1,6 +1,6 @@
 // Source: https://ui.shadcn.com/r/styles/radix-mira/message-scroller.json
 // Retrieved 2026-10-20; SHA-256 335be87e211b0474612f4c6eb09f5e7db4e5bd142c18a4ead23555eabe040e5f.
-// Adaptations: local imports, Phosphor icons and Zilobase semantic colors.
+// Adaptations: local imports, Lucide icons and Zilobase semantic colors.
 // MIT license: ./ai-elements.LICENSE
 "use client";
 

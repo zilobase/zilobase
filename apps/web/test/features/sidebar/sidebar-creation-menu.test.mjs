@@ -39,20 +39,16 @@ export function register({ readSource, assert, test }) {
       "/src/sections/databases/interactions/components/database-page-link.tsx",
     );
     const iconPickerSource = await readSource("/src/components/ui/icon-emoji-picker.tsx");
-    const phosphorIconPickerSource = await readSource(
-      "/src/components/ui/phosphor-icon-picker.tsx",
-    );
-    assert.match(defaultIconsSource, /data-icon-color="gray"/);
+    const lucideIconPickerSource = await readSource("/src/components/ui/lucide-icon-picker.tsx");
     assert.doesNotMatch(defaultIconsSource, /data-icon-color="default"/);
-    assert.match(defaultIconsSource, /data-icon-library="phosphor"/);
-    assert.match(defaultIconsSource, /data-icon-weight="bold"/);
-    assert.match(defaultIconsSource, /viewBox="0 0 256 256"/);
-    assert.equal(defaultIconsSource.match(/buildPhosphorFallbackIcon\(/g)?.length, 5);
-    assert.match(appIconProviderSource, /weight: "bold"/);
-    assert.doesNotMatch(iconPickerSource, /Icon weight|PhosphorPickerWeight|iconWeight/);
-    assert.equal(phosphorIconPickerSource.match(/weight="fill"/g)?.length, 2);
-    assert.doesNotMatch(phosphorIconPickerSource, /PhosphorPickerWeight/);
-    assert.doesNotMatch(defaultIconsSource, /stroke-width=/);
+    assert.match(defaultIconsSource, /buildLucideStoredSvg\(\{ color: "gray", markup \}\)/);
+    assert.equal(defaultIconsSource.match(/buildLucideFallbackIcon\(/g)?.length, 5);
+    assert.doesNotMatch(defaultIconsSource, /viewBox="0 0 256 256"/);
+    assert.match(appIconProviderSource, /LucideProvider/);
+    assert.match(appIconProviderSource, /strokeWidth: 1\.75/);
+    assert.match(iconPickerSource, /lucide-icon-picker/);
+    assert.match(lucideIconPickerSource, /buildLucideStoredSvgByName\(icon\.name, colorValue\)/);
+    assert.doesNotMatch(lucideIconPickerSource, /weight=/);
     assert.match(pageIconSource, /export function DefaultPageIcon/);
     assert.match(pageIconSource, /getDefaultPageIconValue\(page\)/);
     assert.match(databasePageLinkSource, /<DefaultPageIcon page=\{pageSummary\} \/>/);
