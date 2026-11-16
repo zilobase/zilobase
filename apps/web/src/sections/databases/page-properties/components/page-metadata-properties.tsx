@@ -101,7 +101,7 @@ export function PageMetadataProperties({
   const propertyPresenceById = presenceByProperty;
 
   return (
-    <div className="mt-6 grid gap-1 py-2">
+    <div className="page-property-list">
       {(layoutPropertyId
         ? (propertyPayload?.properties.filter((property) => property.id === layoutPropertyId) ?? [])
         : visibleProperties
@@ -126,11 +126,8 @@ export function PageMetadataProperties({
         const inputValue = Array.isArray(value) ? value.join(", ") : value;
 
         return (
-          <div
-            className="grid min-h-8 grid-cols-[9rem_minmax(0,1fr)] items-center gap-3 text-sm"
-            key={property.id}
-          >
-            <span className="flex min-w-0 items-center gap-2 text-content-secondary [&_svg]:size-4 [&_svg]:shrink-0">
+          <div className="page-property-row" key={property.id}>
+            <span className="page-property-label">
               {layoutConfig?.propertyIcons === false ? null : <PropertyIcon />}
               <span className="truncate">{property.name}</span>
             </span>

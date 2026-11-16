@@ -26,7 +26,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(source, /onSelectDataSource=\{onSelectDataSource\}/);
     assert.doesNotMatch(source, /TasksPageHeader\(\{ onConfigure \}/);
     assert.doesNotMatch(source, /NewTaskDialog/);
-    assert.match(source, /text-4xl font-semibold leading-tight/);
+    assert.match(source, /text-\[26px\] font-semibold leading-tight/);
     assert.match(source, /md:px-20 lg:px-24/);
     assert.match(source, /showTitle: false/);
     assert.doesNotMatch(source, /max-w-7xl/);

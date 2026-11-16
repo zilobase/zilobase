@@ -16,8 +16,8 @@ export function register({ readSource, assert, test }) {
     );
 
     for (const source of [databaseToolbarSource, meetingSource]) {
-      assert.match(source, /font-semibold leading-tight tracking-normal/);
-      assert.match(source, /fullPage \? "text-2xl md:text-2xl" : "text-3xl"/);
+      assert.match(source, /font-semibold leading-tight tracking-\[-0\.02em\]/);
+      assert.match(source, /fullPage \? "text-2xl md:text-2xl" : "text-\[26px\]"/);
       assert.match(source, /data-structural-block-title/);
     }
 

@@ -344,8 +344,8 @@ export function DatabaseViewToolbar({
           <input
             aria-label="Database title"
             className={cn(
-              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-normal text-content-primary shadow-none outline-none [field-sizing:content] placeholder:text-content-secondary focus-visible:ring-0",
-              fullPage ? "text-2xl md:text-2xl" : "text-3xl",
+              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-[-0.02em] text-content-primary shadow-none outline-none [field-sizing:content] placeholder:text-content-secondary focus-visible:ring-0",
+              fullPage ? "text-2xl md:text-2xl" : "text-[26px]",
             )}
             disabled={!databaseId}
             data-structural-block-title

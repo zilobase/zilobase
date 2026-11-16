@@ -206,7 +206,7 @@ function TasksPageHeader() {
     <div className="relative px-5 pb-0 pt-1 sm:px-8 md:px-20 lg:px-24">
       <div className="relative mb-1 min-h-8" />
       <div className="flex items-start gap-3">
-        <h1 className="min-h-10 min-w-0 flex-1 px-3 py-0 text-4xl font-semibold leading-tight tracking-normal text-balance text-content-primary">
+        <h1 className="min-h-8 min-w-0 flex-1 px-3 py-0 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-balance text-content-primary">
           My Tasks
         </h1>
       </div>

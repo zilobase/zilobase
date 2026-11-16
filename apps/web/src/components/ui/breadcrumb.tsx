@@ -18,7 +18,7 @@ export function BreadcrumbList({
   return (
     <ol
       className={cn(
-        "wrap-break-word flex flex-wrap items-center gap-1.5 text-content-secondary text-sm font-medium sm:gap-2.5",
+        "wrap-break-word flex flex-wrap items-center gap-1.5 text-content-secondary text-[12.5px] leading-[18px] font-medium sm:gap-2 [&>[data-slot=breadcrumb-item]:not(:last-child)>[data-slot=breadcrumb-page]]:text-content-secondary",
         className,
       )}
       data-slot="breadcrumb-list"
@@ -33,7 +33,7 @@ export function BreadcrumbItem({
 }: React.ComponentProps<"li">): React.ReactElement {
   return (
     <li
-      className={cn("inline-flex items-center gap-1.5", className)}
+      className={cn("inline-flex items-center gap-1.5 [&_svg]:size-3.5", className)}
       data-slot="breadcrumb-item"
       {...props}
     />

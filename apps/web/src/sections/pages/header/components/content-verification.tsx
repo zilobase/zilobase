@@ -93,7 +93,7 @@ export function ContentVerificationValue({
         className={
           badgeOnly
             ? "inline-flex shrink-0 items-center rounded-sm text-palette-blue focus-visible:ring-2 focus-visible:ring-action-focus-ring"
-            : "database-input-cell-trigger inline-flex items-center gap-1.5 text-sm"
+            : "database-input-cell-trigger inline-flex items-center gap-1.5"
         }
         disabled={preview || loading}
         onClick={(event) => {
@@ -135,9 +135,9 @@ export function ContentVerificationMetadata({
   editable: boolean;
 }) {
   return (
-    <div className="mt-4 grid min-h-8 grid-cols-[9rem_minmax(0,1fr)] items-center gap-3 text-sm">
-      <span className="flex items-center gap-2 text-content-secondary">
-        <BadgeCheck className="size-4" />
+    <div className="page-property-row mt-4">
+      <span className="page-property-label">
+        <BadgeCheck />
         Verified
       </span>
       <ContentVerificationValue resource={resource} editable={editable} />

@@ -554,7 +554,7 @@ export default function RecentsScreen() {
                 >
                   <div className="database-block-shell database-block-shell-full">
                     <div className="database-toolbar-section">
-                      <h1 className="min-h-10 py-0 text-4xl font-semibold leading-tight tracking-normal text-content-primary">
+                      <h1 className="min-h-8 py-0 text-[26px] font-semibold leading-tight tracking-[-0.02em] text-content-primary">
                         {pageTitle}
                       </h1>
                       <div className="flex min-w-0 items-start gap-3">

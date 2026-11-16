@@ -423,6 +423,47 @@
     max-height: 15.5rem;
   }
 
+  .page-property-list {
+    @apply mt-4 grid gap-0.5 py-1;
+  }
+
+  .page-property-row {
+    @apply grid min-h-[30px] grid-cols-[120px_minmax(0,1fr)] items-center gap-2 text-[12.5px] leading-[18px];
+  }
+
+  .page-property-label {
+    @apply flex min-w-0 items-center gap-[7px] text-content-secondary;
+  }
+
+  .page-property-label > svg {
+    @apply size-[15px] shrink-0 opacity-70;
+  }
+
+  .page-property-row
+    :is(
+      .database-select-cell-trigger,
+      .database-date-cell-trigger,
+      .database-input-cell-trigger,
+      .database-relation-cell-trigger,
+      .database-checkbox-cell
+    ) {
+    @apply min-h-[30px] gap-1 px-1.5 py-0 text-[12.5px] leading-[18px];
+  }
+
+  .page-property-row .database-input-cell-link {
+    @apply h-[30px] px-1.5 py-0 text-[12.5px] leading-[30px];
+  }
+
+  .page-property-row .database-input-cell {
+    @apply text-[12.5px];
+  }
+
+  .page-property-row
+    :is(.database-input-cell-trigger, .database-date-cell-trigger)
+    > .text-content-secondary {
+    @apply opacity-75;
+  }
+
   .database-page-link,
   .database-page-create {
     @apply flex h-8 w-full min-w-0 items-center gap-2 rounded-none px-3 py-1 text-left text-sm;

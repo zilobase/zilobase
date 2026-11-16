@@ -571,7 +571,7 @@ export function PageMetadata({
 
   const iconDisplay = (
     <PageIconDisplay
-      className={iconPosition === "inline" ? "size-auto text-4xl [&_svg]:size-10" : "size-auto"}
+      className={iconPosition === "inline" ? "size-auto text-[26px] [&_svg]:size-7" : "size-auto"}
       size={iconPosition === "top" ? "2xl" : "xl"}
       value={icon}
     />
@@ -660,7 +660,7 @@ export function PageMetadata({
 
   const pageIcon = icon ? (
     <div
-      className={`flex w-fit shrink-0 items-center justify-center ${iconPosition === "top" ? "h-20" : "h-12"}`}
+      className={`flex w-fit shrink-0 items-center justify-center ${iconPosition === "top" ? "h-20" : "h-8"}`}
     >
       {editable ? iconPicker : iconDisplay}
     </div>
@@ -805,7 +805,7 @@ export function PageMetadata({
             {iconPosition === "inline" ? pageIcon : null}
             <textarea
               aria-label={headingLabel ? `${headingLabel} title` : "Page title"}
-              className={`min-h-10 min-w-0 ${titleSuffix ? "flex-initial [field-sizing:content]" : "flex-1"} resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-content-primary shadow-none outline-none placeholder:text-content-secondary placeholder:opacity-60 focus-visible:ring-0 dark:bg-transparent`}
+              className={`min-h-8 min-w-0 ${titleSuffix ? "flex-initial [field-sizing:content]" : "flex-1"} resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-[26px] font-semibold leading-tight tracking-[-0.02em] whitespace-pre-wrap text-balance text-content-primary shadow-none outline-none placeholder:text-content-secondary placeholder:opacity-60 focus-visible:ring-0 dark:bg-transparent`}
               onBlur={onTitleBlur}
               onChange={(event) => updateTitle(event.target.value)}
               onKeyDown={(event) => {

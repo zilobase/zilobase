@@ -29,7 +29,7 @@ export function register({ readSource, assert, loadModule, test }) {
   test("Library keeps a full-page Library heading across tabs", async () => {
     const source = await readLibrarySource();
     assert.match(source, /const pageTitle = "Library"/);
-    assert.match(source, /<h1 className="min-h-10 py-0 text-4xl font-semibold/);
+    assert.match(source, /<h1 className="min-h-8 py-0 text-\[26px\] font-semibold/);
     assert.match(source, /showTitle: false/);
   });
 
